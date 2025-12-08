@@ -4,9 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [--devices=<devices>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--use-4B-mode]
+  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [--devices=<devices>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--disable-4B-mode]
   tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
-  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--use-4B-mode]
+  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--disable-4B-mode]
   tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help
 
@@ -26,7 +26,7 @@ Options:
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
   --use-noc1                      Initialize with NOC1 and use NOC1 for communication with the device.
-  --use-4B-mode                   Use 4B mode for communication with the device.
+  --disable-4B-mode               Disable4B mode for communication with the device.
   --gdb                           Start RISC-V gdb client with the specified arguments.
 
 Description:
@@ -471,13 +471,15 @@ def main():
         server_ip = address[0] if address[0] != "" else "localhost"
         server_port = address[-1]
         util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
-        context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port), args["--use-4B-mode"])
+        context = tt_exalens_init.init_ttexalens_remote(
+            server_ip, int(server_port), args["--disable-4B-mode"] is not None
+        )
     else:
         context = tt_exalens_init.init_ttexalens(
             wanted_devices=wanted_devices,
             init_jtag=args["--jtag"],
             use_noc1=args["--use-noc1"],
-            use_4B_mode=args["--use-4B-mode"],
+            use_4B_mode=args["--disable-4B-mode"] is not None,
             simulation_directory=args["-s"],
         )
 
