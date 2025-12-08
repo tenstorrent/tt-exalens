@@ -18,14 +18,14 @@ class umd_implementation : public ttexalens_implementation {
     umd_implementation(tt::umd::Cluster* cluster);
 
    protected:
-    std::optional<uint32_t> read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                   uint64_t address) override;
+    std::optional<uint32_t> read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
+                                   bool use_4B_mode) override;
     std::optional<uint32_t> write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                    uint32_t data) override;
+                                    uint32_t data, bool use_4B_mode) override;
     std::optional<std::vector<uint8_t>> read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                             uint64_t address, uint32_t size) override;
+                                             uint64_t address, uint32_t size, bool use_4B_mode) override;
     std::optional<uint32_t> write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                                  const uint8_t* data, uint32_t size) override;
+                                  const uint8_t* data, uint32_t size, bool use_4B_mode) override;
     std::optional<uint32_t> pci_read32_raw(uint8_t chip_id, uint64_t address) override;
     std::optional<uint32_t> pci_write32_raw(uint8_t chip_id, uint64_t address, uint32_t data) override;
     std::optional<uint32_t> dma_buffer_read32(uint8_t chip_id, uint64_t address, uint32_t channel) override;

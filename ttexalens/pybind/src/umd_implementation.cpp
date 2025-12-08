@@ -90,7 +90,7 @@ void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
 
 // TODO #375: Remove read/write unaligned functions once UMD implements ability to set unaligned access for our TLB
 void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip,
-                                           tt::umd::CoreCoord core, uint64_t addr, uint32_t size) {
+                                           tt::umd::CoreCoord core, uint64_t addr, uint32_t size, bool use_4B_mode) {
     // Read first unaligned word
     uint32_t first_unaligned_index = addr % 4;
     if (first_unaligned_index != 0) {
@@ -108,11 +108,13 @@ void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_
 
     // Read aligned bytes
     uint32_t aligned_size = size - (size % 4);
-    if (aligned_size > 0) {
-        read_from_device_reg(cluster, mem_ptr, chip, core, addr, aligned_size);
-        mem_ptr = (uint8_t*)mem_ptr + aligned_size;
-        addr += aligned_size;
-        size -= aligned_size;
+    uint32_t block_size = use_4B_mode ? 4 : aligned_size;
+    while (aligned_size > 0) {
+        read_from_device_reg(cluster, mem_ptr, chip, core, addr, block_size);
+        aligned_size -= block_size;
+        mem_ptr = (uint8_t*)mem_ptr + block_size;
+        addr += block_size;
+        size -= block_size;
     }
 
     // Read last unaligned word
@@ -125,19 +127,19 @@ void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_
 }
 
 void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
-                                    uint64_t addr, uint32_t size) {
+                                    uint64_t addr, uint32_t size, bool use_4B_mode) {
     try {
-        read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
+        read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size, use_4B_mode);
     } catch (const TimeoutDeviceRegisterException& e) {
         throw;
     } catch (const std::runtime_error& e) {
         _configure_working_active_eth(cluster, chip);
-        read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size);
+        read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size, use_4B_mode);
     }
 }
 
 void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
-                                          ChipId chip, tt::umd::CoreCoord core, uint64_t addr) {
+                                          ChipId chip, tt::umd::CoreCoord core, uint64_t addr, bool use_4B_mode) {
     {
         // Read/Write first unaligned word
         uint32_t first_unaligned_index = addr % 4;
@@ -159,11 +161,13 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void*
 
         // Write aligned bytes
         uint32_t aligned_size = size_in_bytes - (size_in_bytes % 4);
+        uint32_t block_size = use_4B_mode ? 4 : aligned_size;
         if (aligned_size > 0) {
-            write_to_device_reg(cluster, mem_ptr, aligned_size, chip, core, addr);
-            mem_ptr = (uint8_t*)mem_ptr + aligned_size;
-            addr += aligned_size;
-            size_in_bytes -= aligned_size;
+            write_to_device_reg(cluster, mem_ptr, block_size, chip, core, addr);
+            aligned_size -= block_size;
+            mem_ptr = (uint8_t*)mem_ptr + block_size;
+            addr += block_size;
+            size_in_bytes -= block_size;
         }
 
         // Read/Write last unaligned word
@@ -178,14 +182,14 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void*
 }
 
 void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
-                                   tt::umd::CoreCoord core, uint64_t addr) {
+                                   tt::umd::CoreCoord core, uint64_t addr, bool use_4B_mode) {
     try {
-        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
+        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr, use_4B_mode);
     } catch (const TimeoutDeviceRegisterException& e) {
         throw;
     } catch (const std::runtime_error& e) {
         _configure_working_active_eth(cluster, chip);
-        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr);
+        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr, use_4B_mode);
     }
 }
 
@@ -194,30 +198,31 @@ umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(clus
 }
 
 std::optional<uint32_t> umd_implementation::read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                   uint64_t address) {
+                                                   uint64_t address, bool use_4B_mode) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
     uint32_t result;
     tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
 
-    read_from_device_reg_unaligned(cluster, &result, chip_id, target, address, sizeof(result));
+    read_from_device_reg_unaligned(cluster, &result, chip_id, target, address, sizeof(result), use_4B_mode);
     return result;
 }
 
 std::optional<uint32_t> umd_implementation::write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                    uint64_t address, uint32_t data) {
+                                                    uint64_t address, uint32_t data, bool use_4B_mode) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
     tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
 
-    write_to_device_reg_unaligned(cluster, &data, sizeof(data), chip_id, target, address);
+    write_to_device_reg_unaligned(cluster, &data, sizeof(data), chip_id, target, address, use_4B_mode);
     return 4;
 }
 
 std::optional<std::vector<uint8_t>> umd_implementation::read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x,
-                                                             uint8_t noc_y, uint64_t address, uint32_t size) {
+                                                             uint8_t noc_y, uint64_t address, uint32_t size,
+                                                             bool use_4B_mode) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
@@ -227,18 +232,20 @@ std::optional<std::vector<uint8_t>> umd_implementation::read(uint8_t noc_id, uin
     if (!is_chip_mmio_capable(chip_id)) {
         for (uint32_t done = 0; done < size;) {
             uint32_t block = std::min(size - done, 1024u);
-            read_from_device_reg_unaligned(cluster, result.data() + done, chip_id, target, address + done, block);
+            read_from_device_reg_unaligned(cluster, result.data() + done, chip_id, target, address + done, block,
+                                           use_4B_mode);
             done += block;
         }
         return result;
     }
 
-    read_from_device_reg_unaligned(cluster, result.data(), chip_id, target, address, size);
+    read_from_device_reg_unaligned(cluster, result.data(), chip_id, target, address, size, use_4B_mode);
     return result;
 }
 
 std::optional<uint32_t> umd_implementation::write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                  uint64_t address, const uint8_t* data, uint32_t size) {
+                                                  uint64_t address, const uint8_t* data, uint32_t size,
+                                                  bool use_4B_mode) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
@@ -248,13 +255,13 @@ std::optional<uint32_t> umd_implementation::write(uint8_t noc_id, uint8_t chip_i
     if (!is_chip_mmio_capable(chip_id)) {
         for (uint32_t done = 0; done < size;) {
             uint32_t block = std::min(size - done, 1024u);
-            write_to_device_reg_unaligned(cluster, data + done, block, chip_id, target, address + done);
+            write_to_device_reg_unaligned(cluster, data + done, block, chip_id, target, address + done, use_4B_mode);
             done += block;
         }
         return size;
     }
 
-    write_to_device_reg_unaligned(cluster, data, size, chip_id, target, address);
+    write_to_device_reg_unaligned(cluster, data, size, chip_id, target, address, use_4B_mode);
     return size;
 }
 

@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [--devices=<devices>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1]
+  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [--devices=<devices>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--use-4B-mode]
   tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-exalens --gdb [gdb_args...]
@@ -26,6 +26,7 @@ Options:
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
   --use-noc1                      Initialize with NOC1 and use NOC1 for communication with the device.
+  --use-4B-mode                   Use 4B mode for communication with the device.
   --gdb                           Start RISC-V gdb client with the specified arguments.
 
 Description:
@@ -474,6 +475,7 @@ def main():
             wanted_devices=wanted_devices,
             init_jtag=args["--jtag"],
             use_noc1=args["--use-noc1"],
+            use_4B_mode=args["--use-4B-mode"],
             simulation_directory=args["-s"],
         )
 
