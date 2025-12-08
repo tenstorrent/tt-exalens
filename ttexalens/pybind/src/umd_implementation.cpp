@@ -162,7 +162,7 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void*
         // Write aligned bytes
         uint32_t aligned_size = size_in_bytes - (size_in_bytes % 4);
         uint32_t block_size = use_4B_mode ? 4 : aligned_size;
-        if (aligned_size > 0) {
+        while (aligned_size > 0) {
             write_to_device_reg(cluster, mem_ptr, block_size, chip, core, addr);
             aligned_size -= block_size;
             mem_ptr = (uint8_t*)mem_ptr + block_size;
@@ -198,25 +198,25 @@ umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(clus
 }
 
 std::optional<uint32_t> umd_implementation::read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                   uint64_t address, bool use_4B_mode) {
+                                                   uint64_t address) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
     uint32_t result;
     tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
 
-    read_from_device_reg_unaligned(cluster, &result, chip_id, target, address, sizeof(result), use_4B_mode);
+    read_from_device_reg_unaligned(cluster, &result, chip_id, target, address, sizeof(result), true);
     return result;
 }
 
 std::optional<uint32_t> umd_implementation::write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                    uint64_t address, uint32_t data, bool use_4B_mode) {
+                                                    uint64_t address, uint32_t data) {
     // TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
     umd::TTDevice::use_noc1(noc_id == 1);
 
     tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
 
-    write_to_device_reg_unaligned(cluster, &data, sizeof(data), chip_id, target, address, use_4B_mode);
+    write_to_device_reg_unaligned(cluster, &data, sizeof(data), chip_id, target, address, true);
     return 4;
 }
 

@@ -77,7 +77,6 @@ def read_word_from_device(
     device_id: int = 0,
     context: Context | None = None,
     noc_id: int | None = None,
-    use_4B_mode: bool | None = None,
 ) -> int:
     """
     Reads one four-byte word of data, from address 'addr' at specified location using specified noc.
@@ -97,10 +96,9 @@ def read_word_from_device(
     context = coordinate.context
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
-    use_4B_mode = check_4B_mode(use_4B_mode, context)
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    word = context.server_ifc.read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, use_4B_mode)
+    word = context.server_ifc.read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr)
     return word
 
 
@@ -214,7 +212,7 @@ def write_words_to_device(
 
     noc_loc = context.convert_loc_to_umd(coordinate)
     if isinstance(data, int):
-        return context.server_ifc.write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data, use_4B_mode)
+        return context.server_ifc.write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
     byte_data = b"".join(x.to_bytes(4, "little") for x in data)
     return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data, use_4B_mode)

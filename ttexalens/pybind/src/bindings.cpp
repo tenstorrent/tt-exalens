@@ -37,13 +37,12 @@ class TTExaLensImplementation {
         return result.value();
     }
 
-    uint32_t read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, bool use_4B_mode) {
-        return _check_result(implementation->read32(noc_id, chip_id, noc_x, noc_y, address, use_4B_mode));
+    uint32_t read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address) {
+        return _check_result(implementation->read32(noc_id, chip_id, noc_x, noc_y, address));
     }
 
-    uint32_t write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data,
-                     bool use_4B_mode) {
-        return _check_result(implementation->write32(noc_id, chip_id, noc_x, noc_y, address, data, use_4B_mode));
+    uint32_t write32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t data) {
+        return _check_result(implementation->write32(noc_id, chip_id, noc_x, noc_y, address, data));
     }
 
     nanobind::bytes read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t size,
@@ -151,9 +150,9 @@ NB_MODULE(ttexalens_pybind, m) {
     // Bind the TTExaLensImplementation class
     nanobind::class_<TTExaLensImplementation>(m, "TTExaLensImplementation")
         .def("read32", &TTExaLensImplementation::read32, "Reads 4 bytes from address", "noc_id"_a, "chip_id"_a,
-             "noc_x"_a, "noc_y"_a, "address"_a, "use_4B_mode"_a)
+             "noc_x"_a, "noc_y"_a, "address"_a)
         .def("write32", &TTExaLensImplementation::write32, "Writes 4 bytes to address", "noc_id"_a, "chip_id"_a,
-             "noc_x"_a, "noc_y"_a, "address"_a, "data"_a, "use_4B_mode"_a)
+             "noc_x"_a, "noc_y"_a, "address"_a, "data"_a)
         .def("read", &TTExaLensImplementation::read, "Reads data from address", "noc_id"_a, "chip_id"_a, "noc_x"_a,
              "noc_y"_a, "address"_a, "size"_a, "use_4B_mode"_a)
         .def("write", &TTExaLensImplementation::write, "Writes data to address", "noc_id"_a, "chip_id"_a, "noc_x"_a,
