@@ -152,7 +152,7 @@ class GdbServer(threading.Thread):
                     self.process_client(client)
                 except Exception as e:
                     # Just log exceptions and continue with next client
-                    util.ERROR(f"Unhandled exception in GDB implementation: {e}")
+                    self.error(f"Unhandled exception in GDB implementation: {e}")
                 client.close()
                 self.is_connected = False
                 if self.on_disconnected is not None:
@@ -184,7 +184,7 @@ class GdbServer(threading.Thread):
             except Exception as e:
                 client.write(b"-")
                 util.VERBOSE(f"sent response to GDB: -")
-                util.ERROR(f"GDB exception: {e}")
+                self.error(f"GDB exception: {e}")
         util.VERBOSE("GDB client closed")
 
     def process_message(self, parser: GdbMessageParser, writer: GdbMessageWriter):
@@ -193,7 +193,7 @@ class GdbServer(threading.Thread):
             return False
 
         if parser.is_ack_error:
-            util.ERROR("GDB client error")
+            self.error("GDB client error")
             # Ignore this message
             return False
 
@@ -231,7 +231,7 @@ class GdbServer(threading.Thread):
                 util.WARN(
                     f"GDB: client want to continue at address: {address}, but we don't support that. We will continue at current address."
                 )
-            util.ERROR(
+            self.error(
                 f"GDB: client uses single threaded continue instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message"
             )
             writer.append(b"E01")
@@ -326,7 +326,7 @@ class GdbServer(threading.Thread):
                         # Every time before sending message with actual pid/thread id gdb sends Hgp0.0
                         if not (thread_id.process_id == 0 and thread_id.thread_id == 0):
                             # Unknown process!!!
-                            util.ERROR(f"GDB: Unknown process id in self.debugging_threads: {thread_id.process_id}")
+                            self.error(f"GDB: Unknown process id in self.debugging_threads: {thread_id.process_id}")
                         writer.append(b"E01")
                         return True
                     thread_id = t
@@ -335,7 +335,7 @@ class GdbServer(threading.Thread):
                 process = self.available_processes.get(thread_id.process_id)
                 if process is None:
                     # Unknown process!!!
-                    util.ERROR(f"GDB: Unknown process id in self.available_processes: {thread_id.process_id}")
+                    self.error(f"GDB: Unknown process id in self.available_processes: {thread_id.process_id}")
                     writer.append(b"E01")
                 else:
                     self.current_process = process
@@ -541,12 +541,12 @@ class GdbServer(threading.Thread):
             annex = parser.read_until(GDB_ASCII_COLON)
             offset = parser.parse_hex()
             if offset is None or not parser.parse(b","):
-                util.ERROR(f"GDB: Something wrong with offset and length: {parser.data!r}")
+                self.error(f"GDB: Something wrong with offset and length: {parser.data!r}")
                 writer.append(b"E01")
                 return True
             length = parser.parse_hex()
             if object is None or annex is None or length is None:
-                util.ERROR(f"GDB: Something wrong with arguments of qXfer: {parser.data!r}")
+                self.error(f"GDB: Something wrong with arguments of qXfer: {parser.data!r}")
                 writer.append(b"E01")
                 return True
             object = object.decode()
@@ -571,7 +571,7 @@ class GdbServer(threading.Thread):
                 pid = int(annex, 16)
                 process = self.available_processes.get(pid)
                 if process is None:
-                    util.ERROR(f"GDB: bad process id: {pid} ({annex})")
+                    self.error(f"GDB: bad process id: {pid} ({annex})")
                     writer.append(b"E01")
                 else:
                     self.prepared_responses_for_paging[paging_key] = (
@@ -580,7 +580,7 @@ class GdbServer(threading.Thread):
                     self.write_paged_message(self.prepared_responses_for_paging[paging_key], offset, length, writer)
             else:
                 # We don't support this message
-                util.ERROR(f"GDB: unsupported message: {parser.data!r}")
+                self.error(f"GDB: unsupported message: {parser.data!r}")
                 pass
         elif parser.parse(b"qSymbol"):  # Notify the target that GDB is prepared to serve symbol lookup requests.
             # We don't need symbol lookup (for now)
@@ -603,7 +603,7 @@ class GdbServer(threading.Thread):
                 util.WARN(
                     f"GDB: client want to single step at address: {address}, but we don't support that. We will single step at current address."
                 )
-            util.ERROR(
+            self.error(
                 f"GDB: client uses single threaded single step instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message"
             )
             writer.append(b"E01")
@@ -631,7 +631,7 @@ class GdbServer(threading.Thread):
                 pid = parser.parse_hex()
                 # Check if pid is in the list of available processes and respond with error if it is not
                 if pid is None or pid not in self.available_processes:
-                    util.ERROR(f"GDB: client tried to attach to unknown process id: {pid}")
+                    self.error(f"GDB: client tried to attach to unknown process id: {pid}")
                     writer.append(b"E01")
                     return True
                 process = self.available_processes.get(pid)
@@ -662,7 +662,7 @@ class GdbServer(threading.Thread):
                     writer.append(b";")
                     self.current_process = process
                 except Exception as e:
-                    util.ERROR(f"++ exception while halting: {e}")
+                    self.error(f"++ exception while halting: {e}")
                     writer.clear()
                     writer.append(b"E01")
         elif parser.parse(b"vCont?"):  # Request a list of actions supported by the ‘vCont’ packet.
@@ -756,7 +756,7 @@ class GdbServer(threading.Thread):
                 # NOTE: The server must ignore ‘c’, ‘C’, ‘s’, ‘S’, and ‘r’ actions for threads that are already running. Conversely, the server must ignore ‘t’ actions for threads that are already stopped.
                 process = available_processes.get(pid)
                 if process is None:
-                    util.ERROR(f"GDB: process with id {pid} is not available")
+                    self.error(f"GDB: process with id {pid} is not available")
                     continue
                 action = thread_actions[pid]
                 if action == "c":  # Continue
@@ -871,7 +871,7 @@ class GdbServer(threading.Thread):
             # ‘vFile:open: filename, flags, mode’
             filename = parser.read_until(GDB_ASCII_COMMA)
             if filename is None:
-                util.ERROR(f"GDB: Something wrong with filename of vFile:open: {parser.data!r}")
+                self.error(f"GDB: Something wrong with filename of vFile:open: {parser.data!r}")
                 writer.append(b"F-1")
                 return True
             filename = filename.decode()
@@ -880,7 +880,7 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             mode = parser.parse_hex()
             if flags is None or mode is None:
-                util.ERROR(f"GDB: Something wrong with flags or mode of vFile:open: {parser.data!r}")
+                self.error(f"GDB: Something wrong with flags or mode of vFile:open: {parser.data!r}")
                 writer.append(b"F-1")
                 return True
             result = self.file_server.open(filename, flags, mode)
@@ -907,7 +907,7 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             offset = parser.parse_hex()
             if fd is None or count is None or offset is None:
-                util.ERROR(f"GDB: Something wrong with fd, count or offset of vFile:pread: {parser.data!r}")
+                self.error(f"GDB: Something wrong with fd, count or offset of vFile:pread: {parser.data!r}")
                 writer.append(b"F-1")
                 return True
             pread_result = self.file_server.pread(fd, count, offset)
@@ -930,7 +930,7 @@ class GdbServer(threading.Thread):
             data = parser.read_rest()
             writer.append(b"F-1")
             if fd is None or data is None or offset is None:
-                util.ERROR(f"GDB: Something wrong with fd, data or offset of vFile:pwrite: {parser.data!r}")
+                self.error(f"GDB: Something wrong with fd, data or offset of vFile:pwrite: {parser.data!r}")
                 writer.append(b"F-1")
                 return True
             pwrite_result = self.file_server.pwrite(fd, offset, data)
@@ -1109,7 +1109,7 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             kind = parser.parse_hex()
             if addr is None:
-                util.ERROR(f"GDB: Something wrong with address of Z0: {parser.data!r}")
+                self.error(f"GDB: Something wrong with address of Z0: {parser.data!r}")
                 writer.append(b"E01")
                 return True
             # TODO: Add support for conditional break point
@@ -1149,7 +1149,7 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             kind = parser.parse_hex()
             if addr is None:
-                util.ERROR(f"GDB: Something wrong with address of Z2: {parser.data!r}")
+                self.error(f"GDB: Something wrong with address of Z2: {parser.data!r}")
                 writer.append(b"E01")
                 return True
 
@@ -1183,7 +1183,7 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             kind = parser.parse_hex()
             if addr is None:
-                util.ERROR(f"GDB: Something wrong with address of Z3: {parser.data!r}")
+                self.error(f"GDB: Something wrong with address of Z3: {parser.data!r}")
                 writer.append(b"E01")
                 return True
 
@@ -1217,7 +1217,7 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             kind = parser.parse_hex()
             if addr is None:
-                util.ERROR(f"GDB: Something wrong with address of Z4: {parser.data!r}")
+                self.error(f"GDB: Something wrong with address of Z4: {parser.data!r}")
                 writer.append(b"E01")
                 return True
 
