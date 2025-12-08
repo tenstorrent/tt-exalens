@@ -10,6 +10,10 @@ constexpr uint64_t c_uint64_t = 0x5566778899AABBCC;
 constexpr float c_float = 0.5f;
 constexpr double c_double = 2.718281828459;
 
+enum class EnumClass : uint32_t { VALUE_A = 0, VALUE_B = 1, VALUE_C = 2, VALUE_D = 3 };
+
+enum EnumType : uint32_t { TYPE_X = 10, TYPE_Y = 20, TYPE_Z = 30 };
+
 struct InnerStruct {
     uint16_t x;
     uint16_t y;
@@ -77,6 +81,8 @@ struct GlobalStruct : public BaseStruct, public BaseStruct2 {
     go_msg_t msg;
     uint32_t uint_array[4];
     uint32_t* uint_pointer;
+    EnumClass enum_class_field;
+    EnumType enum_type_field;
 };
 
 GlobalStruct g_global_struct;
@@ -119,6 +125,8 @@ void update_struct(GlobalStruct* gs) {
     gs->uint_array[2] = 0x33333333;
     gs->uint_array[3] = 0x44444444;
     gs->uint_pointer = &gs->uint_array[0];
+    gs->enum_class_field = EnumClass::VALUE_C;
+    gs->enum_type_field = TYPE_Y;
 }
 
 int main() {

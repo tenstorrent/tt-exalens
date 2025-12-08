@@ -160,6 +160,11 @@ class ElfDie:
             die = self.cu.dwarf.get_die(dwarf_die)
             if die is not None:
                 return die.resolved_type
+        elif self.tag_is("enumeration_type"):
+            if "DW_AT_type" in self.attributes and self.local_offset is not None:
+                type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
+                if type_die is not None:
+                    return type_die.resolved_type
         return self
 
     @cached_property

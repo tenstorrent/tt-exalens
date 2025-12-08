@@ -8,9 +8,10 @@ import struct
 from elftools.dwarf.dwarfinfo import DWARFInfo
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
-from functools import cached_property
+from functools import cache, cached_property
 import os
 from ttexalens import Verbosity
+from ttexalens.elf.cu import ElfCompileUnit
 import ttexalens.util as util
 from ttexalens.elf.dwarf import ElfDwarf, ElfDwarfWithOffset
 from ttexalens.elf.frame import FrameInfoProvider, FrameInfoProviderWithOffset
@@ -97,19 +98,14 @@ class ElfDwarfSymbol:
 
 def decode_symbols(elf_file: ELFFile) -> dict[str, ElfDwarfSymbol]:
     symbols = {}
-    for section in elf_file.iter_sections():
-        # Check if it's a symbol table section
-        if section.name == ".symtab":
-            # Iterate through symbols
-            assert isinstance(section, SymbolTableSection)
-            for symbol in section.iter_symbols():
-                # Check if it's a label symbol
-                if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
-                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
-                elif symbol["st_info"]["type"] == "STT_FUNC":
-                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
-                elif symbol["st_info"]["type"] == "STT_OBJECT":
-                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
+    section = elf_file.get_section_by_name(".symtab")
+    assert section is not None and isinstance(section, SymbolTableSection)
+    for symbol in section.iter_symbols():
+        if not symbol.name:
+            continue
+        type = symbol["st_info"]["type"]
+        if type == "STT_NOTYPE" or type == "STT_FUNC" or type == "STT_OBJECT":
+            symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
     return symbols
 
 
@@ -190,11 +186,52 @@ class ParsedElfFile:
     def frame_info(self) -> FrameInfoProvider:
         return FrameInfoProvider(self._dwarf.dwarf)
 
-    def get_global(self, name: str, mem_access: MemoryAccess) -> ElfVariable:
+    @cache
+    def find_die_by_name(self, name: str) -> ElfDie | None:
+        names = name.split("::")
+        if len(names) == 0:
+            return None
+        declaration_die = None
+        for cu in self._dwarf.iter_CUs():
+            index = 0
+            die = cu.top_DIE
+            while index < len(names) and die is not None:
+                die = die.get_child_by_name(names[index])
+                index += 1
+            if die is not None:
+                if "DW_AT_abstract_origin" in die.attributes:
+                    die = die.get_DIE_from_attribute("DW_AT_abstract_origin")
+                    if die is None:
+                        return None
+                elif "DW_AT_specification" in die.attributes:
+                    die = die.get_DIE_from_attribute("DW_AT_specification")
+                    if die is None:
+                        return None
+                if "DW_AT_declaration" in die.attributes and die.attributes["DW_AT_declaration"].value:
+                    declaration_die = die
+                    continue
+                return die
+        return declaration_die
+
+    def get_enum_value(self, name: str, allow_fallback: bool = False) -> int | None:
+        # Try to use fast lookup first
+        die = self.find_die_by_name(name)
+        if die is None or die.category != "enumerator":
+            # Fallback to full lookup
+            die = self.enumerators.get(name) if allow_fallback else None
+        if die is not None:
+            return die.value
+        return None
+
+    def get_global(self, name: str, mem_access: MemoryAccess, allow_fallback: bool = False) -> ElfVariable:
         """
         Given a global variable name, return an ElfVariable object that can be used to access it
         """
-        die = self.variables.get(name)
+        # Try to use fast lookup first
+        die = self.find_die_by_name(name)
+        if die is None or die.category != "variable":
+            # Fallback to full lookup
+            die = self.variables.get(name) if allow_fallback else None
         if die is None:
             raise Exception(f"ERROR: Cannot find global variable {name} in ELF DWARF info")
         address = die.address
@@ -205,14 +242,18 @@ class ParsedElfFile:
             return ElfVariable(die.resolved_type.dereference_type, address, mem_access)
         return ElfVariable(die.resolved_type, address, mem_access)
 
-    def read_global(self, name: str, mem_access: MemoryAccess) -> ElfVariable:
+    def read_global(self, name: str, mem_access: MemoryAccess, allow_fallback: bool = False) -> ElfVariable:
         """
         Given a global variable name, return an ElfVariable object that has been read
         """
-        return self.get_global(name, mem_access).read()
+        return self.get_global(name, mem_access, allow_fallback).read()
 
-    def get_constant(self, name: str):
-        die = self.variables.get(name)
+    def get_constant(self, name: str, allow_fallback: bool = False):
+        # Try to use fast lookup first
+        die = self.find_die_by_name(name)
+        if die is None or die.category != "variable":
+            # Fallback to full lookup
+            die = self.variables.get(name) if allow_fallback else None
         if die is None:
             raise Exception(f"ERROR: Cannot find constant variable {name} in ELF DWARF info")
         if die.value is None:
