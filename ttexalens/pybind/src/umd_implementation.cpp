@@ -43,7 +43,7 @@ class TimeoutDeviceRegisterException : public std::exception {
 
 void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id, tt::umd::CoreCoord tensix_core,
                           uint64_t addr, uint32_t size,
-                          std::chrono::milliseconds timeout = std::chrono::milliseconds(200)) {
+                          std::chrono::milliseconds timeout = std::chrono::milliseconds(2)) {
     auto start_time = std::chrono::steady_clock::now();
     cluster->read_from_device_reg(temp, chip_id, tensix_core, addr, size);
     auto end_time = std::chrono::steady_clock::now();
@@ -58,7 +58,7 @@ void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id
 
 void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t size, uint8_t chip_id,
                          tt::umd::CoreCoord tensix_core, uint64_t addr,
-                         std::chrono::milliseconds timeout = std::chrono::milliseconds(200)) {
+                         std::chrono::milliseconds timeout = std::chrono::milliseconds(2)) {
     cluster->write_to_device_reg(temp, size, chip_id, tensix_core, addr);
 }
 
