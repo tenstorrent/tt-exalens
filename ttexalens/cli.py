@@ -6,7 +6,7 @@
 Usage:
   tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [--devices=<devices>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--use-4B-mode]
   tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
-  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
+  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--use-4B-mode]
   tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help
 
@@ -312,6 +312,8 @@ def main_loop(args, context):
                             if ui_state.gdb_server.is_connected:
                                 gdb_status += "(connected)"
                             my_prompt += f"gdb:{gdb_status} "
+                        if ui_state.context.use_4B_mode:
+                            my_prompt += f"{util.CLR_PROMPT}[4B MODE] {util.CLR_PROMPT_END}"
                         noc_prompt = "1" if ui_state.context.use_noc1 else "0"
                         if ui_state.current_device.is_blackhole() or ui_state.current_device.is_wormhole():
                             my_prompt += f"noc:{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
@@ -469,7 +471,7 @@ def main():
         server_ip = address[0] if address[0] != "" else "localhost"
         server_port = address[-1]
         util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
-        context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port))
+        context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port), args["--use-4B-mode"])
     else:
         context = tt_exalens_init.init_ttexalens(
             wanted_devices=wanted_devices,

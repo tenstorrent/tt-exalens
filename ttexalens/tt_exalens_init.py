@@ -46,6 +46,7 @@ def init_ttexalens(
 def init_ttexalens_remote(
     ip_address: str = "localhost",
     port: int = 5555,
+    use_4B_mode: bool = True,
 ) -> Context:
     """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
     Interfacing device is done remotely through TTExaLens client.
@@ -53,14 +54,14 @@ def init_ttexalens_remote(
     Args:
             ip_address (str): IP address of the TTExaLens server. Default is 'localhost'.
             port (int): Port number of the TTExaLens server interface. Default is 5555.
-
+            use_4B_mode (bool): Whether to use 4B mode for communication with the device. Default is True.
     Returns:
             Context: TTExaLens context object.
     """
 
     lens_ifc = tt_exalens_ifc.connect_to_server(ip_address, port)
 
-    return load_context(lens_ifc)
+    return load_context(lens_ifc, use_4B_mode=use_4B_mode)
 
 
 def get_cluster_desc_yaml(lens_ifc: tt_exalens_ifc.TTExaLensCommunicator) -> util.YamlFile:
