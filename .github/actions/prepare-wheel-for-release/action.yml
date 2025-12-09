@@ -34,7 +34,7 @@ runs:
       id: set-wheel-name
       shell: bash
       run: |
-        echo wheel_name="tt-exalens-v${{ inputs.build-version }}-${{ inputs.python-version }}-${{ inputs.os }}.whl" >> $GITHUB_OUTPUT
+        echo "wheel-name=tt-exalens-v${{ inputs.build-version }}-${{ inputs.python-version }}-${{ inputs.os }}.whl" >> $GITHUB_OUTPUT
 
     - name: "Upload wheel as artifact"
       uses: actions/upload-artifact@v4
