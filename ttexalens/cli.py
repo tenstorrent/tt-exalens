@@ -471,15 +471,14 @@ def main():
         server_ip = address[0] if address[0] != "" else "localhost"
         server_port = address[-1]
         util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
-        context = tt_exalens_init.init_ttexalens_remote(
-            server_ip, int(server_port), args["--disable-4B-mode"] is not None
-        )
+        use_4B_mode = False if args["--disable-4B-mode"] else True
+        context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port), use_4B_mode)
     else:
         context = tt_exalens_init.init_ttexalens(
             wanted_devices=wanted_devices,
             init_jtag=args["--jtag"],
             use_noc1=args["--use-noc1"],
-            use_4B_mode=args["--disable-4B-mode"] is not None,
+            use_4B_mode=False if args["--disable-4B-mode"] else True,
             simulation_directory=args["-s"],
         )
 
