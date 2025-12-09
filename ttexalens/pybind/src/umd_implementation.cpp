@@ -20,13 +20,15 @@ namespace tt::exalens {
 
 class TimeoutDeviceRegisterException : public std::exception {
    public:
-    TimeoutDeviceRegisterException(uint8_t chip_id, tt::umd::CoreCoord core, uint64_t addr, uint32_t size, bool is_read)
-        : chip_id(chip_id), core(core), addr(addr), size(size) {
+    TimeoutDeviceRegisterException(uint8_t chip_id, tt::umd::CoreCoord core, uint64_t addr, uint32_t size, bool is_read,
+                                   std::chrono::milliseconds duration)
+        : chip_id(chip_id), core(core), addr(addr), size(size), duration(duration) {
         std::string msg = is_read ? "Timeout reading from device register" : "Timeout writing to device register";
         std::ostringstream oss;
         oss << msg << ": device_id=" << static_cast<int>(chip_id) << ", location=(" << core.x << "," << core.y << ","
             << to_str(core.core_type) << ")"
-            << ", address=0x" << std::hex << addr << ", size=" << std::dec << size;
+            << ", address=0x" << std::hex << addr << ", size=" << std::dec << size << ", duration=" << duration.count()
+            << "ms";
         message = oss.str();
     }
 
@@ -36,6 +38,7 @@ class TimeoutDeviceRegisterException : public std::exception {
     const tt::umd::CoreCoord core;
     const uint64_t addr;
     const uint32_t size;
+    const std::chrono::milliseconds duration;
 
    private:
     std::string message;
@@ -52,7 +55,7 @@ void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id
     if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && elapsed_time > timeout &&
         *((uint32_t*)temp + size / 4 - 1) == 0xFFFFFFFF) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
-        throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, true);
+        throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, true, elapsed_time);
     }
 }
 
@@ -66,7 +69,7 @@ void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t s
     // Timeout is set for 1 word write so we only check timeout for that case
     if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && size == 4 && elapsed_time > timeout) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
-        throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, false);
+        throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, false, elapsed_time);
     }
 }
 
