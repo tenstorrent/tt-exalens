@@ -25,26 +25,27 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: "Install cibuildwheel"
+    - name: "Build wheel"
       shell: bash
-      run: pip install cibuildwheel
-
-    - name: "Build manylinux wheel with cibuildwheel"
-      shell: bash
-      env:
-        # Use the Docker image with all build dependencies
-        CIBW_MANYLINUX_X86_64_IMAGE: ghcr.io/tenstorrent/tt-exalens/tt-exalens-ird-${{ inputs.docker-version }}:latest
-        # Build only for the specified Python version
-        CIBW_BUILD: cp${{ inputs.python-version }}-manylinux_x86_64
-        # Test the built wheel
-        CIBW_TEST_COMMAND: 'python -c "import ttexalens; print(ttexalens.__version__)"'
       run: |
-        echo "Cleaning up wheel directory..."
-        rm -rf build/ttexalens_wheel
-        mkdir -p build/ttexalens_wheel
-        echo "Building manylinux wheel for Python ${{ inputs.python-version }}..."
-        python -m cibuildwheel --output-dir build/ttexalens_wheel
-        echo "Build complete. Listing wheels:"
+        make wheel
+
+      # Make wheel compatible with manylinux using auditwheel, PyPi requires manylinux compatibility
+    - name: "Install auditwheel and repair wheel"
+      shell: bash
+      run: |
+        pip install auditwheel
+        mkdir -p build/ttexalens_wheel/repaired
+        echo "Repairing wheel to make it manylinux compatible..."
+        auditwheel repair build/ttexalens_wheel/tt_exalens*.whl -w build/ttexalens_wheel/repaired/ || {
+          echo "auditwheel repair failed, wheel might already be manylinux compatible or repair not possible"
+          cp build/ttexalens_wheel/tt_exalens*.whl build/ttexalens_wheel/repaired/
+        }
+        # Replace original wheel with repaired one
+        rm -f build/ttexalens_wheel/tt_exalens*.whl
+        mv build/ttexalens_wheel/repaired/*.whl build/ttexalens_wheel/
+        rmdir build/ttexalens_wheel/repaired
+        echo "Final wheel:"
         ls -lh build/ttexalens_wheel/
 
     - name: "Set wheel artifact name"
