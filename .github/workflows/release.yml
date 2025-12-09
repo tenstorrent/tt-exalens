@@ -23,13 +23,14 @@ jobs:
         build-info: [
           {
             py-version: "3.10",
-            os: "ubuntu-22.04"
+            os: "ubuntu-22.04",
+            docker-os: "ubuntu-22-04"
           },
         ]
     runs-on: ${{ matrix.build-info.os }}
 
     container:
-      image: ghcr.io/tenstorrent/tt-exalens/tt-exalens-ird-${{ matrix.build-info.os }}:latest
+      image: ghcr.io/tenstorrent/tt-exalens/tt-exalens-ird-${{ matrix.build-info.docker-os }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
