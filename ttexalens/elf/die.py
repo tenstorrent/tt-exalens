@@ -171,6 +171,11 @@ class ElfDie:
             die = self.cu.dwarf.get_die(dwarf_die)
             if die is not None:
                 return die.resolved_type
+        elif self.tag_is("enumeration_type"):
+            if "DW_AT_type" in self.attributes and self.local_offset is not None:
+                type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
+                if type_die is not None:
+                    return type_die.resolved_type
         return self
 
     @cached_property
@@ -405,10 +410,11 @@ class ElfDie:
         line = None
         column = None
         if "DW_AT_decl_file" in self.attributes:
-            file_entry = self.cu.line_program["file_entry"][self.attributes["DW_AT_decl_file"].value]
-            directory = self.cu.line_program["include_directory"][file_entry.dir_index].decode("utf-8")
-            file = file_entry.name.decode("utf-8")
-            file = os.path.join(directory, file)
+            if self.cu.line_program is not None:
+                file_entry = self.cu.line_program["file_entry"][self.attributes["DW_AT_decl_file"].value]
+                directory = self.cu.line_program["include_directory"][file_entry.dir_index].decode("utf-8")
+                file = file_entry.name.decode("utf-8")
+                file = os.path.join(directory, file)
         if "DW_AT_decl_line" in self.attributes:
             line = self.attributes["DW_AT_decl_line"].value
         if "DW_AT_decl_column" in self.attributes:

@@ -146,10 +146,9 @@ with open("README.md", "r") as f:
 with open(f"{ttexalens_folder_path}/requirements.txt", "r") as f:
     requirements = [r for r in f.read().splitlines() if not r.startswith("-r")]
 
-short_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
-date = datetime.today().strftime("%y%m%d")
-
-version = "0.1." + date + "+dev." + short_hash
+# Read version from VERSION file
+with open(os.path.join(ttexalens_home, "VERSION"), "r") as f:
+    version = f.read().strip()
 
 setup(
     name="ttexalens",

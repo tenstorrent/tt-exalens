@@ -9,6 +9,7 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.memory_map import MemoryMap
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
@@ -179,6 +180,8 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+        self.memory_map.map_block("l1", self.l1)
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:
