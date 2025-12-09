@@ -28,7 +28,7 @@ class TimeoutDeviceRegisterException : public std::exception {
         oss << msg << ": device_id=" << static_cast<int>(chip_id) << ", location=(" << core.x << "," << core.y << ","
             << to_str(core.core_type) << ")"
             << ", address=0x" << std::hex << addr << ", size=" << std::dec << size << ", duration=" << duration.count()
-            << "ms";
+            << "us";
         message = oss.str();
     }
 
@@ -52,7 +52,6 @@ void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id
     auto end_time = std::chrono::steady_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     // Address will always be aligned to 4 bytes, so we can check the last 4 bytes for 0xFFFFFFFF
-    std::cout << elapsed_time.count() << std::endl;
     if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && elapsed_time > timeout &&
         *((uint32_t*)temp + size / 4 - 1) == 0xFFFFFFFF) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
@@ -63,15 +62,52 @@ void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id
 void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t size, uint8_t chip_id,
                          tt::umd::CoreCoord tensix_core, uint64_t addr,
                          std::chrono::milliseconds timeout = std::chrono::milliseconds(2)) {
+    struct TimeoutTracker {
+        int consecutive_count = 0;
+        uint8_t chip_id = 0;
+        tt::umd::CoreCoord core;
+        uint64_t addr = 0;
+        uint32_t size = 0;
+        std::chrono::microseconds elapsed_time{0};
+
+        void reset() { consecutive_count = 0; }
+
+        void save_timeout_arguments(uint8_t chip_id, tt::umd::CoreCoord core, uint64_t addr, uint32_t size,
+                                    std::chrono::microseconds elapsed_time) {
+            this->chip_id = chip_id;
+            this->core = core;
+            this->addr = addr;
+            this->size = size;
+            this->elapsed_time = elapsed_time;
+        }
+    };
+
+    static TimeoutTracker tracker;
+
     auto start_time = std::chrono::steady_clock::now();
     cluster->write_to_device_reg(temp, size, chip_id, tensix_core, addr);
     auto end_time = std::chrono::steady_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
-    std::cout << elapsed_time.count() << std::endl;
+
     // Timeout is set for 1 word write so we only check timeout for that case
     if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && size == 4 && elapsed_time > timeout) {
-        tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
-        throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, false, elapsed_time);
+        // Save arguments from the first timeout
+        if (tracker.consecutive_count == 0) {
+            tracker.save_timeout_arguments(chip_id, tensix_core, addr, size, elapsed_time);
+        }
+        tracker.consecutive_count++;
+        if (tracker.consecutive_count >= 5) {
+            // Reset the counter after throwing
+            tracker.reset();
+            // Use the saved arguments from the first timeout
+            tt::umd::CoreCoord logical_core =
+                cluster->get_soc_descriptor(tracker.chip_id).translate_coord_to(tracker.core, CoordSystem::LOGICAL);
+            throw TimeoutDeviceRegisterException(tracker.chip_id, logical_core, tracker.addr, tracker.size, false,
+                                                 tracker.elapsed_time);
+        }
+    } else {
+        // If write succeeded we reset the counter since we are looking for consecutive timeouts
+        tracker.reset();
     }
 }
 
