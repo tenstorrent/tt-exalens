@@ -82,12 +82,13 @@ void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t s
         }
     };
 
-    static TimeoutTracker tracker;
-
     auto start_time = std::chrono::high_resolution_clock::now();
     cluster->write_to_device_reg(temp, size, chip_id, tensix_core, addr);
     auto end_time = std::chrono::high_resolution_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+
+    // To avoid raising false alarms, we only throw an exception if we have 5 consecutive timeouts
+    static TimeoutTracker tracker;
 
     // Timeout is set for 1 word write so we only check timeout for that case
     if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && size == 4 && elapsed_time > timeout) {
