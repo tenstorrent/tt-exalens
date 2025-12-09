@@ -32,11 +32,17 @@ jobs:
     steps:
       - name: Download all the wheels
         uses: actions/download-artifact@v4
+
+      - name: "List downloaded artifacts"
+        run: ls -R
+
       - name: Move wheels to dist directory
         # PyPI publisher action expects files to be in dist/
         run: |
           mkdir -p dist
           find . -type f -name "*.whl" -exec mv {} dist/ \;
+          ls -R
+
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
