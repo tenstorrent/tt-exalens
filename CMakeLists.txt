@@ -32,7 +32,12 @@ else()
     FIND_AND_SET_CLANG17()
 endif()
 
-project(ttexalens)
+# Read version from VERSION file
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" TT_EXALENS_VERSION)
+string(STRIP "${TT_EXALENS_VERSION}" TT_EXALENS_VERSION)
+
+project(ttexalens
+        VERSION ${TT_EXALENS_VERSION})
 
 CHECK_COMPILERS()
 
