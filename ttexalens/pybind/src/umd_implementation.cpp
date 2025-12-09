@@ -47,9 +47,9 @@ class TimeoutDeviceRegisterException : public std::exception {
 void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id, tt::umd::CoreCoord tensix_core,
                           uint64_t addr, uint32_t size,
                           std::chrono::milliseconds timeout = std::chrono::milliseconds(2)) {
-    auto start_time = std::chrono::steady_clock::now();
+    auto start_time = std::chrono::high_resolution_clock::now();
     cluster->read_from_device_reg(temp, chip_id, tensix_core, addr, size);
-    auto end_time = std::chrono::steady_clock::now();
+    auto end_time = std::chrono::high_resolution_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     // Address will always be aligned to 4 bytes, so we can check the last 4 bytes for 0xFFFFFFFF
     if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && elapsed_time > timeout &&
@@ -84,9 +84,9 @@ void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t s
 
     static TimeoutTracker tracker;
 
-    auto start_time = std::chrono::steady_clock::now();
+    auto start_time = std::chrono::high_resolution_clock::now();
     cluster->write_to_device_reg(temp, size, chip_id, tensix_core, addr);
-    auto end_time = std::chrono::steady_clock::now();
+    auto end_time = std::chrono::high_resolution_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
 
     // Timeout is set for 1 word write so we only check timeout for that case
