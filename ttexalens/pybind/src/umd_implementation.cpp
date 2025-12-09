@@ -21,7 +21,7 @@ namespace tt::exalens {
 class TimeoutDeviceRegisterException : public std::exception {
    public:
     TimeoutDeviceRegisterException(uint8_t chip_id, tt::umd::CoreCoord core, uint64_t addr, uint32_t size, bool is_read,
-                                   std::chrono::milliseconds duration)
+                                   std::chrono::microseconds duration)
         : chip_id(chip_id), core(core), addr(addr), size(size), duration(duration) {
         std::string msg = is_read ? "Timeout reading from device register" : "Timeout writing to device register";
         std::ostringstream oss;
@@ -38,7 +38,7 @@ class TimeoutDeviceRegisterException : public std::exception {
     const tt::umd::CoreCoord core;
     const uint64_t addr;
     const uint32_t size;
-    const std::chrono::milliseconds duration;
+    const std::chrono::microseconds duration;
 
    private:
     std::string message;
@@ -50,8 +50,9 @@ void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id
     auto start_time = std::chrono::steady_clock::now();
     cluster->read_from_device_reg(temp, chip_id, tensix_core, addr, size);
     auto end_time = std::chrono::steady_clock::now();
-    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     // Address will always be aligned to 4 bytes, so we can check the last 4 bytes for 0xFFFFFFFF
+    std::cout << elapsed_time.count() << std::endl;
     if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && elapsed_time > timeout &&
         *((uint32_t*)temp + size / 4 - 1) == 0xFFFFFFFF) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
@@ -65,7 +66,8 @@ void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t s
     auto start_time = std::chrono::steady_clock::now();
     cluster->write_to_device_reg(temp, size, chip_id, tensix_core, addr);
     auto end_time = std::chrono::steady_clock::now();
-    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
+    std::cout << elapsed_time.count() << std::endl;
     // Timeout is set for 1 word write so we only check timeout for that case
     if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && size == 4 && elapsed_time > timeout) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
