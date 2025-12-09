@@ -151,7 +151,7 @@ with open(os.path.join(ttexalens_home, "VERSION"), "r") as f:
     version = f.read().strip()
 
 setup(
-    name="ttexalens",
+    name="tt-exalens",
     version=version,
     packages=["ttexalens"],
     package_dir={"ttexalens": "ttexalens"},

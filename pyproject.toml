@@ -2,3 +2,32 @@
 # Minimum requirements for the build system to execute.
 requires = ["setuptools>=61.0", "nanobind", "typing-extensions"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "tt-exalens"
+dynamic = ["version"]
+authors = [
+    { name = "Tenstorrent", email = "foundationsw-dbg@tenstorrent.com" }
+]
+description = "A low level hardware debugger"
+readme = "README.md"
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: C++",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Hardware",
+]
+
+[project.urls]
+"Homepage" = "https://tenstorrent.com"
+"Bug Reports" = "https://github.com/tenstorrent/tt-exalens/issues"
+"Source" = "https://github.com/tenstorrent/tt-exalens"
+"Documentation" = "https://github.com/tenstorrent/tt-exalens/blob/main/README.md"
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
