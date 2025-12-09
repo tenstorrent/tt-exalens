@@ -1,12 +1,14 @@
 name: "Release"
-description: "Release official ttexalens wheel, triggered manually or by updating VERSION on main."
+description: "Release ttexalens wheel, triggered by other workflows. Will create a prerelease."
 
 on:
-  push:
-    branches:
-      - "main"
-    paths:
-      - "VERSION"
+  workflow_call:
+    inputs:
+      build-version:
+        description: "Version to release (e.g. '1.0.0'), if not provided will be read from VERSION file"
+        required: false
+        type: string
+        default: ""
 
 run-name: "Release by @${{ github.actor }} for ${{ github.ref_name }}"
 
@@ -16,34 +18,56 @@ permissions:
 jobs:
   prepare-release:
     name: "Prepare Release"
-    runs-on: "ubuntu-22.04"
+    strategy:
+      matrix:
+        build-info: [
+          {
+            py-version: "3.10",
+            os: "ubuntu-22.04"
+          },
+        ]
+    runs-on: ${{ matrix.build-info.os }}
+
+    container:
+      image: ghcr.io/tenstorrent/tt-exalens/tt-exalens-ird-${{ matrix.build-info.os }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
     outputs:
-      wheel-name: ${{ steps.prepare-wheel.outputs.wheel-name }}
       version: ${{ steps.get-version.outputs.version }}
+
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: "Read version from VERSION file"
+
+      - name: "Get version"
         id: get-version
-        run: echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
-      - name: "Prepare Wheel Release"
+        run: |
+          if [ -n "${{ inputs.build-version }}" ]; then
+            echo "version=${{ inputs.build-version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=$(cat VERSION)" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "Build and upload wheel artifacts"
         uses: ./.github/actions/prepare-wheel-for-release
         id: prepare-wheel
         with:
-          python-version: "3.10"
+          python-version: ${{ matrix.build-info.py-version }}
           build-version: ${{ steps.get-version.outputs.version }}
+          os: ${{ matrix.build-info.os }}
 
   release:
     needs: prepare-release
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     name: "Release"
     steps:
-      - name: "Download wheel artifact"
+      - name: "Download wheel artifacts"
         uses: actions/download-artifact@v4
-        with:
-          name: ${{ needs.prepare-release.outputs.wheel-name }}
+
       - name: "Create GitHub Release"
         uses: softprops/action-gh-release@v2
         with:
@@ -52,4 +76,4 @@ jobs:
           prerelease: true
           generate_release_notes: true
           files: |
-            *.whl
+            */*.whl
