@@ -15,10 +15,7 @@ permissions:
 jobs:
   build-and-release:
     name: "Build and release wheel of version specified in VERSION file"
-    runs-on: ubuntu-latest
-    steps:
-      - name: "Build and Release Wheel"
-        uses: ./.github/workflows/release.yml
+    uses: ./.github/workflows/release.yml
 
   publish-to-testpypi:
     name: Publish package to TestPyPI
