@@ -39,15 +39,12 @@ RUN apt-get update && apt-get install -y \
 # Upgrade to latest pip
 RUN pip install --upgrade pip
 
-# Copy the requirements files for pip
-COPY ttexalens/requirements.txt .
-COPY ttexalens/dev-requirements.txt .
-COPY test/test_requirements.txt .
+# Copy pyproject.toml for dependencies
+COPY pyproject.toml .
+COPY VERSION .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir -r dev-requirements.txt
-RUN pip install --no-cache-dir -r test_requirements.txt
+RUN pip install --no-cache-dir .[dev,test]
 RUN pip install wheel build setuptools
 
 # Install build tools

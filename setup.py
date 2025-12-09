@@ -139,32 +139,11 @@ class MyBuild(build_ext):
 # Fake TTExaLens extension
 ttexalens_fake_extension = TTExtension("ttexalens.fake_extension")
 
-with open("README.md", "r") as f:
-    long_description = f.read()
-
-# Add specific requirements for TTExaLens
-with open(f"{ttexalens_folder_path}/requirements.txt", "r") as f:
-    requirements = [r for r in f.read().splitlines() if not r.startswith("-r")]
-
-# Read version from VERSION file
-with open(os.path.join(ttexalens_home, "VERSION"), "r") as f:
-    version = f.read().strip()
-
 setup(
     name="tt-exalens",
-    version=version,
     packages=["ttexalens"],
     package_dir={"ttexalens": "ttexalens"},
-    author="Tenstorrent",
-    url="http://www.tenstorrent.com",
-    author_email="info@tenstorrent.com",
-    description="Debugger for Tenstorrent devices",
-    python_requires=">=3.8",
     ext_modules=[ttexalens_fake_extension],
     cmdclass=dict(build_ext=MyBuild),
     zip_safe=False,
-    install_requires=requirements,
-    license="Apache-2.0",
-    keywords="debugging tenstorrent",
-    entry_points={"console_scripts": ["tt-lens = ttexalens.cli:main", "tt-exalens = ttexalens.cli:main"]},
 )

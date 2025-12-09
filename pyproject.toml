@@ -12,6 +12,8 @@ authors = [
 description = "A low level hardware debugger"
 readme = "README.md"
 license = { file = "LICENSE" }
+requires-python = ">=3.10,<3.11"
+keywords = ["debugging", "tenstorrent"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -22,12 +24,49 @@ classifiers = [
     "Topic :: Software Development :: Libraries",
     "Topic :: System :: Hardware",
 ]
+dependencies = [
+    "deprecation>=2.1.0",
+    "docopt>=0.6.2",
+    "fastnumbers>=5.1.0",
+    "fuzzywuzzy>=0.18.0",
+    "intervaltree>=3.1.0",
+    "prompt-toolkit>=3.0.38",
+    "tt-pyelftools>=0.32",
+    "python-levenshtein>=0.25.0",
+    "pyyaml>=5.3.1",
+    "Pyro5>=5.15",
+    "rapidyaml>=0.5.0",
+    "sortedcontainers>=2.4.0",
+    "tabulate>=0.9.0",
+    "rich",
+    "cxxfilt"
+]
 
 [project.urls]
 "Homepage" = "https://tenstorrent.com"
 "Bug Reports" = "https://github.com/tenstorrent/tt-exalens/issues"
 "Source" = "https://github.com/tenstorrent/tt-exalens"
 "Documentation" = "https://github.com/tenstorrent/tt-exalens/blob/main/README.md"
+
+[project.scripts]
+tt-lens = "ttexalens.cli:main"
+tt-exalens = "ttexalens.cli:main"
+
+[project.optional-dependencies]
+test = [
+    "coverage>=7.5.0",
+    "pytest>=8.0.1",
+    "parameterized>=0.9.0",
+    "unittest-xml-reporting"
+]
+dev = [
+    "mypy>=1.16.0",
+    "pre-commit",
+    "types-docopt",
+    "types-PyYAML",
+    "types-tabulate",
+    "sortedcontainers-stubs"
+]
 
 [tool.setuptools.dynamic]
 version = {file = "VERSION"}
