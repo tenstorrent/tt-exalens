@@ -12,6 +12,10 @@ inputs:
     description: "Operating system"
     required: false
     default: "ubuntu-22.04"
+  docker-os:
+    description: "Docker os"
+    required: false
+    default: "ubuntu-22-04"
 
 outputs:
   wheel-name:
@@ -21,15 +25,34 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: "Build wheel"
+    - name: "Install cibuildwheel"
       shell: bash
+      run: pip install cibuildwheel
+
+    - name: "Build manylinux wheel with cibuildwheel"
+      shell: bash
+      env:
+        # Use the Docker image with all build dependencies
+        CIBW_MANYLINUX_X86_64_IMAGE: ghcr.io/tenstorrent/tt-exalens/tt-exalens-ird-${{ inputs.docker-version }}:latest
+        # Build only for the specified Python version
+        CIBW_BUILD: cp${{ inputs.python-version }}-manylinux_x86_64
+        # Test the built wheel
+        CIBW_TEST_COMMAND: 'python -c "import ttexalens; print(ttexalens.__version__)"'
       run: |
-        make wheel
-    - name: "Set wheel name"
+        echo "Cleaning up wheel directory..."
+        rm -rf build/ttexalens_wheel
+        mkdir -p build/ttexalens_wheel
+        echo "Building manylinux wheel for Python ${{ inputs.python-version }}..."
+        python -m cibuildwheel --output-dir build/ttexalens_wheel
+        echo "Build complete. Listing wheels:"
+        ls -lh build/ttexalens_wheel/
+
+    - name: "Set wheel artifact name"
       id: set-wheel-name
       shell: bash
       run: |
-        echo "wheel-name=tt-exalens-v${{ inputs.build-version }}-${{ inputs.python-version }}-${{ inputs.os }}" >> $GITHUB_OUTPUT
+        echo wheel_name="tt-exalens-v${{ inputs.build-version }}-${{ inputs.python-version }}-${{ inputs.os }}.whl" >> $GITHUB_OUTPUT
+
     - name: "Upload wheel as artifact"
       uses: actions/upload-artifact@v4
       with:

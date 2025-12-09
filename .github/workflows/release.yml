@@ -62,6 +62,7 @@ jobs:
           python-version: ${{ matrix.build-info.py-version }}
           build-version: ${{ steps.get-version.outputs.version }}
           os: ${{ matrix.build-info.os }}
+          docker-os: ${{ matrix.build-info.docker-os }}
 
   release:
     needs: prepare-release
