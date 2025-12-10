@@ -65,7 +65,7 @@ RUN apt-get clean
 
 # Remove externally-managed marker (Ubuntu 24.04+) and upgrade to latest pip
 RUN rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED && \
-    pip install --upgrade pip
+    pip install --upgrade pip --ignore-installed
 
 # Copy the requirements files for pip
 COPY ttexalens/requirements.txt .
