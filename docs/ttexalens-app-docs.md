@@ -76,25 +76,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000000 (0) => 0x00100073 (1048691) - 29749 times
+1-1 (0,0) (l1) 0x00000000 (0) => 0x00100073 (1048691) - 29340 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000004 (4) => 0x00100073 (1048691) - 29898 times
+1-1 (0,0) (l1) 0x00000004 (4) => 0x00100073 (1048691) - 29593 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000008 (8) => 0x00100073 (1048691) - 29232 times
+1-1 (0,0) (l1) 0x00000008 (8) => 0x00100073 (1048691) - 29651 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000000c (12) => 0x00100073 (1048691) - 30174 times
+1-1 (0,0) (l1) 0x0000000c (12) => 0x00100073 (1048691) - 29830 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000010 (16) => 0x00100073 (1048691) - 29941 times
+1-1 (0,0) (l1) 0x00000010 (16) => 0x00100073 (1048691) - 29528 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000014 (20) => 0x00100073 (1048691) - 29576 times
+1-1 (0,0) (l1) 0x00000014 (20) => 0x00100073 (1048691) - 29669 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000018 (24) => 0x00100073 (1048691) - 29964 times
+1-1 (0,0) (l1) 0x00000018 (24) => 0x00100073 (1048691) - 29279 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000001c (28) => 0x00100073 (1048691) - 30371 times
+1-1 (0,0) (l1) 0x0000001c (28) => 0x00100073 (1048691) - 29064 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000020 (32) => 0x00100073 (1048691) - 30303 times
+1-1 (0,0) (l1) 0x00000020 (32) => 0x00100073 (1048691) - 29480 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000024 (36) => 0x00100073 (1048691) - 30270 times
+1-1 (0,0) (l1) 0x00000024 (36) => 0x00100073 (1048691) - 29013 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -1157,13 +1157,13 @@ NOC0 Status Registers
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ├────────────────────────────┼────────────┼────────────┤ ├────────────────────────────────┼────────────┼────────────┤
-│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x008006cb │
-│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x0098aaf6 │
-│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x0098aaf5 │
-│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x0098aaf5 │
-│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x008006cb │
+│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x013893d4 │
+│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x00c361ae │
+│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x00c361ad │
+│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x00c361ad │
+│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x013893d4 │
 │ posted write words sent    │ 0xffb20224 │ 0x00000000 │ │ posted write words received    │ 0xffb202e4 │ 0x00000000 │
-│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x008006cb │
+│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x013893d4 │
 │ posted write reqs sent     │ 0xffb2022c │ 0x00000000 │ │ posted write reqs received     │ 0xffb202ec │ 0x00000000 │
 ╰────────────────────────────┴────────────┴────────────╯ ╰────────────────────────────────┴────────────┴────────────╯
 
@@ -1195,10 +1195,10 @@ NOC0 Status Registers
 
               Transaction Counters (Received)
 
-  write acks sent                  0xffb202c4   0x008006cb
-  read resps sent                  0xffb202c8   0x0098ab16
-  read words sent                  0xffb202cc   0x0098ab15
-  read reqs received               0xffb202d4   0x0098ab15
+  write acks sent                  0xffb202c4   0x013893d4
+  read resps sent                  0xffb202c8   0x00c361ce
+  read words sent                  0xffb202cc   0x00c361cd
+  read reqs received               0xffb202d4   0x00c361cd
 ...
 ```
 Prints a specific register value
@@ -1262,9 +1262,9 @@ Output:
 │ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00000000 │
 │ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000000 │
 │ NIU_MST_RD_REQ_STARTED        │ 0xffb20238 │ 0x00000000 │
-│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x0098ab33 │
-│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x0098ab31 │
-│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x0098ab33 │
+│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00c361eb │
+│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x00c361e9 │
+│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00c361eb │
 ╰───────────────────────────────┴────────────┴────────────╯
 
                       NOC1 Registers

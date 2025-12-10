@@ -545,6 +545,7 @@ def top_callstack(
         elfs (list[str] | str | list[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
         offsets (list[int], int, optional): List of offsets for each ELF file. Default: None.
         context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+
     Returns:
         List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
     """
@@ -599,6 +600,7 @@ def callstack(
         stop_on_main (bool): If True, stops at the main function. Default: True.
         device_id (int): ID of the device on which the kernel is run. Default: 0.
         context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+
     Returns:
         List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
     """

@@ -60,9 +60,11 @@ Interfacing device is done remotely through TTExaLens client.
 - `ip_address` *(str)*: IP address of the TTExaLens server. Default is 'localhost'.
 - `port` *(int)*: Port number of the TTExaLens server interface. Default is 5555.
 - `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
-- `Returns`
-- `Context`: TTExaLens context object.
 
+
+### Returns
+
+ *(Context)*: TTExaLens context object.
 
 
 
@@ -522,9 +524,11 @@ There is no stack walking, so the function will return the function at the given
 - `elfs` *(list[str] | str | list[ParsedElfFile] | ParsedElfFile)*: ELF files to be used for the callstack.
 - `offsets` *(list[int], int, optional)*: List of offsets for each ELF file. Default: None.
 - `context` *(Context)*: TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
-- `Returns`
-- `List`: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
+
+### Returns
+
+ *(List)*: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
 
 
@@ -551,9 +555,11 @@ Retrieves the callstack of the specified RISC core for a given ELF.
 - `stop_on_main` *(bool)*: If True, stops at the main function. Default: True.
 - `device_id` *(int)*: ID of the device on which the kernel is run. Default: 0.
 - `context` *(Context)*: TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
-- `Returns`
-- `List`: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
+
+### Returns
+
+ *(List)*: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
 
 

@@ -55,6 +55,7 @@ def init_ttexalens_remote(
             ip_address (str): IP address of the TTExaLens server. Default is 'localhost'.
             port (int): Port number of the TTExaLens server interface. Default is 5555.
             use_4B_mode (bool): Whether to use 4B mode for communication with the device. Default is True.
+
     Returns:
             Context: TTExaLens context object.
     """
