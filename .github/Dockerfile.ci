@@ -64,7 +64,7 @@ RUN apt install -y clang-format-17 && \
 RUN apt-get clean
 
 # Upgrade to latest pip
-RUN pip install --upgrade pip
+RUN pip install --upgrade pip --break-system-packages
 
 # Copy the requirements files for pip
 COPY ttexalens/requirements.txt .
