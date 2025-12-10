@@ -26,7 +26,7 @@ Options:
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
   --use-noc1                      Initialize with NOC1 and use NOC1 for communication with the device.
-  --disable-4B-mode               Disable4B mode for communication with the device.
+  --disable-4B-mode               Disable 4-byte mode for communication with the device.
   --gdb                           Start RISC-V gdb client with the specified arguments.
 
 Description:
