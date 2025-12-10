@@ -62,10 +62,10 @@ Python 3.10 is the only supported version. Install it with:
 sudo apt install python3.10-venv
 ```
 
-Additional Python dependencies are listed in `pyproject.toml` and can be installed with:
+Additional Python dependencies are listed in `ttexalens/requirements.txt` and can be installed with:
 
 ```bash
-pip install .
+pip install -r ttexalens/requirements.txt
 ```
 
 ### Building the library and the application
@@ -152,7 +152,7 @@ and system libraries:
 Install the Python packages with:
 
 ```bash
-pip install .[test]
+pip install -r test/test_requirements.txt
 ```
 
 #### Running tests

@@ -11,12 +11,12 @@ WHEEL_INSTALL=${WHEEL_INSTALL:-}
 
 if [ -n "$TTEXALENS_INSTALL" ]; then
     echo "Installing ttexalens dependencies..."
-    pip install .
+    pip install -r ttexalens/requirements.txt
 fi
 
 if [ -n "$TEST_INSTALL" ]; then
     echo "Installing test dependencies..."
-    pip install .[test]
+    pip install -r test/test_requirements.txt
 fi
 
 if [ -n "$WHEEL_INSTALL" ]; then
