@@ -61,25 +61,16 @@ void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id
 
 void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t size, uint8_t chip_id,
                          tt::umd::CoreCoord tensix_core, uint64_t addr,
-                         std::chrono::milliseconds timeout = std::chrono::milliseconds(2)) {
-    struct TimeoutTracker {
-        int consecutive_count = 0;
-        uint8_t chip_id = 0;
-        tt::umd::CoreCoord core;
-        uint64_t addr = 0;
-        uint32_t size = 0;
-        std::chrono::microseconds elapsed_time{0};
+                         std::chrono::milliseconds timeout = std::chrono::milliseconds(2),
+                         uint32_t num_of_consecutive_timeouts = 5) {
+    struct TimeoutEvent {
+        const tt::umd::CoreCoord core;
+        const uint64_t addr;
+        const uint32_t size;
+        const std::chrono::microseconds elapsed_time;
 
-        void reset() { consecutive_count = 0; }
-
-        void save_timeout_arguments(uint8_t chip_id, tt::umd::CoreCoord core, uint64_t addr, uint32_t size,
-                                    std::chrono::microseconds elapsed_time) {
-            this->chip_id = chip_id;
-            this->core = core;
-            this->addr = addr;
-            this->size = size;
-            this->elapsed_time = elapsed_time;
-        }
+        TimeoutEvent(tt::umd::CoreCoord core, uint64_t addr, uint32_t size, std::chrono::microseconds elapsed_time)
+            : core(core), addr(addr), size(size), elapsed_time(elapsed_time) {}
     };
 
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -87,28 +78,26 @@ void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t s
     auto end_time = std::chrono::high_resolution_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
 
-    // To avoid raising false alarms, we only throw an exception if we have 5 consecutive timeouts
-    static TimeoutTracker tracker;
+    // To avoid raising false alarms, we only throw an exception if we have num_of_consecutive_timeouts (5 by default)
+    // consecutive timeouts
+    static std::mutex lock;
+    static std::unordered_map<uint8_t, std::vector<TimeoutEvent>> timeout_events_per_chip;
 
     // Timeout is set for 1 word write so we only check timeout for that case
     if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && size == 4 && elapsed_time > timeout) {
-        // Save arguments from the first timeout
-        if (tracker.consecutive_count == 0) {
-            tracker.save_timeout_arguments(chip_id, tensix_core, addr, size, elapsed_time);
+        TimeoutEvent timeout_event(tensix_core, addr, size, elapsed_time);
+        lock.lock();
+        timeout_events_per_chip[chip_id].push_back(timeout_event);
+        if (timeout_events_per_chip[chip_id].size() >= num_of_consecutive_timeouts) {
+            TimeoutEvent oldest_event = timeout_events_per_chip[chip_id].front();
+            throw TimeoutDeviceRegisterException(chip_id, oldest_event.core, oldest_event.addr, oldest_event.size,
+                                                 false, oldest_event.elapsed_time);
         }
-        tracker.consecutive_count++;
-        if (tracker.consecutive_count >= 5) {
-            // Reset the counter after throwing
-            tracker.reset();
-            // Use the saved arguments from the first timeout
-            tt::umd::CoreCoord logical_core =
-                cluster->get_soc_descriptor(tracker.chip_id).translate_coord_to(tracker.core, CoordSystem::LOGICAL);
-            throw TimeoutDeviceRegisterException(tracker.chip_id, logical_core, tracker.addr, tracker.size, false,
-                                                 tracker.elapsed_time);
-        }
+        lock.unlock();
     } else {
-        // If write succeeded we reset the counter since we are looking for consecutive timeouts
-        tracker.reset();
+        lock.lock();
+        timeout_events_per_chip[chip_id].clear();
+        lock.unlock();
     }
 }
 
