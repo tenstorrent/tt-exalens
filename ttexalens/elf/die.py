@@ -580,7 +580,7 @@ class ElfDie:
         if not self.tag_is("formal_parameter") and not self.tag_is("variable"):
             return None
 
-        util.DEBUG("Evaluating location expression for variable:", self.name)
+        util.DEBUG(f"Evaluating location expression for variable: {self.name}")
 
         # Get the type of the variable
         variable_type = self.resolved_type
@@ -592,7 +592,7 @@ class ElfDie:
         # Check if we have constant value
         const_value = self.value
         if const_value is not None:
-            util.DEBUG("  Trying to read constant value:", const_value)
+            util.DEBUG(f"  Trying to read constant value: {const_value}")
             if isinstance(const_value, bytes):
                 memory = const_value
             else:
@@ -614,7 +614,7 @@ class ElfDie:
 
         # Check if we have address
         if self.address is not None:
-            util.DEBUG("    Reading variable from address:", hex(self.address))
+            util.DEBUG(f"    Reading variable from address: {hex(self.address)}")
             return ElfVariable(variable_type, self.address, frame_inspection.mem_access)
 
         # Check if we have location
@@ -626,13 +626,13 @@ class ElfDie:
         # Get parsed location expression
         if isinstance(location, LocationExpr):
             parsed_expression = self.cu.expression_parser.parse_expr(location.loc_expr)
-            util.DEBUG("    ", parsed_expression)
+            util.DEBUG(f"    {parsed_expression}")
         elif isinstance(location, list):
             base_address = 0
             pc = frame_inspection.pc + frame_inspection.loaded_offset
             parsed_expression = None
             for loc in location:
-                util.DEBUG("  Looking at location entry:", loc)
+                util.DEBUG(f"  Looking at location entry: {loc}")
                 if isinstance(loc, ListBaseAddressEntry):
                     base_address = loc.base_address
                 elif isinstance(loc, ListLocationEntry):
@@ -643,10 +643,10 @@ class ElfDie:
                         begin_offset = loc.begin_offset + base_address
                         end_offset = loc.end_offset + base_address
                     if begin_offset <= pc < end_offset:
-                        util.DEBUG("  Found matching location entry for PC:", hex(pc))
+                        util.DEBUG(f"  Found matching location entry for PC: {hex(pc)}")
                         parsed_expression = self.cu.expression_parser.parse_expr(loc.loc_expr)
             if parsed_expression is None:
-                util.DEBUG("    No matching location entry found for current PC:", hex(pc))
+                util.DEBUG(f"    No matching location entry found for current PC: {hex(pc)}")
                 return None
         else:
             # Unknown location type
@@ -679,7 +679,7 @@ class ElfDie:
     ) -> tuple[bool, Any | None]:
         from ttexalens.elf.variable import ElfVariable, FixedMemoryAccess
 
-        util.DEBUG("   ", parsed_expression)
+        util.DEBUG(f"   {parsed_expression}")
 
         location_parser = self.cu.dwarf.location_parser
         is_address = False
