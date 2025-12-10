@@ -18,16 +18,16 @@
 
 namespace tt::exalens {
 
-std::chrono::milliseconds READ_TIMEOUT_MS = []() -> std::chrono::milliseconds {
-    const char* timeout_ms = getenv("TT_EXALENS_READ_TIMEOUT_MS");
-    int int_timeout_ms = timeout_ms ? std::stoi(timeout_ms) : 2;
-    return std::chrono::milliseconds(int_timeout_ms);
+std::chrono::microseconds READ_TIMEOUT_US = []() -> std::chrono::microseconds {
+    const char* timeout_ms_str = getenv("TT_EXALENS_READ_TIMEOUT_MS");
+    int timeout_ms = timeout_ms_str ? std::stoi(timeout_ms_str) : 2;
+    return std::chrono::microseconds(timeout_ms * 1000);
 }();
 
-std::chrono::milliseconds WRITE_TIMEOUT_MS = []() -> std::chrono::milliseconds {
-    const char* timeout_ms = getenv("TT_EXALENS_WRITE_TIMEOUT_MS");
-    int int_timeout_ms = timeout_ms ? std::stoi(timeout_ms) : 2;
-    return std::chrono::milliseconds(int_timeout_ms);
+std::chrono::microseconds WRITE_TIMEOUT_US = []() -> std::chrono::microseconds {
+    const char* timeout_ms_str = getenv("TT_EXALENS_WRITE_TIMEOUT_MS");
+    int timeout_ms = timeout_ms_str ? std::stoi(timeout_ms_str) : 2;
+    return std::chrono::microseconds(timeout_ms * 1000);
 }();
 
 int NUM_OF_CONSECUTIVE_TIMEOUTS = []() -> int {
@@ -68,7 +68,7 @@ void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id
     auto end_time = std::chrono::high_resolution_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     // Address will always be aligned to 4 bytes, so we can check the last 4 bytes for 0xFFFFFFFF
-    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && elapsed_time > READ_TIMEOUT_MS &&
+    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && elapsed_time > READ_TIMEOUT_US &&
         *((uint32_t*)temp + size / 4 - 1) == 0xFFFFFFFF) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
         throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, true, elapsed_time);
@@ -98,7 +98,7 @@ void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t s
     // Timeout is set for 1 word write so we only check timeout for that case
     // To avoid raising false alarms, we only throw an exception if we have multiple consecutive timeouts (5 by default)
     if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && size == 4 &&
-        elapsed_time > WRITE_TIMEOUT_MS) {
+        elapsed_time > WRITE_TIMEOUT_US) {
         TimeoutEvent timeout_event(tensix_core, addr, size, elapsed_time);
         lock.lock();
         timeout_events_per_chip[chip_id].push_back(timeout_event);
