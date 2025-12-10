@@ -18,6 +18,21 @@
 
 namespace tt::exalens {
 
+int READ_TIMEOUT_MS = []() -> int {
+    const char* timeout_ms = getenv("TT_EXALENS_READ_TIMEOUT_MS");
+    return timeout_ms ? std::stoi(timeout_ms) : 2;
+}();
+
+int WRITE_TIMEOUT_MS = []() -> int {
+    const char* timeout_ms = getenv("TT_EXALENS_WRITE_TIMEOUT_MS");
+    return timeout_ms ? std::stoi(timeout_ms) : 2;
+}();
+
+int NUM_OF_CONSECUTIVE_TIMEOUTS = []() -> int {
+    const char* num_of_consecutive_timeouts = getenv("TT_EXALENS_NUM_OF_CONSECUTIVE_TIMEOUTS");
+    return num_of_consecutive_timeouts ? std::stoi(num_of_consecutive_timeouts) : 5;
+}();
+
 class TimeoutDeviceRegisterException : public std::exception {
    public:
     TimeoutDeviceRegisterException(uint8_t chip_id, tt::umd::CoreCoord core, uint64_t addr, uint32_t size, bool is_read,
@@ -45,24 +60,21 @@ class TimeoutDeviceRegisterException : public std::exception {
 };
 
 void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id, tt::umd::CoreCoord tensix_core,
-                          uint64_t addr, uint32_t size,
-                          std::chrono::milliseconds timeout = std::chrono::milliseconds(2)) {
+                          uint64_t addr, uint32_t size) {
     auto start_time = std::chrono::high_resolution_clock::now();
     cluster->read_from_device_reg(temp, chip_id, tensix_core, addr, size);
     auto end_time = std::chrono::high_resolution_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     // Address will always be aligned to 4 bytes, so we can check the last 4 bytes for 0xFFFFFFFF
-    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && elapsed_time > timeout &&
-        *((uint32_t*)temp + size / 4 - 1) == 0xFFFFFFFF) {
+    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) &&
+        elapsed_time > std::chrono::milliseconds(READ_TIMEOUT_MS) && *((uint32_t*)temp + size / 4 - 1) == 0xFFFFFFFF) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
         throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, true, elapsed_time);
     }
 }
 
 void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t size, uint8_t chip_id,
-                         tt::umd::CoreCoord tensix_core, uint64_t addr,
-                         std::chrono::milliseconds timeout = std::chrono::milliseconds(2),
-                         uint32_t num_of_consecutive_timeouts = 5) {
+                         tt::umd::CoreCoord tensix_core, uint64_t addr) {
     struct TimeoutEvent {
         const tt::umd::CoreCoord core;
         const uint64_t addr;
@@ -78,17 +90,17 @@ void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t s
     auto end_time = std::chrono::high_resolution_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
 
-    // To avoid raising false alarms, we only throw an exception if we have num_of_consecutive_timeouts (5 by default)
-    // consecutive timeouts
     static std::mutex lock;
     static std::unordered_map<uint8_t, std::vector<TimeoutEvent>> timeout_events_per_chip;
 
     // Timeout is set for 1 word write so we only check timeout for that case
-    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && size == 4 && elapsed_time > timeout) {
+    // To avoid raising false alarms, we only throw an exception if we have multiple consecutive timeouts (5 by default)
+    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && size == 4 &&
+        elapsed_time > std::chrono::milliseconds(WRITE_TIMEOUT_MS)) {
         TimeoutEvent timeout_event(tensix_core, addr, size, elapsed_time);
         lock.lock();
         timeout_events_per_chip[chip_id].push_back(timeout_event);
-        if (timeout_events_per_chip[chip_id].size() >= num_of_consecutive_timeouts) {
+        if (timeout_events_per_chip[chip_id].size() >= NUM_OF_CONSECUTIVE_TIMEOUTS) {
             TimeoutEvent oldest_event = timeout_events_per_chip[chip_id].front();
             throw TimeoutDeviceRegisterException(chip_id, oldest_event.core, oldest_event.addr, oldest_event.size,
                                                  false, oldest_event.elapsed_time);
