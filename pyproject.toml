@@ -12,7 +12,7 @@ authors = [
 description = "A low level hardware debugger"
 readme = "README.md"
 license = { file = "LICENSE" }
-requires-python = ">=3.10,<3.11"
+requires-python = ">=3.10, !=3.11.*, <3.13"
 keywords = ["debugging", "tenstorrent"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -20,6 +20,7 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: C++",
     "Topic :: Software Development :: Libraries",
     "Topic :: System :: Hardware",

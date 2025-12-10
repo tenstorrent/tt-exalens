@@ -8,6 +8,9 @@ jobs:
 
   build-image:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ubuntu-version: ["22.04", "24.04"]
     outputs:
       docker-image: ${{ steps.build.outputs.docker-image }}
       public-docker-image: ${{ steps.build.outputs.public-docker-image }}
@@ -30,8 +33,8 @@ jobs:
         run: |
           # Output the image name
           set pipefail
-          .github/build-docker-images.sh | tee docker.log
-          PUBLIC_DOCKER_CI_IMAGE=$(tail -n 1 docker.log)
+          .github/build-docker-images.sh ${{ matrix.ubuntu-version }} | tee docker.log
+          PUBLIC_DOCKER_CI_IMAGE=$(tail -n 2 docker.log | head -n 1)
 
           # Replace use harbor.ci.tenstorrent.net if running on shared runner (tt-ubuntu-2204-large-stable)
           DOCKER_CI_IMAGE="harbor.ci.tenstorrent.net/$PUBLIC_DOCKER_CI_IMAGE"
@@ -44,6 +47,9 @@ jobs:
 
   build:
     needs: build-image
+    strategy:
+      matrix:
+        ubuntu-version: ["22.04", "24.04"]
     uses: ./.github/workflows/build-ttexalens.yml
     with:
       runs-on: ubuntu-latest
@@ -52,6 +58,9 @@ jobs:
   set-latest:
     # Set the latest tag on the IRD image
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ubuntu-version: ["22.04", "24.04"]
     needs: build-image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
@@ -65,10 +74,10 @@ jobs:
         run: |
           DOCKER_CI_IMAGE=${{ needs.build-image.outputs.docker-image }}
           DOCKER_TAG=$(echo $DOCKER_CI_IMAGE | sed 's/^.*://')
-          CI_IMAGE_NAME=ghcr.io/${{ github.repository }}/tt-exalens-ci-ubuntu-22-04
+          CI_IMAGE_NAME=ghcr.io/${{ github.repository }}/tt-exalens-ci-ubuntu-${{ matrix.ubuntu-version }}
           echo "Setting latest tag on the image $CI_IMAGE_NAME:$DOCKER_TAG"
           skopeo copy "docker://$CI_IMAGE_NAME:$DOCKER_TAG" "docker://$CI_IMAGE_NAME:latest"
-          IRD_IMAGE_NAME=ghcr.io/${{ github.repository }}/tt-exalens-ird-ubuntu-22-04
+          IRD_IMAGE_NAME=ghcr.io/${{ github.repository }}/tt-exalens-ird-ubuntu-${{ matrix.ubuntu-version }}
           echo "Setting latest tag on the image $IRD_IMAGE_NAME:$DOCKER_TAG"
           skopeo copy "docker://$IRD_IMAGE_NAME:$DOCKER_TAG" "docker://$IRD_IMAGE_NAME:latest"
 
@@ -78,6 +87,7 @@ jobs:
       - build-image
     strategy:
       matrix:
+        ubuntu-version: ["22.04", "24.04"]
         runner-info: [
           {arch: "blackhole", board: "p150b", runs-on: "tt-ubuntu-2204-p150b-stable"},
           {arch: "wormhole_b0", board: "n150", runs-on: "tt-ubuntu-2204-n150-stable"},
@@ -149,6 +159,7 @@ jobs:
       - build-image
     strategy:
       matrix:
+        ubuntu-version: ["22.04", "24.04"]
         runner-info: [
           {arch: "blackhole", board: "p150b", runs-on: "tt-ubuntu-2204-p150b-stable"},
           {arch: "wormhole_b0", board: "n150", runs-on: "tt-ubuntu-2204-n150-stable"},
