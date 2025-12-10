@@ -54,6 +54,7 @@ jobs:
     with:
       runs-on: ubuntu-latest
       docker-image: ${{ needs.build-image.outputs.public-docker-image }}
+      os: ubuntu-${{ matrix.ubuntu-version }}
 
   set-latest:
     # Set the latest tag on the IRD image
@@ -120,7 +121,7 @@ jobs:
 
       - uses: pyTooling/download-artifact@v4
         with:
-          name: ttexalens-build
+          name: ttexalens-build-ubuntu-${{ matrix.ubuntu-version }}
 
       - name: Fetch job id
         id: fetch-job-id
@@ -145,7 +146,7 @@ jobs:
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.board }}
+          name: test-reports-${{ matrix.ubuntu-version }}-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.board }}
           path: ${{ steps.strings.outputs.test_report_path }}
 
       - name: Run Python tests for TTExaLens app
@@ -179,7 +180,7 @@ jobs:
         - /dev/hugepages-1G:/dev/hugepages-1G
         - /etc/udev/rules.d:/etc/udev/rules.d
         - /lib/modules:/lib/modules
-    name: Build, install wheel and test it on ${{ matrix.runner-info.arch }}
+    name: Build, install wheel and test it on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}
     steps:
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
@@ -190,7 +191,7 @@ jobs:
           submodules: recursive
       - uses: pyTooling/download-artifact@v4
         with:
-          name: ttexalens-build
+          name: ttexalens-build-ubuntu-${{ matrix.ubuntu-version }}
       - name: Install wheel
         run: |
           pip install build/ttexalens_wheel/*.whl
