@@ -48,6 +48,7 @@ COPY test/test_requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install --no-cache-dir -r dev-requirements.txt
 RUN pip install --no-cache-dir -r test_requirements.txt
+RUN pip install wheel build setuptools
 
 # Install build tools
 RUN apt-get update && apt-get install -y \
