@@ -63,8 +63,9 @@ RUN apt install -y clang-format-17 && \
 # Clean package cache
 RUN apt-get clean
 
-# Upgrade to latest pip
-RUN pip install --upgrade pip --break-system-packages
+# Remove externally-managed marker (Ubuntu 24.04+) and upgrade to latest pip
+RUN rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED && \
+    pip install --upgrade pip
 
 # Copy the requirements files for pip
 COPY ttexalens/requirements.txt .
