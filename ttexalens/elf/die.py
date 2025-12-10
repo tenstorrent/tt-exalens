@@ -294,7 +294,7 @@ class ElfDie:
                     if self.name in self.cu.dwarf.parsed_elf.symbols:
                         return self.cu.dwarf.parsed_elf.symbols[self.name].value
                     else:
-                        util.WARN(f"ERROR: Cannot find address for {self}")
+                        util.DEBUG(f"ERROR: Cannot find address for {self}")
         return addr
 
     @cached_property
@@ -580,15 +580,19 @@ class ElfDie:
         if not self.tag_is("formal_parameter") and not self.tag_is("variable"):
             return None
 
+        util.DEBUG("Evaluating location expression for variable:", self.name)
+
         # Get the type of the variable
         variable_type = self.resolved_type
         if variable_type is None or variable_type is self:
+            util.DEBUG("    Could not resolve type for variable")
             # We failed to resolve type
             return None
 
         # Check if we have constant value
         const_value = self.value
         if const_value is not None:
+            util.DEBUG("  Trying to read constant value:", const_value)
             if isinstance(const_value, bytes):
                 memory = const_value
             else:
@@ -597,6 +601,7 @@ class ElfDie:
                     size = variable_type.size if variable_type.size is not None else 4
                     memory = const_value.to_bytes(size, byteorder="little")
                 except Exception:
+                    util.DEBUG("    Failed to convert constant value to integer")
                     return None
 
             # We explicitly set address to 0 to indicate that this is not an addressable variable
@@ -604,25 +609,30 @@ class ElfDie:
 
         # If we don't have frame inspection, we can't read the value
         if frame_inspection is None:
+            util.DEBUG("    No frame inspection provided")
             return None
 
         # Check if we have address
         if self.address is not None:
+            util.DEBUG("    Reading variable from address:", hex(self.address))
             return ElfVariable(variable_type, self.address, frame_inspection.mem_access)
 
         # Check if we have location
         location = self._location
         if location is None:
+            util.DEBUG("    No location information available for variable")
             return None
 
         # Get parsed location expression
         if isinstance(location, LocationExpr):
             parsed_expression = self.cu.expression_parser.parse_expr(location.loc_expr)
+            util.DEBUG("    ", parsed_expression)
         elif isinstance(location, list):
             base_address = 0
-            pc = frame_inspection.pc
+            pc = frame_inspection.pc + frame_inspection.loaded_offset
             parsed_expression = None
             for loc in location:
+                util.DEBUG("  Looking at location entry:", loc)
                 if isinstance(loc, ListBaseAddressEntry):
                     base_address = loc.base_address
                 elif isinstance(loc, ListLocationEntry):
@@ -633,11 +643,14 @@ class ElfDie:
                         begin_offset = loc.begin_offset + base_address
                         end_offset = loc.end_offset + base_address
                     if begin_offset <= pc < end_offset:
+                        util.DEBUG("  Found matching location entry for PC:", hex(pc))
                         parsed_expression = self.cu.expression_parser.parse_expr(loc.loc_expr)
             if parsed_expression is None:
+                util.DEBUG("    No matching location entry found for current PC:", hex(pc))
                 return None
         else:
             # Unknown location type
+            util.DEBUG("    Unknown location type for variable")
             return None
 
         # Evaluate expression to get value
@@ -665,6 +678,8 @@ class ElfDie:
         self, parsed_expression: list, frame_inspection: FrameInspection | None = None
     ) -> tuple[bool, Any | None]:
         from ttexalens.elf.variable import ElfVariable, FixedMemoryAccess
+
+        util.DEBUG("   ", parsed_expression)
 
         location_parser = self.cu.dwarf.location_parser
         is_address = False
@@ -1135,6 +1150,9 @@ class ElfDie:
                 location = location_parser.parse_from_attribute(die.attributes["DW_AT_location"], self.cu.version, die)
                 # TODO: Start executing location expression in current context (current stack, etc.)
                 return False, None
+            elif op.op_name.startswith("DW_OP_lit"):
+                literal_value = int(op.op_name[len("DW_OP_lit") :])
+                stack.append(literal_value)
             else:
                 # TODO: Implement missing expression operations
                 # DW_OP_bra=0x28, # Hard to implement without full control flow support
@@ -1167,6 +1185,7 @@ class ElfDie:
                 # DW_OP_hi_user=0xff,
 
                 # Unsupported operation
+                util.DEBUG(f"Unsupported DWARF location operation: {op.op_name}")
                 return False, None
         if value is None and len(stack) > 0:
             value = stack.pop()

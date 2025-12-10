@@ -66,9 +66,10 @@ class FrameDescription:
 
 class FrameInspection:
     def __init__(
-        self, risc_debug: RiscDebug, frame_description: FrameDescription | None = None, cfa: int | None = None
+        self, risc_debug: RiscDebug, loaded_offset: int, frame_description: FrameDescription | None = None, cfa: int | None = None
     ):
         self.risc_debug = risc_debug
+        self.loaded_offset = loaded_offset
         self.frame_description = frame_description
         self.cfa = cfa
 

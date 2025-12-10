@@ -451,7 +451,7 @@ class RiscDebug:
                 util.WARN("We don't have information on frame and we don't know how to proceed.")
                 return []
 
-            frame_inspection = FrameInspection(self)
+            frame_inspection = FrameInspection(self, elf.loaded_offset)
             frame_pointer = frame_description.read_previous_cfa()
             while len(callstack) < limit:
                 callstack, function_die = RiscDebug.get_frame_callstack(
@@ -476,7 +476,7 @@ class RiscDebug:
                 return_address = frame_description.read_register(1, cfa)
                 frame_pointer = frame_description.read_previous_cfa(cfa)
                 pc = return_address
-                frame_inspection = FrameInspection(self, frame_description, cfa)
+                frame_inspection = FrameInspection(self, elf.loaded_offset, frame_description, cfa)
                 frame_description = elf.frame_info.get_frame_description(pc, self)
 
                 # If we do not get frame description from current elf check in others
