@@ -12,10 +12,6 @@ inputs:
     description: "Operating system"
     required: false
     default: "ubuntu-22.04"
-  docker-os:
-    description: "Docker os"
-    required: false
-    default: "ubuntu-22-04"
 
 outputs:
   wheel-name:
