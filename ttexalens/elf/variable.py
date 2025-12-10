@@ -63,14 +63,16 @@ class L1MemoryAccess(MemoryAccess):
 class RiscDebugMemoryAccess(MemoryAccess):
     def __init__(self, risc_debug: RiscDebug):
         self._risc_debug = risc_debug
-        private_memory = risc_debug.get_data_private_memory()
-        if private_memory is None or not risc_debug.can_debug():
-            self.private_memory = MemoryBlock(0, DeviceAddress(-1))
-        else:
-            self.private_memory = private_memory
+        self.private_memory = risc_debug.get_data_private_memory()
+        self.can_access = (self.private_memory is not None) and (
+            risc_debug.can_debug() or self.private_memory.exposed_through_noc()
+        )
 
     def read(self, address: int, size_bytes: int) -> bytes:
-        if self.private_memory.contains_private_address(address):
+        if not self.can_access:
+            return 0
+
+        if self._risc_debug.can_debug() and self.private_memory.contains_private_address(address):
             # We need to read aligned to 4 bytes
             word_size = 4
             aligned_start = address - (address % word_size)
@@ -86,6 +88,9 @@ class RiscDebugMemoryAccess(MemoryAccess):
             bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in words)
             return bytes_data[address - aligned_start : address - aligned_start + size_bytes]
         else:
+            if self._risc_debug.is_in_reset():
+                return 0
+
             from ttexalens.tt_exalens_lib import read_from_device
 
             return read_from_device(
@@ -93,7 +98,10 @@ class RiscDebugMemoryAccess(MemoryAccess):
             )
 
     def write(self, address: int, data: bytes) -> None:
-        if self.private_memory.contains_private_address(address):
+        if not self.can_access:
+            return
+
+        if self._risc_debug.can_debug() and self.private_memory.contains_private_address(address):
             if address % 4 != 0 or len(data) % 4 != 0:
                 raise NotImplementedError("Writing unaligned data to private memory is not implemented yet.")
             with self._risc_debug.ensure_private_memory_access():
@@ -101,6 +109,9 @@ class RiscDebugMemoryAccess(MemoryAccess):
                     word = int.from_bytes(data[i : i + 4], byteorder="little")
                     self._risc_debug.write_memory(address + i, word)
         else:
+            if self._risc_debug.is_in_reset():
+                return
+
             from ttexalens.tt_exalens_lib import write_to_device
 
             write_to_device(location=self._risc_debug.risc_location.location, addr=address, data=data)

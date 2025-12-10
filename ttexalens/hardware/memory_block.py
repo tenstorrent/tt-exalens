@@ -28,3 +28,6 @@ class MemoryBlock:
         if not self.contains_private_address(address):
             return None
         return self.address.noc_address + (address - self.address.private_address)
+
+    def exposed_through_noc(self) -> bool:
+        return self.address.noc_address is not None
