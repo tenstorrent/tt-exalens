@@ -109,7 +109,7 @@ jobs:
         - /dev/hugepages-1G:/dev/hugepages-1G
         - /etc/udev/rules.d:/etc/udev/rules.d
         - /lib/modules:/lib/modules
-    name: Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}
+    name: Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ matrix.ubuntu-version }})
     steps:
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
@@ -127,7 +127,7 @@ jobs:
         id: fetch-job-id
         uses: tenstorrent/tt-github-actions/.github/actions/job_id@main
         with:
-          job_name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}"
+          job_name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ matrix.ubuntu-version }})"
           # gh_token: ${{ secrets.GH_TOKEN }}
 
       - name: Set reusable strings
@@ -180,7 +180,7 @@ jobs:
         - /dev/hugepages-1G:/dev/hugepages-1G
         - /etc/udev/rules.d:/etc/udev/rules.d
         - /lib/modules:/lib/modules
-    name: Build, install wheel and test it on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}
+    name: Build, install wheel and test it on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ matrix.ubuntu-version }})
     steps:
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
