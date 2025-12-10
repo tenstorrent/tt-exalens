@@ -46,5 +46,5 @@ RUN [ "$UBUNTU_VERSION" != "24.04" ] \
 
 # Install tt-smi, tt-flash
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && pip install git+https://github.com/tenstorrent/tt-smi.git \
-    && pip install git+https://github.com/tenstorrent/tt-flash.git
+    && pip install --ignore-installed git+https://github.com/tenstorrent/tt-smi.git \
+    && pip install --ignore-installed git+https://github.com/tenstorrent/tt-flash.git
