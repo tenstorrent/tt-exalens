@@ -2,6 +2,11 @@ name: "Build image, build ttexalens, and run unit tests"
 
 on:
   workflow_dispatch:
+    inputs:
+      ubuntu-version:
+        required: false
+        type: string
+        default: "22.04"
   workflow_call:
     inputs:
       ubuntu-version:
