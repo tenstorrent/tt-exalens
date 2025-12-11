@@ -447,7 +447,7 @@ class RymlLazyDictionary(Mapping[KeyType, ValueType]):
         item: ValueType | None = self._items.get(key)
         if item is None:
             child_node = self.child_nodes[key]
-            item = ryml_to_lazy(self.tree, child_node)  # type: ignore
+            item = ryml_to_lazy(self.tree, child_node)
             assert item is not None
             self._items[key] = item
         return item
