@@ -2,16 +2,13 @@ name: "Prepare Wheel For Release"
 description: "Build ttexalens wheel for release"
 
 inputs:
-  python-version:
-    description: "Python version to use"
-    required: true
   build-version:
     description: "Build version tag (e.g., 'latest', '1.0.0')"
     required: true
-  os:
-    description: "Operating system"
+  ubuntu-version:
+    description: "Ubuntu version (e.g., '22.04', '24.04') "
     required: false
-    default: "ubuntu-22.04"
+    default: "22.04"
 
 outputs:
   wheel-name:
@@ -30,7 +27,7 @@ runs:
       id: set-wheel-name
       shell: bash
       run: |
-        echo "wheel-name=tt-exalens-v${{ inputs.build-version }}-${{ inputs.python-version }}-${{ inputs.os }}.whl" >> $GITHUB_OUTPUT
+        echo "wheel-name=tt-exalens-v${{ inputs.build-version }}-ubuntu-${{ inputs.ubuntu-version }}.whl" >> $GITHUB_OUTPUT
 
     - name: "Upload wheel as artifact"
       uses: actions/upload-artifact@v4

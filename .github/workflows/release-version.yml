@@ -5,8 +5,7 @@ on:
   push:
     branches:
       - "main"
-    paths:
-      - "VERSION"
+      - "onenzic/release-docker" # test
 
 run-name: "Release by @${{ github.actor }} for ${{ github.ref_name }}"
 
