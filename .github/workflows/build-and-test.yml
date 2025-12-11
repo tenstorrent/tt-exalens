@@ -50,11 +50,14 @@ jobs:
     strategy:
       matrix:
         ubuntu-version: ["22.04", "24.04"]
-    uses: ./.github/workflows/build-ttexalens.yml
-    with:
-      runs-on: ubuntu-latest
-      docker-image: ${{ needs.build-image.outputs.public-docker-image }}
-      os: ubuntu-${{ matrix.ubuntu-version }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build tt-exalens
+        uses: ./.github/workflows/build-ttexalens.yml
+        with:
+          runs-on: ubuntu-latest
+          docker-image: ${{ needs.build-image.outputs.public-docker-image }}
+          os: ubuntu-${{ matrix.ubuntu-version }}
 
   set-latest:
     # Set the latest tag on the IRD image
