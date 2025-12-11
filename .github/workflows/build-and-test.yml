@@ -1,16 +1,17 @@
-name: "Run all tests"
+name: "Build image, build ttexalens, and run unit tests"
 
 on:
   workflow_dispatch:
   workflow_call:
+    inputs:
+      ubuntu-version:
+        required: false
+        type: string
+        default: "22.04"
 
 jobs:
-
   build-image:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ubuntu-version: ["22.04", "24.04"]
     outputs:
       docker-image: ${{ steps.build.outputs.docker-image }}
       public-docker-image: ${{ steps.build.outputs.public-docker-image }}
@@ -33,7 +34,7 @@ jobs:
         run: |
           # Output the image name
           set pipefail
-          .github/build-docker-images.sh ${{ matrix.ubuntu-version }} | tee docker.log
+          .github/build-docker-images.sh ${{ inputs.ubuntu-version }} | tee docker.log
           PUBLIC_DOCKER_CI_IMAGE=$(tail -n 2 docker.log | head -n 1)
 
           # Replace use harbor.ci.tenstorrent.net if running on shared runner (tt-ubuntu-2204-large-stable)
@@ -47,21 +48,15 @@ jobs:
 
   build:
     needs: build-image
-    strategy:
-      matrix:
-        ubuntu-version: ["22.04", "24.04"]
     uses: ./.github/workflows/build-ttexalens.yml
     with:
       runs-on: ubuntu-latest
-      docker-image: ${{ needs.build-image.outputs.public-docker-image[ matrix.ubuntu-version ] }}
-      os: ubuntu-${{ matrix.ubuntu-version }}
+      docker-image: ${{ needs.build-image.outputs.public-docker-image }}
+      os: ubuntu-${{ inputs.ubuntu-version }}
 
   set-latest:
     # Set the latest tag on the IRD image
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        ubuntu-version: ["22.04", "24.04"]
     needs: build-image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
@@ -73,12 +68,12 @@ jobs:
           password: ${{ secrets.GH_TOKEN }}
       - name: Set latest tag on the image
         run: |
-          DOCKER_CI_IMAGE=${{ needs.build-image.outputs.docker-image[ matrix.ubuntu-version ] }}
+          DOCKER_CI_IMAGE=${{ needs.build-image.outputs.docker-image }}
           DOCKER_TAG=$(echo $DOCKER_CI_IMAGE | sed 's/^.*://')
-          CI_IMAGE_NAME=ghcr.io/${{ github.repository }}/tt-exalens-ci-ubuntu-${{ matrix.ubuntu-version }}
+          CI_IMAGE_NAME=ghcr.io/${{ github.repository }}/tt-exalens-ci-ubuntu-${{ inputs.ubuntu-version }}
           echo "Setting latest tag on the image $CI_IMAGE_NAME:$DOCKER_TAG"
           skopeo copy "docker://$CI_IMAGE_NAME:$DOCKER_TAG" "docker://$CI_IMAGE_NAME:latest"
-          IRD_IMAGE_NAME=ghcr.io/${{ github.repository }}/tt-exalens-ird-ubuntu-${{ matrix.ubuntu-version }}
+          IRD_IMAGE_NAME=ghcr.io/${{ github.repository }}/tt-exalens-ird-ubuntu-${{ inputs.ubuntu-version }}
           echo "Setting latest tag on the image $IRD_IMAGE_NAME:$DOCKER_TAG"
           skopeo copy "docker://$IRD_IMAGE_NAME:$DOCKER_TAG" "docker://$IRD_IMAGE_NAME:latest"
 
@@ -88,7 +83,6 @@ jobs:
       - build-image
     strategy:
       matrix:
-        ubuntu-version: ["22.04", "24.04"]
         runner-info: [
           {arch: "blackhole", board: "p150b", runs-on: "tt-ubuntu-2204-p150b-stable"},
           {arch: "wormhole_b0", board: "n150", runs-on: "tt-ubuntu-2204-n150-stable"},
@@ -102,14 +96,14 @@ jobs:
       LOGGER_LEVEL: INFO
     runs-on: ${{ matrix.runner-info.runs-on }}
     container:
-      image: ${{ needs.build-image.outputs.docker-image[ matrix.ubuntu-version ] }}
+      image: ${{ needs.build-image.outputs.docker-image }}
       options: --device /dev/tenstorrent/0
       volumes:
         - /dev/hugepages:/dev/hugepages
         - /dev/hugepages-1G:/dev/hugepages-1G
         - /etc/udev/rules.d:/etc/udev/rules.d
         - /lib/modules:/lib/modules
-    name: Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ matrix.ubuntu-version }})
+    name: Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ inputs.ubuntu-version }})
     steps:
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
@@ -121,13 +115,13 @@ jobs:
 
       - uses: pyTooling/download-artifact@v4
         with:
-          name: ttexalens-build-ubuntu-${{ matrix.ubuntu-version }}
+          name: ttexalens-build-ubuntu-${{ inputs.ubuntu-version }}
 
       - name: Fetch job id
         id: fetch-job-id
         uses: tenstorrent/tt-github-actions/.github/actions/job_id@main
         with:
-          job_name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ matrix.ubuntu-version }})"
+          job_name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ inputs.ubuntu-version }})"
           # gh_token: ${{ secrets.GH_TOKEN }}
 
       - name: Set reusable strings
@@ -146,7 +140,7 @@ jobs:
       - name: Upload Test Report
         uses: actions/upload-artifact@v4
         with:
-          name: test-reports-${{ matrix.ubuntu-version }}-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.board }}
+          name: test-reports-${{ inputs.ubuntu-version }}-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.board }}
           path: ${{ steps.strings.outputs.test_report_path }}
 
       - name: Run Python tests for TTExaLens app
@@ -160,7 +154,6 @@ jobs:
       - build-image
     strategy:
       matrix:
-        ubuntu-version: ["22.04", "24.04"]
         runner-info: [
           {arch: "blackhole", board: "p150b", runs-on: "tt-ubuntu-2204-p150b-stable"},
           {arch: "wormhole_b0", board: "n150", runs-on: "tt-ubuntu-2204-n150-stable"},
@@ -173,14 +166,14 @@ jobs:
       VERBOSE: 5
     runs-on: ${{ matrix.runner-info.runs-on }}
     container:
-      image: ${{ needs.build-image.outputs.docker-image[ matrix.ubuntu-version ] }}
+      image: ${{ needs.build-image.outputs.docker-image }}
       options: --device /dev/tenstorrent/0
       volumes:
         - /dev/hugepages:/dev/hugepages
         - /dev/hugepages-1G:/dev/hugepages-1G
         - /etc/udev/rules.d:/etc/udev/rules.d
         - /lib/modules:/lib/modules
-    name: Build, install wheel and test it on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ matrix.ubuntu-version }})
+    name: Build, install wheel and test it on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ inputs.ubuntu-version }})
     steps:
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
@@ -191,7 +184,7 @@ jobs:
           submodules: recursive
       - uses: pyTooling/download-artifact@v4
         with:
-          name: ttexalens-build-ubuntu-${{ matrix.ubuntu-version }}
+          name: ttexalens-build-ubuntu-${{ inputs.ubuntu-version }}
       - name: Install wheel
         run: |
           pip install build/ttexalens_wheel/*.whl
