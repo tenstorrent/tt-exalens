@@ -7,6 +7,7 @@ from .die import ElfDie
 from .dwarf import ElfDwarf
 from .parsed import ParsedElfFile, ParsedElfFileWithOffset, read_elf
 from .variable import ElfVariable, MemoryAccess
+from .frame import FrameInspection
 
 __all__ = [
     "ElfCompileUnit",
@@ -17,4 +18,5 @@ __all__ = [
     "ParsedElfFile",
     "ParsedElfFileWithOffset",
     "read_elf",
+    "FrameInspection",
 ]

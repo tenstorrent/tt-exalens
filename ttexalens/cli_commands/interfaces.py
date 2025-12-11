@@ -66,7 +66,7 @@ def read_pci_raw_size(context: Context, device_id, address, size):
 
 def read_noc_size(context: Context, device_id, nocx, nocy, address, size):
     noc_id = 1 if context.use_noc1 else 0
-    return context.server_ifc.read(noc_id, device_id, nocx, nocy, address, size)
+    return context.server_ifc.read(noc_id, device_id, nocx, nocy, address, size, context.use_4B_mode)
 
 
 def run(cmd_text, context: Context, ui_state=None):

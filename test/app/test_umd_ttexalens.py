@@ -30,7 +30,7 @@ class TTExaLensOutputVerifier:
 
 
 class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
-    prompt_regex = r"^(gdb:[^ ]+ )?noc:\d+ device:\d+ loc:\d+-\d+ \(\d+,\d+\) > $"
+    prompt_regex = r"^(gdb:[^ ]+ )?([[]4B MODE[\]] )?noc:\d+ device:\d+ loc:\d+-\d+ \(\d+,\d+\) > $"
 
     def __init__(self):
         self.server_temp_path = ""
