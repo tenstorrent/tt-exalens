@@ -134,6 +134,7 @@ class ParsedElfFile:
     def __init__(self, elf: ELFFile, elf_file_path: str):
         self.elf = elf
         self.elf_file_path = elf_file_path
+        self.loaded_offset = 0
 
     @cached_property
     def _dwarf(self) -> ElfDwarf:

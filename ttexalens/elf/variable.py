@@ -60,6 +60,17 @@ class L1MemoryAccess(MemoryAccess):
         write_to_device(location=self._location, addr=address, data=data)
 
 
+class FixedMemoryAccess(MemoryAccess):
+    def __init__(self, data: bytes):
+        self._data = data
+
+    def read(self, address: int, size_bytes: int) -> bytes:
+        return self._data[address : address + size_bytes]
+
+    def write(self, address: int, data: bytes) -> None:
+        raise Exception("FixedMemoryAccess is read-only")
+
+
 class RiscDebugMemoryAccess(MemoryAccess):
     def __init__(self, risc_debug: RiscDebug):
         self._risc_debug = risc_debug
