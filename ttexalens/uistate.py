@@ -83,9 +83,9 @@ class UIState:
     def prompt(self, get_dynamic_prompt: Callable[[], HTML]) -> str:
         if self.is_prompt_session:
             with patch_stdout():
-                return self.prompt_session.prompt(get_dynamic_prompt)
+                return str(self.prompt_session.prompt(get_dynamic_prompt))
         else:
-            return self.prompt_session.prompt(get_dynamic_prompt())
+            return str(self.prompt_session.prompt(get_dynamic_prompt()))
 
     def __on_gdb_connection_change(self):
         if self.is_prompt_session:

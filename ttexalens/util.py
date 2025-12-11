@@ -3,7 +3,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from contextlib import nullcontext, AbstractContextManager, contextmanager
-from typing import Any
+from typing import Any, Iterator
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
@@ -405,8 +405,8 @@ KeyType = TypeVar("KeyType")
 ValueType = TypeVar("ValueType")
 
 
-class RymlLazyDictionaryIterator:
-    def __init__(self, dictionary: "RymlLazyDictionary"):
+class RymlLazyDictionaryIterator(Iterator[KeyType]):
+    def __init__(self, dictionary: "RymlLazyDictionary[KeyType, ValueType]"):
         self.dictionary = dictionary
         self.index = 0
 
@@ -428,7 +428,7 @@ class RymlLazyDictionary(Mapping[KeyType, ValueType]):
         self.tree = tree
         self.node = node
         self.length = self.tree.num_children(self.node)
-        self._items = dict()
+        self._items: dict[KeyType, ValueType] = dict()
 
     @cached_property
     def child_nodes(self):
@@ -437,17 +437,18 @@ class RymlLazyDictionary(Mapping[KeyType, ValueType]):
             child_nodes[self.get_key(child_node)] = child_node
         return child_nodes
 
-    def get_key(self, child_node):
-        return try_int(str(self.tree.key(child_node), "utf8"), base=0)
+    def get_key(self, child_node) -> KeyType:
+        return try_int(str(self.tree.key(child_node), "utf8"), base=0)  # type: ignore
 
     def __contains__(self, key):
         return key in self.child_nodes
 
     def __getitem__(self, key: KeyType) -> ValueType:
-        item = self._items.get(key)
-        if item == None:
+        item: ValueType | None = self._items.get(key)
+        if item is None:
             child_node = self.child_nodes[key]
-            item = ryml_to_lazy(self.tree, child_node)
+            item = ryml_to_lazy(self.tree, child_node)  # type: ignore
+            assert item is not None
             self._items[key] = item
         return item
 

@@ -175,7 +175,7 @@ class RichFormatter:
         raw_value = value_info.get("value", "")
 
         if format_type == "state":
-            return value_info.get("description", str(raw_value))
+            return str(value_info.get("description", str(raw_value)))
         elif format_type == "hex":
             try:
                 int_value = int(raw_value)

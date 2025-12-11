@@ -183,7 +183,7 @@ def get_register_name(reg_index_or_name):
 @dataclass
 class BabyRiscDebugStatus(RiscDebugStatus):
     @staticmethod
-    def from_register(value: int, max_watchpoints: int):
+    def from_register(value: int, max_watchpoints: int) -> "BabyRiscDebugStatus":
         return BabyRiscDebugStatus(
             is_halted=value & STATUS_HALTED != 0,
             is_pc_watchpoint_hit=value & STATUS_PC_WATCHPOINT_HIT != 0,
@@ -252,7 +252,7 @@ class BabyRiscDebugHardware:
             util.DEBUG(f"{self._get_reg_name_for_address(addr)} <- WR   0x{data:08x}")
         write_words_to_device(self.risc_info.noc_block.location, addr, data, self.device._id, self.context)
 
-    def __read(self, addr):
+    def __read(self, addr) -> int:
         data = read_word_from_device(self.risc_info.noc_block.location, addr, self.device._id, self.context)
         if self.verbose:
             util.DEBUG(f"{self._get_reg_name_for_address(addr)} -> RD == 0x{data:08x}")
@@ -283,7 +283,7 @@ class BabyRiscDebugHardware:
         status0 = self.__read(self.RISC_DBG_STATUS0)
         return (status0 & self.risc_info.status_read_valid_mask) == self.risc_info.status_read_valid_mask
 
-    def __riscv_read(self, reg_addr):
+    def __riscv_read(self, reg_addr) -> int:
         if self.verbose:
             util.INFO(f"  __riscv_read({reg_addr})")
         self.__trigger_read(reg_addr)
@@ -385,12 +385,12 @@ class BabyRiscDebugHardware:
         status = self.__riscv_read(REG_STATUS)
         return BabyRiscDebugStatus.from_register(status, self.risc_info.max_watchpoints)
 
-    def is_halted(self):
+    def is_halted(self) -> bool:
         if self.verbose:
             util.INFO("  is_halted()")
         return self.read_status().is_halted
 
-    def is_pc_watchpoint_hit(self):
+    def is_pc_watchpoint_hit(self) -> bool:
         if self.verbose:
             util.INFO("  is_pc_watchpoint_hit()")
         return self.read_status().is_pc_watchpoint_hit
@@ -410,7 +410,7 @@ class BabyRiscDebugHardware:
             util.INFO("  is_pc_watchpoint_hit()")
         return self.read_status().is_memory_watchpoint_hit
 
-    def read_gpr(self, reg_index):
+    def read_gpr(self, reg_index) -> int:
         if not 0 <= reg_index <= 32:
             raise ValueError(f"Invalid register index {reg_index}. Must be between 0 and 32.")
         if self.verbose:
@@ -426,7 +426,7 @@ class BabyRiscDebugHardware:
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_REGISTER)
 
-    def read_memory(self, addr):
+    def read_memory(self, addr) -> int:
         if self.enable_asserts:
             self.assert_halted()
         if self.verbose:
@@ -472,14 +472,14 @@ class BabyRiscDebugHardware:
     def set_watchpoint_on_memory_access(self, id, address):
         self.__set_watchpoint(id, address, HW_WATCHPOINT_ENABLED + HW_WATCHPOINT_ACCESS)
 
-    def read_watchpoints_state(self):
+    def read_watchpoints_state(self) -> list[BabyRiscDebugWatchpointState]:
         settings = self.__riscv_read(REG_HW_WATCHPOINT_SETTINGS)
         watchpoints = []
         for i in range(self.risc_info.max_watchpoints):
             watchpoints.append(BabyRiscDebugWatchpointState.from_value((settings >> (i * 4)) & HW_WATCHPOINT_MASK))
         return watchpoints
 
-    def read_watchpoint_address(self, id):
+    def read_watchpoint_address(self, id) -> int:
         return self.__riscv_read(REG_HW_WATCHPOINT_0 + id)
 
     def disable_watchpoint(self, id):
@@ -508,7 +508,7 @@ class BabyRiscDebug(RiscDebug):
 
     @property
     def location(self) -> OnChipCoordinate:
-        return self.noc_block.location
+        return self.noc_block.location  # type: ignore
 
     @property
     def device(self) -> Device:
@@ -727,7 +727,8 @@ class BabyRiscDebug(RiscDebug):
     def read_watchpoints_state(self) -> list[RiscDebugWatchpointState]:
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        return self.debug_hardware.read_watchpoints_state()
+        state = self.debug_hardware.read_watchpoints_state()
+        return [RiscDebugWatchpointState(s.is_enabled, s.is_memory, s.is_read, s.is_write) for s in state]
 
     def read_watchpoint_address(self, watchpoint_index: int) -> int:
         self.assert_debug_hardware()

@@ -125,7 +125,7 @@ class ElfDie:
             dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
             die = self.cu.dwarf.get_die(dwarf_die)
             if die is not None:
-                return die.path
+                return die.path  # type: ignore
 
         if parent and parent.tag != "DW_TAG_compile_unit":
             parent_path = parent.path
@@ -142,15 +142,15 @@ class ElfDie:
         if self.tag == "DW_TAG_typedef" and self.local_offset != None:
             typedef_DIE = self.cu.find_DIE_at_local_offset(self.local_offset)
             if typedef_DIE:  # If typedef, recursivelly do it
-                return typedef_DIE.resolved_type
+                return typedef_DIE.resolved_type  # type: ignore
         elif self.tag == "DW_TAG_const_type" and self.local_offset != None:
             typedef_DIE = self.cu.find_DIE_at_local_offset(self.local_offset)
             if typedef_DIE:  # If typedef, recursivelly do it
-                return typedef_DIE.resolved_type
+                return typedef_DIE.resolved_type  # type: ignore
         elif self.tag == "DW_TAG_volatile_type" and self.local_offset != None:
             typedef_DIE = self.cu.find_DIE_at_local_offset(self.local_offset)
             if typedef_DIE:  # If typedef, recursivelly do it
-                return typedef_DIE.resolved_type
+                return typedef_DIE.resolved_type  # type: ignore
         elif self.category != "type" and "DW_AT_type" in self.attributes and self.local_offset != None:
             type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
             if type_die is not None:
@@ -159,23 +159,23 @@ class ElfDie:
                     or type_die.tag == "DW_TAG_const_type"
                     or type_die.tag == "DW_TAG_volatile_type"
                 ):
-                    return type_die.resolved_type
-                return type_die
+                    return type_die.resolved_type  # type: ignore
+                return type_die  # type: ignore
         elif "DW_AT_specification" in self.attributes:
             dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
             die = self.cu.dwarf.get_die(dwarf_die)
             if die is not None:
-                return die.resolved_type
+                return die.resolved_type  # type: ignore
         elif "DW_AT_abstract_origin" in self.attributes:
             dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
             die = self.cu.dwarf.get_die(dwarf_die)
             if die is not None:
-                return die.resolved_type
+                return die.resolved_type  # type: ignore
         elif self.tag_is("enumeration_type"):
             if "DW_AT_type" in self.attributes and self.local_offset is not None:
                 type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
                 if type_die is not None:
-                    return type_die.resolved_type
+                    return type_die.resolved_type  # type: ignore
         return self
 
     @cached_property
@@ -208,31 +208,31 @@ class ElfDie:
         Return the size in bytes of the DIE
         """
         if "DW_AT_byte_size" in self.attributes:
-            return self.attributes["DW_AT_byte_size"].value
+            return self.attributes["DW_AT_byte_size"].value  # type: ignore
 
         if self.tag == "DW_TAG_pointer_type":
             return 4  # Assuming 32-bit pointer
 
         if self.tag == "DW_TAG_array_type":
-            array_size = 1
+            array_size: int = 1
             for child in self.iter_children():
                 if "DW_AT_upper_bound" in child.attributes:
                     upper_bound = child.attributes["DW_AT_upper_bound"].value
                     array_size *= upper_bound + 1
             elem_die = self.cu.find_DIE_at_local_offset(self.local_offset)
             if elem_die is not None:
-                elem_size = elem_die.size
+                elem_size: int | None = elem_die.size
                 if elem_size is not None:
                     return array_size * elem_size
 
         if "DW_AT_type" in self.attributes:
             type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
             if type_die is not None:
-                return type_die.size
+                return type_die.size  # type: ignore
 
         # Try to find size from symbol table
         if self.name in self.cu.dwarf.parsed_elf.symbols:
-            return self.cu.dwarf.parsed_elf.symbols[self.name].size
+            return self.cu.dwarf.parsed_elf.symbols[self.name].size  # type: ignore
 
         return None
 
@@ -288,11 +288,11 @@ class ElfDie:
                 return 0  # All members of a union start at the same address
             else:
                 if self.attributes.get("DW_AT_const_value"):
-                    return self.attributes["DW_AT_const_value"].value
+                    return self.attributes["DW_AT_const_value"].value  # type: ignore
                 else:
                     # Try to find address from symbol table
                     if self.name in self.cu.dwarf.parsed_elf.symbols:
-                        return self.cu.dwarf.parsed_elf.symbols[self.name].value
+                        return self.cu.dwarf.parsed_elf.symbols[self.name].value  # type: ignore
                     else:
                         util.DEBUG(f"ERROR: Cannot find address for {self}")
         return addr

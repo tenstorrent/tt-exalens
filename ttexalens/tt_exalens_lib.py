@@ -10,6 +10,7 @@ from ttexalens import tt_exalens_init
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.elf import read_elf, ParsedElfFile
+from ttexalens.hardware.risc_debug import CallstackEntry
 from ttexalens.util import TTException
 
 
@@ -479,7 +480,7 @@ def read_register(
             f"Invalid register type. Must be an str or instance of RegisterDescription or its subclasses, but got {type(register)}"
         )
     register_store = coordinate.noc_block.get_register_store(noc_id, neo_id)
-    return register_store.read_register(register)
+    return register_store.read_register(register)  # type: ignore
 
 
 def write_register(
@@ -586,7 +587,7 @@ def callstack(
     stop_on_main: bool = True,
     device_id: int = 0,
     context: Context | None = None,
-) -> list:
+) -> list[CallstackEntry]:
     """
     Retrieves the callstack of the specified RISC core for a given ELF.
 
@@ -629,7 +630,7 @@ def callstack(
     risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
     if risc_debug.is_in_reset():
         raise TTException(f"RiscV core {risc_debug.risc_location} is in reset")
-    return risc_debug.get_callstack(elfs, offsets, max_depth, stop_on_main)
+    return risc_debug.get_callstack(elfs, offsets, max_depth, stop_on_main)  # type: ignore
 
 
 def coverage(
@@ -704,7 +705,7 @@ def read_riscv_memory(
         )
 
     with risc_debug.ensure_private_memory_access():
-        return risc_debug.read_memory(addr)
+        return int(risc_debug.read_memory(addr))
 
 
 def write_riscv_memory(

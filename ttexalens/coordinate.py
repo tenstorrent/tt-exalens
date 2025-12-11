@@ -185,7 +185,7 @@ class OnChipCoordinate:
     def vertical_axis_increasing_up(coord_type):
         return False
 
-    def to_str(self, output_type="noc0"):
+    def to_str(self, output_type="noc0") -> str:
         """
         Returns a tuple with the coordinates in the specified coordinate system.
         """
@@ -206,7 +206,7 @@ class OnChipCoordinate:
             return f"{output_tuple[0]},{output_tuple[1]}"
         return f"{output_tuple[0]}-{output_tuple[1]}"
 
-    def to_user_str(self):
+    def to_user_str(self) -> str:
         """
         Returns a string representation of the coordinate that is suitable for the user.
         """
@@ -264,7 +264,7 @@ class OnChipCoordinate:
             return self._device.id() < other._device.id()
 
     @staticmethod
-    def create(coord_str, device, coord_type=None):
+    def create(coord_str, device, coord_type=None) -> OnChipCoordinate:
         """
         Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
 

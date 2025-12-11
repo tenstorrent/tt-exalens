@@ -23,7 +23,7 @@ def find_available_port() -> int:
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
             s.bind(("", 0))  # 0 → OS picks a free port
             s.listen()
-            return s.getsockname()[1]
+            return int(s.getsockname()[1])
     except (socket.error, OSError) as e:
         # If we get here, no port was found
         raise Exception(f"No available port found: {e}")
