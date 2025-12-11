@@ -213,7 +213,7 @@ class Device(TTObject):
         pass
 
     @cache
-    def get_blocks(self, block_type="functional_workers"):
+    def get_blocks(self, block_type: str = "functional_workers") -> list[NocBlock]:
         """
         Returns all blocks of a given type
         """
