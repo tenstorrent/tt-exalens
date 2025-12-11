@@ -693,9 +693,7 @@ class TestDebugging(unittest.TestCase):
 
     def test_watchpoint_on_pc_address(self):
         """Test running 36 bytes of generated code that just write data on memory and does watchpoint on pc address. All that is done on brisc."""
-
-        if self.core_sim.is_eth_block():
-            self.skipTest("This test sometimes fails on ETH cores. Issue: #452")
+        
 
         addr = 0x10000
 
@@ -1021,8 +1019,8 @@ class TestDebugging(unittest.TestCase):
     def test_memory_watchpoint(self):
         """Test running 64 bytes of generated code that just write data on memory and tests memory watchpoints. All that is done on brisc."""
 
-        if self.core_sim.is_eth_block():
-            self.skipTest("This test sometimes fails on ETH cores. Issue: #452")
+        if self.core_sim.is_eth_block() and self.device.is_wormhole():
+            self.skipTest("Multiple memory watchpoints do not work on wormhole ETH. Issue: #762")
 
         addr1 = 0x10000
         addr2 = 0x20000
