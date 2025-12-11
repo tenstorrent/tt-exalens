@@ -4,9 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [--devices=<devices>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1]
+  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [--devices=<devices>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--disable-4B-mode]
   tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
-  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
+  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--disable-4B-mode]
   tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help
 
@@ -26,6 +26,7 @@ Options:
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
   --use-noc1                      Initialize with NOC1 and use NOC1 for communication with the device.
+  --disable-4B-mode               Disable 4-byte mode for communication with the device.
   --gdb                           Start RISC-V gdb client with the specified arguments.
 
 Description:
@@ -311,6 +312,8 @@ def main_loop(args, context):
                             if ui_state.gdb_server.is_connected:
                                 gdb_status += "(connected)"
                             my_prompt += f"gdb:{gdb_status} "
+                        if ui_state.context.use_4B_mode:
+                            my_prompt += f"{util.CLR_PROMPT}[4B MODE] {util.CLR_PROMPT_END}"
                         noc_prompt = "1" if ui_state.context.use_noc1 else "0"
                         if ui_state.current_device.is_blackhole() or ui_state.current_device.is_wormhole():
                             my_prompt += f"noc:{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
@@ -468,12 +471,14 @@ def main():
         server_ip = address[0] if address[0] != "" else "localhost"
         server_port = address[-1]
         util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
-        context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port))
+        use_4B_mode = False if args["--disable-4B-mode"] else True
+        context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port), use_4B_mode)
     else:
         context = tt_exalens_init.init_ttexalens(
             wanted_devices=wanted_devices,
             init_jtag=args["--jtag"],
             use_noc1=args["--use-noc1"],
+            use_4B_mode=False if args["--disable-4B-mode"] else True,
             simulation_directory=args["-s"],
         )
 

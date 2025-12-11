@@ -15,11 +15,19 @@ from ttexalens.tt_exalens_ifc import TTExaLensCommunicator
 
 # All-encompassing structure representing a TTExaLens context
 class Context:
-    def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc: util.YamlFile, short_name: str, use_noc1=False):
+    def __init__(
+        self,
+        server_ifc: TTExaLensCommunicator,
+        cluster_desc: util.YamlFile,
+        short_name: str,
+        use_noc1=False,
+        use_4B_mode=True,
+    ):
         self.server_ifc = server_ifc
         self._cluster_desc = cluster_desc
         self.short_name = short_name
         self.use_noc1 = use_noc1
+        self.use_4B_mode = use_4B_mode
 
     def filter_commands(self, commands):
         self.commands = []
@@ -85,8 +93,8 @@ class Context:
 
 
 class LimitedContext(Context):
-    def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc_yaml, use_noc1=False):
-        super().__init__(server_ifc, cluster_desc_yaml, "limited", use_noc1)
+    def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc_yaml, use_noc1=False, use_4B_mode=True):
+        super().__init__(server_ifc, cluster_desc_yaml, "limited", use_noc1, use_4B_mode)
         self.loaded_elfs: dict[RiscLocation, str] = {}
 
     def get_risc_elf_path(self, risc_location: RiscLocation) -> str | None:

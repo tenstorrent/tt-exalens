@@ -33,6 +33,12 @@ def check_noc_id(noc_id: int | None, context: Context) -> int:
     return noc_id
 
 
+def check_4B_mode(use_4B_mode: bool | None, context: Context) -> bool:
+    if use_4B_mode is None:
+        return context.use_4B_mode
+    return use_4B_mode
+
+
 def validate_addr(addr: int) -> None:
     if addr < 0:
         raise TTException("addr must be greater than or equal to 0.")
@@ -81,6 +87,7 @@ def read_word_from_device(
         device_id (int, default 0):	ID number of device to read from.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
+        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
     Returns:
         int: Data read from the device.
@@ -102,6 +109,7 @@ def read_words_from_device(
     word_count: int = 1,
     context: Context | None = None,
     noc_id: int | None = None,
+    use_4B_mode: bool | None = None,
 ) -> list[int]:
     """
     Reads word_count four-byte words of data, starting from address 'addr' at specified location using specified noc.
@@ -113,6 +121,7 @@ def read_words_from_device(
         word_count (int, default 1): Number of 4-byte words to read.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
+        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
     Returns:
         list[int]: Data read from the device.
@@ -122,11 +131,14 @@ def read_words_from_device(
 
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
+    use_4B_mode = check_4B_mode(use_4B_mode, context)
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    bytes_data = context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, 4 * word_count)
+    bytes_data = context.server_ifc.read(
+        noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, 4 * word_count, use_4B_mode
+    )
     data = list(struct.unpack(f"<{word_count}I", bytes_data))
     return data
 
@@ -138,6 +150,7 @@ def read_from_device(
     num_bytes: int = 4,
     context: Context | None = None,
     noc_id: int | None = None,
+    use_4B_mode: bool | None = None,
 ) -> bytes:
     """
     Reads num_bytes of data starting from address 'addr' at specified location using specified noc.
@@ -158,11 +171,12 @@ def read_from_device(
 
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
+    use_4B_mode = check_4B_mode(use_4B_mode, context)
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    return context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes)
+    return context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes, use_4B_mode)
 
 
 def write_words_to_device(
@@ -172,6 +186,7 @@ def write_words_to_device(
     device_id: int = 0,
     context: Context | None = None,
     noc_id: int | None = None,
+    use_4B_mode: bool | None = None,
 ) -> int:
     """
     Writes data word to address 'addr' at specified location using specified noc.
@@ -183,6 +198,7 @@ def write_words_to_device(
         device_id (int, default 0): ID number of device to write to.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
+        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
     Returns:
         int: If the execution is successful, return value should be 4 (number of bytes written).
@@ -192,13 +208,14 @@ def write_words_to_device(
 
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
+    use_4B_mode = check_4B_mode(use_4B_mode, context)
 
     noc_loc = context.convert_loc_to_umd(coordinate)
     if isinstance(data, int):
         return context.server_ifc.write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
     byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data)
+    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data, use_4B_mode)
 
 
 def write_to_device(
@@ -208,6 +225,7 @@ def write_to_device(
     device_id: int = 0,
     context: Context | None = None,
     noc_id: int | None = None,
+    use_4B_mode: bool | None = None,
 ) -> int:
     """
     Writes data to address 'addr' at specified location using specified noc.
@@ -219,6 +237,7 @@ def write_to_device(
         device_id (int, default 0):	ID number of device to write to.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
+        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
     Returns:
         int: If the execution is successful, return value should be number of bytes written.
@@ -228,6 +247,7 @@ def write_to_device(
 
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
+    use_4B_mode = check_4B_mode(use_4B_mode, context)
 
     if isinstance(data, list):
         data = bytes(data)
@@ -236,7 +256,7 @@ def write_to_device(
         raise TTException("Data to write must not be empty.")
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
+    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data, use_4B_mode)
 
 
 def load_elf(
@@ -525,6 +545,7 @@ def top_callstack(
         elfs (list[str] | str | list[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
         offsets (list[int], int, optional): List of offsets for each ELF file. Default: None.
         context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+
     Returns:
         List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
     """
@@ -579,6 +600,7 @@ def callstack(
         stop_on_main (bool): If True, stops at the main function. Default: True.
         device_id (int): ID of the device on which the kernel is run. Default: 0.
         context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+
     Returns:
         List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
     """

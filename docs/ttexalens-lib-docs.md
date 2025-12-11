@@ -17,7 +17,7 @@ a singleton, as it can be explicitly provided to library functions.
 ## init_ttexalens
 
 ```
-init_ttexalens(wanted_devices=None, init_jtag=False, use_noc1=False, simulation_directory=None) -> Context
+init_ttexalens(wanted_devices=None, init_jtag=False, use_noc1=False, use_4B_mode=True, simulation_directory=None) -> Context
 ```
 
 
@@ -32,6 +32,7 @@ Interfacing device is local, through pybind.
 - `wanted_devices` *(list, optional)*: List of device IDs we want to connect to. If None, connect to all available devices.
 - `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
 - `use_noc1` *(bool)*: Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
+- `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
 - `simulation_directory` *(str, optional)*: If specified, starts the simulator from the given build output directory.
 
 
@@ -44,7 +45,7 @@ Interfacing device is local, through pybind.
 ## init_ttexalens_remote
 
 ```
-init_ttexalens_remote(ip_address=localhost, port=5555) -> Context
+init_ttexalens_remote(ip_address=localhost, port=5555, use_4B_mode=True) -> Context
 ```
 
 
@@ -58,6 +59,7 @@ Interfacing device is done remotely through TTExaLens client.
 
 - `ip_address` *(str)*: IP address of the TTExaLens server. Default is 'localhost'.
 - `port` *(int)*: Port number of the TTExaLens server interface. Default is 5555.
+- `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
 
 
 ### Returns
@@ -83,7 +85,7 @@ Get the runtime data and cluster description yamls through the TTExaLens interfa
 ## load_context
 
 ```
-load_context(server_ifc, use_noc1=False) -> Context
+load_context(server_ifc, use_noc1=False, use_4B_mode=True) -> Context
 ```
 
 
@@ -197,6 +199,7 @@ Reads one four-byte word of data, from address 'addr' at specified location usin
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
 
 ### Returns
@@ -208,7 +211,7 @@ Reads one four-byte word of data, from address 'addr' at specified location usin
 ## read_words_from_device
 
 ```
-read_words_from_device(location, addr, device_id=0, word_count=1, context=None, noc_id=None) -> int
+read_words_from_device(location, addr, device_id=0, word_count=1, context=None, noc_id=None, use_4B_mode=None) -> int
 ```
 
 
@@ -225,6 +228,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at specif
 - `word_count` *(int, default 1)*: Number of 4-byte words to read.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
 
 ### Returns
@@ -236,7 +240,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at specif
 ## read_from_device
 
 ```
-read_from_device(location, addr, device_id=0, num_bytes=4, context=None, noc_id=None) -> bytes
+read_from_device(location, addr, device_id=0, num_bytes=4, context=None, noc_id=None, use_4B_mode=None) -> bytes
 ```
 
 
@@ -264,7 +268,7 @@ Reads num_bytes of data starting from address 'addr' at specified location using
 ## write_words_to_device
 
 ```
-write_words_to_device(location, addr, data, device_id=0, context=None, noc_id=None) -> int
+write_words_to_device(location, addr, data, device_id=0, context=None, noc_id=None, use_4B_mode=None) -> int
 ```
 
 
@@ -281,6 +285,7 @@ Writes data word to address 'addr' at specified location using specified noc.
 - `device_id` *(int, default 0)*: ID number of device to write to.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
 
 ### Returns
@@ -292,7 +297,7 @@ Writes data word to address 'addr' at specified location using specified noc.
 ## write_to_device
 
 ```
-write_to_device(location, addr, data, device_id=0, context=None, noc_id=None) -> int
+write_to_device(location, addr, data, device_id=0, context=None, noc_id=None, use_4B_mode=None) -> int
 ```
 
 
@@ -309,6 +314,7 @@ Writes data to address 'addr' at specified location using specified noc.
 - `device_id` *(int, default 0)*: ID number of device to write to.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
 
 ### Returns
@@ -518,9 +524,11 @@ There is no stack walking, so the function will return the function at the given
 - `elfs` *(list[str] | str | list[ParsedElfFile] | ParsedElfFile)*: ELF files to be used for the callstack.
 - `offsets` *(list[int], int, optional)*: List of offsets for each ELF file. Default: None.
 - `context` *(Context)*: TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
-- `Returns`
-- `List`: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
+
+### Returns
+
+ *(List)*: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
 
 
@@ -547,9 +555,11 @@ Retrieves the callstack of the specified RISC core for a given ELF.
 - `stop_on_main` *(bool)*: If True, stops at the main function. Default: True.
 - `device_id` *(int)*: ID of the device on which the kernel is run. Default: 0.
 - `context` *(Context)*: TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
-- `Returns`
-- `List`: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
+
+### Returns
+
+ *(List)*: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
 
 
