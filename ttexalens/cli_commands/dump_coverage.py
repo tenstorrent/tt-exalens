@@ -37,7 +37,7 @@ from ttexalens.uistate import UIState
 from ttexalens.coverage import dump_coverage
 
 
-def run(cmd_text, context, ui_state: UIState) -> list:
+def run(cmd_text, context, ui_state: UIState) -> list[dict[str, str]]:
     dopt = command_parser.tt_docopt(
         command_metadata["description"],
         argv=cmd_text.split()[1:],

@@ -535,7 +535,7 @@ def top_callstack(
     elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile,
     offsets: int | None | list[int | None] = None,
     context: Context | None = None,
-) -> list:
+) -> list[CallstackEntry]:
 
     """
     Retrieves the top frame of the callstack for the specified PC on the given ELF.

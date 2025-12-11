@@ -194,7 +194,7 @@ class Tee:
 
 def redirect_output_to_file_and_terminal(
     file_path: str | None, show_terminal_output: bool = True, append: bool = False
-) -> AbstractContextManager:
+) -> AbstractContextManager[None]:
     if file_path is None:
         # No redirection needed
         return nullcontext()
@@ -235,11 +235,11 @@ def dict_to_table(dct):
 
 
 # Converts list of dictionaries with same keys to a table where every column is one dictionary.
-def dict_list_to_table(dicts: list[dict], table_name: str, column_names: list[str]) -> str:
+def dict_list_to_table(dicts: list[dict[str, int]], table_name: str, column_names: list[str]) -> str:
     keys = dicts[0].keys()
     data = []
     for key in keys:
-        row = [key]
+        row: list[str | int] = [key]
         for d in dicts:
             if key in d:
                 row.append(d[key])

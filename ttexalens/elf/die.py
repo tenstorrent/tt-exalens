@@ -5,6 +5,7 @@
 from __future__ import annotations
 import cxxfilt
 from elftools.dwarf.die import DIE as DWARF_DIE
+from elftools.dwarf.dwarf_expr import DWARFExprOp
 from elftools.dwarf.locationlists import (
     LocationExpr,
     LocationEntry as ListLocationEntry,
@@ -365,7 +366,7 @@ class ElfDie:
         return name
 
     @cached_property
-    def address_ranges(self) -> list[tuple]:
+    def address_ranges(self) -> list[tuple[int, int, bool]]:
         if "DW_AT_low_pc" in self.attributes and "DW_AT_high_pc" in self.attributes:
             return [
                 (
@@ -675,7 +676,7 @@ class ElfDie:
             return ElfVariable(variable_type, 0, FixedMemoryAccess(memory))
 
     def _evaluate_location_expression(
-        self, parsed_expression: list, frame_inspection: FrameInspection | None = None
+        self, parsed_expression: list[DWARFExprOp], frame_inspection: FrameInspection | None = None
     ) -> tuple[bool, Any | None]:
         from ttexalens.elf.variable import ElfVariable, FixedMemoryAccess
 

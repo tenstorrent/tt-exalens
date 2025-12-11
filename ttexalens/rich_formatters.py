@@ -229,7 +229,7 @@ class RichFormatter:
             grouping = self.flatten_grouping(grouping)
 
         for group_row in grouping:
-            tables: list = []
+            tables: list[Panel | Table] = []
             for group_name in group_row:
                 if group_name in data:
                     tables.append(self.create_data_table(group_name, columns, data[group_name], simple_print))
