@@ -75,11 +75,11 @@ jobs:
           if [ "$VERSION" = "latest" ]; then
             echo "release-name=Latest Release - Development Build" >> $GITHUB_OUTPUT
             echo "release-tag=latest" >> $GITHUB_OUTPUT
-            echo "generate-notes=true" >> $GITHUB_OUTPUT
+            echo "generate-notes=false" >> $GITHUB_OUTPUT
           else
             echo "release-name=Release v$VERSION" >> $GITHUB_OUTPUT
             echo "release-tag=v$VERSION" >> $GITHUB_OUTPUT
-            echo "generate-notes=false" >> $GITHUB_OUTPUT
+            echo "generate-notes=true" >> $GITHUB_OUTPUT
           fi
 
       - name: "Create GitHub Release"
