@@ -1,0 +1,19 @@
+name: "Release"
+description: "Release ttexalens wheel, triggered by updating VERSION on main."
+
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - "VERSION"
+
+run-name: "Release by @${{ github.actor }} for ${{ github.ref_name }}"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: "Build and release wheel of version specified in VERSION file"
+    uses: ./.github/workflows/release.yml
