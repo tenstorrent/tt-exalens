@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - "main"
+      - "onenezic/ccache-wheel"
 
 run-name: "Release latest by @${{ github.actor }} for ${{ github.ref_name }}"
 
