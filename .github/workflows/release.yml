@@ -68,11 +68,23 @@ jobs:
       - name: "List downloaded artifacts"
         run: ls -R
 
+      - name: "Set release name"
+        id: set-release-name
+        run: |
+          VERSION="${{ needs.prepare-release.outputs.version }}"
+          if [ "$VERSION" = "latest" ]; then
+            echo "release-name=Latest Release - Development Build" >> $GITHUB_OUTPUT
+            echo "release-tag=latest" >> $GITHUB_OUTPUT
+          else
+            echo "release-name=Release $VERSION" >> $GITHUB_OUTPUT
+            echo "release-tag=v$VERSION" >> $GITHUB_OUTPUT
+          fi
+
       - name: "Create GitHub Release"
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "v${{ needs.prepare-release.outputs.version }}"
-          name: Release v${{ needs.prepare-release.outputs.version }}
+          tag_name: ${{ steps.set-release-name.outputs.release-tag }}
+          name: ${{ steps.set-release-name.outputs.release-name }}
           prerelease: true
           generate_release_notes: true
           files: |
