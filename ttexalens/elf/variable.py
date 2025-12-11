@@ -154,7 +154,7 @@ class ElfVariable:
         """
         if self.__type_die.tag_is("pointer_type"):
             return self.dereference().get_member(member_name)
-        offset = 0
+        offset: int | None = 0
         child_die = self.__type_die.get_child_by_name(member_name)
         if child_die is None:
             offset, child_die = ElfVariable._resolve_unnamed_struct_union_member(self.__type_die, member_name)

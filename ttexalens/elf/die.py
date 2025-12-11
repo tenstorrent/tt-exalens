@@ -328,7 +328,7 @@ class ElfDie:
         """
         Return the name of the DIE
         """
-
+        name: str | None
         if "DW_AT_name" in self.attributes:
             name_value = self.attributes["DW_AT_name"].value
             if name_value is not None:
