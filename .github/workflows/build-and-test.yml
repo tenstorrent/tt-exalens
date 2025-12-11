@@ -50,14 +50,11 @@ jobs:
     strategy:
       matrix:
         ubuntu-version: ["22.04", "24.04"]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Build tt-exalens
-        uses: ./.github/workflows/build-ttexalens.yml
-        with:
-          runs-on: ubuntu-latest
-          docker-image: ${{ needs.build-image.outputs.public-docker-image }}
-          os: ubuntu-${{ matrix.ubuntu-version }}
+    uses: ./.github/workflows/build-ttexalens.yml
+    with:
+      runs-on: ubuntu-latest
+      docker-image: ${{ needs.build-image.outputs.public-docker-image[ matrix.ubuntu-version ] }}
+      os: ubuntu-${{ matrix.ubuntu-version }}
 
   set-latest:
     # Set the latest tag on the IRD image
@@ -76,7 +73,7 @@ jobs:
           password: ${{ secrets.GH_TOKEN }}
       - name: Set latest tag on the image
         run: |
-          DOCKER_CI_IMAGE=${{ needs.build-image.outputs.docker-image }}
+          DOCKER_CI_IMAGE=${{ needs.build-image.outputs.docker-image[ matrix.ubuntu-version ] }}
           DOCKER_TAG=$(echo $DOCKER_CI_IMAGE | sed 's/^.*://')
           CI_IMAGE_NAME=ghcr.io/${{ github.repository }}/tt-exalens-ci-ubuntu-${{ matrix.ubuntu-version }}
           echo "Setting latest tag on the image $CI_IMAGE_NAME:$DOCKER_TAG"
@@ -105,7 +102,7 @@ jobs:
       LOGGER_LEVEL: INFO
     runs-on: ${{ matrix.runner-info.runs-on }}
     container:
-      image: ${{ needs.build-image.outputs.docker-image }}
+      image: ${{ needs.build-image.outputs.docker-image[ matrix.ubuntu-version ] }}
       options: --device /dev/tenstorrent/0
       volumes:
         - /dev/hugepages:/dev/hugepages
@@ -176,7 +173,7 @@ jobs:
       VERBOSE: 5
     runs-on: ${{ matrix.runner-info.runs-on }}
     container:
-      image: ${{ needs.build-image.outputs.docker-image }}
+      image: ${{ needs.build-image.outputs.docker-image[ matrix.ubuntu-version ] }}
       options: --device /dev/tenstorrent/0
       volumes:
         - /dev/hugepages:/dev/hugepages
