@@ -33,7 +33,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 import ttexalens.tt_exalens_lib as lib
 from ttexalens.hardware.baby_risc_debug import get_register_index, get_register_name
-from ttexalens.hardware.risc_debug import RiscLocation
+from ttexalens.hardware.risc_debug import CallstackEntry, RiscLocation
 from ttexalens.uistate import UIState
 
 from ttexalens import command_parser
@@ -51,7 +51,7 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
     regs_to_include = [get_register_index(reg) for reg in regs_to_include]
 
     reg_value: dict[str, dict[int, int]] = {}
-    callstack_value: dict[str, list] = {}
+    callstack_value: dict[str, list[CallstackEntry]] = {}
     halted_state = {}
     reset_state = {}
 

@@ -50,7 +50,7 @@ class TTExaLensPybind(TTExaLensCommunicator):
 
     def __init__(
         self,
-        wanted_devices: list = [],
+        wanted_devices: list[int] = [],
         init_jtag=False,
         initialize_with_noc1=False,
         simulation_directory: str | None = None,

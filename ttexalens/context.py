@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from __future__ import annotations
 from abc import abstractmethod
 from functools import cached_property
-from typing import Iterable
+from typing import Iterable, TYPE_CHECKING
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
 from ttexalens.firmware import ELF
@@ -13,13 +14,24 @@ from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.tt_exalens_ifc import TTExaLensCommunicator
 
+if TYPE_CHECKING:
+    from ttexalens.device import Device
+
 # All-encompassing structure representing a TTExaLens context
 class Context:
-    def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc: util.YamlFile, short_name: str, use_noc1=False):
+    def __init__(
+        self,
+        server_ifc: TTExaLensCommunicator,
+        cluster_desc: util.YamlFile,
+        short_name: str,
+        use_noc1=False,
+        use_4B_mode=True,
+    ):
         self.server_ifc = server_ifc
         self._cluster_desc = cluster_desc
         self.short_name = short_name
         self.use_noc1 = use_noc1
+        self.use_4B_mode: bool = use_4B_mode
 
     def filter_commands(self, commands):
         self.commands = []
@@ -28,15 +40,15 @@ class Context:
                 self.commands.append(cmd)
 
     @cached_property
-    def devices(self):
-        from ttexalens import device
+    def devices(self) -> dict[int, Device]:
+        from ttexalens.device import Device
 
         device_ids = self.device_ids
-        devices: dict[int, device.Device] = dict()
+        devices: dict[int, Device] = dict()
         for device_id in device_ids:
             device_desc_path = self.server_ifc.get_device_soc_description(device_id)
             util.DEBUG(f"Loading device {device_id} from {device_desc_path}")
-            devices[device_id] = device.Device.create(
+            devices[device_id] = Device.create(
                 self.arch,
                 device_id=device_id,
                 cluster_desc=self.cluster_desc.root,
@@ -50,13 +62,13 @@ class Context:
         return self._cluster_desc
 
     @cached_property
-    def device_ids(self) -> SortedSet:
+    def device_ids(self) -> SortedSet[int]:
         device_ids: Iterable[int]
         try:
             device_ids = self.server_ifc.get_device_ids()
         except:
             device_ids = []
-        return util.set(d for d in device_ids)
+        return SortedSet(d for d in device_ids)
 
     @cached_property
     def arch(self):
@@ -78,15 +90,15 @@ class Context:
         pass
 
     def convert_loc_to_umd(self, location: OnChipCoordinate) -> tuple[int, int]:
-        return location.to("noc0")
+        return location._noc0_coord
 
     def __repr__(self):
         return f"context"
 
 
 class LimitedContext(Context):
-    def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc_yaml, use_noc1=False):
-        super().__init__(server_ifc, cluster_desc_yaml, "limited", use_noc1)
+    def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc_yaml, use_noc1=False, use_4B_mode=True):
+        super().__init__(server_ifc, cluster_desc_yaml, "limited", use_noc1, use_4B_mode)
         self.loaded_elfs: dict[RiscLocation, str] = {}
 
     def get_risc_elf_path(self, risc_location: RiscLocation) -> str | None:

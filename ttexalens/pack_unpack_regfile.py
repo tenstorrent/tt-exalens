@@ -177,7 +177,7 @@ def unpack_data(data, df: int | TensixDataFormat, signed: bool):
 # Unpacking data read with direct access require different approach
 def unpack_value_direct_access(value: int, df: TensixDataFormat, signed: bool) -> int | float:
     if df == TensixDataFormat.Float32:
-        return struct.unpack(">f", value.to_bytes(4, "big"))[0]
+        return float(struct.unpack(">f", value.to_bytes(4, "big"))[0])
     # Because in ALU register format for dest is INT32 for both INT32 and UINT32 we need to check sign bit
     elif df == TensixDataFormat.Int32 and signed:
         # If the sign bit is set, we need to convert it to a signed integer
@@ -194,7 +194,7 @@ def unpack_value_direct_access(value: int, df: TensixDataFormat, signed: bool) -
         raise ValueError(f"Unsupported data format {df} for unpacking.")
 
 
-def unpack_data_direct_access(data: list[int], df: int | TensixDataFormat, signed: bool):
+def unpack_data_direct_access(data: list[int], df: int | TensixDataFormat, signed: bool) -> list[int | float]:
     if isinstance(df, int):
         df = TensixDataFormat(df)
 

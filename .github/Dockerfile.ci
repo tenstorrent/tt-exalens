@@ -1,4 +1,5 @@
-FROM ubuntu:22.04
+ARG UBUNTU_VERSION=22.04
+FROM ubuntu:${UBUNTU_VERSION}
 SHELL ["/bin/bash", "-c"]
 
 RUN mkdir /home/workdir
@@ -36,20 +37,6 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     python3-wheel
 
-# Upgrade to latest pip
-RUN pip install --upgrade pip
-
-# Copy the requirements files for pip
-COPY ttexalens/requirements.txt .
-COPY ttexalens/dev-requirements.txt .
-COPY test/test_requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install --no-cache-dir -r dev-requirements.txt
-RUN pip install --no-cache-dir -r test_requirements.txt
-RUN pip install wheel build setuptools
-
 # Install build tools
 RUN apt-get update && apt-get install -y \
     ccache \
@@ -75,3 +62,18 @@ RUN apt install -y clang-format-17 && \
 
 # Clean package cache
 RUN apt-get clean
+
+# Remove externally-managed marker (Ubuntu 24.04+) and upgrade to latest pip
+RUN rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED && \
+    pip install --upgrade pip --ignore-installed
+
+# Copy the requirements files for pip
+COPY ttexalens/requirements.txt .
+COPY ttexalens/dev-requirements.txt .
+COPY test/test_requirements.txt .
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r dev-requirements.txt
+RUN pip install --no-cache-dir -r test_requirements.txt
+RUN pip install wheel build setuptools

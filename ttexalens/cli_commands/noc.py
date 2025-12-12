@@ -335,7 +335,7 @@ def display_grouped_data(
 ###############################################################################
 # Main Command Entry
 ###############################################################################
-def run(cmd_text: str, context: Context, ui_state: UIState) -> list:
+def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, str]]:
     """
     Main entry point for the NOC command.
 

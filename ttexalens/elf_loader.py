@@ -243,12 +243,14 @@ class ElfLoader:
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
 
-    def load_elf(self, elf_path: str, return_start_address: bool = False) -> None | int:
+    def load_elf(self, elf_path: str, return_start_address: bool = False) -> int | None:
         # Risc must be in reset
         assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.risc_location} is not in reset."
 
         # Load elf file to the L1 memory; avoid writing to private sections
-        init_section_address = self.load_elf_sections(elf_path, loader_data=".loader_init", loader_code=".loader_code")
+        init_section_address: int | None = self.load_elf_sections(
+            elf_path, loader_data=".loader_init", loader_code=".loader_code"
+        )
         assert init_section_address is not None, "No .init section found in the ELF file"
 
         if return_start_address:
