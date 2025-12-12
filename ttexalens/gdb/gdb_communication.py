@@ -119,11 +119,11 @@ GDB_ASCII_COMMA = ord(",")
 
 # This class is used to read messages from GDB
 class GdbInputStream:
-    def __init__(self, socket: ClientSocket, output_stream: IO[str] | None = None):
+    def __init__(self, socket: ClientSocket, error_stream: IO[str] | None = None):
         self.socket = socket
         self.input_buffer = bytes()
         self.next_message = bytearray()
-        self.output_stream = output_stream
+        self.error_stream = error_stream
 
     def ensure_input_buffer(self, position: int = 0):
         # Check if input buffer is empty
@@ -154,7 +154,7 @@ class GdbInputStream:
             # Respond with ack error, discard input buffer and try to read next message
             util.ERROR(
                 f"GDB message parsing error: Unexpected character at start of message '{self.input_buffer[0:1].decode()}'",
-                file=self.output_stream,
+                file=self.error_stream,
             )
             self.socket.write(b"-")
             self.input_buffer = bytes()
@@ -211,7 +211,7 @@ class GdbInputStream:
         if not correct_checksum:
             util.ERROR(
                 f"GDB message parsing error: Unexpected checksum. expected: '{checksum1:X}{checksum2:X}'",
-                file=self.output_stream,
+                file=self.error_stream,
             )
             self.socket.write(b"-")
             return self.read()
