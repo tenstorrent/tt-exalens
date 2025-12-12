@@ -154,7 +154,7 @@ class ElfVariable:
         """
         if self.__type_die.tag_is("pointer_type"):
             return self.dereference().get_member(member_name)
-        offset = 0
+        offset: int | None = 0
         child_die = self.__type_die.get_child_by_name(member_name)
         if child_die is None:
             offset, child_die = ElfVariable._resolve_unnamed_struct_union_member(self.__type_die, member_name)
@@ -245,7 +245,7 @@ class ElfVariable:
         # For arrays, calculate total number of elements in the first dimension
         for child in self.__type_die.iter_children():
             if "DW_AT_upper_bound" in child.attributes:
-                upper_bound = child.attributes["DW_AT_upper_bound"].value
+                upper_bound: int = child.attributes["DW_AT_upper_bound"].value
                 return upper_bound + 1  # Return first dimension size
 
         # If no upper bound found, this might be a flexible array member
@@ -301,9 +301,9 @@ class ElfVariable:
         if type.tag_is("pointer_type"):
             return self.dereference().get_address()
         if type.name == "float":
-            return struct.unpack("f", value_bytes)[0]
+            return float(struct.unpack("f", value_bytes)[0])
         elif type.name == "double":
-            return struct.unpack("d", value_bytes)[0]
+            return float(struct.unpack("d", value_bytes)[0])
         elif type.name == "bool":
             return bool(int.from_bytes(value_bytes, byteorder="little"))
         else:
@@ -360,7 +360,7 @@ class ElfVariable:
         """
         try:
             # Try to get the value for base types
-            return self.read_value() == other
+            return bool(self.read_value() == other)
         except Exception:
             # If get_value() fails, check if this is an array and other is a sequence
             try:
@@ -385,26 +385,26 @@ class ElfVariable:
         Less than comparison. Works with base types only.
         """
         try:
-            return self.read_value() < other
+            return bool(self.read_value() < other)
         except Exception:
             return NotImplemented
 
     def __le__(self, other) -> bool:
         """Less than or equal comparison."""
-        return self < other or self == other
+        return bool(self < other) or self == other
 
     def __gt__(self, other) -> bool:
         """
         Greater than comparison. Works with base types only.
         """
         try:
-            return self.read_value() > other
+            return bool(self.read_value() > other)
         except Exception:
             return NotImplemented
 
     def __ge__(self, other) -> bool:
         """Greater than or equal comparison."""
-        return self > other or self == other
+        return bool(self > other) or self == other
 
     # Arithmetic operators
     def __add__(self, other):
@@ -666,7 +666,7 @@ class ElfVariable:
             if self.__type_die.tag_is("enumeration_type"):
                 for entry in self.__type_die.iter_children():
                     if entry.value == value and entry.path is not None:
-                        return entry.path
+                        return str(entry.path)
             return str(value)
         except Exception:
             # If get_value() fails (e.g., not a base type), fall back to __repr__

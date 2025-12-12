@@ -32,7 +32,7 @@ class FrameDescription:
             # TODO #761: Figure out how to handle all types of rules (CFARule, RegisterRule)
         return None
 
-    def read_register(self, register_index: int, cfa: int):
+    def read_register(self, register_index: int, cfa: int) -> int:
         if self.current_fde_entry is not None and register_index in self.current_fde_entry:
             register_rule = self.current_fde_entry[register_index]
             if register_rule.type == "OFFSET":
@@ -47,15 +47,16 @@ class FrameDescription:
         if self.current_fde_entry is not None and self.fde.cie is not None:
             cfa_location = self.current_fde_entry["cfa"]
             register_index = cfa_location.reg
+            offset: int = cfa_location.offset
 
             # Check if it is first CFA
             if current_cfa is None:
                 # We have rule on how to calculate CFA (register_value + offset)
-                return self.risc_debug.read_gpr(register_index) + cfa_location.offset
+                return self.risc_debug.read_gpr(register_index) + offset
             else:
                 # If register is not stored in the current frame, we can calculate it from the previous CFA
                 if not register_index in self.current_fde_entry:
-                    return current_cfa + cfa_location.offset
+                    return current_cfa + offset
 
                 # Just read stored value of the register in current frame
                 return self.read_register(register_index, current_cfa)
