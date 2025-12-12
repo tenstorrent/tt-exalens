@@ -72,49 +72,45 @@ class FixedMemoryAccess(MemoryAccess):
 
 
 class RiscDebugMemoryAccess(MemoryAccess):
-    def __init__(self, risc_debug: RiscDebug):
+    def __init__(self, risc_debug: RiscDebug, require_halt: bool = True, restricted_access: bool = True):
         self._risc_debug = risc_debug
-        private_memory = risc_debug.get_data_private_memory()
-        if private_memory is None or not risc_debug.can_debug():
-            self.private_memory = MemoryBlock(0, DeviceAddress(-1))
-        else:
-            self.private_memory = private_memory
+        self._require_halt = require_halt  # require the RISC to be halted for memory access
+        self._restricted_access = restricted_access  # restrict access to only L1 and Data Private Memory
 
     def read(self, address: int, size_bytes: int) -> bytes:
-        if self.private_memory.contains_private_address(address):
-            # We need to read aligned to 4 bytes
-            word_size = 4
-            aligned_start = address - (address % word_size)
-            aligned_end = ((address + size_bytes + word_size - 1) // word_size) * word_size
+        self.validate_access(address, size_bytes)
 
-            # Figure out how many words to read
-            words_to_read = (aligned_end - aligned_start) // word_size
-
+        if self._require_halt and self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
-                words = [self._risc_debug.read_memory(aligned_start + i * word_size) for i in range(words_to_read)]
-
-            # Convert words to bytes and remove extra bytes
-            bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in words)
-            return bytes_data[address - aligned_start : address - aligned_start + size_bytes]
+                return self._risc_debug.read_memory_bytes(address, size_bytes)
         else:
-            from ttexalens.tt_exalens_lib import read_from_device
-
-            return read_from_device(
-                location=self._risc_debug.risc_location.location, addr=address, num_bytes=size_bytes
-            )
+            return self._risc_debug.read_memory_bytes(address, size_bytes)
 
     def write(self, address: int, data: bytes) -> None:
-        if self.private_memory.contains_private_address(address):
-            if address % 4 != 0 or len(data) % 4 != 0:
-                raise NotImplementedError("Writing unaligned data to private memory is not implemented yet.")
-            with self._risc_debug.ensure_private_memory_access():
-                for i in range(0, len(data), 4):
-                    word = int.from_bytes(data[i : i + 4], byteorder="little")
-                    self._risc_debug.write_memory(address + i, word)
-        else:
-            from ttexalens.tt_exalens_lib import write_to_device
+        self.validate_access(address, len(data))
 
-            write_to_device(location=self._risc_debug.risc_location.location, addr=address, data=data)
+        if self._require_halt and self._risc_debug.can_debug():
+            with self._risc_debug.ensure_private_memory_access():
+                self._risc_debug.write_memory_bytes(address, data)
+        else:
+            self._risc_debug.write_memory_bytes(address, data)
+
+    def validate_access(self, address: int, size_bytes: int) -> None:
+        if self._restricted_access:
+            l1: MemoryBlock = self._risc_debug.get_l1()
+            data_private_memory: MemoryBlock | None = self._risc_debug.get_data_private_memory()
+            inside_l1: bool = l1.contains_private_address(address) and l1.contains_private_address(
+                address + size_bytes - 1
+            )
+            inside_data_private_memory: bool = (
+                data_private_memory is not None
+                and data_private_memory.contains_private_address(address)
+                and data_private_memory.contains_private_address(address + size_bytes - 1)
+            )
+            if not inside_l1 and not inside_data_private_memory:
+                raise Exception(
+                    f"RiscDebugMemoryAccess restricted access: Address 0x{address:08x} is outside of L1 and Data Private Memory"
+                )
 
 
 class CachedReadMemoryAccess(MemoryAccess):

@@ -426,26 +426,74 @@ class BabyRiscDebugHardware:
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_REGISTER)
 
+    def read_memory_bytes(self, addr, size_bytes):
+        if self.enable_asserts:
+            self.assert_halted()
+        if self.verbose:
+            util.INFO(f"  read_memory_bytes(0x{addr:08x}, {size_bytes})")
+
+        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_MEMORY)
+
+        words = list[int]
+        words_to_read = (size_bytes + 4 - 1) // 4
+        for offset in range(words_to_read):
+            new_addr = addr + offset * 4
+            self.__riscv_write(REG_COMMAND_ARG_0, new_addr)
+            word: int = self.__riscv_read(REG_COMMAND_RETURN_VALUE)
+            words.append(word)
+            if self.verbose:
+                util.INFO(f"                             read -> 0x{new_addr:08x}, 0x{word:08x}")
+
+        result = b"".join(word.to_bytes(4, byteorder="little") for word in words)
+        return result[:size_bytes]
+
     def read_memory(self, addr):
         if self.enable_asserts:
             self.assert_halted()
         if self.verbose:
             util.INFO(f"  read_memory(0x{addr:08x})")
-        self.__riscv_write(REG_COMMAND_ARG_0, addr)
-        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_MEMORY)
-        data = self.__riscv_read(REG_COMMAND_RETURN_VALUE)
+
+        return int.from_bytes(self.read_memory_bytes(addr, 4), byteorder="little")
+
+    def write_memory_bytes(self, addr, data):
+        if self.enable_asserts:
+            self.assert_halted()
         if self.verbose:
-            util.INFO(f"                             read -> 0x{data:08x}")
-        return data
+            util.INFO(f"  write_memory_bytes(0x{addr:08x}, {len(data)} bytes)")
+
+        words = list[int]
+        for i in range(0, len(data), 4):
+            word = int.from_bytes(data[i : i + 4], byteorder="little")
+            words.append(word)
+
+        # Check for start as well as end alignment
+        # TODO
+
+        # Make sure to not overwrite extra bytes in the last word if we have a partial word
+        if len(data) % 4 != 0:
+            last_word_start = (len(data) // 4) * 4
+            remainder = len(data) % 4
+            last_word = int.from_bytes(data[last_word_start:] + b"\x00" * (4 - remainder), byteorder="little")
+            original_word = self.read_memory(addr + last_word_start)
+            last_word = (last_word & ((1 << (remainder * 8)) - 1)) | (original_word & (~((1 << (remainder * 8)) - 1)))
+            words[-1] = last_word
+
+        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_MEMORY)
+
+        for offset, word in enumerate(words):
+            new_addr = addr + offset * 4
+            self.__riscv_write(REG_COMMAND_ARG_0, new_addr)
+            self.__riscv_write(REG_COMMAND_ARG_1, word)
+            if self.verbose:
+                util.INFO(f"                             write <- 0x{new_addr:08x}, 0x{word:08x}")
 
     def write_memory(self, addr, value):
         if self.enable_asserts:
             self.assert_halted()
         if self.verbose:
             util.INFO(f"  write_memory(0x{addr:08x}, 0x{value:08x})")
-        self.__riscv_write(REG_COMMAND_ARG_1, value)
-        self.__riscv_write(REG_COMMAND_ARG_0, addr)
-        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_MEMORY)
+
+        self.write_memory_bytes(addr, value.to_bytes(4, byteorder="little"))
 
     def __update_watchpoint_setting(self, id, value):
         assert 0 <= value <= 15
@@ -705,6 +753,13 @@ class BabyRiscDebug(RiscDebug):
         with self.ensure_halted():
             return self.read_gpr(32)
 
+    def read_memory_bytes(self, address: int, size_bytes: int) -> bytes:
+        if self.enable_asserts:
+            self.assert_not_in_reset()
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        return self.debug_hardware.read_memory_bytes(address, size_bytes)
+
     def read_memory(self, address: int) -> int:
         if self.enable_asserts:
             self.assert_not_in_reset()
@@ -712,7 +767,14 @@ class BabyRiscDebug(RiscDebug):
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
         return self.debug_hardware.read_memory(address)
 
-    def write_memory(self, address: int, value: int):
+    def write_memory_bytes(self, address: int, data: bytes):
+        if self.enable_asserts:
+            self.assert_not_in_reset()
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        self.debug_hardware.write_memory_bytes(address, data)
+
+    def write_memory(self, address: int, value: int) -> None:
         if self.enable_asserts:
             self.assert_not_in_reset()
         self.assert_debug_hardware()
@@ -761,6 +823,9 @@ class BabyRiscDebug(RiscDebug):
 
     def can_debug(self) -> bool:
         return self.risc_info.debug_hardware_present
+
+    def get_l1(self) -> MemoryBlock:
+        return self.risc_info.l1
 
     def get_data_private_memory(self) -> MemoryBlock | None:
         return self.risc_info.data_private_memory
