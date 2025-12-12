@@ -26,11 +26,11 @@ class ttexalens_implementation {
         return {};
     }
     virtual std::optional<std::vector<uint8_t>> read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                                     uint64_t address, uint32_t size) {
+                                                     uint64_t address, uint32_t size, bool use_4B_mode) {
         return {};
     }
     virtual std::optional<uint32_t> write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
-                                          uint64_t address, const uint8_t* data, uint32_t size) {
+                                          uint64_t address, const uint8_t* data, uint32_t size, bool use_4B_mode) {
         return {};
     }
     virtual std::optional<uint32_t> pci_read32_raw(uint8_t chip_id, uint64_t address) { return {}; }

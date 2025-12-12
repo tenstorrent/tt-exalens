@@ -134,6 +134,7 @@ class ParsedElfFile:
     def __init__(self, elf: ELFFile, elf_file_path: str):
         self.elf = elf
         self.elf_file_path = elf_file_path
+        self.loaded_offset = 0
 
     @cached_property
     def _dwarf(self) -> ElfDwarf:
@@ -172,7 +173,7 @@ class ParsedElfFile:
             text_sh = self.elf.get_section_by_name(".firmware_text")
         if text_sh is None:
             raise ValueError(f"Could not locate text section in {self.elf_file_path}.")
-        return text_sh["sh_addr"]
+        return int(text_sh["sh_addr"])
 
     @cached_property
     def symbols(self):
@@ -194,7 +195,7 @@ class ParsedElfFile:
         declaration_die = None
         for cu in self._dwarf.iter_CUs():
             index = 0
-            die = cu.top_DIE
+            die: ElfDie | None = cu.top_DIE
             while index < len(names) and die is not None:
                 die = die.get_child_by_name(names[index])
                 index += 1
@@ -215,12 +216,12 @@ class ParsedElfFile:
 
     def get_enum_value(self, name: str, allow_fallback: bool = False) -> int | None:
         # Try to use fast lookup first
-        die = self.find_die_by_name(name)
+        die: ElfDie | None = self.find_die_by_name(name)
         if die is None or die.category != "enumerator":
             # Fallback to full lookup
             die = self.enumerators.get(name) if allow_fallback else None
         if die is not None:
-            return die.value
+            return int(die.value)
         return None
 
     def get_global(self, name: str, mem_access: MemoryAccess, allow_fallback: bool = False) -> ElfVariable:

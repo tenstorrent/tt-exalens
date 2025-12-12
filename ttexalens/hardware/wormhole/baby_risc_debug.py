@@ -34,4 +34,4 @@ class WormholeBabyRiscDebug(BabyRiscDebug):
             return super().read_gpr(register_index)
         else:
             assert self.noc_block.debug_bus is not None, "Debug bus is not initialized."
-            return self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc")
+            return int(self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc"))

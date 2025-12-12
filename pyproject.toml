@@ -2,3 +2,42 @@
 # Minimum requirements for the build system to execute.
 requires = ["setuptools>=61.0", "nanobind", "typing-extensions"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "tt-exalens"
+dynamic = ["version", "dependencies", "optional-dependencies"]
+authors = [
+    { name = "Tenstorrent", email = "foundationsw-dbg@tenstorrent.com" }
+]
+description = "A low level hardware debugger"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10, !=3.11.*, <3.13"
+keywords = ["debugging", "tenstorrent"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: C++",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Hardware",
+]
+
+[project.urls]
+"Homepage" = "https://tenstorrent.com"
+"Bug Reports" = "https://github.com/tenstorrent/tt-exalens/issues"
+"Source" = "https://github.com/tenstorrent/tt-exalens"
+"Documentation" = "https://github.com/tenstorrent/tt-exalens/blob/main/README.md"
+
+[project.scripts]
+tt-lens = "ttexalens.cli:main"
+tt-exalens = "ttexalens.cli:main"
+
+[tool.setuptools.dynamic]
+version = {file = "VERSION"}
+dependencies = {file = ["ttexalens/requirements.txt"]}
+optional-dependencies.test = {file = ["test/test_requirements.txt"]}
+optional-dependencies.dev = {file = ["ttexalens/dev-requirements.txt"]}

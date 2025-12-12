@@ -153,8 +153,8 @@ class Device(TTObject):
                 self._noc0_to_block_type[loc._noc0_coord] = block_type
 
         # Fill in coordinate maps from UMD coordinate manager
-        self._from_noc0 = {}
-        self._to_noc0 = {}
+        self._from_noc0: dict[tuple[tuple[int, int], str], tuple[tuple[int, int], str]] = {}
+        self._to_noc0: dict[tuple[tuple[int, int], str, str], tuple[int, int]] = {}
         umd_supported_coordinates = ["noc1", "logical", "translated"]
         unique_coordinates = ["noc1", "translated"]
         for noc0_location, block_type in self._noc0_to_block_type.items():
@@ -213,7 +213,7 @@ class Device(TTObject):
         pass
 
     @cache
-    def get_blocks(self, block_type="functional_workers"):
+    def get_blocks(self, block_type: str = "functional_workers") -> list[NocBlock]:
         """
         Returns all blocks of a given type
         """
@@ -269,7 +269,7 @@ class Device(TTObject):
         return self._block_locations[block_type]
 
     @cached_property
-    def _block_locations(self):
+    def _block_locations(self) -> dict[str, list[OnChipCoordinate]]:
         """
         Returns locations of all blocks as dictionary of tuples (unchanged coordinates from YAML)
         """
