@@ -89,7 +89,7 @@ class GdbServer(threading.Thread):
         self._last_available_processes: dict[
             RiscLocation, GdbProcess
         ] = {}  # Dictionary of last executed available processes that can be debugged (key: pid)
-        self.output_stream: IO[str] | None = output_stream 
+        self.output_stream: IO[str] | None = output_stream
 
     @property
     def available_processes(self):
@@ -227,11 +227,13 @@ class GdbServer(threading.Thread):
             address = parser.parse_hex()
             if address is not None:
                 util.WARN(
-                    f"GDB: client want to continue at address: {address}, but we don't support that. We will continue at current address."
-                , file=self.output_stream)
+                    f"GDB: client want to continue at address: {address}, but we don't support that. We will continue at current address.",
+                    file=self.output_stream,
+                )
             util.ERROR(
-                f"GDB: client uses single threaded continue instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message"
-            , file=self.output_stream)
+                f"GDB: client uses single threaded continue instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message",
+                file=self.output_stream,
+            )
             writer.append(b"E01")
         elif parser.parse(
             b"C"
@@ -307,7 +309,10 @@ class GdbServer(threading.Thread):
             # ‘H op thread-id’
             op = parser.read_char()
             thread_id = parser.parse_thread_id()
-            util.VERBOSE(f"GDB: Set thread {thread_id} and prepare for op '{chr(op) if op else '[EOM]'}'", file=self.output_stream)
+            util.VERBOSE(
+                f"GDB: Set thread {thread_id} and prepare for op '{chr(op) if op else '[EOM]'}'",
+                file=self.output_stream,
+            )
             if self.current_process is None or thread_id is None:
                 # Respond that we are not debugging anything at the moment
                 writer.append(b"E01")
@@ -324,7 +329,10 @@ class GdbServer(threading.Thread):
                         # Every time before sending message with actual pid/thread id gdb sends Hgp0.0
                         if not (thread_id.process_id == 0 and thread_id.thread_id == 0):
                             # Unknown process!!!
-                            util.ERROR(f"GDB: Unknown process id in self.debugging_threads: {thread_id.process_id}", file=self.output_stream)
+                            util.ERROR(
+                                f"GDB: Unknown process id in self.debugging_threads: {thread_id.process_id}",
+                                file=self.output_stream,
+                            )
                         writer.append(b"E01")
                         return True
                     thread_id = t
@@ -333,7 +341,10 @@ class GdbServer(threading.Thread):
                 process = self.available_processes.get(thread_id.process_id)
                 if process is None:
                     # Unknown process!!!
-                    util.ERROR(f"GDB: Unknown process id in self.available_processes: {thread_id.process_id}", file=self.output_stream)
+                    util.ERROR(
+                        f"GDB: Unknown process id in self.available_processes: {thread_id.process_id}",
+                        file=self.output_stream,
+                    )
                     writer.append(b"E01")
                 else:
                     self.current_process = process
@@ -599,11 +610,13 @@ class GdbServer(threading.Thread):
             address = parser.parse_hex()
             if address is not None:
                 util.WARN(
-                    f"GDB: client want to single step at address: {address}, but we don't support that. We will single step at current address."
-                , file=self.output_stream)
+                    f"GDB: client want to single step at address: {address}, but we don't support that. We will single step at current address.",
+                    file=self.output_stream,
+                )
             util.ERROR(
-                f"GDB: client uses single threaded single step instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message"
-            , file=self.output_stream)
+                f"GDB: client uses single threaded single step instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message",
+                file=self.output_stream,
+            )
             writer.append(b"E01")
         elif parser.parse(b"S"):  # Step with signal.
             # ‘S sig[;addr]’
@@ -638,7 +651,10 @@ class GdbServer(threading.Thread):
             if process is None:
                 writer.append(b"E01")
             elif self.debugging_threads.get(process.process_id) is not None:
-                util.WARN(f"GDB: attaching to process that we are already debugging: {process.process_id}", file=self.output_stream)
+                util.WARN(
+                    f"GDB: attaching to process that we are already debugging: {process.process_id}",
+                    file=self.output_stream,
+                )
                 writer.append(b"E01")
             else:
                 try:
@@ -698,13 +714,19 @@ class GdbServer(threading.Thread):
                     signal = parser.parse_hex()  # ignore signal
                 elif action == 116:  # 't' - stop
                     if not self.is_non_stop:
-                        util.WARN(f"GDB: client wanted to stop thread, but we are not in non-stop mode", file=self.output_stream)
+                        util.WARN(
+                            f"GDB: client wanted to stop thread, but we are not in non-stop mode",
+                            file=self.output_stream,
+                        )
                         writer.append(b"E01")
                         return True
                     thread_action = "t"
                 else:
                     # Unsupported action
-                    util.WARN(f"GDB: unsupported continue action: {chr(action) if action else '[EOM]'}", file=self.output_stream)
+                    util.WARN(
+                        f"GDB: unsupported continue action: {chr(action) if action else '[EOM]'}",
+                        file=self.output_stream,
+                    )
                     writer.append(b"E01")
                     return True
 
@@ -716,7 +738,9 @@ class GdbServer(threading.Thread):
                         if thread_id.process_id == -1:
                             thread_id = None
                         elif thread_id.process_id not in self.debugging_threads:
-                            util.WARN(f"GDB: we are not debugging process id: {thread_id.process_id}", file=self.output_stream)
+                            util.WARN(
+                                f"GDB: we are not debugging process id: {thread_id.process_id}", file=self.output_stream
+                            )
                             writer.append(b"E01")
                             return True
                 else:
@@ -869,7 +893,9 @@ class GdbServer(threading.Thread):
             # ‘vFile:open: filename, flags, mode’
             filename = parser.read_until(GDB_ASCII_COMMA)
             if filename is None:
-                util.ERROR(f"GDB: Something wrong with filename of vFile:open: {parser.data!r}", file=self.output_stream)
+                util.ERROR(
+                    f"GDB: Something wrong with filename of vFile:open: {parser.data!r}", file=self.output_stream
+                )
                 writer.append(b"F-1")
                 return True
             filename = filename.decode()
@@ -878,7 +904,9 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             mode = parser.parse_hex()
             if flags is None or mode is None:
-                util.ERROR(f"GDB: Something wrong with flags or mode of vFile:open: {parser.data!r}", file=self.output_stream)
+                util.ERROR(
+                    f"GDB: Something wrong with flags or mode of vFile:open: {parser.data!r}", file=self.output_stream
+                )
                 writer.append(b"F-1")
                 return True
             result = self.file_server.open(filename, flags, mode)
@@ -905,7 +933,10 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             offset = parser.parse_hex()
             if fd is None or count is None or offset is None:
-                util.ERROR(f"GDB: Something wrong with fd, count or offset of vFile:pread: {parser.data!r}", file=self.output_stream)
+                util.ERROR(
+                    f"GDB: Something wrong with fd, count or offset of vFile:pread: {parser.data!r}",
+                    file=self.output_stream,
+                )
                 writer.append(b"F-1")
                 return True
             pread_result = self.file_server.pread(fd, count, offset)
@@ -928,7 +959,10 @@ class GdbServer(threading.Thread):
             data = parser.read_rest()
             writer.append(b"F-1")
             if fd is None or data is None or offset is None:
-                util.ERROR(f"GDB: Something wrong with fd, data or offset of vFile:pwrite: {parser.data!r}", file=self.output_stream)
+                util.ERROR(
+                    f"GDB: Something wrong with fd, data or offset of vFile:pwrite: {parser.data!r}",
+                    file=self.output_stream,
+                )
                 writer.append(b"F-1")
                 return True
             pwrite_result = self.file_server.pwrite(fd, offset, data)

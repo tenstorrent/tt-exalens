@@ -154,7 +154,7 @@ class GdbInputStream:
             # Respond with ack error, discard input buffer and try to read next message
             util.ERROR(
                 f"GDB message parsing error: Unexpected character at start of message '{self.input_buffer[0:1].decode()}'",
-                file=self.output_stream
+                file=self.output_stream,
             )
             self.socket.write(b"-")
             self.input_buffer = bytes()
@@ -209,7 +209,10 @@ class GdbInputStream:
 
         # Was checksum correct
         if not correct_checksum:
-            util.ERROR(f"GDB message parsing error: Unexpected checksum. expected: '{checksum1:X}{checksum2:X}'", file=self.output_stream)
+            util.ERROR(
+                f"GDB message parsing error: Unexpected checksum. expected: '{checksum1:X}{checksum2:X}'",
+                file=self.output_stream,
+            )
             self.socket.write(b"-")
             return self.read()
         return GdbMessageParser(bytes(self.next_message))
