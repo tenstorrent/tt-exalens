@@ -158,7 +158,7 @@ class GdbServer(threading.Thread):
                 self.file_server.close_all()
 
     def process_client(self, client: ClientSocket):
-        util.VERBOSE("GDB client connected", file=self.output_stream)
+        util.VERBOSE("GDB client connected")
         self.current_process = None
         self.debugging_threads.clear()
         input_stream = GdbInputStream(client, self.output_stream)
@@ -172,18 +172,18 @@ class GdbServer(threading.Thread):
                 if self.process_message(parser, writer):
                     if should_ack:
                         client.write(b"+")
-                        util.VERBOSE(f"sent response to GDB: +", file=self.output_stream)
+                        util.VERBOSE(f"sent response to GDB: +")
                     try:
-                        util.VERBOSE(f"sent response to GDB: {writer.data.decode()}", file=self.output_stream)
+                        util.VERBOSE(f"sent response to GDB: {writer.data.decode()}")
                     except:
                         # We ignore error if we cannot decode message
                         pass
                     writer.send()
             except Exception as e:
                 client.write(b"-")
-                util.VERBOSE(f"sent response to GDB: -", file=self.output_stream)
+                util.VERBOSE(f"sent response to GDB: -")
                 util.ERROR(f"GDB exception: {e}", file=self.output_stream)
-        util.VERBOSE("GDB client closed", file=self.output_stream)
+        util.VERBOSE("GDB client closed")
 
     def process_message(self, parser: GdbMessageParser, writer: GdbMessageWriter):
         if parser.is_ack_ok:
@@ -196,7 +196,7 @@ class GdbServer(threading.Thread):
             return False
 
         try:
-            util.VERBOSE(f"processing GDB message: {parser.data.decode()}", file=self.output_stream)
+            util.VERBOSE(f"processing GDB message: {parser.data.decode()}")
         except:
             # We ignore error if we cannot decode message
             pass
@@ -309,10 +309,7 @@ class GdbServer(threading.Thread):
             # ‘H op thread-id’
             op = parser.read_char()
             thread_id = parser.parse_thread_id()
-            util.VERBOSE(
-                f"GDB: Set thread {thread_id} and prepare for op '{chr(op) if op else '[EOM]'}'",
-                file=self.output_stream,
-            )
+            util.VERBOSE(f"GDB: Set thread {thread_id} and prepare for op '{chr(op) if op else '[EOM]'}'")
             if self.current_process is None or thread_id is None:
                 # Respond that we are not debugging anything at the moment
                 writer.append(b"E01")
@@ -484,7 +481,7 @@ class GdbServer(threading.Thread):
         ):  # Tell the remote stub about features supported by GDB, and query the stub for features it supports.
             # Read supported gdb client features
             if parser.parse(b":"):
-                util.VERBOSE("GDB: client features:", file=self.output_stream)
+                util.VERBOSE("GDB: client features:")
                 while True:
                     feature = parser.read_until(GDB_ASCII_SEMICOLON)
                     if not feature:
@@ -494,11 +491,11 @@ class GdbServer(threading.Thread):
                         value = feature.endswith("+")
                         feature = feature[:-1]
                         self.client_features[feature] = value
-                        util.VERBOSE(f"     - {feature} = {value}", file=self.output_stream)
+                        util.VERBOSE(f"     - {feature} = {value}")
                     else:
                         feature, value = feature.split("=")
                         self.client_features[feature] = value
-                        util.VERBOSE(f"     - {feature} = {value}", file=self.output_stream)
+                        util.VERBOSE(f"     - {feature} = {value}")
 
             # Return supported features
             writer.append(b"PacketSize=")
