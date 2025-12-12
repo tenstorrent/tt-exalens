@@ -128,38 +128,38 @@ def NULL_PRINT(s):
     pass
 
 
-def PRINT(s, **kwargs):
-    print(f"{CLR_END}{s}", **kwargs)
+def PRINT(s, file=None, **kwargs):
+    print(f"{CLR_END}{s}", file=file, **kwargs)
 
 
-def FATAL(s, **kwargs):
-    ERROR(s, **kwargs)
+def FATAL(s, file=None, **kwargs):
+    ERROR(s, file=file, **kwargs)
     raise TTFatalException(s)
 
 
-def ERROR(s, **kwargs):
+def ERROR(s, file=None, **kwargs):
     if Verbosity.supports(Verbosity.ERROR):
-        print(f"{CLR_ERR}{s}{CLR_END}", **kwargs)
+        print(f"{CLR_ERR}{s}{CLR_END}", file=file, **kwargs)
 
 
-def WARN(s, **kwargs):
+def WARN(s, file=None, **kwargs):
     if Verbosity.supports(Verbosity.WARN):
-        print(f"{CLR_WARN}{s}{CLR_END}", **kwargs)
+        print(f"{CLR_WARN}{s}{CLR_END}", file=file, **kwargs)
 
 
-def DEBUG(s, **kwargs):
+def DEBUG(s, file=None, **kwargs):
     if Verbosity.supports(Verbosity.DEBUG):
-        print(f"{CLR_DEBUG}{s}{CLR_END}", **kwargs)
+        print(f"{CLR_DEBUG}{s}{CLR_END}", file=file, **kwargs)
 
 
-def INFO(s, **kwargs):
+def INFO(s, file=None, **kwargs):
     if Verbosity.supports(Verbosity.INFO):
-        print(f"{CLR_INFO}{s}{CLR_END}", **kwargs)
+        print(f"{CLR_INFO}{s}{CLR_END}", file=file, **kwargs)
 
 
-def VERBOSE(s, **kwargs):
+def VERBOSE(s, file=None, **kwargs):
     if Verbosity.supports(Verbosity.VERBOSE):
-        print(f"{CLR_VERBOSE}{s}{CLR_END}", **kwargs)
+        print(f"{CLR_VERBOSE}{s}{CLR_END}", file=file, **kwargs)
 
 
 def trim_ascii_escape(input: Any) -> Any:
