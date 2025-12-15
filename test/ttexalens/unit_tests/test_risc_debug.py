@@ -236,6 +236,78 @@ class TestDebugging(unittest.TestCase):
                 self.core_sim.read_data(noc_addr), 0x87654321, "Memory value read over NOC should be 0x87654321."
             )
 
+    def test_read_write_memory_bytes_aligned(self):
+        """Test reading and writing aligned memory blocks using read_memory_bytes and write_memory_bytes."""
+        addr = 0x10000
+
+        # Write initial data to memory
+        self.core_sim.write_data_checked(addr, 0x11223344)
+        self.core_sim.write_data_checked(addr + 4, 0x55667788)
+        self.core_sim.write_data_checked(addr + 8, 0x99AABBCC)
+
+        # Write code for brisc core at address 0
+        # C++:
+        #   while (true);
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+
+        # Take risc out of reset
+        self.core_sim.set_reset(False)
+        self.assertFalse(self.core_sim.is_in_reset())
+
+        # Halt core
+        self.core_sim.halt()
+
+        # Value should not be changed and should stay the same since core is in halt
+        self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
+
+        # Test reading initial data
+        data = self.core_sim.risc_debug.read_memory_bytes(addr, 8)
+        self.assertEqual(data, b"\x44\x33\x22\x11\x88\x77\x66\x55", "Should read initial 8 bytes")
+
+        # Test writing new data
+        self.core_sim.risc_debug.write_memory_bytes(addr, b"\x78\x56\x34\x12\xdd\xcc\xbb\xaa")
+
+        # Test reading back what we wrote
+        data = self.core_sim.risc_debug.read_memory_bytes(addr, 8)
+        self.assertEqual(data, b"\x78\x56\x34\x12\xdd\xcc\xbb\xaa", "Should read/write 8 bytes correctly")
+        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(addr + 4), 0xAABBCCDD)
+
+        # Verify third word is unchanged
+        self.assertEqual(self.core_sim.read_data(addr + 8), 0x99AABBCC, "Third word should be unchanged")
+
+    def test_read_write_memory_bytes_unaligned(self):
+        """Test reading and writing unaligned memory blocks (not on 4-byte boundary)."""
+        addr = 0x10000
+
+        # Initialize memory and halt
+        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(addr + 4, 0xAABBCCDD)
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+
+        # Take risc out of reset
+        self.core_sim.set_reset(False)
+        self.assertFalse(self.core_sim.is_in_reset())
+
+        # Halt core
+        self.core_sim.halt()
+
+        # Value should not be changed and should stay the same since core is in halt
+        self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
+
+        # Test unaligned reads
+        self.assertEqual(self.core_sim.risc_debug.read_memory_bytes(addr + 1, 1), b"\x56")
+        self.assertEqual(self.core_sim.risc_debug.read_memory_bytes(addr + 2, 2), b"\x34\x12")
+        self.assertEqual(self.core_sim.risc_debug.read_memory_bytes(addr + 1, 5), b"\x56\x34\x12\xdd\xcc")
+
+        # Test unaligned writes preserve surrounding data
+        self.core_sim.write_data_checked(addr, 0xFFFFFFFF)
+        self.core_sim.risc_debug.write_memory_bytes(addr + 1, b"\xAA\xBB")
+        word = self.core_sim.read_data(addr)
+        self.assertEqual(word, 0xFFBBAAFF, "Should preserve bytes at offset 0 and 3")
+
     def test_minimal_run_generated_code(self):
         """Test running 16 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
         addr = 0x10000
