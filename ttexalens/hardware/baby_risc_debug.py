@@ -426,6 +426,27 @@ class BabyRiscDebugHardware:
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_REGISTER)
 
+    def read_memory(self, addr) -> int:
+        if self.enable_asserts:
+            self.assert_halted()
+        if self.verbose:
+            util.INFO(f"  read_memory(0x{addr:08x})")
+        self.__riscv_write(REG_COMMAND_ARG_0, addr)
+        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_MEMORY)
+        data = self.__riscv_read(REG_COMMAND_RETURN_VALUE)
+        if self.verbose:
+            util.INFO(f"                             read -> 0x{data:08x}")
+        return data
+
+    def write_memory(self, addr, value):
+        if self.enable_asserts:
+            self.assert_halted()
+        if self.verbose:
+            util.INFO(f"  write_memory(0x{addr:08x}, 0x{value:08x})")
+        self.__riscv_write(REG_COMMAND_ARG_1, value)
+        self.__riscv_write(REG_COMMAND_ARG_0, addr)
+        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_MEMORY)
+
     def read_memory_bytes(self, addr, size_bytes):
         if self.enable_asserts:
             self.assert_halted()
@@ -434,26 +455,19 @@ class BabyRiscDebugHardware:
 
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_MEMORY)
 
+        word_size: int = 4
         words = list[int]
-        words_to_read = (size_bytes + 4 - 1) // 4
+        words_to_read = (size_bytes + word_size - 1) // word_size
         for offset in range(words_to_read):
-            new_addr = addr + offset * 4
+            new_addr = addr + offset * word_size
             self.__riscv_write(REG_COMMAND_ARG_0, new_addr)
             word: int = self.__riscv_read(REG_COMMAND_RETURN_VALUE)
             words.append(word)
             if self.verbose:
                 util.INFO(f"                             read -> 0x{new_addr:08x}, 0x{word:08x}")
 
-        result = b"".join(word.to_bytes(4, byteorder="little") for word in words)
+        result = b"".join(word.to_bytes(word_size, byteorder="little") for word in words)
         return result[:size_bytes]
-
-    def read_memory(self, addr):
-        if self.enable_asserts:
-            self.assert_halted()
-        if self.verbose:
-            util.INFO(f"  read_memory(0x{addr:08x})")
-
-        return int.from_bytes(self.read_memory_bytes(addr, 4), byteorder="little")
 
     def write_memory_bytes(self, addr, data):
         if self.enable_asserts:
@@ -461,39 +475,37 @@ class BabyRiscDebugHardware:
         if self.verbose:
             util.INFO(f"  write_memory_bytes(0x{addr:08x}, {len(data)} bytes)")
 
-        words = list[int]
-        for i in range(0, len(data), 4):
-            word = int.from_bytes(data[i : i + 4], byteorder="little")
-            words.append(word)
+        word_size = 4
+        size_bytes = len(data)
+        aligned_start = addr - (addr % word_size)
+        aligned_end = ((addr + size_bytes + word_size - 1) // word_size) * word_size
 
-        # Check for start as well as end alignment
-        # TODO
+        new_data = bytes
 
-        # Make sure to not overwrite extra bytes in the last word if we have a partial word
-        if len(data) % 4 != 0:
-            last_word_start = (len(data) // 4) * 4
-            remainder = len(data) % 4
-            last_word = int.from_bytes(data[last_word_start:] + b"\x00" * (4 - remainder), byteorder="little")
-            original_word = self.read_memory(addr + last_word_start)
-            last_word = (last_word & ((1 << (remainder * 8)) - 1)) | (original_word & (~((1 << (remainder * 8)) - 1)))
-            words[-1] = last_word
+        if aligned_start < addr:
+            prefix_size = addr - aligned_start
+            prefix_word = self.read_memory(aligned_start)
+            new_data = prefix_word.to_bytes(word_size, byteorder="little")[:prefix_size]
 
-        self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_MEMORY)
+        new_data += data
+
+        if aligned_end > addr + size_bytes:
+            suffix_size = aligned_end - (addr + size_bytes)
+            suffix_word = self.read_memory(aligned_end - word_size)
+            new_data += suffix_word.to_bytes(word_size, byteorder="little")[-suffix_size:]
+
+        assert len(new_data) % word_size == 0, "Data length must be multiple of word size after alignment"
+        words = [
+            int.from_bytes(new_data[i : i + word_size], byteorder="little") for i in range(0, len(new_data), word_size)
+        ]
 
         for offset, word in enumerate(words):
-            new_addr = addr + offset * 4
+            new_addr = aligned_start + offset * word_size
             self.__riscv_write(REG_COMMAND_ARG_0, new_addr)
             self.__riscv_write(REG_COMMAND_ARG_1, word)
+            self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_MEMORY)
             if self.verbose:
                 util.INFO(f"                             write <- 0x{new_addr:08x}, 0x{word:08x}")
-
-    def write_memory(self, addr, value):
-        if self.enable_asserts:
-            self.assert_halted()
-        if self.verbose:
-            util.INFO(f"  write_memory(0x{addr:08x}, 0x{value:08x})")
-
-        self.write_memory_bytes(addr, value.to_bytes(4, byteorder="little"))
 
     def __update_watchpoint_setting(self, id, value):
         assert 0 <= value <= 15

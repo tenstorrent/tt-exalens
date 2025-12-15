@@ -107,6 +107,7 @@ class RiscDebugMemoryAccess(MemoryAccess):
                 and data_private_memory.contains_private_address(address)
                 and data_private_memory.contains_private_address(address + size_bytes - 1)
             )
+
             if not inside_l1 and not inside_data_private_memory:
                 raise Exception(
                     f"RiscDebugMemoryAccess restricted access: Address 0x{address:08x} is outside of L1 and Data Private Memory"
