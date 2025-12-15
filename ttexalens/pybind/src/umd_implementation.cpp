@@ -190,7 +190,7 @@ void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, bool is_simulatio
             throw;
         }
         _configure_working_active_eth(cluster, chip);
-        read_from_device_reg_unaligned_helper(cluster, false, mem_ptr, chip, core, addr, size, use_4B_mode);
+        read_from_device_reg_unaligned_helper(cluster, is_simulation, mem_ptr, chip, core, addr, size, use_4B_mode);
     }
 }
 
@@ -251,7 +251,8 @@ void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, bool is_simulation
             throw;
         }
         _configure_working_active_eth(cluster, chip);
-        write_to_device_reg_unaligned_helper(cluster, false, mem_ptr, size_in_bytes, chip, core, addr, use_4B_mode);
+        write_to_device_reg_unaligned_helper(cluster, is_simulation, mem_ptr, size_in_bytes, chip, core, addr,
+                                             use_4B_mode);
     }
 }
 
