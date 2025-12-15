@@ -453,11 +453,14 @@ class BabyRiscDebugHardware:
         if self.verbose:
             util.INFO(f"  read_memory_bytes(0x{addr:08x}, {size_bytes})")
 
-        word_size: int = 4
+        word_size = 4
+        aligned_start = addr - (addr % word_size)
+        aligned_end = ((addr + size_bytes + word_size - 1) // word_size) * word_size
+
         words: list[int] = []
-        words_to_read = (size_bytes + word_size - 1) // word_size
+        words_to_read = (aligned_end - aligned_start) // word_size
         for offset in range(words_to_read):
-            new_addr = addr + offset * word_size
+            new_addr = aligned_start + offset * word_size
             self.__riscv_write(REG_COMMAND_ARG_0, new_addr)
             self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_MEMORY)
             word: int = self.__riscv_read(REG_COMMAND_RETURN_VALUE)
@@ -466,7 +469,7 @@ class BabyRiscDebugHardware:
                 util.INFO(f"                             read -> 0x{new_addr:08x}, 0x{word:08x}")
 
         result = b"".join(word.to_bytes(word_size, byteorder="little") for word in words)
-        return result[:size_bytes]
+        return result[addr - aligned_start : addr - aligned_start + size_bytes]
 
     def write_memory_bytes(self, addr, data):
         if self.enable_asserts:
