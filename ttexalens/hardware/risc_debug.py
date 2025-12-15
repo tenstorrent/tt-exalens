@@ -381,10 +381,10 @@ class RiscDebug:
         elf: ParsedElfFile,
         pc: int,
         frame_pointer: int | None = None,
-        callstack: list["CallstackEntry"] | None = None,
+        callstack: list[CallstackEntry] | None = None,
         top_frame: bool = True,
         frame_inspection: FrameInspection | None = None,
-    ):
+    ) -> tuple[list[CallstackEntry], ElfDie | None]:
         # If we are at the top frame, pc is correct.
         # If we are not at the top frame, pc points to the instruction after the call instruction.
         # We need to adjust pc by -4 to get the correct call instruction address.

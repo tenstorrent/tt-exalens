@@ -175,7 +175,7 @@ class RichFormatter:
         raw_value = value_info.get("value", "")
 
         if format_type == "state":
-            return value_info.get("description", str(raw_value))
+            return str(value_info.get("description", str(raw_value)))
         elif format_type == "hex":
             try:
                 int_value = int(raw_value)
@@ -229,7 +229,7 @@ class RichFormatter:
             grouping = self.flatten_grouping(grouping)
 
         for group_row in grouping:
-            tables: list = []
+            tables: list[Panel | Table] = []
             for group_name in group_row:
                 if group_name in data:
                     tables.append(self.create_data_table(group_name, columns, data[group_name], simple_print))

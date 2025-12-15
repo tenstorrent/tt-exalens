@@ -3,7 +3,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from contextlib import nullcontext, AbstractContextManager, contextmanager
-from typing import Any
+from typing import Any, Iterator
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
@@ -139,27 +139,27 @@ def FATAL(s, **kwargs):
 
 def ERROR(s, **kwargs):
     if Verbosity.supports(Verbosity.ERROR):
-        print(f"{CLR_ERR}{s}{CLR_END}", **kwargs)
+        print(f"{CLR_ERR}{s}{CLR_END}", file=kwargs.get("file", None), **kwargs)
 
 
 def WARN(s, **kwargs):
     if Verbosity.supports(Verbosity.WARN):
-        print(f"{CLR_WARN}{s}{CLR_END}", **kwargs)
+        print(f"{CLR_WARN}{s}{CLR_END}", file=kwargs.get("file", None), **kwargs)
 
 
 def DEBUG(s, **kwargs):
     if Verbosity.supports(Verbosity.DEBUG):
-        print(f"{CLR_DEBUG}{s}{CLR_END}", **kwargs)
+        print(f"{CLR_DEBUG}{s}{CLR_END}", file=kwargs.get("file", None), **kwargs)
 
 
 def INFO(s, **kwargs):
     if Verbosity.supports(Verbosity.INFO):
-        print(f"{CLR_INFO}{s}{CLR_END}", **kwargs)
+        print(f"{CLR_INFO}{s}{CLR_END}", file=kwargs.get("file", None), **kwargs)
 
 
 def VERBOSE(s, **kwargs):
     if Verbosity.supports(Verbosity.VERBOSE):
-        print(f"{CLR_VERBOSE}{s}{CLR_END}", **kwargs)
+        print(f"{CLR_VERBOSE}{s}{CLR_END}", file=kwargs.get("file", None), **kwargs)
 
 
 def trim_ascii_escape(input: Any) -> Any:
@@ -194,7 +194,7 @@ class Tee:
 
 def redirect_output_to_file_and_terminal(
     file_path: str | None, show_terminal_output: bool = True, append: bool = False
-) -> AbstractContextManager:
+) -> AbstractContextManager[None]:
     if file_path is None:
         # No redirection needed
         return nullcontext()
@@ -235,11 +235,11 @@ def dict_to_table(dct):
 
 
 # Converts list of dictionaries with same keys to a table where every column is one dictionary.
-def dict_list_to_table(dicts: list[dict], table_name: str, column_names: list[str]) -> str:
+def dict_list_to_table(dicts: list[dict[str, int]], table_name: str, column_names: list[str]) -> str:
     keys = dicts[0].keys()
     data = []
     for key in keys:
-        row = [key]
+        row: list[str | int] = [key]
         for d in dicts:
             if key in d:
                 row.append(d[key])
@@ -405,8 +405,8 @@ KeyType = TypeVar("KeyType")
 ValueType = TypeVar("ValueType")
 
 
-class RymlLazyDictionaryIterator:
-    def __init__(self, dictionary: "RymlLazyDictionary"):
+class RymlLazyDictionaryIterator(Iterator[KeyType]):
+    def __init__(self, dictionary: "RymlLazyDictionary[KeyType, ValueType]"):
         self.dictionary = dictionary
         self.index = 0
 
@@ -428,7 +428,7 @@ class RymlLazyDictionary(Mapping[KeyType, ValueType]):
         self.tree = tree
         self.node = node
         self.length = self.tree.num_children(self.node)
-        self._items = dict()
+        self._items: dict[KeyType, ValueType] = dict()
 
     @cached_property
     def child_nodes(self):
@@ -437,17 +437,18 @@ class RymlLazyDictionary(Mapping[KeyType, ValueType]):
             child_nodes[self.get_key(child_node)] = child_node
         return child_nodes
 
-    def get_key(self, child_node):
-        return try_int(str(self.tree.key(child_node), "utf8"), base=0)
+    def get_key(self, child_node) -> KeyType:
+        return try_int(str(self.tree.key(child_node), "utf8"), base=0)  # type: ignore
 
     def __contains__(self, key):
         return key in self.child_nodes
 
     def __getitem__(self, key: KeyType) -> ValueType:
-        item = self._items.get(key)
-        if item == None:
+        item: ValueType | None = self._items.get(key)
+        if item is None:
             child_node = self.child_nodes[key]
             item = ryml_to_lazy(self.tree, child_node)
+            assert item is not None
             self._items[key] = item
         return item
 

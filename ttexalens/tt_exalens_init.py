@@ -18,7 +18,7 @@ GLOBAL_CONTEXT: Context | None = None
 
 
 def init_ttexalens(
-    wanted_devices: list | None = None,
+    wanted_devices: list[int] | None = None,
     init_jtag: bool = False,
     use_noc1: bool = False,
     use_4B_mode: bool = True,

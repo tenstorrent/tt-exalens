@@ -23,7 +23,7 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             return super().read_gpr(register_index)
         else:
             assert self.noc_block.debug_bus is not None, "Debug bus is not initialized."
-            return self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc")
+            return int(self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc"))
 
     def read_memory(self, address: int):
         return int.from_bytes(self.read_memory_bytes(address, 4), byteorder="little")

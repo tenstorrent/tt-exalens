@@ -5,6 +5,7 @@ from contextlib import closing
 import select
 import socket
 import threading
+from typing import IO
 from ttexalens.gdb.gdb_data import GdbThreadId
 from ttexalens import util as util
 
@@ -23,7 +24,7 @@ def find_available_port() -> int:
         with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
             s.bind(("", 0))  # 0 → OS picks a free port
             s.listen()
-            return s.getsockname()[1]
+            return int(s.getsockname()[1])
     except (socket.error, OSError) as e:
         # If we get here, no port was found
         raise Exception(f"No available port found: {e}")
@@ -118,10 +119,11 @@ GDB_ASCII_COMMA = ord(",")
 
 # This class is used to read messages from GDB
 class GdbInputStream:
-    def __init__(self, socket: ClientSocket):
+    def __init__(self, socket: ClientSocket, error_stream: IO[str] | None = None):
         self.socket = socket
         self.input_buffer = bytes()
         self.next_message = bytearray()
+        self.error_stream = error_stream
 
     def ensure_input_buffer(self, position: int = 0):
         # Check if input buffer is empty
@@ -151,7 +153,8 @@ class GdbInputStream:
         if self.input_buffer[0] != GDB_ASCII_DOLLAR:
             # Respond with ack error, discard input buffer and try to read next message
             util.ERROR(
-                f"GDB message parsing error: Unexpected character at start of message '{self.input_buffer[0:1].decode()}'"
+                f"GDB message parsing error: Unexpected character at start of message '{self.input_buffer[0:1].decode()}'",
+                file=self.error_stream,
             )
             self.socket.write(b"-")
             self.input_buffer = bytes()
@@ -206,7 +209,10 @@ class GdbInputStream:
 
         # Was checksum correct
         if not correct_checksum:
-            util.ERROR(f"GDB message parsing error: Unexpected checksum. expected: '{checksum1:X}{checksum2:X}'")
+            util.ERROR(
+                f"GDB message parsing error: Unexpected checksum. expected: '{checksum1:X}{checksum2:X}'",
+                file=self.error_stream,
+            )
             self.socket.write(b"-")
             return self.read()
         return GdbMessageParser(bytes(self.next_message))

@@ -31,12 +31,13 @@ class MemoryMap:
             self.map_block(name, memory_block)
 
     def get_block_name_by_noc_address(self, noc_address: int) -> str | None:
-        intervals = self.noc_address_to_block_name_mapping.at(noc_address)
+        intervals: set[Interval] = self.noc_address_to_block_name_mapping.at(noc_address)
         if not intervals:
             return None
 
         assert len(intervals) == 1, "MemoryMap cannot have overlapping memory blocks"
-        return next(iter(intervals)).data
+        result: str = next(iter(intervals)).data
+        return result
 
     def get_block_by_name(self, name: str) -> MemoryBlock | None:
         return self.name_to_block_mapping.get(name, None)
