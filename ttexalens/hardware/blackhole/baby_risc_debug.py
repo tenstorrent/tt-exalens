@@ -41,14 +41,11 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         if noc_address is not None and not self.is_in_reset():
             address = noc_address
             read_memory = lambda addr, size_bytes: read_from_device(
-                self.risc_info.noc_block.location,
-                addr,
-                size_bytes,
-                device_id=self.risc_info.noc_block.location.device_id,
+                self.risc_info.noc_block.location, addr, self.risc_info.noc_block.location.device_id, size_bytes
             )
         else:
             self.assert_debug_hardware_and_address(address)
-            read_memory = self.debug_hardware.read_memory_bytes
+            read_memory = super().read_memory_bytes
 
         return read_memory(address, size_bytes)
 
@@ -56,17 +53,20 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         if self.enable_asserts:
             self.assert_not_in_reset()
 
-        write_memory: Callable[[int, int], None]
+        write_memory: Callable[[int, bytes], None]
 
         noc_address = self.risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
             address = noc_address
-            write_memory = lambda addr, data: write_to_device(
-                self.risc_info.noc_block.location, addr, data, device_id=self.risc_info.noc_block.location.device_id
-            )
+            write_memory = lambda addr, data: (
+                write_to_device(
+                    self.risc_info.noc_block.location, addr, data, self.risc_info.noc_block.location.device_id
+                ),
+                None,
+            )[1]
         else:
             self.assert_debug_hardware_and_address(address)
-            write_memory = self.debug_hardware.write_memory
+            write_memory = super().write_memory_bytes
 
         write_memory(address, data)
 

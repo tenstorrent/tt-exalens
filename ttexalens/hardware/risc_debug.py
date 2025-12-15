@@ -321,6 +321,15 @@ class RiscDebug:
         pass
 
     @abstractmethod
+    def get_l1(self) -> MemoryBlock:
+        """
+        Get the L1 memory block for the RISC core.
+        Returns:
+            MemoryBlock: L1 memory block.
+        """
+        pass
+
+    @abstractmethod
     def get_data_private_memory(self) -> MemoryBlock | None:
         """
         Get the data private memory block for the RISC core.
