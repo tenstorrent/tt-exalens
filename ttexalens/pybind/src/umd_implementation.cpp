@@ -61,22 +61,22 @@ class TimeoutDeviceRegisterException : public std::exception {
     std::string message;
 };
 
-void read_from_device_reg(tt::umd::Cluster* cluster, void* temp, uint8_t chip_id, tt::umd::CoreCoord tensix_core,
-                          uint64_t addr, uint32_t size) {
+void read_from_device_reg(tt::umd::Cluster* cluster, bool is_simulation, void* temp, uint8_t chip_id,
+                          tt::umd::CoreCoord tensix_core, uint64_t addr, uint32_t size) {
     auto start_time = std::chrono::high_resolution_clock::now();
     cluster->read_from_device_reg(temp, chip_id, tensix_core, addr, size);
     auto end_time = std::chrono::high_resolution_clock::now();
     auto elapsed_time = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time);
     // Address will always be aligned to 4 bytes, so we can check the last 4 bytes for 0xFFFFFFFF
-    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && elapsed_time > READ_TIMEOUT &&
-        *((uint32_t*)temp + size / 4 - 1) == 0xFFFFFFFF) {
+    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && !is_simulation &&
+        elapsed_time > READ_TIMEOUT && *((uint32_t*)temp + size / 4 - 1) == 0xFFFFFFFF) {
         tensix_core = cluster->get_soc_descriptor(chip_id).translate_coord_to(tensix_core, CoordSystem::LOGICAL);
         throw TimeoutDeviceRegisterException(chip_id, tensix_core, addr, size, true, elapsed_time);
     }
 }
 
-void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t size, uint8_t chip_id,
-                         tt::umd::CoreCoord tensix_core, uint64_t addr) {
+void write_to_device_reg(tt::umd::Cluster* cluster, bool is_simulation, const void* temp, uint32_t size,
+                         uint8_t chip_id, tt::umd::CoreCoord tensix_core, uint64_t addr) {
     struct TimeoutEvent {
         const tt::umd::CoreCoord core;
         const uint64_t addr;
@@ -97,7 +97,7 @@ void write_to_device_reg(tt::umd::Cluster* cluster, const void* temp, uint32_t s
 
     // Timeout is set for 1 word write so we only check timeout for that case
     // To avoid raising false alarms, we only throw an exception if we have multiple consecutive timeouts (5 by default)
-    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && size == 4 &&
+    if (cluster->get_cluster_description()->is_chip_mmio_capable(chip_id) && !is_simulation && size == 4 &&
         elapsed_time > WRITE_TIMEOUT) {
         TimeoutEvent timeout_event(tensix_core, addr, size, elapsed_time);
         lock.lock();
@@ -130,7 +130,7 @@ void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
         try {
             // Try to read from remote device to see if remote communication is working
             uint32_t temp = 0;
-            read_from_device_reg(cluster, &temp, chip_id, tensix_core, 0, sizeof(temp));
+            read_from_device_reg(cluster, false, &temp, chip_id, tensix_core, 0, sizeof(temp));
             // If reading from remote device is successful, we found the working active eth core
             return;
             // If reading from remote device fails, try the next active eth core
@@ -142,13 +142,13 @@ void _configure_working_active_eth(tt::umd::Cluster* cluster, uint8_t chip_id) {
 }
 
 // TODO #375: Remove read/write unaligned functions once UMD implements ability to set unaligned access for our TLB
-void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip,
+void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, bool is_simulation, void* mem_ptr, ChipId chip,
                                            tt::umd::CoreCoord core, uint64_t addr, uint32_t size, bool use_4B_mode) {
     // Read first unaligned word
     uint32_t first_unaligned_index = addr % 4;
     if (first_unaligned_index != 0) {
         uint32_t temp = 0;
-        read_from_device_reg(cluster, &temp, chip, core, addr - first_unaligned_index, sizeof(temp));
+        read_from_device_reg(cluster, is_simulation, &temp, chip, core, addr - first_unaligned_index, sizeof(temp));
         if (first_unaligned_index + size <= sizeof(temp)) {
             memcpy(mem_ptr, ((uint8_t*)&temp) + first_unaligned_index, size);
             return;
@@ -161,9 +161,9 @@ void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_
 
     // Read aligned bytes
     uint32_t aligned_size = size - (size % 4);
-    uint32_t block_size = use_4B_mode ? 4 : aligned_size;
+    uint32_t block_size = use_4B_mode && !is_simulation ? 4 : aligned_size;
     while (aligned_size > 0) {
-        read_from_device_reg(cluster, mem_ptr, chip, core, addr, block_size);
+        read_from_device_reg(cluster, is_simulation, mem_ptr, chip, core, addr, block_size);
         aligned_size -= block_size;
         mem_ptr = (uint8_t*)mem_ptr + block_size;
         addr += block_size;
@@ -174,39 +174,43 @@ void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, void* mem_
     uint32_t last_unaligned_size = size;
     if (last_unaligned_size != 0) {
         uint32_t temp = 0;
-        read_from_device_reg(cluster, &temp, chip, core, addr, sizeof(temp));
+        read_from_device_reg(cluster, is_simulation, &temp, chip, core, addr, sizeof(temp));
         memcpy(mem_ptr, &temp, last_unaligned_size);
     }
 }
 
-void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, void* mem_ptr, ChipId chip, tt::umd::CoreCoord core,
-                                    uint64_t addr, uint32_t size, bool use_4B_mode) {
+void read_from_device_reg_unaligned(tt::umd::Cluster* cluster, bool is_simulation, void* mem_ptr, ChipId chip,
+                                    tt::umd::CoreCoord core, uint64_t addr, uint32_t size, bool use_4B_mode) {
     try {
-        read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size, use_4B_mode);
+        read_from_device_reg_unaligned_helper(cluster, is_simulation, mem_ptr, chip, core, addr, size, use_4B_mode);
     } catch (const TimeoutDeviceRegisterException& e) {
         throw;
     } catch (const std::runtime_error& e) {
+        if (is_simulation || cluster->get_cluster_description()->is_chip_mmio_capable(chip)) {
+            throw;
+        }
         _configure_working_active_eth(cluster, chip);
-        read_from_device_reg_unaligned_helper(cluster, mem_ptr, chip, core, addr, size, use_4B_mode);
+        read_from_device_reg_unaligned_helper(cluster, is_simulation, mem_ptr, chip, core, addr, size, use_4B_mode);
     }
 }
 
-void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes,
-                                          ChipId chip, tt::umd::CoreCoord core, uint64_t addr, bool use_4B_mode) {
+void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, bool is_simulation, const void* mem_ptr,
+                                          uint32_t size_in_bytes, ChipId chip, tt::umd::CoreCoord core, uint64_t addr,
+                                          bool use_4B_mode) {
     {
         // Read/Write first unaligned word
         uint32_t first_unaligned_index = addr % 4;
         if (first_unaligned_index != 0) {
             uint32_t temp = 0;
             uint64_t aligned_address = addr - first_unaligned_index;
-            read_from_device_reg(cluster, &temp, chip, core, aligned_address, sizeof(temp));
+            read_from_device_reg(cluster, is_simulation, &temp, chip, core, aligned_address, sizeof(temp));
             if (first_unaligned_index + size_in_bytes <= sizeof(temp)) {
                 memcpy(((uint8_t*)&temp) + first_unaligned_index, mem_ptr, size_in_bytes);
-                write_to_device_reg(cluster, &temp, sizeof(temp), chip, core, aligned_address);
+                write_to_device_reg(cluster, is_simulation, &temp, sizeof(temp), chip, core, aligned_address);
                 return;
             }
             memcpy(((uint8_t*)&temp) + first_unaligned_index, mem_ptr, 4 - first_unaligned_index);
-            write_to_device_reg(cluster, &temp, sizeof(temp), chip, core, aligned_address);
+            write_to_device_reg(cluster, is_simulation, &temp, sizeof(temp), chip, core, aligned_address);
             mem_ptr = (uint8_t*)mem_ptr + 4 - first_unaligned_index;
             addr += 4 - first_unaligned_index;
             size_in_bytes -= 4 - first_unaligned_index;
@@ -214,9 +218,9 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void*
 
         // Write aligned bytes
         uint32_t aligned_size = size_in_bytes - (size_in_bytes % 4);
-        uint32_t block_size = use_4B_mode ? 4 : aligned_size;
+        uint32_t block_size = use_4B_mode && !is_simulation ? 4 : aligned_size;
         while (aligned_size > 0) {
-            write_to_device_reg(cluster, mem_ptr, block_size, chip, core, addr);
+            write_to_device_reg(cluster, is_simulation, mem_ptr, block_size, chip, core, addr);
             aligned_size -= block_size;
             mem_ptr = (uint8_t*)mem_ptr + block_size;
             addr += block_size;
@@ -227,26 +231,33 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, const void*
         uint32_t last_unaligned_size = size_in_bytes;
         if (last_unaligned_size != 0) {
             uint32_t temp = 0;
-            read_from_device_reg(cluster, &temp, chip, core, addr, sizeof(temp));
+            read_from_device_reg(cluster, is_simulation, &temp, chip, core, addr, sizeof(temp));
             memcpy(&temp, mem_ptr, last_unaligned_size);
-            write_to_device_reg(cluster, &temp, sizeof(temp), chip, core, addr);
+            write_to_device_reg(cluster, is_simulation, &temp, sizeof(temp), chip, core, addr);
         }
     }
 }
 
-void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, const void* mem_ptr, uint32_t size_in_bytes, ChipId chip,
-                                   tt::umd::CoreCoord core, uint64_t addr, bool use_4B_mode) {
+void write_to_device_reg_unaligned(tt::umd::Cluster* cluster, bool is_simulation, const void* mem_ptr,
+                                   uint32_t size_in_bytes, ChipId chip, tt::umd::CoreCoord core, uint64_t addr,
+                                   bool use_4B_mode) {
     try {
-        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr, use_4B_mode);
+        write_to_device_reg_unaligned_helper(cluster, is_simulation, mem_ptr, size_in_bytes, chip, core, addr,
+                                             use_4B_mode);
     } catch (const TimeoutDeviceRegisterException& e) {
         throw;
     } catch (const std::runtime_error& e) {
+        if (is_simulation || cluster->get_cluster_description()->is_chip_mmio_capable(chip)) {
+            throw;
+        }
         _configure_working_active_eth(cluster, chip);
-        write_to_device_reg_unaligned_helper(cluster, mem_ptr, size_in_bytes, chip, core, addr, use_4B_mode);
+        write_to_device_reg_unaligned_helper(cluster, is_simulation, mem_ptr, size_in_bytes, chip, core, addr,
+                                             use_4B_mode);
     }
 }
 
-umd_implementation::umd_implementation(tt::umd::Cluster* cluster) : cluster(cluster) {
+umd_implementation::umd_implementation(tt::umd::Cluster* cluster, bool is_simulation)
+    : cluster(cluster), is_simulation(is_simulation) {
     cached_arc_telemetry_readers.resize(cluster->get_cluster_description()->get_number_of_chips());
 }
 
@@ -258,7 +269,7 @@ std::optional<uint32_t> umd_implementation::read32(uint8_t noc_id, uint8_t chip_
     uint32_t result;
     tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
 
-    read_from_device_reg_unaligned(cluster, &result, chip_id, target, address, sizeof(result), true);
+    read_from_device_reg_unaligned(cluster, is_simulation, &result, chip_id, target, address, sizeof(result), true);
     return result;
 }
 
@@ -269,7 +280,7 @@ std::optional<uint32_t> umd_implementation::write32(uint8_t noc_id, uint8_t chip
 
     tt::umd::CoreCoord target = cluster->get_soc_descriptor(chip_id).get_coord_at({noc_x, noc_y}, CoordSystem::NOC0);
 
-    write_to_device_reg_unaligned(cluster, &data, sizeof(data), chip_id, target, address, true);
+    write_to_device_reg_unaligned(cluster, is_simulation, &data, sizeof(data), chip_id, target, address, true);
     return 4;
 }
 
@@ -285,14 +296,14 @@ std::optional<std::vector<uint8_t>> umd_implementation::read(uint8_t noc_id, uin
     if (!is_chip_mmio_capable(chip_id)) {
         for (uint32_t done = 0; done < size;) {
             uint32_t block = std::min(size - done, 1024u);
-            read_from_device_reg_unaligned(cluster, result.data() + done, chip_id, target, address + done, block,
-                                           use_4B_mode);
+            read_from_device_reg_unaligned(cluster, is_simulation, result.data() + done, chip_id, target,
+                                           address + done, block, use_4B_mode);
             done += block;
         }
         return result;
     }
 
-    read_from_device_reg_unaligned(cluster, result.data(), chip_id, target, address, size, use_4B_mode);
+    read_from_device_reg_unaligned(cluster, is_simulation, result.data(), chip_id, target, address, size, use_4B_mode);
     return result;
 }
 
@@ -308,13 +319,14 @@ std::optional<uint32_t> umd_implementation::write(uint8_t noc_id, uint8_t chip_i
     if (!is_chip_mmio_capable(chip_id)) {
         for (uint32_t done = 0; done < size;) {
             uint32_t block = std::min(size - done, 1024u);
-            write_to_device_reg_unaligned(cluster, data + done, block, chip_id, target, address + done, use_4B_mode);
+            write_to_device_reg_unaligned(cluster, is_simulation, data + done, block, chip_id, target, address + done,
+                                          use_4B_mode);
             done += block;
         }
         return size;
     }
 
-    write_to_device_reg_unaligned(cluster, data, size, chip_id, target, address, use_4B_mode);
+    write_to_device_reg_unaligned(cluster, is_simulation, data, size, chip_id, target, address, use_4B_mode);
     return size;
 }
 

@@ -15,7 +15,7 @@ namespace tt::exalens {
 class umd_implementation : public ttexalens_implementation {
    public:
     typedef tt::umd::Cluster DeviceType;
-    umd_implementation(tt::umd::Cluster* cluster);
+    umd_implementation(tt::umd::Cluster* cluster, bool is_simulation);
 
    protected:
     std::optional<uint32_t> read32(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y,
@@ -51,8 +51,8 @@ class umd_implementation : public ttexalens_implementation {
     tt::umd::ArcTelemetryReader* get_arc_telemetry_reader(uint8_t chip_id);
 
     tt::umd::Cluster* cluster = nullptr;
+    bool is_simulation = false;
     std::string cluster_descriptor_path;
-
     std::vector<std::unique_ptr<tt::umd::ArcTelemetryReader>> cached_arc_telemetry_readers;
     std::mutex cached_arc_telemetry_readers_mutex;
 };
