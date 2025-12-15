@@ -72,15 +72,15 @@ class FixedMemoryAccess(MemoryAccess):
 
 
 class RiscDebugMemoryAccess(MemoryAccess):
-    def __init__(self, risc_debug: RiscDebug, require_halt: bool = True, restricted_access: bool = True):
+    def __init__(self, risc_debug: RiscDebug, ensure_halted_access: bool = True, restricted_access: bool = True):
         self._risc_debug = risc_debug
-        self._require_halt = require_halt  # require the RISC to be halted for memory access
+        self._ensure_halted_access = ensure_halted_access  # will ensure the RISC will be halted for memory access
         self._restricted_access = restricted_access  # restrict access to only L1 and Data Private Memory
 
     def read(self, address: int, size_bytes: int) -> bytes:
         self.validate_access(address, size_bytes)
 
-        if self._require_halt and self._risc_debug.can_debug():
+        if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
                 return self._risc_debug.read_memory_bytes(address, size_bytes)
         else:
@@ -89,7 +89,7 @@ class RiscDebugMemoryAccess(MemoryAccess):
     def write(self, address: int, data: bytes) -> None:
         self.validate_access(address, len(data))
 
-        if self._require_halt and self._risc_debug.can_debug():
+        if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
                 self._risc_debug.write_memory_bytes(address, data)
         else:
