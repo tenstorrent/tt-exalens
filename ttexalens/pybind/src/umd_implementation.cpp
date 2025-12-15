@@ -161,7 +161,7 @@ void read_from_device_reg_unaligned_helper(tt::umd::Cluster* cluster, bool is_si
 
     // Read aligned bytes
     uint32_t aligned_size = size - (size % 4);
-    uint32_t block_size = use_4B_mode ? 4 : aligned_size;
+    uint32_t block_size = use_4B_mode && !is_simulation ? 4 : aligned_size;
     while (aligned_size > 0) {
         read_from_device_reg(cluster, is_simulation, mem_ptr, chip, core, addr, block_size);
         aligned_size -= block_size;
@@ -218,7 +218,7 @@ void write_to_device_reg_unaligned_helper(tt::umd::Cluster* cluster, bool is_sim
 
         // Write aligned bytes
         uint32_t aligned_size = size_in_bytes - (size_in_bytes % 4);
-        uint32_t block_size = use_4B_mode ? 4 : aligned_size;
+        uint32_t block_size = use_4B_mode && !is_simulation ? 4 : aligned_size;
         while (aligned_size > 0) {
             write_to_device_reg(cluster, is_simulation, mem_ptr, block_size, chip, core, addr);
             aligned_size -= block_size;
