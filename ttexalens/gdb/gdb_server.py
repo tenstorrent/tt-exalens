@@ -361,31 +361,9 @@ class GdbServer(threading.Thread):
             elif address is None or length is None or length <= 0:
                 writer.append(b"E01")
             else:
-                # Read first 4 bytes of unaligned data
-                first_offset = address % 4
-                if first_offset != 0:
-                    value = self.current_process.risc_debug.read_memory(address - first_offset)
-                    buffer = value.to_bytes(4, byteorder="little")
-                    used_bytes = min(4 - first_offset, length)
-                    writer.append_hex(
-                        int.from_bytes(buffer[first_offset : first_offset + used_bytes], byteorder="little"),
-                        2 * used_bytes,
-                    )
-                    length -= used_bytes
-                    address += used_bytes
-
-                # Read aligned data
-                while length >= 4:
-                    value = self.current_process.risc_debug.read_memory(address)
-                    writer.append_register_hex(value)
-                    length -= 4
-                    address += 4
-
-                # Read last 4 bytes of unaligned data
-                if length > 0:
-                    value = self.current_process.risc_debug.read_memory(address)
-                    buffer = value.to_bytes(4, byteorder="little")
-                    writer.append_hex(int.from_bytes(buffer[:length], byteorder="little"), 2 * length)
+                # Read memory bytes
+                buffer = self.current_process.risc_debug.read_memory_bytes(address, length)
+                writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
         elif parser.parse(b"M"):  # Write length addressable memory units starting at address addr.
             # ‘M addr,length:XX…’
             address = parser.parse_hex()
@@ -400,52 +378,17 @@ class GdbServer(threading.Thread):
                 # Return error if we are not debugging any process
                 writer.append(b"E02")
             else:
-                # Write first 4 bytes of unaligned data
-                first_offset = address % 4
-                if first_offset != 0:
-                    # First read 4 bytes, since we don't want to override existing data
-                    value = self.current_process.risc_debug.read_memory(address - first_offset)
-                    used_bytes = min(4 - first_offset, length)
+                # Parse all the hex data into bytes
+                data = bytearray()
+                for _ in range(length):
+                    digit = parser.read_hex(2)
+                    if digit is None:
+                        writer.append(b"E03")
+                        return True
+                    data.append(digit)
 
-                    # Update number
-                    new_value = value
-                    for i in range(first_offset, first_offset + used_bytes):
-                        mask = 0xFF << (8 * i)
-                        digit = parser.read_hex(2)
-                        if digit is None:
-                            writer.append(b"E03")
-                            return True
-                        new_value = (new_value & mask) + digit
-
-                    # Write bytes
-                    self.current_process.risc_debug.write_memory(address - first_offset, new_value)
-                    length -= used_bytes
-                    address += used_bytes
-
-                # Write aligned data
-                while length >= 4:
-                    value = parser.read_register_hex()
-                    self.current_process.risc_debug.write_memory(address, value)
-                    length -= 4
-                    address += 4
-
-                # Write last 4 bytes of unaligned data
-                if length > 0:
-                    # First read 4 bytes, since we don't want to override existing data
-                    value = self.current_process.risc_debug.read_memory(address)
-
-                    # Update number
-                    new_value = value
-                    for i in range(0, length):
-                        mask = 0xFF << (8 * i)
-                        digit = parser.read_hex(2)
-                        if digit is None:
-                            writer.append(b"E04")
-                            return True
-                        new_value = (new_value & mask) + digit
-
-                    # Write bytes
-                    self.current_process.risc_debug.write_memory(address, new_value)
+                # Write memory bytes
+                self.current_process.risc_debug.write_memory_bytes(address, bytes(data))
                 writer.append(b"OK")
         elif parser.parse(b"p"):  # Read the value of register n; n is in hex.
             # ‘p n’
@@ -953,29 +896,9 @@ class GdbServer(threading.Thread):
             else:
                 # Reply with data should start with 'b'
                 writer.append(b"b")
-
-                # Read first 4 bytes of unaligned data
-                first_offset = address % 4
-                if first_offset != 0:
-                    value = self.current_process.risc_debug.read_memory(address - first_offset)
-                    buffer = value.to_bytes(4, byteorder="little")
-                    used_bytes = min(4 - first_offset, length)
-                    writer.append(buffer[first_offset : first_offset + used_bytes])
-                    length -= used_bytes
-                    address += used_bytes
-
-                # Read aligned data
-                while length >= 4:
-                    value = self.current_process.risc_debug.read_memory(address)
-                    writer.append(value.to_bytes(4, byteorder="little"))
-                    length -= 4
-                    address += 4
-
-                # Read last 4 bytes of unaligned data
-                if length > 0:
-                    value = self.current_process.risc_debug.read_memory(address)
-                    buffer = value.to_bytes(4, byteorder="little")
-                    writer.append(buffer[:length])
+                # Read memory bytes
+                buffer = self.current_process.risc_debug.read_memory_bytes(address, length)
+                writer.append(buffer)
         elif parser.parse(b"X"):  # Write data to memory, where the data is transmitted in binary.
             # ‘X addr,length:XX…’
             try:
@@ -992,49 +915,8 @@ class GdbServer(threading.Thread):
                 elif self.current_process is None:
                     writer.append(b"E02")
                 else:
-                    data_index = 0
-
-                    # Write first 4 bytes of unaligned data
-                    first_offset = address % 4
-                    if first_offset != 0:
-                        # First read 4 bytes, since we don't want to override existing data
-                        value = self.current_process.risc_debug.read_memory(address - first_offset)
-                        used_bytes = min(4 - first_offset, length)
-
-                        # Update number
-                        new_value = value
-                        for i in range(first_offset, first_offset + used_bytes):
-                            mask = 0xFF << (8 * i)
-                            new_value = (new_value & mask) + data[data_index]
-                            data_index += 1
-
-                        # Write bytes
-                        self.current_process.risc_debug.write_memory(address - first_offset, new_value)
-                        length -= used_bytes
-                        address += used_bytes
-
-                    # Write aligned data
-                    while length >= 4:
-                        value = int.from_bytes(data[data_index : data_index + 4], byteorder="little")
-                        data_index += 4
-                        self.current_process.risc_debug.write_memory(address, value)
-                        length -= 4
-                        address += 4
-
-                    # Write last 4 bytes of unaligned data
-                    if length > 0:
-                        # First read 4 bytes, since we don't want to override existing data
-                        value = self.current_process.risc_debug.read_memory(address)
-
-                        # Update number
-                        new_value = value
-                        for i in range(0, length):
-                            mask = 0xFF << (8 * i)
-                            new_value = (new_value & mask) + data[data_index]
-                            data_index += 1
-
-                        # Write bytes
-                        self.current_process.risc_debug.write_memory(address, new_value)
+                    # Write memory bytes
+                    self.current_process.risc_debug.write_memory_bytes(address, data[:length])
                     writer.append(b"OK")
             except:
                 writer.append(b"E03")
