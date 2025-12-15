@@ -27,7 +27,7 @@ class open_implementation : public BaseClass {
 
     std::string cluster_descriptor_path;
 
-    open_implementation(std::unique_ptr<DeviceType> device);
+    open_implementation(std::unique_ptr<DeviceType> device, bool is_simulation);
 
    public:
     ~open_implementation();

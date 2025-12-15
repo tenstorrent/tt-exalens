@@ -144,8 +144,8 @@ static std::string jtag_create_device_soc_descriptor(const tt::umd::SocDescripto
 namespace tt::exalens {
 
 template <typename BaseClass>
-open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> device)
-    : BaseClass(device.get()), device(std::move(device)) {}
+open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> device, bool is_simulation)
+    : BaseClass(device.get(), is_simulation), device(std::move(device)), is_simulation(is_simulation) {}
 
 template <typename BaseClass>
 open_implementation<BaseClass>::~open_implementation() {
@@ -223,7 +223,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     }
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
-        new open_implementation<umd_implementation>(std::move(cluster)));
+        new open_implementation<umd_implementation>(std::move(cluster), false));
     auto &unique_ids = cluster_descriptor->get_chip_unique_ids();
 
     for (auto device_id : device_ids) {
@@ -276,9 +276,8 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     }
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
-        new open_implementation<umd_implementation>(std::move(cluster)));
+        new open_implementation<umd_implementation>(std::move(cluster), true));
 
-    implementation->is_simulation = true;
     implementation->cluster_descriptor_path = create_simulation_cluster_descriptor_file(soc_descriptor.arch);
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
