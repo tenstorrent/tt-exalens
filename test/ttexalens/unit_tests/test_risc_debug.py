@@ -836,6 +836,20 @@ class TestDebugging(unittest.TestCase):
         # Verify value at address
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
 
+    # Wrapper for setting watchpoints on different types of watchpoints.
+    def _set_watchpoint(self, watchpoint_type: str, watchpoint_index: int, address: int):
+        match watchpoint_type:
+            case "pc":
+                self.core_sim.debug_hardware.set_watchpoint_on_pc_address(watchpoint_index, address)
+            case "access":
+                self.core_sim.debug_hardware.set_watchpoint_on_memory_access(watchpoint_index, address)
+            case "read":
+                self.core_sim.debug_hardware.set_watchpoint_on_memory_read(watchpoint_index, address)
+            case "write":
+                self.core_sim.debug_hardware.set_watchpoint_on_memory_write(watchpoint_index, address)
+            case _:
+                raise ValueError(f"Invalid watchpoint type: {watchpoint_type}")
+
     def test_watchpoint_on_pc_address(self):
         """Test running 36 bytes of generated code that just write data on memory and does watchpoint on pc address. All that is done on brisc."""
 
@@ -981,15 +995,7 @@ class TestDebugging(unittest.TestCase):
         # Set mixed watchpoins
         watchpoint_types = ["pc", "pc", "access", "access", "read", "read", "write", "write"]
         for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
-            match watchpoint_types[i]:
-                case "pc":
-                    self.core_sim.debug_hardware.set_watchpoint_on_pc_address(i, addresses_to_set[i])
-                case "access":
-                    self.core_sim.debug_hardware.set_watchpoint_on_memory_access(i, addresses_to_set[i])
-                case "read":
-                    self.core_sim.debug_hardware.set_watchpoint_on_memory_read(i, addresses_to_set[i])
-                case "write":
-                    self.core_sim.debug_hardware.set_watchpoint_on_memory_write(i, addresses_to_set[i])
+            self._set_watchpoint(watchpoint_types[i], i, addresses_to_set[i])
 
         for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
             self.assertEqual(
@@ -1023,15 +1029,7 @@ class TestDebugging(unittest.TestCase):
         for i in range(len(watchpoint_types)):
             if i >= self.core_sim.risc_debug.risc_info.max_watchpoints:
                 break
-            match watchpoint_types[i]:
-                case "pc":
-                    self.core_sim.debug_hardware.set_watchpoint_on_pc_address(i, addresses_to_set[i])
-                case "access":
-                    self.core_sim.debug_hardware.set_watchpoint_on_memory_access(i, addresses_to_set[i])
-                case "read":
-                    self.core_sim.debug_hardware.set_watchpoint_on_memory_read(i, addresses_to_set[i])
-                case "write":
-                    self.core_sim.debug_hardware.set_watchpoint_on_memory_write(i, addresses_to_set[i])
+            self._set_watchpoint(watchpoint_types[i], i, addresses_to_set[i])
 
         def check_watchpoint_state(
             state: BabyRiscDebugWatchpointState, watchpoint_index: int, watchpoint_type: str
@@ -1141,15 +1139,7 @@ class TestDebugging(unittest.TestCase):
         for i in range(len(watchpoint_types)):
             if i >= self.core_sim.risc_debug.risc_info.max_watchpoints:
                 break
-            match watchpoint_types[i]:
-                case "pc":
-                    self.core_sim.debug_hardware.set_watchpoint_on_pc_address(i, addresses[i])
-                case "access":
-                    self.core_sim.debug_hardware.set_watchpoint_on_memory_access(i, addresses[i])
-                case "read":
-                    self.core_sim.debug_hardware.set_watchpoint_on_memory_read(i, addresses[i])
-                case "write":
-                    self.core_sim.debug_hardware.set_watchpoint_on_memory_write(i, addresses[i])
+            self._set_watchpoint(watchpoint_types[i], i, addresses[i])
 
         # Verify that we hit the correct watchpoints
         for i in range(len(watchpoint_types)):
