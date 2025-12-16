@@ -236,6 +236,152 @@ class TestDebugging(unittest.TestCase):
                 self.core_sim.read_data(noc_addr), 0x87654321, "Memory value read over NOC should be 0x87654321."
             )
 
+    def test_read_write_memory_bytes_aligned(self):
+        """Test reading and writing aligned memory blocks using read_memory_bytes and write_memory_bytes."""
+        addr = 0x10000
+
+        # Write initial data to memory
+        self.core_sim.write_data_checked(addr, 0x11223344)
+        self.core_sim.write_data_checked(addr + 4, 0x55667788)
+        self.core_sim.write_data_checked(addr + 8, 0x99AABBCC)
+
+        # Write code for brisc core at address 0
+        # C++:
+        #   while (true);
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+
+        # Take risc out of reset
+        self.core_sim.set_reset(False)
+        self.assertFalse(self.core_sim.is_in_reset())
+
+        # Halt core
+        self.core_sim.halt()
+
+        # Value should not be changed and should stay the same since core is in halt
+        self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
+
+        # Test reading initial data
+        data = self.core_sim.risc_debug.read_memory_bytes(addr, 8)
+        self.assertEqual(data, b"\x44\x33\x22\x11\x88\x77\x66\x55", "Should read initial 8 bytes")
+
+        # Test writing new data
+        self.core_sim.risc_debug.write_memory_bytes(addr, b"\x78\x56\x34\x12\xdd\xcc\xbb\xaa")
+
+        # Test reading back what we wrote
+        data = self.core_sim.risc_debug.read_memory_bytes(addr, 8)
+        self.assertEqual(data, b"\x78\x56\x34\x12\xdd\xcc\xbb\xaa", "Should read/write 8 bytes correctly")
+        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(addr + 4), 0xAABBCCDD)
+
+        # Verify third word is unchanged
+        self.assertEqual(self.core_sim.read_data(addr + 8), 0x99AABBCC, "Third word should be unchanged")
+
+    @parameterized.expand(
+        [
+            # (offset, size, expected_read, write_data)
+            # Aligned cases
+            (0, 4, b"\x78\x56\x34\x12", b"\xAA\xBB\xCC\xDD"),
+            (0, 8, b"\x78\x56\x34\x12\xdd\xcc\xbb\xaa", b"\x11\x22\x33\x44\x55\x66\x77\x88"),
+            (4, 4, b"\xdd\xcc\xbb\xaa", b"\xEE\xFF\x00\x11"),
+            # Single byte at each offset
+            (0, 1, b"\x78", b"\xF0"),
+            (1, 1, b"\x56", b"\xF1"),
+            (2, 1, b"\x34", b"\xF2"),
+            (3, 1, b"\x12", b"\xF3"),
+            # Two bytes at each offset
+            (0, 2, b"\x78\x56", b"\xE0\xE1"),
+            (1, 2, b"\x56\x34", b"\xE2\xE3"),
+            (2, 2, b"\x34\x12", b"\xE4\xE5"),
+            (3, 2, b"\x12\xdd", b"\xE6\xE7"),
+            # Three bytes at various offsets
+            (0, 3, b"\x78\x56\x34", b"\xD0\xD1\xD2"),
+            (1, 3, b"\x56\x34\x12", b"\xD3\xD4\xD5"),
+            (2, 3, b"\x34\x12\xdd", b"\xD6\xD7\xD8"),
+            (3, 3, b"\x12\xdd\xcc", b"\xD9\xDA\xDB"),
+            # Four bytes unaligned (crosses boundary)
+            (1, 4, b"\x56\x34\x12\xdd", b"\xC0\xC1\xC2\xC3"),
+            (2, 4, b"\x34\x12\xdd\xcc", b"\xC4\xC5\xC6\xC7"),
+            (3, 4, b"\x12\xdd\xcc\xbb", b"\xC8\xC9\xCA\xCB"),
+            # Five bytes
+            (0, 5, b"\x78\x56\x34\x12\xdd", b"\xB0\xB1\xB2\xB3\xB4"),
+            (1, 5, b"\x56\x34\x12\xdd\xcc", b"\xB5\xB6\xB7\xB8\xB9"),
+            (2, 5, b"\x34\x12\xdd\xcc\xbb", b"\xBA\xBB\xBC\xBD\xBE"),
+            (3, 5, b"\x12\xdd\xcc\xbb\xaa", b"\xBF\xC0\xC1\xC2\xC3"),
+            # Six bytes
+            (0, 6, b"\x78\x56\x34\x12\xdd\xcc", b"\xA0\xA1\xA2\xA3\xA4\xA5"),
+            (1, 6, b"\x56\x34\x12\xdd\xcc\xbb", b"\xA6\xA7\xA8\xA9\xAA\xAB"),
+            (2, 6, b"\x34\x12\xdd\xcc\xbb\xaa", b"\xAC\xAD\xAE\xAF\xB0\xB1"),
+            # Seven bytes
+            (0, 7, b"\x78\x56\x34\x12\xdd\xcc\xbb", b"\x90\x91\x92\x93\x94\x95\x96"),
+            (1, 7, b"\x56\x34\x12\xdd\xcc\xbb\xaa", b"\x97\x98\x99\x9A\x9B\x9C\x9D"),
+        ]
+    )
+    def test_read_write_memory_bytes_unaligned(self, offset, size, expected_read, write_data):
+        """Test reading and writing unaligned memory blocks (not on 4-byte boundary)."""
+        addr = 0x10000
+
+        # Initialize memory and halt
+        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(addr + 4, 0xAABBCCDD)
+        self.core_sim.write_data_checked(addr + 8, 0x99887766)
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+
+        # Take risc out of reset
+        self.core_sim.set_reset(False)
+        self.assertFalse(self.core_sim.is_in_reset())
+
+        # Halt core
+        self.core_sim.halt()
+
+        # Value should not be changed and should stay the same since core is in halt
+        self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
+
+        # Test unaligned read
+        data = self.core_sim.risc_debug.read_memory_bytes(addr + offset, size)
+        self.assertEqual(data, expected_read, f"Should read {size} bytes at offset {offset}")
+
+        # Test unaligned write preserves surrounding data
+        self.core_sim.write_data_checked(addr, [0x12345678, 0xAABBCCDD, 0x99887766])
+        self.core_sim.risc_debug.write_memory_bytes(addr + offset, write_data)
+
+        # Verify the write by reading back and comparing
+        read_back = self.core_sim.risc_debug.read_memory_bytes(addr + offset, size)
+        self.assertEqual(read_back, write_data, f"Read back data should match written data at offset {offset}")
+
+        # Verify all three words to ensure proper boundary handling
+        word0 = self.core_sim.read_data(addr)
+        word1 = self.core_sim.read_data(addr + 4)
+        word2 = self.core_sim.read_data(addr + 8)
+
+        # Calculate expected words based on the write
+        memory = bytearray()
+        memory.extend((0x12345678).to_bytes(4, byteorder="little"))
+        memory.extend((0xAABBCCDD).to_bytes(4, byteorder="little"))
+        memory.extend((0x99887766).to_bytes(4, byteorder="little"))
+
+        # Apply the write
+        for i, byte in enumerate(write_data):
+            memory[offset + i] = byte
+
+        # Extract expected words
+        expected_word0 = int.from_bytes(memory[0:4], byteorder="little")
+        expected_word1 = int.from_bytes(memory[4:8], byteorder="little")
+        expected_word2 = int.from_bytes(memory[8:12], byteorder="little")
+
+        self.assertEqual(
+            word0, expected_word0, f"Word 0 should be correct after writing {len(write_data)} bytes at offset {offset}"
+        )
+        self.assertEqual(
+            word1, expected_word1, f"Word 1 should be correct after writing {len(write_data)} bytes at offset {offset}"
+        )
+        self.assertEqual(
+            word2,
+            expected_word2,
+            f"Word 2 should be preserved after writing {len(write_data)} bytes at offset {offset}",
+        )
+
     def test_minimal_run_generated_code(self):
         """Test running 16 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
         addr = 0x10000

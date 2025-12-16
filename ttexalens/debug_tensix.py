@@ -186,12 +186,13 @@ class TensixDebug:
         base_address = self.noc_block.dest.address.private_address
         dest_size = self.noc_block.dest.size
         assert base_address is not None
+        size_bytes = num_tiles * TILE_SIZE * 4
+        if size_bytes > dest_size:
+            raise TTException(f"Size {size_bytes} bytes is out of bounds for destination memory block.")
         with risc_debug.ensure_private_memory_access():
-            for i in range(num_tiles * TILE_SIZE):
-                address = base_address + 4 * i
-                if address >= base_address + dest_size:
-                    raise TTException(f"Address {hex(address)} is out of bounds for destination memory block.")
-                data.append(risc_debug.read_memory(address))
+            bytes_data = risc_debug.read_memory_bytes(base_address, size_bytes)
+            for i in range(0, size_bytes, 4):
+                data.append(int.from_bytes(bytes_data[i : i + 4], byteorder="little"))
 
         return data
 
@@ -200,14 +201,14 @@ class TensixDebug:
         if not isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
             raise TTException("Direct dest writing not supported for this architecture.")
         dest_size = self.noc_block.dest.size
-        if 4 * (len(data) - 1) >= dest_size:
+        size_bytes = len(data) * 4
+        if size_bytes > dest_size:
             raise TTException(f"Data is to large to be written in destination memory block.")
         base_address = self.noc_block.dest.address.private_address
         assert base_address is not None
+        bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in data)
         with risc_debug.ensure_private_memory_access():
-            for i in range(len(data)):
-                address = base_address + 4 * i
-                risc_debug.write_memory(address, data[i])
+            risc_debug.write_memory_bytes(base_address, bytes_data)
 
     def read_regfile_data(
         self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None

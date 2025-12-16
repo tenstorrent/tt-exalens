@@ -184,13 +184,34 @@ class RiscDebug:
         pass
 
     @abstractmethod
-    def write_memory(self, address: int, value: int) -> None:
+    def read_memory_bytes(self, address: int, size_bytes: int) -> bytes:
         """
-        Read a memory address.
+        Read size_bytes bytes from a memory address.
         Args:
             address (int): Memory address to read.
+            size_bytes (int): Number of bytes to read.
         Returns:
-            int: Value at the memory address.
+            bytes: Size_bytes bytes at the memory address.
+        """
+        pass
+
+    @abstractmethod
+    def write_memory(self, address: int, data: int) -> None:
+        """
+        Write data to a memory address.
+        Args:
+            address (int): Memory address to write.
+            data (int): Data to write to the memory address.
+        """
+        pass
+
+    @abstractmethod
+    def write_memory_bytes(self, address: int, data: bytes) -> None:
+        """
+        Write size_bytes bytes to a memory address.
+        Args:
+            address (int): Memory address to write.
+            data (bytes): Bytes to write to the memory address.
         """
         pass
 
@@ -296,6 +317,15 @@ class RiscDebug:
         Set the start address for the RISC core when taken out of reset.
         Args:
             address (int | None): Address to set as the start address, or None to put it to its default value.
+        """
+        pass
+
+    @abstractmethod
+    def get_l1(self) -> MemoryBlock:
+        """
+        Get the L1 memory block for the RISC core.
+        Returns:
+            MemoryBlock: L1 memory block.
         """
         pass
 

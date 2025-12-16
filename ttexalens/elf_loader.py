@@ -82,22 +82,15 @@ class ElfLoader:
         """
         Writes a block of data to a given address through the debug interface.
         """
-        with self.risc_debug.ensure_halted():
-            for i in range(0, len(data), 4):
-                word = data[i : i + 4]
-                word = word.ljust(4, b"\x00")
-                word = int.from_bytes(word, byteorder="little")
-                self.risc_debug.write_memory(address + i, word)
+        with self.risc_debug.ensure_private_memory_access():
+            self.risc_debug.write_memory_bytes(address, data)
 
     def read_block_through_debug(self, address, byte_count):
         """
         Reads a block of data from a given address through the debug interface.
         """
-        with self.risc_debug.ensure_halted():
-            data = bytearray()
-            for i in range(0, byte_count, 4):
-                word = self.risc_debug.read_memory(address + i)
-                data.extend(word.to_bytes(4, byteorder="little"))
+        with self.risc_debug.ensure_private_memory_access():
+            data = self.risc_debug.read_memory_bytes(address, byte_count)
         return data
 
     @staticmethod
