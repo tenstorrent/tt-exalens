@@ -139,27 +139,27 @@ def FATAL(s, **kwargs):
 
 def ERROR(s, **kwargs):
     if Verbosity.supports(Verbosity.ERROR):
-        print(f"{CLR_ERR}{s}{CLR_END}", file=kwargs.get("file", None), **kwargs)
+        print(f"{CLR_ERR}{s}{CLR_END}", **kwargs)
 
 
 def WARN(s, **kwargs):
     if Verbosity.supports(Verbosity.WARN):
-        print(f"{CLR_WARN}{s}{CLR_END}", file=kwargs.get("file", None), **kwargs)
+        print(f"{CLR_WARN}{s}{CLR_END}", **kwargs)
 
 
 def DEBUG(s, **kwargs):
     if Verbosity.supports(Verbosity.DEBUG):
-        print(f"{CLR_DEBUG}{s}{CLR_END}", file=kwargs.get("file", None), **kwargs)
+        print(f"{CLR_DEBUG}{s}{CLR_END}", **kwargs)
 
 
 def INFO(s, **kwargs):
     if Verbosity.supports(Verbosity.INFO):
-        print(f"{CLR_INFO}{s}{CLR_END}", file=kwargs.get("file", None), **kwargs)
+        print(f"{CLR_INFO}{s}{CLR_END}", **kwargs)
 
 
 def VERBOSE(s, **kwargs):
     if Verbosity.supports(Verbosity.VERBOSE):
-        print(f"{CLR_VERBOSE}{s}{CLR_END}", file=kwargs.get("file", None), **kwargs)
+        print(f"{CLR_VERBOSE}{s}{CLR_END}", **kwargs)
 
 
 def trim_ascii_escape(input: Any) -> Any:
