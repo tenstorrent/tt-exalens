@@ -9,8 +9,7 @@ from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from ttexalens.context import Context
-from ttexalens.debug_bus_signal_store import DebugBusSignalStore
-from ttexalens.hardware.baby_risc_debug import get_register_index
+from ttexalens.hardware.baby_risc_debug import BabyRiscDebugWatchpointState, get_register_index
 from ttexalens.elf_loader import ElfLoader
 
 
@@ -929,135 +928,75 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
         self.assertFalse(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
 
+        addresses_to_set = [12, 32, 0x1234, 0x8654, 0x87654321, 0x12345678, 0, 0xFFFFFFFF]
+
         # Set PC watchpoints
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(0, 12)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(1, 32)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(2, 0x1234)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(3, 0x8654)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(4, 0x87654321)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(5, 0x12345678)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(6, 0)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(7, 0xFFFFFFFF)
+        for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
+            self.core_sim.debug_hardware.set_watchpoint_on_pc_address(i, addresses_to_set[i])
 
         # Read PC watchpoints addresses and verify it is the same as we set
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(0), 12, "Address should be 12.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(1), 32, "Address should be 32.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(2), 0x1234, "Address should be 0x1234.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(3), 0x8654, "Address should be 0x8654.")
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(4), 0x87654321, "Address should be 0x87654321."
-        )
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(5), 0x12345678, "Address should be 0x12345678."
-        )
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(6), 0, "Address should be 0.")
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(7), 0xFFFFFFFF, "Address should be 0xFFFFFFFF."
-        )
+        for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
+            self.assertEqual(
+                self.core_sim.debug_hardware.read_watchpoint_address(i),
+                addresses_to_set[i],
+                f"Address should be {addresses_to_set[i]}.",
+            )
 
         # Set memory watchpoints for access
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(0, 0xFFFFFFFF)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(1, 12)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(2, 32)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(3, 0x1234)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(4, 0x8654)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(5, 0x87654321)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(6, 0x12345678)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(7, 0)
+        for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
+            self.core_sim.debug_hardware.set_watchpoint_on_memory_access(i, addresses_to_set[i])
 
         # Read memory watchpoints addresses and verify it is the same as we set
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(0), 0xFFFFFFFF, "Address should be 0xFFFFFFFF."
-        )
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(1), 12, "Address should be 12.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(2), 32, "Address should be 32.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(3), 0x1234, "Address should be 0x1234.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(4), 0x8654, "Address should be 0x8654.")
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(5), 0x87654321, "Address should be 0x87654321."
-        )
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(6), 0x12345678, "Address should be 0x12345678."
-        )
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(7), 0, "Address should be 0.")
+        for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
+            self.assertEqual(
+                self.core_sim.debug_hardware.read_watchpoint_address(i),
+                addresses_to_set[i],
+                f"Address should be {addresses_to_set[i]}.",
+            )
 
         # Set memory watchpoints for read
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(0, 0)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(1, 0xFFFFFFFF)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(2, 12)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(3, 32)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(4, 0x1234)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(5, 0x8654)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(6, 0x87654321)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(7, 0x12345678)
+        for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
+            self.core_sim.debug_hardware.set_watchpoint_on_memory_read(i, addresses_to_set[i])
 
         # Read memory watchpoints addresses and verify it is the same as we set
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(0), 0, "Address should be 0.")
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(1), 0xFFFFFFFF, "Address should be 0xFFFFFFFF."
-        )
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(2), 12, "Address should be 12.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(3), 32, "Address should be 32.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(4), 0x1234, "Address should be 0x1234.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(5), 0x8654, "Address should be 0x8654.")
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(6), 0x87654321, "Address should be 0x87654321."
-        )
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(7), 0x12345678, "Address should be 0x12345678."
-        )
+        for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
+            self.assertEqual(
+                self.core_sim.debug_hardware.read_watchpoint_address(i),
+                addresses_to_set[i],
+                f"Address should be {addresses_to_set[i]}.",
+            )
 
         # Set memory watchpoints for write
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(0, 0x12345678)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(1, 0)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(2, 0xFFFFFFFF)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(3, 12)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(4, 32)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(5, 0x1234)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(6, 0x8654)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(7, 0x87654321)
+        for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
+            self.core_sim.debug_hardware.set_watchpoint_on_memory_write(i, addresses_to_set[i])
 
         # Read memory watchpoints addresses and verify it is the same as we set
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(0), 0x12345678, "Address should be 0x12345678."
-        )
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(1), 0, "Address should be 0.")
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(2), 0xFFFFFFFF, "Address should be 0xFFFFFFFF."
-        )
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(3), 12, "Address should be 12.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(4), 32, "Address should be 32.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(5), 0x1234, "Address should be 0x1234.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(6), 0x8654, "Address should be 0x8654.")
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(7), 0x87654321, "Address should be 0x87654321."
-        )
+        for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
+            self.assertEqual(
+                self.core_sim.debug_hardware.read_watchpoint_address(i),
+                addresses_to_set[i],
+                f"Address should be {addresses_to_set[i]}.",
+            )
 
         # Set mixed watchpoins
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(0, 12)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(1, 32)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(2, 0x1234)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(3, 0x8654)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(4, 0x87654321)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(5, 0x12345678)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(6, 0)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(7, 0xFFFFFFFF)
+        watchpoint_types = ["pc", "pc", "access", "access", "read", "read", "write", "write"]
+        for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
+            match watchpoint_types[i]:
+                case "pc":
+                    self.core_sim.debug_hardware.set_watchpoint_on_pc_address(i, addresses_to_set[i])
+                case "access":
+                    self.core_sim.debug_hardware.set_watchpoint_on_memory_access(i, addresses_to_set[i])
+                case "read":
+                    self.core_sim.debug_hardware.set_watchpoint_on_memory_read(i, addresses_to_set[i])
+                case "write":
+                    self.core_sim.debug_hardware.set_watchpoint_on_memory_write(i, addresses_to_set[i])
 
-        # Read watchpoints addresses and verify it is the same as we set
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(0), 12, "Address should be 12.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(1), 32, "Address should be 32.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(2), 0x1234, "Address should be 0x1234.")
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(3), 0x8654, "Address should be 0x8654.")
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(4), 0x87654321, "Address should be 0x87654321."
-        )
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(5), 0x12345678, "Address should be 0x12345678."
-        )
-        self.assertEqual(self.core_sim.debug_hardware.read_watchpoint_address(6), 0, "Address should be 0.")
-        self.assertEqual(
-            self.core_sim.debug_hardware.read_watchpoint_address(7), 0xFFFFFFFF, "Address should be 0xFFFFFFFF."
-        )
+        for i in range(self.core_sim.risc_debug.risc_info.max_watchpoints):
+            self.assertEqual(
+                self.core_sim.debug_hardware.read_watchpoint_address(i),
+                addresses_to_set[i],
+                f"Address should be {addresses_to_set[i]}.",
+            )
 
     def test_watchpoint_state(self):
         """Test setting and disabling watchpoint state (both memory and PC)."""
@@ -1077,109 +1016,87 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
         self.assertFalse(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
+        addresses_to_set = [12, 32, 0x1234, 0x8654, 0x87654321, 0x12345678, 0, 0xFFFFFFFF]
+        watchpoint_types = ["pc", "pc", "access", "access", "read", "read", "write", "write"]
 
         # Set watchpoints
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(0, 12)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(1, 32)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(2, 0x1234)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(3, 0x8654)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(4, 0x87654321)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(5, 0x12345678)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(6, 0)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(7, 0xFFFFFFFF)
+        for i in range(len(watchpoint_types)):
+            if i >= self.core_sim.risc_debug.risc_info.max_watchpoints:
+                break
+            match watchpoint_types[i]:
+                case "pc":
+                    self.core_sim.debug_hardware.set_watchpoint_on_pc_address(i, addresses_to_set[i])
+                case "access":
+                    self.core_sim.debug_hardware.set_watchpoint_on_memory_access(i, addresses_to_set[i])
+                case "read":
+                    self.core_sim.debug_hardware.set_watchpoint_on_memory_read(i, addresses_to_set[i])
+                case "write":
+                    self.core_sim.debug_hardware.set_watchpoint_on_memory_write(i, addresses_to_set[i])
+
+        def check_watchpoint_state(
+            state: BabyRiscDebugWatchpointState, watchpoint_index: int, watchpoint_type: str
+        ) -> None:
+            match watchpoint_type:
+                case "pc":
+                    self.assertTrue(state.is_enabled, f"Watchpoint {watchpoint_index} should not be enabled.")
+                    self.assertFalse(state.is_memory, f"Watchpoint {watchpoint_index} should not be memory watchpoint.")
+                    self.assertFalse(state.is_read, f"Watchpoint {watchpoint_index} should not watch for reads.")
+                    self.assertFalse(state.is_write, f"Watchpoint {watchpoint_index} should not watch for writes.")
+                case "access":
+                    self.assertTrue(state.is_enabled, f"Watchpoint {watchpoint_index} should be enabled.")
+                    self.assertTrue(state.is_memory, f"Watchpoint {watchpoint_index} should be memory watchpoint.")
+                    self.assertTrue(state.is_read, f"Watchpoint {watchpoint_index} should watch for reads.")
+                    self.assertTrue(state.is_write, f"Watchpoint {watchpoint_index} should watch for writes.")
+                case "read":
+                    self.assertTrue(state.is_enabled, f"Watchpoint {watchpoint_index} should be enabled.")
+                    self.assertTrue(state.is_memory, f"Watchpoint {watchpoint_index} should be memory watchpoint.")
+                    self.assertTrue(state.is_read, f"Watchpoint {watchpoint_index} should not watch for reads.")
+                    self.assertFalse(state.is_write, f"Watchpoint {watchpoint_index} should not watch for writes.")
+                case "write":
+                    self.assertTrue(state.is_enabled, f"Watchpoint {watchpoint_index} should be enabled.")
+                    self.assertTrue(state.is_memory, f"Watchpoint {watchpoint_index} should be memory watchpoint.")
+                    self.assertFalse(state.is_read, f"Watchpoint {watchpoint_index} should not watch for reads.")
+                    self.assertTrue(state.is_write, f"Watchpoint {watchpoint_index} should watch for writes.")
 
         # Read watchpoints state and verify it is the same as we set
         state = self.core_sim.debug_hardware.read_watchpoints_state()
-        self.assertTrue(state[0].is_enabled, "Watchpoint 0 should be enabled.")
-        self.assertFalse(state[0].is_memory, "Watchpoint 0 should not be memory watchpoint.")
-        self.assertFalse(state[0].is_read, "Watchpoint 0 should not watch for reads.")
-        self.assertFalse(state[0].is_write, "Watchpoint 0 should not watch for writes.")
-        self.assertTrue(state[1].is_enabled, "Watchpoint 1 should be enabled.")
-        self.assertFalse(state[1].is_memory, "Watchpoint 1 should not be memory watchpoint.")
-        self.assertFalse(state[1].is_read, "Watchpoint 1 should not watch for reads.")
-        self.assertFalse(state[1].is_write, "Watchpoint 1 should not watch for writes.")
-        self.assertTrue(state[2].is_enabled, "Watchpoint 2 should be enabled.")
-        self.assertTrue(state[2].is_memory, "Watchpoint 2 should be memory watchpoint.")
-        self.assertTrue(state[2].is_read, "Watchpoint 2 should watch for reads.")
-        self.assertTrue(state[2].is_write, "Watchpoint 2 should watch for writes.")
-        self.assertTrue(state[3].is_enabled, "Watchpoint 3 should be enabled.")
-        self.assertTrue(state[3].is_memory, "Watchpoint 3 should be memory watchpoint.")
-        self.assertTrue(state[3].is_read, "Watchpoint 3 should watch for reads.")
-        self.assertTrue(state[3].is_write, "Watchpoint 3 should watch for writes.")
-        self.assertTrue(state[4].is_enabled, "Watchpoint 4 should be enabled.")
-        self.assertTrue(state[4].is_memory, "Watchpoint 4 should be memory watchpoint.")
-        self.assertTrue(state[4].is_read, "Watchpoint 4 should watch for reads.")
-        self.assertFalse(state[4].is_write, "Watchpoint 4 should not watch for writes.")
-        self.assertTrue(state[5].is_enabled, "Watchpoint 5 should be enabled.")
-        self.assertTrue(state[5].is_memory, "Watchpoint 5 should be memory watchpoint.")
-        self.assertTrue(state[5].is_read, "Watchpoint 5 should watch for reads.")
-        self.assertFalse(state[5].is_write, "Watchpoint 5 should not watch for writes.")
-        self.assertTrue(state[6].is_enabled, "Watchpoint 6 should be enabled.")
-        self.assertTrue(state[6].is_memory, "Watchpoint 6 should be memory watchpoint.")
-        self.assertFalse(state[6].is_read, "Watchpoint 6 should not watch for reads.")
-        self.assertTrue(state[6].is_write, "Watchpoint 6 should watch for writes.")
-        self.assertTrue(state[7].is_enabled, "Watchpoint 7 should be enabled.")
-        self.assertTrue(state[7].is_memory, "Watchpoint 7 should be memory watchpoint.")
-        self.assertFalse(state[7].is_read, "Watchpoint 7 should not watch for reads.")
-        self.assertTrue(state[7].is_write, "Watchpoint 7 should watch for writes.")
+        for i in range(len(watchpoint_types)):
+            if i >= self.core_sim.risc_debug.risc_info.max_watchpoints:
+                break
+            check_watchpoint_state(state[i], i, watchpoint_types[i])
 
         # Disable some watchpoints
-        self.core_sim.debug_hardware.disable_watchpoint(0)
-        self.core_sim.debug_hardware.disable_watchpoint(3)
-        self.core_sim.debug_hardware.disable_watchpoint(4)
-        self.core_sim.debug_hardware.disable_watchpoint(6)
+        watchpoints_to_disable = [0, 3, 4, 6]
+        for watchpoint_index in watchpoints_to_disable:
+            if watchpoint_index >= self.core_sim.risc_debug.risc_info.max_watchpoints:
+                break
+            self.core_sim.debug_hardware.disable_watchpoint(watchpoint_index)
 
         # Read watchpoints state and verify that we disabled some of the and rest have the same state as we set before
         state = self.core_sim.debug_hardware.read_watchpoints_state()
-        self.assertFalse(state[0].is_enabled, "Watchpoint 0 should not be enabled.")
-        self.assertFalse(state[0].is_memory, "Watchpoint 0 should not be memory watchpoint.")
-        self.assertFalse(state[0].is_read, "Watchpoint 0 should not watch for reads.")
-        self.assertFalse(state[0].is_write, "Watchpoint 0 should not watch for writes.")
-        self.assertTrue(state[1].is_enabled, "Watchpoint 1 should be enabled.")
-        self.assertFalse(state[1].is_memory, "Watchpoint 1 should not be memory watchpoint.")
-        self.assertFalse(state[1].is_read, "Watchpoint 1 should not watch for reads.")
-        self.assertFalse(state[1].is_write, "Watchpoint 1 should not watch for writes.")
-        self.assertTrue(state[2].is_enabled, "Watchpoint 2 should be enabled.")
-        self.assertTrue(state[2].is_memory, "Watchpoint 2 should be memory watchpoint.")
-        self.assertTrue(state[2].is_read, "Watchpoint 2 should watch for reads.")
-        self.assertTrue(state[2].is_write, "Watchpoint 2 should watch for writes.")
-        self.assertFalse(state[3].is_enabled, "Watchpoint 3 should not be enabled.")
-        self.assertFalse(state[3].is_memory, "Watchpoint 3 should not be memory watchpoint.")
-        self.assertFalse(state[3].is_read, "Watchpoint 3 should not watch for reads.")
-        self.assertFalse(state[3].is_write, "Watchpoint 3 should not watch for writes.")
-        self.assertFalse(state[4].is_enabled, "Watchpoint 4 should not be enabled.")
-        self.assertFalse(state[4].is_memory, "Watchpoint 4 should not be memory watchpoint.")
-        self.assertFalse(state[4].is_read, "Watchpoint 4 should not watch for reads.")
-        self.assertFalse(state[4].is_write, "Watchpoint 4 should not watch for writes.")
-        self.assertTrue(state[5].is_enabled, "Watchpoint 5 should be enabled.")
-        self.assertTrue(state[5].is_memory, "Watchpoint 5 should be memory watchpoint.")
-        self.assertTrue(state[5].is_read, "Watchpoint 5 should watch for reads.")
-        self.assertFalse(state[5].is_write, "Watchpoint 5 should not watch for writes.")
-        self.assertFalse(state[6].is_enabled, "Watchpoint 6 should not be enabled.")
-        self.assertFalse(state[6].is_memory, "Watchpoint 6 should not be memory watchpoint.")
-        self.assertFalse(state[6].is_read, "Watchpoint 6 should not watch for reads.")
-        self.assertFalse(state[6].is_write, "Watchpoint 6 should not watch for writes.")
-        self.assertTrue(state[7].is_enabled, "Watchpoint 7 should be enabled.")
-        self.assertTrue(state[7].is_memory, "Watchpoint 7 should be memory watchpoint.")
-        self.assertFalse(state[7].is_read, "Watchpoint 7 should not watch for reads.")
-        self.assertTrue(state[7].is_write, "Watchpoint 7 should watch for writes.")
+
+        for i in range(len(watchpoint_types)):
+            if i >= self.core_sim.risc_debug.risc_info.max_watchpoints:
+                break
+            if i in watchpoints_to_disable:
+                self.assertFalse(state[i].is_enabled, f"Watchpoint {i} should not be enabled.")
+                self.assertFalse(state[i].is_memory, f"Watchpoint {i} should not be memory watchpoint.")
+                self.assertFalse(state[i].is_read, f"Watchpoint {i} should not watch for reads.")
+                self.assertFalse(state[i].is_write, f"Watchpoint {i} should not watch for writes.")
+            else:
+                check_watchpoint_state(state[i], i, watchpoint_types[i])
 
     def test_memory_watchpoint(self):
         """Test running 64 bytes of generated code that just write data on memory and tests memory watchpoints. All that is done on brisc."""
 
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest("Multiple memory watchpoints do not work on wormhole ETH. Issue: #762")
+        addresses = [0x10000, 0x20000, 0x30000, 0x40000]
 
-        addr1 = 0x10000
-        addr2 = 0x20000
-        addr3 = 0x30000
-        addr4 = 0x30000
-
+        value = 0x12345678
         # Write our data to memory
-        self.core_sim.write_data_checked(addr1, 0x12345678)
-        self.core_sim.write_data_checked(addr2, 0x12345678)
-        self.core_sim.write_data_checked(addr3, 0x12345678)
-        self.core_sim.write_data_checked(addr4, 0x12345678)
+        self.core_sim.write_data_checked(addresses[0], value)
+        self.core_sim.write_data_checked(addresses[1], value)
+        self.core_sim.write_data_checked(addresses[2], value)
+        self.core_sim.write_data_checked(addresses[3], value)
 
         # Write code for brisc core at address 0
         # C++:
@@ -1202,10 +1119,10 @@ class TestDebugging(unittest.TestCase):
         self.program_writer.append_nop()
         self.program_writer.append_nop()
         self.program_writer.append_nop()
-        self.program_writer.append_store_word_to_memory(0x10000, 0x45678000, 10, 11)  # First write
-        self.program_writer.append_load_word_from_memory_to_register(12, 0x20000, 10)  # First read
-        self.program_writer.append_store_word_to_memory(0x30000, 0x87654000, 10, 11)  # Second write
-        self.program_writer.append_load_word_from_memory_to_register(12, 0x40000, 10)  # Second read
+        self.program_writer.append_store_word_to_memory(addresses[0], 0x45678000, 10, 11)  # First write
+        self.program_writer.append_load_word_from_memory_to_register(12, addresses[1], 10)  # First read
+        self.program_writer.append_store_word_to_memory(addresses[2], 0x87654000, 10, 11)  # Second write
+        self.program_writer.append_load_word_from_memory_to_register(12, addresses[3], 10)  # Second read
         self.program_writer.append_while_true()
         self.program_writer.write_program()
 
@@ -1213,60 +1130,49 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.set_reset(False)
 
         # Verify value at address
-        self.assertEqual(self.core_sim.read_data(addr1), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(addresses[0]), 0x12345678)
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
         self.assertFalse(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
 
-        # Set memory watchpoints
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_write(0, 0x10000)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_read(1, 0x20000)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(2, 0x30000)
-        self.core_sim.debug_hardware.set_watchpoint_on_memory_access(3, 0x40000)
+        watchpoint_types = ["write", "read", "access", "access"]
 
-        # Continue and verify that we hit first watchpoint
-        self.core_sim.continue_execution()
-        self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
-        self.assertFalse(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        self.assertTrue(self.core_sim.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause.")
-        self.assertTrue(self.core_sim.read_status().watchpoints_hit[0], "Watchpoint 0 should be hit.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[1], "Watchpoint 1 should not be hit.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[2], "Watchpoint 2 should not be hit.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[3], "Watchpoint 3 should not be hit.")
+        # Set watchpoints
+        for i in range(len(watchpoint_types)):
+            if i >= self.core_sim.risc_debug.risc_info.max_watchpoints:
+                break
+            match watchpoint_types[i]:
+                case "pc":
+                    self.core_sim.debug_hardware.set_watchpoint_on_pc_address(i, addresses[i])
+                case "access":
+                    self.core_sim.debug_hardware.set_watchpoint_on_memory_access(i, addresses[i])
+                case "read":
+                    self.core_sim.debug_hardware.set_watchpoint_on_memory_read(i, addresses[i])
+                case "write":
+                    self.core_sim.debug_hardware.set_watchpoint_on_memory_write(i, addresses[i])
 
-        self.assertEqual(self.core_sim.read_data(addr1), 0x45678000)
+        # Verify that we hit the correct watchpoints
+        for i in range(len(watchpoint_types)):
+            if i >= self.core_sim.risc_debug.risc_info.max_watchpoints:
+                break
+            self.core_sim.continue_execution()
+            self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
+            self.assertFalse(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
+            self.assertTrue(
+                self.core_sim.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause."
+            )
+            self.assertTrue(self.core_sim.read_status().watchpoints_hit[i], f"Watchpoint {i} should be hit.")
+            for j in range(len(watchpoint_types)):
+                if j >= self.core_sim.risc_debug.risc_info.max_watchpoints:
+                    break
+                if j == i:
+                    continue
+                self.assertFalse(self.core_sim.read_status().watchpoints_hit[j], f"Watchpoint {j} should not be hit.")
 
-        # Continue and verify that we hit second watchpoint
-        self.core_sim.continue_execution()
-        self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
-        self.assertFalse(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        self.assertTrue(self.core_sim.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[0], "Watchpoint 0 should not be hit.")
-        self.assertTrue(self.core_sim.read_status().watchpoints_hit[1], "Watchpoint 1 should be hit.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[2], "Watchpoint 2 should not be hit.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[3], "Watchpoint 3 should not be hit.")
-
-        # Continue and verify that we hit third watchpoint
-        self.core_sim.continue_execution()
-        self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
-        self.assertFalse(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        self.assertTrue(self.core_sim.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[0], "Watchpoint 0 should not be hit.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[1], "Watchpoint 1 should not be hit.")
-        self.assertTrue(self.core_sim.read_status().watchpoints_hit[2], "Watchpoint 2 should be hit.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[3], "Watchpoint 3 should not be hit.")
-
-        self.assertEqual(self.core_sim.read_data(addr3), 0x87654000)
-
-        # Continue and verify that we hit fourth watchpoint
-        self.core_sim.continue_execution()
-        self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
-        self.assertFalse(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
-        self.assertTrue(self.core_sim.read_status().is_memory_watchpoint_hit, "Memory watchpoint should be the cause.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[0], "Watchpoint 0 should not be hit.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[1], "Watchpoint 1 should not be hit.")
-        self.assertFalse(self.core_sim.read_status().watchpoints_hit[2], "Watchpoint 2 should not be hit.")
-        self.assertTrue(self.core_sim.read_status().watchpoints_hit[3], "Watchpoint 3 should be hit.")
+            if i == 0:
+                self.assertEqual(self.core_sim.read_data(addresses[i]), 0x45678000)
+            elif i == 2:
+                self.assertEqual(self.core_sim.read_data(addresses[i]), 0x87654000)
 
     def test_bne_with_debug_fail(self):
         """Test running 48 bytes of generated code that confirms problem with BNE when debugging hardware is enabled."""
