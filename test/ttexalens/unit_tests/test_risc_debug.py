@@ -1036,7 +1036,7 @@ class TestDebugging(unittest.TestCase):
         ) -> None:
             match watchpoint_type:
                 case "pc":
-                    self.assertTrue(state.is_enabled, f"Watchpoint {watchpoint_index} should not be enabled.")
+                    self.assertTrue(state.is_enabled, f"Watchpoint {watchpoint_index} should be enabled.")
                     self.assertFalse(state.is_memory, f"Watchpoint {watchpoint_index} should not be memory watchpoint.")
                     self.assertFalse(state.is_read, f"Watchpoint {watchpoint_index} should not watch for reads.")
                     self.assertFalse(state.is_write, f"Watchpoint {watchpoint_index} should not watch for writes.")
@@ -1048,7 +1048,7 @@ class TestDebugging(unittest.TestCase):
                 case "read":
                     self.assertTrue(state.is_enabled, f"Watchpoint {watchpoint_index} should be enabled.")
                     self.assertTrue(state.is_memory, f"Watchpoint {watchpoint_index} should be memory watchpoint.")
-                    self.assertTrue(state.is_read, f"Watchpoint {watchpoint_index} should not watch for reads.")
+                    self.assertTrue(state.is_read, f"Watchpoint {watchpoint_index} should watch for reads.")
                     self.assertFalse(state.is_write, f"Watchpoint {watchpoint_index} should not watch for writes.")
                 case "write":
                     self.assertTrue(state.is_enabled, f"Watchpoint {watchpoint_index} should be enabled.")
