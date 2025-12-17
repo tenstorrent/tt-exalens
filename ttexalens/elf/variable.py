@@ -37,8 +37,10 @@ class MemoryAccess(ABC):
         pass
 
     @staticmethod
-    def get(risc_debug: RiscDebug) -> "MemoryAccess":
-        return RiscDebugMemoryAccess(risc_debug)
+    def get(risc_debug: RiscDebug, ensure_halted_access: bool = True, restricted_access: bool = True) -> "MemoryAccess":
+        return RiscDebugMemoryAccess(
+            risc_debug, ensure_halted_access=ensure_halted_access, restricted_access=restricted_access
+        )
 
     @staticmethod
     def get_l1(location: OnChipCoordinate) -> "MemoryAccess":
