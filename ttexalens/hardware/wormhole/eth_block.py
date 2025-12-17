@@ -142,7 +142,7 @@ class WormholeEthBlock(WormholeNocBlock):
             noc_block=self,
             neo_id=None,  # NEO ID is not applicable for Wormhole
             l1=self.l1,
-            max_watchpoints=1,  # Due to #762, we only allow 1 watchpoint for erisc
+            max_watchpoints=0,  # Due to #762, we disable watchpoints for erisc
             reset_flag_shift=11,
             branch_prediction_register=None,  # We don't have a branch prediction register on erisc
             default_code_start_address=0,
