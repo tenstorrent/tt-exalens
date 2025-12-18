@@ -9,7 +9,35 @@ permissions:
   packages: write
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      should-build: ${{ steps.check.outputs.should-build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check if only VERSION changed
+        id: check
+        run: |
+          # Get list of changed files
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          # Check if only VERSION file changed
+          if [ "$CHANGED_FILES" = "VERSION" ]; then
+            echo "Only VERSION file changed, skipping build"
+            echo "should-build=false" >> $GITHUB_OUTPUT
+          else
+            echo "Other files changed, proceeding with build"
+            echo "should-build=true" >> $GITHUB_OUTPUT
+          fi
+
   build-and-test:
+    needs: check-changes
+    if: needs.check-changes.outputs.should-build == 'true'
     strategy:
       matrix:
         ubuntu-version: [ "22.04", "24.04" ]
