@@ -7,7 +7,7 @@ import os
 import time
 from ttexalens.context import Context
 from ttexalens.util import TTException
-from ttexalens.tt_exalens_lib_utils import check_context
+from ttexalens.tt_exalens_lib import check_context
 
 
 def arc_dbg_fw_get_buffer_start_addr():

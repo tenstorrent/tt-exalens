@@ -10,9 +10,8 @@ from datetime import timedelta
 
 from parameterized import parameterized, parameterized_class
 
-from test.ttexalens.unit_tests.test_base import init_default_test_context, init_cached_test_context
-from ttexalens import tt_exalens_init
-from ttexalens import tt_exalens_lib as lib
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
+import ttexalens as lib
 from ttexalens import util
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -45,31 +44,35 @@ def invalid_argument_decorator(func):
 class TestAutoContext(unittest.TestCase):
     def test_auto_context(self):
         """Test auto context creation."""
-        tt_exalens_init.GLOBAL_CONTEXT = None
+        lib.set_active_context(None)
         context = lib.check_context()
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
 
     def test_set_global_context(self):
         """Test setting global context."""
-        tt_exalens_init.GLOBAL_CONTEXT = None
-        context = tt_exalens_init.init_ttexalens()
-        self.assertIsNotNone(tt_exalens_init.GLOBAL_CONTEXT)
-        self.assertIs(tt_exalens_init.GLOBAL_CONTEXT, context)
+        import ttexalens.tt_exalens_init as init
+
+        lib.set_active_context(None)
+        context = lib.init_ttexalens()
+        self.assertIsNotNone(init.GLOBAL_CONTEXT)
+        self.assertIs(init.GLOBAL_CONTEXT, context)
 
     def test_existing_context(self):
         """Test recognition of existing context."""
-        tt_exalens_init.GLOBAL_CONTEXT = None
+        import ttexalens.tt_exalens_init as init
+
+        lib.set_active_context(None)
 
         # Create new global context
-        context1 = tt_exalens_init.init_ttexalens()
-        self.assertIsNotNone(tt_exalens_init.GLOBAL_CONTEXT)
-        self.assertIs(tt_exalens_init.GLOBAL_CONTEXT, context1)
+        context1 = lib.init_ttexalens()
+        self.assertIsNotNone(init.GLOBAL_CONTEXT)
+        self.assertIs(init.GLOBAL_CONTEXT, context1)
 
         # Check for existing context
         context = lib.check_context()
         self.assertIsNotNone(context)
-        self.assertIs(tt_exalens_init.GLOBAL_CONTEXT, context)
+        self.assertIs(init.GLOBAL_CONTEXT, context)
         self.assertIs(context, context1)
 
 

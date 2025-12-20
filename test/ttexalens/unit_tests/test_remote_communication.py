@@ -4,10 +4,7 @@
 import unittest
 
 from test.ttexalens.unit_tests.test_base import init_default_test_context
-from ttexalens.context import Context
-from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.device import Device
-from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
+from ttexalens import Context, OnChipCoordinate, Device, read_word_from_device, write_words_to_device
 
 
 class TestRemoteCommunication(unittest.TestCase):
@@ -47,6 +44,7 @@ class TestRemoteCommunication(unittest.TestCase):
         self.assertEqual(ret, data)
         # Find eth core used for remote communication and halt it
         eth_core = self.context.server_ifc.get_remote_transfer_eth_core(self.remote_device_id)
+        assert eth_core is not None, "Could not find ETH core used for remote communication"
         coord_str = f"e{eth_core[0]},{eth_core[1]}"
         loc = OnChipCoordinate.create(coord_str, self.local_device)
         noc_block = self.local_device.get_block(loc)

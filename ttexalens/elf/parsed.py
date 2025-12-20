@@ -10,8 +10,6 @@ from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 from functools import cache, cached_property
 import os
-from ttexalens import Verbosity
-from ttexalens.elf.cu import ElfCompileUnit
 import ttexalens.util as util
 from ttexalens.elf.dwarf import ElfDwarf, ElfDwarfWithOffset
 from ttexalens.elf.frame import FrameInfoProvider, FrameInfoProviderWithOffset
@@ -35,7 +33,7 @@ def process_die(die: ElfDie, recurse_dict, r_depth):
     path = die.path
 
     # We add test for debug_enabled here, because we don't want string formatting to be executed without printint anything
-    if Verbosity.supports(Verbosity.DEBUG):
+    if util.Verbosity.supports(util.Verbosity.DEBUG):
         log(
             f"{util.CLR_BLUE}{path}{util.CLR_END} {category} {util.CLR_GREEN}{die.resolved_type.path}{util.CLR_END} {die.offset}/{hex(die.offset)} {die}"
         )

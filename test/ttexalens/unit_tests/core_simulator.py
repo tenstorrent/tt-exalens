@@ -3,9 +3,14 @@
 
 from functools import cached_property
 from test.ttexalens.unit_tests.test_base import get_core_location
-from ttexalens import tt_exalens_lib as lib
-from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.context import Context
+from ttexalens import (
+    Context,
+    write_to_device,
+    write_words_to_device,
+    read_from_device,
+    read_word_from_device,
+    parse_elf,
+)
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug, BabyRiscDebugHardware, get_register_index
@@ -66,17 +71,17 @@ class RiscvCoreSimulator:
     def write_data_checked(self, addr: int, data: int | list[int]):
         """Write data to memory and verify it was written correctly."""
         if isinstance(data, int):
-            lib.write_words_to_device(self.location, addr, data)
+            write_words_to_device(self.location, addr, data)
             assert self.read_data(addr) == data, f"Data verification failed at address {addr:x}"
         else:
             byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-            lib.write_to_device(self.location, addr, byte_data)
-            read_data = lib.read_from_device(self.location, addr, num_bytes=len(byte_data))
+            write_to_device(self.location, addr, byte_data)
+            read_data = read_from_device(self.location, addr, num_bytes=len(byte_data))
             assert read_data == byte_data, f"Data verification failed at address {addr:x}"
 
     def read_data(self, addr: int) -> int:
         """Read data from memory at specified address."""
-        return lib.read_word_from_device(self.location, addr)
+        return read_word_from_device(self.location, addr)
 
     def set_reset(self, reset: bool):
         """Set or clear reset signal."""
@@ -204,4 +209,4 @@ class RiscvCoreSimulator:
 
     def parse_elf(self, app_name: str):
         elf_path = self.get_elf_path(app_name)
-        return lib.parse_elf(elf_path, self.context)
+        return parse_elf(elf_path, self.context)
