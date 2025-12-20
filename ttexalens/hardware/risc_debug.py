@@ -505,6 +505,8 @@ class RiscDebug:
                 cfa = frame_pointer
                 return_address = frame_description.read_register(1, cfa)
                 frame_pointer = frame_description.read_previous_cfa(cfa)
+                if return_address is None:
+                    break
                 pc = return_address
                 frame_inspection = FrameInspection(self, elf.loaded_offset, frame_description, cfa)
                 frame_description = elf.frame_info.get_frame_description(pc, self)

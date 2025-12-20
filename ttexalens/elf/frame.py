@@ -42,7 +42,7 @@ class FrameDescription:
             if address is not None:
                 l1 = self.risc_debug.get_l1()
                 private_data = self.risc_debug.get_data_private_memory()
-                if (l1 is not None and l1.contains_noc_address(address)) or (
+                if (l1 is not None and l1.contains_private_address(address)) or (
                     private_data is not None and private_data.contains_private_address(address)
                 ):
                     return self.risc_debug.read_memory(address)
