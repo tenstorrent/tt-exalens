@@ -32,7 +32,7 @@ class FrameDescription:
             # TODO #761: Figure out how to handle all types of rules (CFARule, RegisterRule)
         return None
 
-    def read_register(self, register_index: int, cfa: int) -> int:
+    def read_register(self, register_index: int, cfa: int) -> int | None:
         if self.current_fde_entry is not None and register_index in self.current_fde_entry:
             register_rule = self.current_fde_entry[register_index]
             if register_rule.type == "OFFSET":
@@ -40,7 +40,13 @@ class FrameDescription:
             else:
                 address = None
             if address is not None:
-                return self.risc_debug.read_memory(address)
+                l1 = self.risc_debug.get_l1()
+                private_data = self.risc_debug.get_data_private_memory()
+                if (l1 is not None and l1.contains_noc_address(address)) or (
+                    private_data is not None and private_data.contains_private_address(address)
+                ):
+                    return self.risc_debug.read_memory(address)
+                return None
         return self.risc_debug.read_gpr(register_index)
 
     def read_previous_cfa(self, current_cfa: int | None = None) -> int | None:
