@@ -25,7 +25,7 @@ from ttexalens import util
 from ttexalens.tt_exalens_lib import check_context, parse_elf
 from ttexalens.uistate import UIState
 from ttexalens.coverage import dump_coverage
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
     short_name="cov",
@@ -33,7 +33,7 @@ command_metadata = CommandMetadata(
     type="high-level",
     description=__doc__,
     context=["limited"],
-    common_option_names=["--device", "--loc", "--verbose"],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
 )
 
 
@@ -46,8 +46,8 @@ def run(cmd_text, context, ui_state: UIState) -> list[dict[str, str]]:
     context = check_context(context)
     elf = parse_elf(elf_path, context)
 
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             try:
                 dump_coverage(elf, loc, gcda_path, gcno_path)
                 util.VERBOSE(f"Coverage data dumped for device {device.id} loc {loc}:")

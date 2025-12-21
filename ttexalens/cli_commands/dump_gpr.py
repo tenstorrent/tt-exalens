@@ -28,7 +28,7 @@ from ttexalens.hardware.risc_debug import CallstackEntry, RiscLocation
 from ttexalens.uistate import UIState
 
 from ttexalens import util as util
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
     short_name="gpr",
@@ -36,7 +36,7 @@ command_metadata = CommandMetadata(
     type="low-level",
     description=__doc__,
     context=["limited", "metal"],
-    common_option_names=["--device", "--loc", "--verbose", "--risc"],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Risc],
 )
 
 
@@ -134,9 +134,11 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
 
 def run(cmd_text, context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            riscs_to_include = list(dopt.for_each("--risc", context, ui_state, device=device, location=loc))
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
+            riscs_to_include = list(
+                dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc)
+            )
             table = get_register_data(device, context, loc, dopt.args, riscs_to_include)
             if table:
                 util.INFO(f"RISC-V registers for location {loc} on device {device.id()}")

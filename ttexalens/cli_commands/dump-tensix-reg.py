@@ -7,8 +7,6 @@ Usage:
 
 Options:
   <reg-group>     Tensix register group to dump. Options: [all, alu, pack, unpack, gpr] Default: all
-  -d <device>     Device ID. Optional. Default: current device
-  -l <loc>        Core location in X-Y or R,C format. Default: current core
   -v              Verbose mode. Prints all general purpose registers.
   -t <thread-id>  Thread ID. Options: [0, 1, 2] Default: all
 Description:
@@ -40,13 +38,14 @@ from ttexalens.util import (
     CLR_END,
     dict_list_to_table,
 )
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
     short_name="tensix",
     type="low-level",
     description=__doc__,
     context=["limited", "metal"],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
 )
 
 possible_register_groups = ["all", "alu", "pack", "unpack", "gpr"]
@@ -95,9 +94,9 @@ def run(cmd_text, context, ui_state: UIState):
         )
 
     device: Device
-    for device in dopt.for_each("--device", context, ui_state):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         conf_reg_desc = device.get_tensix_registers_description()
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             INFO(f"Tensix registers for location {loc} on device {device.id()}")
 
             noc_block = device.get_block(loc)

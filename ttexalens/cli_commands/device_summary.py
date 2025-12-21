@@ -35,7 +35,7 @@ from ttexalens.device import Device
 from ttexalens.coordinate import VALID_COORDINATE_TYPES, OnChipCoordinate
 from ttexalens.context import LimitedContext
 from ttexalens.uistate import UIState
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
     short_name="d",
@@ -43,7 +43,7 @@ command_metadata = CommandMetadata(
     type="high-level",
     description=__doc__,
     context=["limited", "metal"],
-    common_option_names=["--device"],
+    common_option_names=[CommonCommandOptions.Device],
 )
 
 
@@ -121,7 +121,7 @@ def run(cmd_text, context, ui_state: UIState):
         print_legend("")
 
     device: Device
-    for device in dopt.for_each("--device", context, ui_state):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
         device_id_str = f"{device.id()}"
         if device.unique_id is not None:

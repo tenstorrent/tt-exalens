@@ -224,6 +224,9 @@ def import_commands(reload: bool = False) -> list[CommandMetadata]:
                 util.FATAL(
                     f"Commands {cmd.long_name} and {command_metadata.long_name} use the same shortcut: {cmd.short_name}"
                 )
+        dopt = tt_docopt(command_metadata, command_metadata.long_name)
+        command_metadata = command_metadata.copy()
+        command_metadata.description = dopt.doc
         commands.append(command_metadata)
     return commands
 

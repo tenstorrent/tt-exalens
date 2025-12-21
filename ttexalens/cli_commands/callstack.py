@@ -26,14 +26,14 @@ from ttexalens.uistate import UIState
 
 from ttexalens import util
 import ttexalens.tt_exalens_lib as lib
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
     short_name="bt",
     type="low-level",
     description=__doc__,
     context=["limited", "metal"],
-    common_option_names=["--device", "--loc"],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
 )
 
 
@@ -60,9 +60,9 @@ def run(cmd_text, context, ui_state: UIState):
     elfs = [lib.parse_elf(elf_path, context) for elf_path in elf_paths]
 
     device: Device
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            for risc_name in dopt.for_each("--risc", context, ui_state, device=device, location=loc):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
+            for risc_name in dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc):
                 if risc_name == "first risc":
                     noc_block = device.get_block(loc)
                     riscs = noc_block.all_riscs

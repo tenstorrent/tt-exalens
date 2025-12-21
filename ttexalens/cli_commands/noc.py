@@ -55,7 +55,7 @@ from ttexalens.register_store import (
 )
 from ttexalens.uistate import UIState
 from ttexalens.rich_formatters import formatter
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
     short_name="nc",
@@ -63,7 +63,7 @@ command_metadata = CommandMetadata(
     type="high-level",
     description=__doc__,
     context=["limited", "metal"],
-    common_option_names=["--device", "--loc"],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
 )
 
 
@@ -366,8 +366,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
     simple_print = dopt.args["--simple"]
 
     # Iterate over selected devices, locations, and NOC identifiers
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             formatter.print_device_header(device, loc)
 
             if dopt.args["status"]:

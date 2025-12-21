@@ -62,7 +62,7 @@ from ttexalens.uistate import UIState
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
     short_name="dbus",
@@ -70,7 +70,7 @@ command_metadata = CommandMetadata(
     type="low-level",
     description=__doc__,
     context=["limited", "metal"],
-    common_option_names=["--device", "--loc", "--verbose"],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
 )
 
 
@@ -401,6 +401,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         "simple": dopt.args.get("--simple"),
     }
 
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             command_handler(device, loc, params)

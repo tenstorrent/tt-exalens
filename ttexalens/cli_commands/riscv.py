@@ -50,14 +50,14 @@ from ttexalens.device import Device
 from ttexalens.uistate import UIState
 
 from ttexalens import util as util
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
     short_name="rv",
     type="low-level",
     description=__doc__,
     context=["limited", "metal"],
-    common_option_names=["--device", "--loc", "--risc"],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Risc],
 )
 
 
@@ -181,8 +181,8 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
 
 def run(cmd_text, context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            for risc_name in dopt.for_each("--risc", context, ui_state, device=device, location=loc):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
+            for risc_name in dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc):
                 run_riscv_command(context, device, loc, risc_name, dopt.args, was_all=dopt.args["-r"] == "all")
     return None
