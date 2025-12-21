@@ -26,7 +26,6 @@ command_metadata = CommandMetadata(
     long_name="run-elf",
     type="high-level",
     description=__doc__,
-    context=["limited"],
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
 )
 

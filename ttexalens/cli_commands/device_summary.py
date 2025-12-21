@@ -42,7 +42,6 @@ command_metadata = CommandMetadata(
     long_name="device",
     type="high-level",
     description=__doc__,
-    context=["limited", "metal"],
     common_option_names=[CommonCommandOptions.Device],
 )
 

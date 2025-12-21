@@ -23,7 +23,6 @@ command_metadata = CommandMetadata(
     long_name="pci-raw-read",
     type="dev",
     description=__doc__,
-    context=["limited", "metal"],
 )
 
 

@@ -24,7 +24,6 @@ command_metadata = CommandMetadata(
     short_name="go",
     type="high-level",
     description=__doc__,
-    context=["limited", "metal"],
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
 )
 

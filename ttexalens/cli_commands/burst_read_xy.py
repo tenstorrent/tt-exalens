@@ -44,7 +44,6 @@ command_metadata = CommandMetadata(
     long_name="burst-read-xy",
     type="low-level",
     description=__doc__,
-    context=["limited", "metal"],
 )
 
 

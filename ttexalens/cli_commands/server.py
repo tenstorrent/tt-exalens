@@ -22,7 +22,6 @@ command_metadata = CommandMetadata(
     short_name="server",
     type="high-level",
     description=__doc__,
-    context=["limited", "metal"],
 )
 
 

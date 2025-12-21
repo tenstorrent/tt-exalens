@@ -38,7 +38,7 @@ class Context:
     def assign_commands(self, commands: list[CommandMetadata]):
         self.commands = []
         for cmd in commands:
-            if self.short_name in cmd.context or "util" in cmd.context:
+            if cmd.context is None or self.short_name in cmd.context or "util" in cmd.context:
                 self.commands.append(cmd)
 
     @cached_property

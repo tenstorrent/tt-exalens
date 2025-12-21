@@ -26,7 +26,6 @@ command_metadata = CommandMetadata(
     short_name="gdb",
     type="high-level",
     description=__doc__,
-    context=["limited", "metal"],
 )
 
 

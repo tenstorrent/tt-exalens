@@ -33,7 +33,6 @@ command_metadata = CommandMetadata(
     long_name="write-xy",
     type="low-level",
     description=__doc__,
-    context=["limited", "metal"],
 )
 
 

@@ -24,17 +24,17 @@ class CommonCommandOptions(Enum):
 @dataclass
 class CommandMetadata:
     type: str
-    context: list[str]
     short_name: str | None = None
     long_name: str | None = None
     description: str | None = None
+    context: list[str] | None = None
     common_option_names: list[CommonCommandOptions] | None = None
     _module: ModuleType | None = None
 
     def copy(self):
         return CommandMetadata(
             type=self.type,
-            context=self.context.copy(),
+            context=self.context.copy() if self.context else None,
             short_name=self.short_name,
             long_name=self.long_name,
             description=self.description,

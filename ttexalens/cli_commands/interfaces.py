@@ -22,7 +22,6 @@ command_metadata = CommandMetadata(
     long_name="interfaces",
     type="dev",
     description=__doc__,
-    context=["limited", "metal"],
 )
 
 TEST_ID_SIZE = 48
