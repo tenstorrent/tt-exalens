@@ -276,10 +276,9 @@ This folder contains python files that define TTExaLens commands.
 To create a new command, create a new file in this folder.
 The file name will be the command name. For example, `op-map.py` defines the `op-map` command.
 The file must contain a function called `run()` which represents the main entry point for the command.
-The command_metadata dictionary must also be defined.
-The fields of this dictionary are as follwos:
-- `short` (*str*, optional): short name of the command
-- `long` (*str*, optional): long name of the command
+The command_metadata variable must also be defined and it needs to be `CommandMetadata` data class with following fields specified:
+- `short_name` (*str*, optional): short name of the command
+- `long_name` (*str*, optional): long name of the command
 - `type` (*str*): type of the command:
   - dev (*under development*),
   - high-level,
@@ -302,13 +301,13 @@ Note: long and short name can't be left out.
 For example:
 
 ```
-command_metadata = {
-    "short": "examplecmd",
-    "type": "low-level",
-    "description": "This is a description of the command.",
-    "context": ["limited", "metal"],
-    "common_option_names": [ "--device", "--loc", "--verbose", "--risc" ],
-    }
+command_metadata = CommandMetadata(
+    short_name = "examplecmd",
+    type = "low-level",
+    description = "This is a description of the command.",
+    context = ["limited", "metal"],
+    common_option_names = [ "--device", "--loc", "--verbose", "--risc" ],
+)
 ```
 
 <div style="page-break-after: always;"></div>

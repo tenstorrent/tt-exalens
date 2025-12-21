@@ -16,19 +16,19 @@ Examples:
 """
 
 from ttexalens import util as util
-from ttexalens import command_parser
 from ttexalens.device import Device
 from ttexalens.tt_exalens_lib import run_elf
 from ttexalens.uistate import UIState
+from ttexalens.command_parser import CommandMetadata, tt_docopt
 
-command_metadata = {
-    "short": "re",
-    "long": "run-elf",
-    "type": "high-level",
-    "description": __doc__,
-    "context": ["limited"],
-    "common_option_names": ["--device", "--loc", "--verbose"],
-}
+command_metadata = CommandMetadata(
+    short_name="re",
+    long_name="run-elf",
+    type="high-level",
+    description=__doc__,
+    context=["limited"],
+    common_option_names=["--device", "--loc", "--verbose"],
+)
 
 # TODO: Do we need this function?
 def print_PC_and_source(PC, elf):
@@ -51,11 +51,7 @@ def print_PC_and_source(PC, elf):
 
 
 def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
+    dopt = tt_docopt(command_metadata, cmd_text)
     risc = dopt.args["-r"]
     device: Device
     for device in dopt.for_each("--device", context, ui_state):

@@ -1,11 +1,24 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from dataclasses import dataclass
+from types import ModuleType
 from docopt import DocoptExit, docopt
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
+
+
+@dataclass
+class CommandMetadata:
+    type: str
+    context: list[str]
+    short_name: str | None = None
+    long_name: str | None = None
+    description: str | None = None
+    common_option_names: list[str] | None = None
+    _module: ModuleType | None = None
 
 
 class CommandParsingException(Exception):
@@ -121,7 +134,7 @@ class tt_docopt:
     }
 
     @staticmethod
-    def create_docopt_options_string(option_names):
+    def create_docopt_options_string(option_names: str | list[str] | None) -> str:
         """
         Given an argument name or an iterable over names, return an "Options" string for that argument.
         """
@@ -143,9 +156,15 @@ class tt_docopt:
             options_string += f"  {combined_option: <20}   {opt_info['description']}\n"
         return options_string
 
-    def __init__(self, doc, argv=None, common_option_names=[]):
-        additional_options = tt_docopt.create_docopt_options_string(common_option_names)
-        self.doc = doc + f"\nOptions:\n{additional_options}"
+    def __init__(self, command_metadata: CommandMetadata, command_text: str | None = None):
+        doc = command_metadata.description if command_metadata.description else ""
+        argv = command_text.split()[1:] if command_text else []
+        common_option_names = command_metadata.common_option_names if command_metadata.common_option_names else None
+        if common_option_names:
+            additional_options = tt_docopt.create_docopt_options_string(common_option_names)
+            self.doc = doc + f"\nOptions:\n{additional_options}"
+        else:
+            self.doc = doc
         self.argv = argv
         self.option_names = common_option_names
         try:
@@ -153,15 +172,15 @@ class tt_docopt:
         except (DocoptExit, SystemExit) as e:
             raise CommandParsingException(e)
 
-    def for_each(self, option_name, context: Context, ui_state: UIState, **kwargs):
+    def for_each(self, option_name: str, context: Context, ui_state: UIState, **kwargs):
         option_short_name = tt_docopt.OPTIONS[option_name]["short"]
         opt_value = self.args[option_short_name]
         func = tt_docopt.OPTIONS[option_name]["for_each"]
         yield from func(opt_value, context, ui_state, **kwargs)
 
 
-def find_command(commands, name):
+def find_command(commands: list[CommandMetadata], name: str):
     for c in commands:
-        if c["long"] == name or c["short"] == name:
+        if c.long_name == name or c.short_name == name:
             return c
     return None

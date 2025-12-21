@@ -15,21 +15,20 @@ Examples:
   pcir 0x0
 """
 
-from docopt import docopt
-
 from ttexalens.uistate import UIState
+from ttexalens.command_parser import CommandMetadata, tt_docopt
 
-command_metadata = {
-    "short": "pcir",
-    "long": "pci-raw-read",
-    "type": "dev",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-}
+command_metadata = CommandMetadata(
+    short_name="pcir",
+    long_name="pci-raw-read",
+    type="dev",
+    description=__doc__,
+    context=["limited", "metal"],
+)
 
 
 def run(cmd_text, context, ui_state: UIState):
-    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    args = tt_docopt(command_metadata, cmd_text).args
     addr = int(args["<addr>"], 0)
     pci_read_result = context.server_ifc.pci_read32_raw(ui_state.current_device_id, addr)
     print(f"PCI RD [0x{addr:x}]: 0x{pci_read_result:x}")

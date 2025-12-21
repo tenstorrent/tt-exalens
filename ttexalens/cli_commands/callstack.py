@@ -20,29 +20,25 @@ Examples:
   callstack build/riscv-src/wormhole/sample.brisc.elf -r brisc
 """
 
-command_metadata = {
-    "short": "bt",
-    "type": "low-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc"],
-}
-
 import os
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
 
-from ttexalens import command_parser
 from ttexalens import util
 import ttexalens.tt_exalens_lib as lib
+from ttexalens.command_parser import CommandMetadata, tt_docopt
+
+command_metadata = CommandMetadata(
+    short_name="bt",
+    type="low-level",
+    description=__doc__,
+    context=["limited", "metal"],
+    common_option_names=["--device", "--loc"],
+)
 
 
 def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
+    dopt = tt_docopt(command_metadata, cmd_text)
 
     limit = int(dopt.args["-m"])
     elf_paths = dopt.args["<elf-files>"].split(",")

@@ -27,15 +27,6 @@ Examples:
   brxy ch0 0x0 16                         # Read 16 words from dram channel 0
 """
 
-command_metadata = {
-    "short": "brxy",
-    "long": "burst-read-xy",
-    "type": "low-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc", "--verbose"],
-}
-
 import time
 from docopt import docopt
 
@@ -45,14 +36,20 @@ from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_words_from_device, read_word_from_device
 from ttexalens.object import DataArray
-from ttexalens import command_parser, util as util
+from ttexalens import util as util
+from ttexalens.command_parser import CommandMetadata, tt_docopt
+
+command_metadata = CommandMetadata(
+    short_name="brxy",
+    long_name="burst-read-xy",
+    type="low-level",
+    description=__doc__,
+    context=["limited", "metal"],
+)
 
 
 def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-    )
+    dopt = tt_docopt(command_metadata, cmd_text)
     args = dopt.args
 
     location_str = args["<core-loc>"]

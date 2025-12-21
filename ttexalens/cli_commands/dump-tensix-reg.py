@@ -27,28 +27,26 @@ Examples:
   tensix gpr -t 0,1   # Prints general purpose registers for threads 0 and 1 for current device and core
 """
 
-command_metadata = {
-    "short": "tensix",
-    "type": "low-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "command_option_names": ["--device", "--loc"],
-}
-
-
 import tabulate
 
 from ttexalens import util
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
 from ttexalens.device import Device
-from ttexalens import command_parser
 from ttexalens.util import (
     put_table_list_side_by_side,
     INFO,
     CLR_GREEN,
     CLR_END,
     dict_list_to_table,
+)
+from ttexalens.command_parser import CommandMetadata, tt_docopt
+
+command_metadata = CommandMetadata(
+    short_name="tensix",
+    type="low-level",
+    description=__doc__,
+    context=["limited", "metal"],
 )
 
 possible_register_groups = ["all", "alu", "pack", "unpack", "gpr"]
@@ -89,10 +87,7 @@ def config_regs_to_table(config_regs: list[dict[str, str]], table_name: str, reg
 
 
 def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-    )
+    dopt = tt_docopt(command_metadata, cmd_text)
     reg_group = dopt.args["<reg-group>"] if dopt.args["<reg-group>"] else "all"
     if reg_group not in possible_register_groups:
         raise ValueError(

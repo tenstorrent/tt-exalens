@@ -44,21 +44,21 @@ Examples:
   riscv wchpt setw 0 0xc          # Set a write watchpoint
 """
 
-command_metadata = {
-    "short": "rv",
-    "type": "low-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc", "--risc"],
-}
-
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
 
-from ttexalens import command_parser
 from ttexalens import util as util
+from ttexalens.command_parser import CommandMetadata, tt_docopt
+
+command_metadata = CommandMetadata(
+    short_name="rv",
+    type="low-level",
+    description=__doc__,
+    context=["limited", "metal"],
+    common_option_names=["--device", "--loc", "--risc"],
+)
 
 
 def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, risc_name: str, args, was_all: bool):
@@ -180,11 +180,7 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
 
 
 def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
+    dopt = tt_docopt(command_metadata, cmd_text)
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             for risc_name in dopt.for_each("--risc", context, ui_state, device=device, location=loc):

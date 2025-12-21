@@ -17,15 +17,6 @@ Examples:
   gpr
   gpr ra,sp,pc
 """
-command_metadata = {
-    "short": "gpr",
-    "long": "dump-gpr",
-    "type": "low-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc", "--verbose", "--risc"],
-}
-
 import tabulate
 
 from ttexalens.context import Context
@@ -36,8 +27,17 @@ from ttexalens.hardware.baby_risc_debug import get_register_index, get_register_
 from ttexalens.hardware.risc_debug import CallstackEntry, RiscLocation
 from ttexalens.uistate import UIState
 
-from ttexalens import command_parser
 from ttexalens import util as util
+from ttexalens.command_parser import CommandMetadata, tt_docopt
+
+command_metadata = CommandMetadata(
+    short_name="gpr",
+    long_name="dump-gpr",
+    type="low-level",
+    description=__doc__,
+    context=["limited", "metal"],
+    common_option_names=["--device", "--loc", "--verbose", "--risc"],
+)
 
 
 def reg_included(reg_index, regs_to_include):
@@ -133,12 +133,7 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
 
 
 def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
-
+    dopt = tt_docopt(command_metadata, cmd_text)
     for device in dopt.for_each("--device", context, ui_state):
         for loc in dopt.for_each("--loc", context, ui_state, device=device):
             riscs_to_include = list(dopt.for_each("--risc", context, ui_state, device=device, location=loc))

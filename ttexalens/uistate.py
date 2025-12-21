@@ -18,7 +18,8 @@ from ttexalens.tt_exalens_server import TTExaLensServer, start_server
 
 class TTExaLensCompleter(Completer):
     def __init__(self, context: Context):
-        self.commands = [cmd["long"] for cmd in context.commands] + [cmd["short"] for cmd in context.commands]
+        commands = [cmd.long_name for cmd in context.commands] + [cmd.short_name for cmd in context.commands]
+        self.commands = [c for c in commands if c is not None]
         self.context = context
 
     # Given a piece of a command, find all possible completions

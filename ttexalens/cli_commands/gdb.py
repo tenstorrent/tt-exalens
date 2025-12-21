@@ -19,22 +19,19 @@ Examples:
 """
 
 from ttexalens.uistate import UIState
-from ttexalens import command_parser, util as util
+from ttexalens import util as util
+from ttexalens.command_parser import CommandMetadata, tt_docopt
 
-command_metadata = {
-    "short": "gdb",
-    "type": "high-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-}
+command_metadata = CommandMetadata(
+    short_name="gdb",
+    type="high-level",
+    description=__doc__,
+    context=["limited", "metal"],
+)
 
 
 def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-    )
-
+    dopt = tt_docopt(command_metadata, cmd_text)
     if dopt.args["start"]:
         if dopt.args["<port>"] is None:
             try:
