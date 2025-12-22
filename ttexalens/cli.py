@@ -54,16 +54,14 @@ except ModuleNotFoundError as e:
     exit(1)
 
 
+from ttexalens import init_ttexalens, init_ttexalens_remote
 from ttexalens import tt_exalens_ifc
-from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_server
 from ttexalens import util as util
 from ttexalens.context import Context
 from ttexalens.uistate import UIState
 from ttexalens.command_parser import tt_docopt, CommandMetadata, find_command, CommandParsingException
 from ttexalens.gdb.gdb_client import get_gdb_client_path
-
-from ttexalens import Verbosity
 
 
 # Creates rows for tabulate for all commands of a given type
@@ -435,10 +433,10 @@ def main():
     # SETTING VERBOSITY
     try:
         verbosity = int(args["--verbosity"])
-        Verbosity.set(verbosity)
+        util.Verbosity.set(verbosity)
     except:
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
-    util.VERBOSE(f"Verbosity level: {Verbosity.get().name} ({Verbosity.get().value})")
+    util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 
     wanted_devices: list[int] | None = None
     if args["--devices"]:
@@ -480,9 +478,9 @@ def main():
         server_port = address[-1]
         util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
         use_4B_mode = False if args["--disable-4B-mode"] else True
-        context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port), use_4B_mode)
+        context = init_ttexalens_remote(server_ip, int(server_port), use_4B_mode)
     else:
-        context = tt_exalens_init.init_ttexalens(
+        context = init_ttexalens(
             wanted_devices=wanted_devices,
             init_jtag=args["--jtag"],
             use_noc1=args["--use-noc1"],

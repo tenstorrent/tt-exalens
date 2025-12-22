@@ -4,11 +4,10 @@
 import unittest
 from parameterized import parameterized_class, parameterized
 
-from ttexalens import tt_exalens_lib as lib
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
-from ttexalens.context import Context
+from ttexalens import Context, write_to_device
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebugWatchpointState, get_register_index
 from ttexalens.elf_loader import ElfLoader
 
@@ -114,7 +113,7 @@ class TestDebugging(unittest.TestCase):
         assert l1_start is not None, "L1 address should not be None."
         word_bytes = 0x00100073.to_bytes(4, byteorder="little")
         bytes = word_bytes * (risc_info.l1.size // 4)
-        lib.write_to_device(self.core_sim.location, l1_start, bytes, self.device._id, self.core_sim.context)
+        write_to_device(self.core_sim.location, l1_start, bytes, self.device._id, self.core_sim.context)
 
         # Take risc out of reset
         if risc_info.can_change_code_start_address:

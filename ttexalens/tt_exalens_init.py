@@ -89,7 +89,7 @@ def load_context(
     return context
 
 
-def set_active_context(context: Context) -> None:
+def set_active_context(context: Context | None) -> None:
     """
     Set the active TTExaLens context object.
 

@@ -1,66 +1,68 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from enum import Enum
-from typing import Union
+
+from .tt_exalens_init import init_ttexalens, init_ttexalens_remote, set_active_context
+from .tt_exalens_lib import (
+    arc_msg,
+    callstack,
+    check_context,
+    convert_coordinate,
+    coverage,
+    load_elf,
+    parse_elf,
+    read_arc_telemetry_entry,
+    read_from_device,
+    read_register,
+    read_riscv_memory,
+    read_word_from_device,
+    read_words_from_device,
+    run_elf,
+    top_callstack,
+    write_register,
+    write_riscv_memory,
+    write_to_device,
+    write_words_to_device,
+)
+from .coordinate import CoordinateTranslationError, OnChipCoordinate
+from .context import Context
+from .device import Device
+from .util import TTException, TTFatalException, Verbosity
 
 __all__ = [
-    "tt_exalens_init",
-    "tt_exalens_lib",
-    "coordinate",
+    # context.py
+    "Context",
+    # coordinate.py
+    "CoordinateTranslationError",
+    "OnChipCoordinate",
+    # device.py
+    "Device",
+    # tt_exalens_init.py
+    "init_ttexalens",
+    "init_ttexalens_remote",
+    "set_active_context",
+    # tt_exalens_lib.py
+    "arc_msg",
+    "callstack",
+    "check_context",
+    "convert_coordinate",
+    "coverage",
+    "load_elf",
+    "parse_elf",
+    "read_arc_telemetry_entry",
+    "read_from_device",
+    "read_word_from_device",
+    "read_words_from_device",
+    "read_register",
+    "read_riscv_memory",
+    "run_elf",
+    "top_callstack",
+    "write_register",
+    "write_riscv_memory",
+    "write_to_device",
+    "write_words_to_device",
+    # util.py
+    "TTException",
+    "TTFatalException",
+    "Verbosity",
 ]
-
-# Setting the verbosity of messages shown
-class Verbosity(Enum):
-    NONE = 0
-    ERROR = 1
-    WARN = 2
-    INFO = 3
-    VERBOSE = 4
-    DEBUG = 5
-
-    @staticmethod
-    def set(verbosity: Union[int, "Verbosity"]) -> None:
-        """Set the verbosity level of messages shown.
-
-        Args:
-            verbosity (int): Verbosity level.
-                1: ERROR
-                2: WARN
-                3: INFO
-                4: VERBOSE
-                5: DEBUG
-        """
-        global VERBOSITY_VALUE
-
-        VERBOSITY_VALUE = Verbosity(verbosity)
-
-    @staticmethod
-    def get() -> "Verbosity":
-        """Get the verbosity level of messages shown.
-
-        Returns:
-            int: Verbosity level.
-                1: ERROR
-                2: WARN
-                3: INFO
-                4: VERBOSE
-                5: DEBUG
-        """
-        global VERBOSITY_VALUE
-
-        return VERBOSITY_VALUE
-
-    @staticmethod
-    def supports(verbosity: "Verbosity") -> bool:
-        """Check if the verbosity level is supported and should be printed.
-
-        Returns:
-            bool: True if supported, False otherwise.
-        """
-        global VERBOSITY_VALUE
-
-        return VERBOSITY_VALUE.value >= verbosity.value
-
-
-VERBOSITY_VALUE: Verbosity = Verbosity.INFO

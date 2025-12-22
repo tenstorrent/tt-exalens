@@ -10,7 +10,6 @@ import sys
 import Pyro5.api
 
 from ttexalens import util as util
-from ttexalens import Verbosity
 
 
 ttexalens_pybind_path = util.application_path() + "/lib"
@@ -62,7 +61,7 @@ class TTExaLensPybind(TTExaLensCommunicator):
                 raise Exception("Failed to open simulation using pybind library")
         else:
             # Use UMD's existing env var only for debug case, but don't override if user provided it.
-            if Verbosity.get() == Verbosity.DEBUG and "TT_LOGGER_LEVEL" not in os.environ:
+            if util.Verbosity.get() == util.Verbosity.DEBUG and "TT_LOGGER_LEVEL" not in os.environ:
                 os.environ["TT_LOGGER_LEVEL"] = "debug"
             device = open_device(ttexalens_pybind_path, wanted_devices, init_jtag, initialize_with_noc1)
             if device is None:

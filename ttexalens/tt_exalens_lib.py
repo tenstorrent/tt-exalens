@@ -6,7 +6,7 @@ import os
 import re
 import struct
 
-from ttexalens import tt_exalens_init
+from ttexalens.tt_exalens_init import init_ttexalens
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.elf import read_elf, ParsedElfFile
@@ -22,9 +22,11 @@ def check_context(context: Context | None = None) -> Context:
     if context is not None:
         return context
 
-    if not tt_exalens_init.GLOBAL_CONTEXT:
-        tt_exalens_init.GLOBAL_CONTEXT = tt_exalens_init.init_ttexalens()
-    return tt_exalens_init.GLOBAL_CONTEXT
+    import ttexalens.tt_exalens_init as init
+
+    if not init.GLOBAL_CONTEXT:
+        init.GLOBAL_CONTEXT = init_ttexalens()
+    return init.GLOBAL_CONTEXT
 
 
 def check_noc_id(noc_id: int | None, context: Context) -> int:
