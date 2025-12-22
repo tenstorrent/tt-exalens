@@ -2,8 +2,9 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import datetime
+from functools import wraps
+import inspect
 import os
-import re
 import struct
 
 from ttexalens.tt_exalens_init import init_ttexalens
@@ -11,7 +12,30 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.elf import read_elf, ParsedElfFile
 from ttexalens.hardware.risc_debug import CallstackEntry
-from ttexalens.util import TTException
+from ttexalens.util import TTException, Verbosity, TRACE
+
+# Parameter name to formatter function mapping for trace_api decorator
+_TRACE_FORMATTERS = {
+    'addr': hex,
+}
+
+
+def trace_api(func):
+    """Decorator to log API calls when verbosity is set to DEBUG."""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if Verbosity.supports(Verbosity.TRACE):
+            sig = inspect.signature(func)
+            bound_args = sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+
+            formatted_args = []
+            for k, v in bound_args.arguments.items():
+                formatter = _TRACE_FORMATTERS.get(k, repr)
+                formatted_args.append(f"{k}={formatter(v)}")
+            TRACE(f"[API] {func.__name__}({', '.join(formatted_args)})")
+        return func(*args, **kwargs)
+    return wrapper
 
 
 def check_context(context: Context | None = None) -> Context:
@@ -74,6 +98,7 @@ def convert_coordinate(
     return location
 
 
+@trace_api
 def read_word_from_device(
     location: str | OnChipCoordinate,
     addr: int,
@@ -105,6 +130,7 @@ def read_word_from_device(
     return word
 
 
+@trace_api
 def read_words_from_device(
     location: str | OnChipCoordinate,
     addr: int,
@@ -146,6 +172,7 @@ def read_words_from_device(
     return data
 
 
+@trace_api
 def read_from_device(
     location: str | OnChipCoordinate,
     addr: int,
@@ -182,6 +209,7 @@ def read_from_device(
     return context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes, use_4B_mode)
 
 
+@trace_api
 def write_words_to_device(
     location: str | OnChipCoordinate,
     addr: int,
@@ -221,6 +249,7 @@ def write_words_to_device(
     return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data, use_4B_mode)
 
 
+@trace_api
 def write_to_device(
     location: str | OnChipCoordinate,
     addr: int,
@@ -262,6 +291,7 @@ def write_to_device(
     return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data, use_4B_mode)
 
 
+@trace_api
 def load_elf(
     elf_file: str,
     location: str | OnChipCoordinate | list[str | OnChipCoordinate],
@@ -325,6 +355,7 @@ def load_elf(
         return None
 
 
+@trace_api
 def run_elf(
     elf_file: str,
     location: str | OnChipCoordinate | list[str | OnChipCoordinate],
@@ -378,6 +409,7 @@ def run_elf(
         elf_loader.run_elf(elf_file)
 
 
+@trace_api
 def arc_msg(
     device_id: int,
     msg_code: int,
@@ -412,6 +444,7 @@ def arc_msg(
     return list(context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, args, timeout))
 
 
+@trace_api
 def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None) -> int:
     """
     Reads an ARC telemetry entry from the device.
@@ -450,6 +483,7 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
     return context.server_ifc.read_arc_telemetry_entry(device_id, telemetry_tag_id)
 
 
+@trace_api
 def read_register(
     location: str | OnChipCoordinate,
     register,
@@ -485,6 +519,7 @@ def read_register(
     return register_store.read_register(register)  # type: ignore
 
 
+@trace_api
 def write_register(
     location: str | OnChipCoordinate,
     register,
@@ -521,6 +556,7 @@ def write_register(
     register_store.write_register(register, value)
 
 
+@trace_api
 def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
     """
     Reads the ELF file and returns a ParsedElfFile object.
@@ -532,6 +568,7 @@ def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
     return read_elf(context.server_ifc, elf_path)
 
 
+@trace_api
 def top_callstack(
     pc: int,
     elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile,
@@ -579,6 +616,7 @@ def top_callstack(
     return RiscDebug.get_frame_callstack(elf, pc)[0]
 
 
+@trace_api
 def callstack(
     location: str | OnChipCoordinate,
     elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile,
@@ -635,6 +673,7 @@ def callstack(
     return risc_debug.get_callstack(elfs, offsets, max_depth, stop_on_main)  # type: ignore
 
 
+@trace_api
 def coverage(
     location: str | OnChipCoordinate,
     elf: str | ParsedElfFile,
@@ -665,6 +704,7 @@ def coverage(
     dump_coverage(elf, coordinate, gcda_path, gcno_copy_path)
 
 
+@trace_api
 def read_riscv_memory(
     location: str | OnChipCoordinate,
     addr: int,
@@ -710,6 +750,7 @@ def read_riscv_memory(
         return int(risc_debug.read_memory(addr))
 
 
+@trace_api
 def write_riscv_memory(
     location: str | OnChipCoordinate,
     addr: int,

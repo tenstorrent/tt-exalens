@@ -21,6 +21,7 @@ class Verbosity(Enum):
     INFO = 3
     VERBOSE = 4
     DEBUG = 5
+    TRACE = 6
 
     @staticmethod
     def set(verbosity: "int | Verbosity") -> None:
@@ -33,6 +34,7 @@ class Verbosity(Enum):
                 3: INFO
                 4: VERBOSE
                 5: DEBUG
+                6: TRACE
         """
         global VERBOSITY_VALUE
 
@@ -49,6 +51,7 @@ class Verbosity(Enum):
                 3: INFO
                 4: VERBOSE
                 5: DEBUG
+                6: TRACE
         """
         global VERBOSITY_VALUE
 
@@ -147,9 +150,9 @@ CLR_YELLOW = "\033[33m" if _USE_COLOR else ""
 CLR_BLUE = "\033[34m" if _USE_COLOR else ""
 CLR_VIOLET = "\033[35m" if _USE_COLOR else ""
 CLR_TEAL = "\033[36m" if _USE_COLOR else ""
-CLR_GREY = "\033[37m" if _USE_COLOR else ""
+CLR_GREY = "\033[30m" if _USE_COLOR else ""
 CLR_ORANGE = "\033[38:2:205:106:0m" if _USE_COLOR else ""
-CLR_WHITE = "\033[38:2:255:255:255m" if _USE_COLOR else ""
+CLR_WHITE = "\033[37m" if _USE_COLOR else ""
 
 CLR_END = "\033[0m" if _USE_COLOR else ""
 
@@ -158,6 +161,7 @@ CLR_WARN = CLR_ORANGE
 CLR_INFO = CLR_BLUE
 CLR_VERBOSE = CLR_GREY
 CLR_DEBUG = CLR_GREEN
+CLR_TRACE = CLR_TEAL
 
 CLR_PROMPT = "<style color='green'>"
 CLR_PROMPT_END = "</style>"
@@ -207,6 +211,9 @@ def DEBUG(s, **kwargs):
     if Verbosity.supports(Verbosity.DEBUG):
         print(f"{CLR_DEBUG}{s}{CLR_END}", **kwargs)
 
+def TRACE(s, **kwargs):
+    if Verbosity.supports(Verbosity.TRACE):
+        print(f"{CLR_TRACE}{s}{CLR_END}", **kwargs)
 
 def INFO(s, **kwargs):
     if Verbosity.supports(Verbosity.INFO):
