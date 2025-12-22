@@ -320,12 +320,12 @@ class FileParser:
         for i in range(-1, -len(defaults) - 1, -1):
             default_value = self._resolve_node_returns(defaults[i])
             argtype = self._resolve_node_returns(args[i].annotation)
-    argwithtype = f"{args[i].arg}: {argtype}" if argtype != "None" else f"{args[i].arg}"
+            argwithtype = f"{args[i].arg}: {argtype}" if argtype != "None" else f"{args[i].arg}"
             argstring = f"{argwithtype} = {default_value}, {argstring}"
         # and then arguments without default values
         for i in range(-len(defaults) - 1, -len(args) - 1, -1):
             argtype = self._resolve_node_returns(args[i].annotation)
-    argwithtype = f"{args[i].arg}: {argtype}" if argtype != "None" else f"{args[i].arg}"
+            argwithtype = f"{args[i].arg}: {argtype}" if argtype != "None" else f"{args[i].arg}"
             argstring = f"{argwithtype}, " + argstring
 
         return {"name": f"{name}", "call": f"{name}({argstring[:-2]}){returns_string}", "docstring": docstring}
@@ -467,7 +467,7 @@ def get_all_from_init(init_path: os.PathLike) -> set:
     with open(init_path) as f:
         tree = ast.parse(f.read())
 
-    for node in tree.body:
+    for node in ast.walk(tree):
         if isinstance(node, ast.Assign):
             for target in node.targets:
                 if isinstance(target, ast.Name) and target.id == "__all__":
