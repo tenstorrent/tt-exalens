@@ -50,19 +50,10 @@ Examples:
   debug-bus {7,0,12,0x3ffffff},trisc2_pc                        # Print value for a custom signal and trisc2_pc
 """
 
-command_metadata = {
-    "short": "dbus",
-    "long": "debug-bus",
-    "type": "low-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc", "--verbose"],
-}
 
 import re
 from typing import Any
 
-from ttexalens.command_parser import tt_docopt
 from ttexalens import util as util
 from ttexalens.util import search
 from ttexalens.rich_formatters import formatter
@@ -71,6 +62,15 @@ from ttexalens.uistate import UIState
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
+
+command_metadata = CommandMetadata(
+    short_name="dbus",
+    long_name="debug-bus",
+    type="low-level",
+    description=__doc__,
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+)
 
 
 def _format_signal_value(value, show_all_samples=False, signal_desc=None):
@@ -374,11 +374,7 @@ def _display_signal_value(where: str, signal: str | DebugBusSignalDescription, v
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
     """Main entry point for debug-bus command."""
-    dopt = tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
+    dopt = tt_docopt(command_metadata, cmd_text)
 
     # Route to appropriate handler based on command
     if dopt.args["list-signals"]:
@@ -404,6 +400,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         "simple": dopt.args.get("--simple"),
     }
 
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             command_handler(device, loc, params)

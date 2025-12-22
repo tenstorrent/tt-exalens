@@ -37,7 +37,7 @@ import sys, re, os, importlib.util
 from docopt import docopt
 
 # We need to import common options as they are sometimes injected into the docstrings
-from ttexalens.command_parser import tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt
 
 OPTIONS = tt_docopt.OPTIONS
 for opt in OPTIONS.keys():
@@ -75,7 +75,7 @@ class CmdParser:
                 "Examples": self.parse_examples,
             }
 
-    def parse(self, cmd_doc: str, common_options: list = None) -> dict:
+    def parse(self, cmd_doc: str, common_options: list[str] | None = None) -> dict:
         result = {}
 
         # We expect each section to be separated by a blank line
@@ -246,7 +246,7 @@ class CmdPPrinter(SectionPPrinter):
         return self.eprinter.print_section(cmd_data["title"], result, 2)
 
 
-def get_module_metadata(module_path: os.PathLike) -> dict:
+def get_module_metadata(module_path: str) -> CommandMetadata:
     """
     Fetch a module from a given filepath and get its docstring and metadata.
 
@@ -268,36 +268,36 @@ def get_module_metadata(module_path: os.PathLike) -> dict:
     return module.command_metadata
 
 
-def parse_source_file(input_file: os.PathLike, parser: CmdParser = CmdParser()) -> str:
+def parse_source_file(input_file: str, parser: CmdParser = CmdParser()) -> dict | None:
     INFO(f"Parsing {input_file}...")
     result = {}
 
     cmd_metadata = get_module_metadata(input_file)
-    cmd_doc = cmd_metadata["description"]
+    cmd_doc = cmd_metadata.description if cmd_metadata.description else ""
 
-    if cmd_metadata["type"] == "dev":
+    if cmd_metadata.type == "dev":
         WARNING(f"Skipping {input_file} as it is a dev command")
         return None
-    if "limited" not in cmd_metadata["context"]:
-        WARNING(f"Skipping {input_file} as it is not a limited command (context: {cmd_metadata['context']})")
+    if "limited" not in cmd_metadata.context:
+        WARNING(f"Skipping {input_file} as it is not a limited command (context: {cmd_metadata.context})")
         return None
 
     # Add command name as title
     result["title"] = ""
     # Get the command name in long/short format, or long or short if only one is provided
-    if cmd_metadata.get("long"):
-        result["title"] += f"{cmd_metadata['long']}"
-    if cmd_metadata.get("short"):
-        if cmd_metadata.get("long"):
+    if cmd_metadata.long_name:
+        result["title"] += f"{cmd_metadata.long_name}"
+    if cmd_metadata.short_name:
+        if cmd_metadata.long_name:
             result["title"] += " / "
-        result["title"] += f"{cmd_metadata['short']}"
+        result["title"] += f"{cmd_metadata.short_name}"
 
-    result["docs"] = parser.parse(cmd_doc, cmd_metadata.get("common_option_names", None))
+    result["docs"] = parser.parse(cmd_doc, cmd_metadata.common_option_names)
 
     return result
 
 
-def parse_directory(root: os.PathLike, parser: CmdParser = CmdParser(), interactive: bool = False) -> str:
+def parse_directory(root: str, parser: CmdParser = CmdParser(), interactive: bool = False) -> list[dict]:
 
     result = []
     for file in sorted(os.listdir(root)):

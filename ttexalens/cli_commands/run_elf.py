@@ -16,19 +16,18 @@ Examples:
 """
 
 from ttexalens import util as util
-from ttexalens import command_parser
 from ttexalens.device import Device
 from ttexalens.tt_exalens_lib import run_elf
 from ttexalens.uistate import UIState
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
-command_metadata = {
-    "short": "re",
-    "long": "run-elf",
-    "type": "high-level",
-    "description": __doc__,
-    "context": ["limited"],
-    "common_option_names": ["--device", "--loc", "--verbose"],
-}
+command_metadata = CommandMetadata(
+    short_name="re",
+    long_name="run-elf",
+    type="high-level",
+    description=__doc__,
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
+)
 
 # TODO: Do we need this function?
 def print_PC_and_source(PC, elf):
@@ -51,15 +50,11 @@ def print_PC_and_source(PC, elf):
 
 
 def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
+    dopt = tt_docopt(command_metadata, cmd_text)
     risc = dopt.args["-r"]
     device: Device
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             if not risc or risc == "first risc":
                 noc_block = device.get_block(loc)
                 riscs = noc_block.all_riscs

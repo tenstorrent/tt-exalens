@@ -17,33 +17,27 @@ Description:
   and place it into the output directory along with its gcno.
 
 Examples:
-  re build/riscv-src/wormhole/cov_test.coverage.brisc.elf -r brisc # Pre-requisite: we have to run the elf before running coverage
-  cov build/riscv-src/wormhole/cov_test.coverage.brisc.elf coverage/cov_test.gcda coverage/cov_test.gcno
+  re build_riscv/wormhole/cov_test.coverage.brisc.elf -r brisc # Pre-requisite: we have to run the elf before running coverage
+  cov build_riscv/wormhole/cov_test.coverage.brisc.elf cov_test.gcda cov_test.gcno
 """
 
-command_metadata = {
-    "short": "cov",
-    "long": "dump-coverage",
-    "type": "high-level",
-    "description": __doc__,
-    "context": "limited",
-    "common_option_names": ["--device", "--loc", "--verbose"],
-}
-
 from ttexalens import util
-from ttexalens import command_parser
 from ttexalens.tt_exalens_lib import check_context, parse_elf
 from ttexalens.uistate import UIState
 from ttexalens.coverage import dump_coverage
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
+
+command_metadata = CommandMetadata(
+    short_name="cov",
+    long_name="dump-coverage",
+    type="high-level",
+    description=__doc__,
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
+)
 
 
 def run(cmd_text, context, ui_state: UIState) -> list[dict[str, str]]:
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
-
+    dopt = tt_docopt(command_metadata, cmd_text)
     elf_path = dopt.args["<elf>"]
     gcda_path = dopt.args["<gcda_path>"]
     gcno_arg = dopt.args.get("<gcno_copy_path>")
@@ -51,8 +45,8 @@ def run(cmd_text, context, ui_state: UIState) -> list[dict[str, str]]:
     context = check_context(context)
     elf = parse_elf(elf_path, context)
 
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             try:
                 dump_coverage(elf, loc, gcda_path, gcno_path)
                 util.VERBOSE(f"Coverage data dumped for device {device.id} loc {loc}:")
