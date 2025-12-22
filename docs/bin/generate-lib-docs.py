@@ -313,10 +313,7 @@ class FileParser:
         docstring = ast.get_docstring(node)
 
         returns_string = self._resolve_node_returns(node.returns)
-        if returns_string != "None":
-            returns_string = f" -> {returns_string}"
-        else:
-            returns_string = ""
+        returns_string = f" -> {returns_string}" if returns_string != "None" else ""
 
         argstring = ""
         # going backwards, first parse arguments with default values...
