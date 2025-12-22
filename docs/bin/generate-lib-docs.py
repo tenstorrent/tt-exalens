@@ -328,10 +328,7 @@ class FileParser:
         # and then arguments without default values
         for i in range(-len(defaults) - 1, -len(args) - 1, -1):
             argtype = self._resolve_node_returns(args[i].annotation)
-            if argtype != "None":
-                argwithtype = f"{args[i].arg}: {argtype}"
-            else:
-                argwithtype = f"{args[i].arg}"
+    argwithtype = f"{args[i].arg}: {argtype}" if argtype != "None" else f"{args[i].arg}"
             argstring = f"{argwithtype}, " + argstring
 
         return {"name": f"{name}", "call": f"{name}({argstring[:-2]}){returns_string}", "docstring": docstring}
