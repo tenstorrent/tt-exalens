@@ -323,10 +323,7 @@ class FileParser:
         for i in range(-1, -len(defaults) - 1, -1):
             default_value = self._resolve_node_returns(defaults[i])
             argtype = self._resolve_node_returns(args[i].annotation)
-            if argtype != "None":
-                argwithtype = f"{args[i].arg}: {argtype}"
-            else:
-                argwithtype = f"{args[i].arg}"
+    argwithtype = f"{args[i].arg}: {argtype}" if argtype != "None" else f"{args[i].arg}"
             argstring = f"{argwithtype} = {default_value}, {argstring}"
         # and then arguments without default values
         for i in range(-len(defaults) - 1, -len(args) - 1, -1):
