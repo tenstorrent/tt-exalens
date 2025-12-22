@@ -397,14 +397,14 @@ class TestDebugSymbols(unittest.TestCase):
         )  # Overflow uint64 on byte enum
 
     def test_elf_variable_memory_access_errors(self):
-        """Test that all operators propagate memory access errors (Issue #782)"""
+        """Test that all operators propagate memory access errors"""
         g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
 
         # invalid_memory_ptr points to 0xFFFF0000 which is outside L1/Data Private Memory
         invalid_ptr = g_global_struct.invalid_memory_ptr
 
         # Dereferencing should raise memory access error
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference().read_value())
 
         # Test all comparison operators propagate memory errors
         self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() < 100)
@@ -453,7 +453,7 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertRaisesRegex(Exception, "restricted access", lambda: ~invalid_ptr.dereference())
 
     def test_elf_variable_type_errors(self):
-        """Test that all operators handle type incompatibility correctly (Issue #782)"""
+        """Test that all operators handle type incompatibility correctly"""
         g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
 
         # Test comparison operators with incompatible types
