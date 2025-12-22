@@ -41,7 +41,7 @@ Examples:
 from docopt import docopt
 
 # Local imports
-from ttexalens import command_parser, util
+from ttexalens import util
 from ttexalens.util import search
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
@@ -55,16 +55,15 @@ from ttexalens.register_store import (
 )
 from ttexalens.uistate import UIState
 from ttexalens.rich_formatters import formatter
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
-# Command metadata
-command_metadata = {
-    "short": "nc",
-    "long": "noc",
-    "type": "high-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc"],
-}
+command_metadata = CommandMetadata(
+    short_name="nc",
+    long_name="noc",
+    type="high-level",
+    description=__doc__,
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+)
 
 
 def is_noc_register_description(description: RegisterDescription) -> bool:
@@ -347,11 +346,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
     Returns:
         Empty list (convention for command handlers)
     """
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
+    dopt = tt_docopt(command_metadata, cmd_text)
 
     # Parse and validate NOC ID
     if dopt.args["--noc"]:
@@ -370,8 +365,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
     simple_print = dopt.args["--simple"]
 
     # Iterate over selected devices, locations, and NOC identifiers
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             formatter.print_device_header(device, loc)
 
             if dopt.args["status"]:

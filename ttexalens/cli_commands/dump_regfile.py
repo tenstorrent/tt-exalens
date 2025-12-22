@@ -28,21 +28,19 @@ Examples:
   dr 0,0 dstacc -d 1
 """
 
-command_metadata = {
-    "short": "dr",
-    "long": "dump-regfile",
-    "type": "dev",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-}
-
-from docopt import docopt
-
 from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import INFO
 from ttexalens.debug_tensix import TILE_SIZE
+from ttexalens.command_parser import CommandMetadata, tt_docopt
+
+command_metadata = CommandMetadata(
+    short_name="dr",
+    long_name="dump-regfile",
+    type="dev",
+    description=__doc__,
+)
 
 
 def print_regfile(data: list[int | float] | list[str]) -> None:
@@ -55,7 +53,7 @@ def print_regfile(data: list[int | float] | list[str]) -> None:
 
 
 def run(cmd_text, context, ui_state: UIState):
-    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    args = tt_docopt(command_metadata, cmd_text).args
 
     core_loc_str = args["<core-loc>"]
     regfile = args["<regfile>"]

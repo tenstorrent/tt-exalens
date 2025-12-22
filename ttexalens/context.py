@@ -16,6 +16,7 @@ from ttexalens.tt_exalens_ifc import TTExaLensCommunicator
 
 if TYPE_CHECKING:
     from ttexalens.device import Device
+    from ttexalens.command_parser import CommandMetadata
 
 # All-encompassing structure representing a TTExaLens context
 class Context:
@@ -32,11 +33,12 @@ class Context:
         self.short_name = short_name
         self.use_noc1 = use_noc1
         self.use_4B_mode: bool = use_4B_mode
+        self.commands: list[CommandMetadata] = []
 
-    def filter_commands(self, commands):
+    def assign_commands(self, commands: list[CommandMetadata]):
         self.commands = []
         for cmd in commands:
-            if self.short_name in cmd["context"] or cmd["context"] == "util":
+            if cmd.context is None or self.short_name in cmd.context or "util" in cmd.context:
                 self.commands.append(cmd)
 
     @cached_property

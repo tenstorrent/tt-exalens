@@ -508,7 +508,7 @@ context (Context, optional): TTExaLens context object used for interaction with 
 ## top_callstack
 
 ```
-top_callstack(pc, elfs, offsets=None, context=None) -> list
+top_callstack(pc, elfs, offsets=None, context=None) -> CallstackEntry
 ```
 
 
@@ -535,7 +535,7 @@ There is no stack walking, so the function will return the function at the given
 ## callstack
 
 ```
-callstack(location, elfs, offsets=None, risc_name=brisc, neo_id=None, max_depth=100, stop_on_main=True, device_id=0, context=None) -> list
+callstack(location, elfs, offsets=None, risc_name=brisc, neo_id=None, max_depth=100, stop_on_main=True, device_id=0, context=None) -> CallstackEntry
 ```
 
 
@@ -688,7 +688,7 @@ Returns a tuple with the coordinates in the specified coordinate system.
 
 
 ```
-to_str(self, output_type=noc0) -> None
+to_str(self, output_type=noc0) -> str
 ```
 Returns a tuple with the coordinates in the specified coordinate system.
 ### to_user_str
@@ -696,7 +696,7 @@ Returns a tuple with the coordinates in the specified coordinate system.
 
 
 ```
-to_user_str(self) -> None
+to_user_str(self) -> str
 ```
 Returns a string representation of the coordinate that is suitable for the user.
 ### change_device
@@ -713,7 +713,7 @@ Returns coordinates for the specified device.
 
 
 ```
-create(coord_str, device, coord_type=None) -> None
+create(coord_str, device, coord_type=None) -> OnChipCoordinate
 ```
 Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
  *(OnChipCoordinate)*: The created coordinate object.

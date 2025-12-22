@@ -13,16 +13,16 @@ Examples:
   interfaces             # Shows op mapping for all devices
 """  # Note: Limit the above comment to 100 characters in width
 
-command_metadata = {
-    "short": "if",
-    "long": "interfaces",
-    "type": "dev",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-}
 
-from docopt import docopt
 from ttexalens.context import Context
+from ttexalens.command_parser import CommandMetadata, tt_docopt
+
+command_metadata = CommandMetadata(
+    short_name="if",
+    long_name="interfaces",
+    type="dev",
+    description=__doc__,
+)
 
 TEST_ID_SIZE = 48
 
@@ -70,7 +70,7 @@ def read_noc_size(context: Context, device_id, nocx, nocy, address, size):
 
 
 def run(cmd_text, context: Context, ui_state=None):
-    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    args = tt_docopt(command_metadata, cmd_text).args
     device = context.devices[0]
 
     devices_list = list(context.devices.keys())
