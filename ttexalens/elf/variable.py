@@ -357,27 +357,27 @@ class ElfVariable:
         For base types, compares the actual value.
         For arrays, compares element-by-element with the other sequence.
         """
-        try:
-            # Try to get the value for base types
-            return bool(self.read_value() == other)
-        except Exception:
-            # If get_value() fails, check if this is an array and other is a sequence
-            try:
-                if self.__type_die.tag_is("array_type"):
-                    # Check if other is a sequence (list, tuple, etc.)
-                    if hasattr(other, "__len__") and hasattr(other, "__getitem__"):
-                        # Compare lengths first for efficiency
-                        if len(self) != len(other):
+        # For arrays, compare element-by-element
+        if self.__type_die.tag_is("array_type"):
+            if hasattr(other, "__len__") and hasattr(other, "__getitem__"):
+                try:
+                    if len(self) != len(other):
+                        return False
+                    # Compare each element
+                    for i in range(len(self)):
+                        if self[i] != other[i]:
                             return False
-                        # Compare each element
-                        for i in range(len(self)):
-                            if self[i] != other[i]:
-                                return False
-                        return True
-            except Exception:
-                pass
-            # If neither value comparison nor array comparison worked, return False
+                    return True
+                except TypeError:
+                    return False  # Type incompatible during comparison
             return False
+
+        # For base types, compare values
+        try:
+            return bool(self.read_value() == other)
+        except TypeError:
+            return False  # Type incompatible
+        # Let memory access and other errors propagate
 
     def __lt__(self, other) -> bool:
         """
@@ -385,7 +385,7 @@ class ElfVariable:
         """
         try:
             return bool(self.read_value() < other)
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __le__(self, other) -> bool:
@@ -398,7 +398,7 @@ class ElfVariable:
         """
         try:
             return bool(self.read_value() > other)
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __ge__(self, other) -> bool:
@@ -410,98 +410,98 @@ class ElfVariable:
         """Addition operator."""
         try:
             return self.read_value() + other
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __radd__(self, other):
         """Reverse addition operator."""
         try:
             return other + self.read_value()
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __sub__(self, other):
         """Subtraction operator."""
         try:
             return self.read_value() - other
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __rsub__(self, other):
         """Reverse subtraction operator."""
         try:
             return other - self.read_value()
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __mul__(self, other):
         """Multiplication operator."""
         try:
             return self.read_value() * other
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __rmul__(self, other):
         """Reverse multiplication operator."""
         try:
             return other * self.read_value()
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __truediv__(self, other):
         """Division operator."""
         try:
             return self.read_value() / other
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __rtruediv__(self, other):
         """Reverse division operator."""
         try:
             return other / self.read_value()
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __floordiv__(self, other):
         """Floor division operator."""
         try:
             return self.read_value() // other
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __rfloordiv__(self, other):
         """Reverse floor division operator."""
         try:
             return other // self.read_value()
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __mod__(self, other):
         """Modulo operator."""
         try:
             return self.read_value() % other
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __rmod__(self, other):
         """Reverse modulo operator."""
         try:
             return other % self.read_value()
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __pow__(self, other):
         """Power operator."""
         try:
             return self.read_value() ** other
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     def __rpow__(self, other):
         """Reverse power operator."""
         try:
             return other ** self.read_value()
-        except Exception:
+        except TypeError:
             return NotImplemented
 
     # Bitwise operators (for integers and booleans)
@@ -511,7 +511,7 @@ class ElfVariable:
             value = self.read_value()
             if isinstance(value, (int, bool)):
                 return value & other
-        except Exception:
+        except TypeError:
             pass
         return NotImplemented
 
@@ -521,7 +521,7 @@ class ElfVariable:
             value = self.read_value()
             if isinstance(value, (int, bool)):
                 return other & value
-        except Exception:
+        except TypeError:
             pass
         return NotImplemented
 
@@ -531,7 +531,7 @@ class ElfVariable:
             value = self.read_value()
             if isinstance(value, (int, bool)):
                 return value | other
-        except Exception:
+        except TypeError:
             pass
         return NotImplemented
 
@@ -541,7 +541,7 @@ class ElfVariable:
             value = self.read_value()
             if isinstance(value, (int, bool)):
                 return other | value
-        except Exception:
+        except TypeError:
             pass
         return NotImplemented
 
@@ -551,7 +551,7 @@ class ElfVariable:
             value = self.read_value()
             if isinstance(value, (int, bool)):
                 return value ^ other
-        except Exception:
+        except TypeError:
             pass
         return NotImplemented
 
@@ -561,7 +561,7 @@ class ElfVariable:
             value = self.read_value()
             if isinstance(value, (int, bool)):
                 return other ^ value
-        except Exception:
+        except TypeError:
             pass
         return NotImplemented
 
@@ -571,7 +571,7 @@ class ElfVariable:
             value = self.read_value()
             if isinstance(value, int):
                 return value << other
-        except Exception:
+        except TypeError:
             pass
         return NotImplemented
 
@@ -581,7 +581,7 @@ class ElfVariable:
             value = self.read_value()
             if isinstance(value, int):
                 return other << value
-        except Exception:
+        except TypeError:
             pass
         return NotImplemented
 
@@ -591,7 +591,7 @@ class ElfVariable:
             value = self.read_value()
             if isinstance(value, int):
                 return value >> other
-        except Exception:
+        except TypeError:
             pass
         return NotImplemented
 
@@ -601,41 +601,29 @@ class ElfVariable:
             value = self.read_value()
             if isinstance(value, int):
                 return other >> value
-        except Exception:
+        except TypeError:
             pass
         return NotImplemented
 
     # Unary operators
     def __neg__(self):
         """Unary negation operator."""
-        try:
-            return -self.read_value()
-        except Exception:
-            return NotImplemented
+        return -self.read_value()
 
     def __pos__(self):
         """Unary positive operator."""
-        try:
-            return +self.read_value()
-        except Exception:
-            return NotImplemented
+        return +self.read_value()
 
     def __abs__(self):
         """Absolute value operator."""
-        try:
-            return abs(self.read_value())
-        except Exception:
-            return NotImplemented
+        return abs(self.read_value())
 
     def __invert__(self):
         """Bitwise inversion operator."""
-        try:
-            value = self.read_value()
-            if isinstance(value, (int, bool)):
-                return ~value
-        except Exception:
-            pass
-        return NotImplemented
+        value = self.read_value()
+        if isinstance(value, (int, bool)):
+            return ~value
+        raise TypeError(f"bad operand type for unary ~: '{type(value).__name__}'")
 
     def __index__(self) -> int:
         """

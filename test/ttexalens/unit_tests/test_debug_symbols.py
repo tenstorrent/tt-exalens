@@ -395,3 +395,139 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertRaises(
             Exception, g_global_struct.enum_class_field.write_value, 0xFFFFFFFFFFFFFFFF
         )  # Overflow uint64 on byte enum
+
+    def test_elf_variable_memory_access_errors(self):
+        """Test that all operators propagate memory access errors (Issue #782)"""
+        g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
+
+        # invalid_memory_ptr points to 0xFFFF0000 which is outside L1/Data Private Memory
+        invalid_ptr = g_global_struct.invalid_memory_ptr
+
+        # Dereferencing should raise memory access error
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference())
+
+        # Test all comparison operators propagate memory errors
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() < 100)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 > invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() <= 100)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 >= invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() > 100)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 < invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() >= 100)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 <= invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() == 100)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 == invalid_ptr.dereference())
+
+        # Test all arithmetic operators propagate memory errors
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() + 10)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 10 + invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() - 10)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 - invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() * 10)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 10 * invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() / 10)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 / invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() // 10)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 // invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() % 10)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 % invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() ** 2)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 2 ** invalid_ptr.dereference())
+
+        # Test all bitwise operators propagate memory errors
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() & 0xFF)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 0xFF & invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() | 0xFF)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 0xFF | invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() ^ 0xFF)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 0xFF ^ invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() << 2)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 1 << invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() >> 2)
+        self.assertRaisesRegex(Exception, "restricted access", lambda: 256 >> invalid_ptr.dereference())
+
+        # Test all unary operators propagate memory errors
+        self.assertRaisesRegex(Exception, "restricted access", lambda: -invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: +invalid_ptr.dereference())
+        self.assertRaisesRegex(Exception, "restricted access", lambda: abs(invalid_ptr.dereference()))
+        self.assertRaisesRegex(Exception, "restricted access", lambda: ~invalid_ptr.dereference())
+
+    def test_elf_variable_type_errors(self):
+        """Test that all operators handle type incompatibility correctly (Issue #782)"""
+        g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
+
+        # Test comparison operators with incompatible types
+        # __eq__ should return False for type mismatch
+        self.assertFalse(g_global_struct.a == [1, 2, 3])
+        self.assertFalse(g_global_struct.a == {"key": "value"})
+        self.assertFalse(g_global_struct.a == "string")
+
+        # __lt__ and __gt__ should raise TypeError when both operands return NotImplemented
+        self.assertRaises(TypeError, lambda: g_global_struct.a < [1, 2, 3])
+        self.assertRaises(TypeError, lambda: [1, 2, 3] > g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a > [1, 2, 3])
+        self.assertRaises(TypeError, lambda: [1, 2, 3] < g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a <= {"key": "value"})
+        self.assertRaises(TypeError, lambda: {"key": "value"} >= g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a >= {"key": "value"})
+        self.assertRaises(TypeError, lambda: {"key": "value"} <= g_global_struct.a)
+
+        # Test arithmetic operators with incompatible types
+        self.assertRaises(TypeError, lambda: g_global_struct.a + "string")
+        self.assertRaises(TypeError, lambda: "string" + g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a - [1, 2])
+        self.assertRaises(TypeError, lambda: [1, 2] - g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a * {"key": "value"})
+        self.assertRaises(TypeError, lambda: {"key": "value"} * g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a / "string")
+        self.assertRaises(TypeError, lambda: "string" / g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a // [1, 2])
+        self.assertRaises(TypeError, lambda: [1, 2] // g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a % {"key": "value"})
+        self.assertRaises(TypeError, lambda: {"key": "value"} % g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a ** "string")
+        self.assertRaises(TypeError, lambda: "string" ** g_global_struct.a)
+
+        # Test bitwise operators with incompatible types
+        self.assertRaises(TypeError, lambda: g_global_struct.a & "string")
+        self.assertRaises(TypeError, lambda: "string" & g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a | [1, 2])
+        self.assertRaises(TypeError, lambda: [1, 2] | g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a ^ {"key": "value"})
+        self.assertRaises(TypeError, lambda: {"key": "value"} ^ g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a << "string")
+        self.assertRaises(TypeError, lambda: "string" << g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a >> [1, 2])
+        self.assertRaises(TypeError, lambda: [1, 2] >> g_global_struct.a)
+
+        # Test bitwise operators with floats (should fail type check)
+        self.assertRaises(TypeError, lambda: g_global_struct.f & 0xFF)
+        self.assertRaises(TypeError, lambda: 0xFF & g_global_struct.f)
+        self.assertRaises(TypeError, lambda: g_global_struct.g | 0xFF)
+        self.assertRaises(TypeError, lambda: 0xFF | g_global_struct.g)
+        self.assertRaises(TypeError, lambda: g_global_struct.f ^ 0xFF)
+        self.assertRaises(TypeError, lambda: 0xFF ^ g_global_struct.f)
+        self.assertRaises(TypeError, lambda: g_global_struct.g << 2)
+        self.assertRaises(TypeError, lambda: 2 << g_global_struct.g)
+        self.assertRaises(TypeError, lambda: g_global_struct.f >> 2)
+        self.assertRaises(TypeError, lambda: 2 >> g_global_struct.f)
+
+        # Test unary invert with float (should raise TypeError)
+        self.assertRaises(TypeError, lambda: ~g_global_struct.f)
+        self.assertRaises(TypeError, lambda: ~g_global_struct.g)
+
+        # Test that wrong_type_ptr works with valid memory (type cast, not type error)
+        # wrong_type_ptr is InnerStruct* but points to uint32_t array
+        wrong_ptr = g_global_struct.wrong_type_ptr
+        dereferenced = wrong_ptr.dereference()
+
+        # Should be able to access (memory is valid), data is interpreted as InnerStruct
+        # InnerStruct has x (uint16_t) and y (uint16_t)
+        # uint_array[0] = 0x11111111, so x = 0x1111, y = 0x1111 (little-endian)
+        self.assertEqual(dereferenced.x, 0x1111)
+        self.assertEqual(dereferenced.y, 0x1111)
+
+        # Verify operators work with wrong type interpretation but valid memory
+        self.assertTrue(dereferenced.x < 0x2000)
+        self.assertEqual(dereferenced.x + 0x1000, 0x2111)
+        self.assertEqual(dereferenced.y & 0xFF00, 0x1100)

@@ -83,6 +83,8 @@ struct GlobalStruct : public BaseStruct, public BaseStruct2 {
     uint32_t* uint_pointer;
     EnumClass enum_class_field;
     EnumType enum_type_field;
+    uint32_t* invalid_memory_ptr;
+    InnerStruct* wrong_type_ptr;
 };
 
 GlobalStruct g_global_struct;
@@ -127,6 +129,8 @@ void update_struct(GlobalStruct* gs) {
     gs->uint_pointer = &gs->uint_array[0];
     gs->enum_class_field = EnumClass::VALUE_C;
     gs->enum_type_field = TYPE_Y;
+    gs->invalid_memory_ptr = reinterpret_cast<uint32_t*>(0xFFFF0000);
+    gs->wrong_type_ptr = reinterpret_cast<InnerStruct*>(&gs->uint_array[0]);
 }
 
 int main() {
