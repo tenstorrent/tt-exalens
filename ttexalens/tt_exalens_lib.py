@@ -21,7 +21,7 @@ _TRACE_FORMATTERS = {
 
 
 def trace_api(func):
-    """Decorator to log API calls when verbosity is set to DEBUG."""
+    """Decorator to log API calls when verbosity is set to TRACE."""
     @wraps(func)
     def wrapper(*args, **kwargs):
         if Verbosity.supports(Verbosity.TRACE):
