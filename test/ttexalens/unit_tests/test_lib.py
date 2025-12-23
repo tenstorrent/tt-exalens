@@ -12,7 +12,7 @@ from parameterized import parameterized, parameterized_class
 
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 import ttexalens as lib
-from ttexalens import util
+from ttexalens import util, write_words_to_device
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
@@ -863,6 +863,72 @@ class TestARC(unittest.TestCase):
             arc = device.arc_block
             scratch2 = arc.get_register_store().read_register("ARC_RESET_SCRATCH2")
             assert scratch2 == 0xBEBACECA
+
+
+@parameterized_class(
+    [
+        {"device": 0},
+        {"device": 1},
+    ]
+)
+class TestARCReset(unittest.TestCase):
+    device: int  # Device ID being parameterized
+    context: Context  # TTExaLens context
+
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_cached_test_context()
+
+    def test_reset_functional_worker(self):
+        if self.device not in self.context.device_ids:
+            self.skipTest(f"Device ID {self.device} is not available on this architecture.")
+        device = self.context.devices[self.device]
+        arc = device.arc_block
+        if arc is None:
+            self.skipTest("ARC block is not available on this device.")
+
+        # Start all briscs and triscs to ensure they are running before reset
+        for loc in device.get_block_locations("functional_workers"):
+            noc_block = device.get_block(loc)
+            for risc_debug in noc_block.debuggable_riscs:
+                assert isinstance(risc_debug, BabyRiscDebug)
+                write_words_to_device(loc, risc_debug.risc_info.get_code_start_address(risc_debug.register_store), 0x6F)
+                risc_debug.set_reset_signal(False)
+                self.assertFalse(risc_debug.is_in_reset(), f"RISC {risc_debug.risc_location.risc_name} is in reset.")
+
+        # Check reset of all functional workers
+        for loc in device.get_block_locations("functional_workers"):
+            noc_block = device.get_block(loc)
+            self.assertTrue(noc_block.supports_reset(), f"NoC block at location {loc} does not support reset.")
+            noc_block.reset()
+
+            # Verify that all RISCs are in reset
+            for risc_debug in noc_block.debuggable_riscs:
+                self.assertTrue(risc_debug.is_in_reset(), f"RISC {risc_debug.risc_location.risc_name} is not in reset.")
+
+            # Verify that all other noc locations don't have riscs in reset
+            for other_loc in device.get_block_locations("functional_workers"):
+                if other_loc != loc:
+                    other_noc_block = device.get_block(other_loc)
+                    for risc_debug in other_noc_block.debuggable_riscs:
+                        self.assertFalse(
+                            risc_debug.is_in_reset(),
+                            f"RISC {risc_debug.risc_location.risc_name} at location {other_loc} is in reset.",
+                        )
+
+            # Put all RISCs back to running state for next iteration
+            for risc_debug in noc_block.debuggable_riscs:
+                assert isinstance(risc_debug, BabyRiscDebug)
+                write_words_to_device(loc, risc_debug.risc_info.get_code_start_address(risc_debug.register_store), 0x6F)
+                risc_debug.set_reset_signal(False)
+                self.assertFalse(risc_debug.is_in_reset(), f"RISC {risc_debug.risc_location.risc_name} is in reset.")
+
+        # Finally, ensure all RISCs are back in reset
+        for loc in device.get_block_locations("functional_workers"):
+            noc_block = device.get_block(loc)
+            for risc_debug in noc_block.debuggable_riscs:
+                risc_debug.set_reset_signal(True)
+                self.assertTrue(risc_debug.is_in_reset(), f"RISC {risc_debug.risc_location.risc_name} is not in reset.")
 
 
 @parameterized_class(
