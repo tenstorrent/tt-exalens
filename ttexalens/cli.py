@@ -9,9 +9,11 @@ Usage:
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--disable-4B-mode]
   tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help
+  tt-exalens --version
 
 Options:
   -h --help                       Show this help message and exit.
+  --version                       Show version and exit.
   --server                        Start a TTExaLens server. If not specified, the port will be set to 5555.
   --remote                        Attach to the remote TTExaLens server. If not specified, IP defaults to localhost and port to 5555.
   --port=<port>                   Port of the TTExaLens server. If not specified, defaults to 5555.  [default: 5555]
@@ -429,6 +431,20 @@ def main():
         return
 
     args = docopt(__doc__)
+
+    if args["--version"]:
+        import importlib.metadata as importlib_metadata
+
+        try:
+            installed_version = importlib_metadata.version("tt-exalens")
+            print(f"tt-exalens version {installed_version}")
+        except importlib_metadata.PackageNotFoundError:
+            print("tt-exalens version not found (not installed via pip)")
+            # Alternatively, read from VERSION file
+            with open(os.path.join(util.application_path(), "../VERSION"), "r") as version_file:
+                version = version_file.read().strip()
+            print(f"tt-exalens version from VERSION file: {version}")
+        return
 
     # SETTING VERBOSITY
     try:
