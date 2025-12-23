@@ -18,8 +18,7 @@ class ElfLoader:
     This class is used to load elf file to a RISC-V core.
     """
 
-    def __init__(self, risc_debug: RiscDebug, verbose=False):
-        self.verbose = verbose
+    def __init__(self, risc_debug: RiscDebug):
         self.risc_debug = risc_debug
 
     @property

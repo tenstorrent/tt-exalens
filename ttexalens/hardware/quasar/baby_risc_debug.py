@@ -7,8 +7,8 @@ from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 
 
 class QuasarBabyRiscDebug(BabyRiscDebug):
-    def __init__(self, risc_info: BabyRiscInfo, verbose: bool = False, enable_asserts: bool = True):
-        super().__init__(risc_info, verbose, enable_asserts)
+    def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool = True):
+        super().__init__(risc_info, enable_asserts)
 
     def invalidate_instruction_cache(self):
         pc = self.get_pc()
