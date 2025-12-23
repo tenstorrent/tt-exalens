@@ -32,7 +32,7 @@ command_metadata = CommandMetadata(
     long_name="dump-coverage",
     type="high-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
 )
 
 

@@ -26,7 +26,12 @@ command_metadata = CommandMetadata(
     long_name="run-elf",
     type="high-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
+    common_option_names=[
+        CommonCommandOptions.Device,
+        CommonCommandOptions.Location,
+        CommonCommandOptions.Risc,
+        CommonCommandOptions.Verbose,
+    ],
 )
 
 # TODO: Do we need this function?

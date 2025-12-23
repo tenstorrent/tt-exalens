@@ -37,13 +37,14 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_words_from_device, read_word_from_device
 from ttexalens.object import DataArray
 from ttexalens import util as util
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
 
 command_metadata = CommandMetadata(
     short_name="brxy",
     long_name="burst-read-xy",
     type="low-level",
     description=__doc__,
+    common_option_names=[CommonCommandOptions.Device],
 )
 
 

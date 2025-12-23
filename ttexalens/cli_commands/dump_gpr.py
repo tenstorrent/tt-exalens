@@ -35,7 +35,12 @@ command_metadata = CommandMetadata(
     long_name="dump-gpr",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Risc],
+    common_option_names=[
+        CommonCommandOptions.Device,
+        CommonCommandOptions.Location,
+        CommonCommandOptions.Risc,
+        CommonCommandOptions.Verbose,
+    ],
 )
 
 

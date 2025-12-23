@@ -32,7 +32,7 @@ command_metadata = CommandMetadata(
     short_name="bt",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Risc],
 )
 
 
