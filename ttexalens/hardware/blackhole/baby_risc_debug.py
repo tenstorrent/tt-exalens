@@ -10,8 +10,8 @@ from ttexalens.util import TTException
 
 
 class BlackholeBabyRiscDebug(BabyRiscDebug):
-    def __init__(self, risc_info: BabyRiscInfo, verbose: bool = False, enable_asserts: bool = True):
-        super().__init__(risc_info, verbose, enable_asserts)
+    def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool = True):
+        super().__init__(risc_info, enable_asserts)
 
     def step(self):
         # There is a bug in hardware and for blackhole step should be executed twice
