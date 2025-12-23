@@ -211,9 +211,11 @@ def DEBUG(s, **kwargs):
     if Verbosity.supports(Verbosity.DEBUG):
         print(f"{CLR_DEBUG}{s}{CLR_END}", **kwargs)
 
+
 def TRACE(s, **kwargs):
     if Verbosity.supports(Verbosity.TRACE):
         print(f"{CLR_TRACE}{s}{CLR_END}", **kwargs)
+
 
 def INFO(s, **kwargs):
     if Verbosity.supports(Verbosity.INFO):

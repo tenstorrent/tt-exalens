@@ -16,12 +16,13 @@ from ttexalens.util import TTException, Verbosity, TRACE
 
 # Parameter name to formatter function mapping for trace_api decorator
 _TRACE_FORMATTERS = {
-    'addr': hex,
+    "addr": hex,
 }
 
 
 def trace_api(func):
     """Decorator to log API calls when verbosity is set to TRACE."""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         if Verbosity.supports(Verbosity.TRACE):
@@ -35,6 +36,7 @@ def trace_api(func):
                 formatted_args.append(f"{k}={formatter(v)}")
             TRACE(f"[API] {func.__name__}({', '.join(formatted_args)})")
         return func(*args, **kwargs)
+
     return wrapper
 
 
