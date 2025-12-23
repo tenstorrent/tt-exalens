@@ -39,9 +39,10 @@ from docopt import docopt
 # We need to import common options as they are sometimes injected into the docstrings
 from ttexalens.command_parser import CommandMetadata, tt_docopt
 
-OPTIONS = tt_docopt.OPTIONS
-for opt in OPTIONS.keys():
-    OPTIONS[opt]["arg"] = OPTIONS[opt].get("arg", "").replace("<", "\<").replace(">", "\>")
+OPTIONS = tt_docopt.COMMON_OPTIONS
+for opt in OPTIONS:
+    opt.argument = opt.argument.replace("<", "\<").replace(">", "\>") if opt.argument else ""
+
 
 # We limit what each example can output to avoid spamming the user
 MAX_OUTPUT_LINES = 20  # Max number of lines to show for each example
@@ -275,10 +276,10 @@ def parse_source_file(input_file: str, parser: CmdParser = CmdParser()) -> dict 
     cmd_metadata = get_module_metadata(input_file)
     cmd_doc = cmd_metadata.description if cmd_metadata.description else ""
 
-    if cmd_metadata.type == "dev":
+    if cmd_metadata.type is not None and cmd_metadata.type == "dev":
         WARNING(f"Skipping {input_file} as it is a dev command")
         return None
-    if "limited" not in cmd_metadata.context:
+    if cmd_metadata.context is not None and "limited" not in cmd_metadata.context:
         WARNING(f"Skipping {input_file} as it is not a limited command (context: {cmd_metadata.context})")
         return None
 
