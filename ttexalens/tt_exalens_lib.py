@@ -20,7 +20,8 @@ _TRACE_FORMATTERS = {
     "addr": hex,
 }
 
-F = TypeVar('F', bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., Any])
+
 
 def trace_api(func: F) -> F:
     """Decorator to log API calls when verbosity is set to TRACE."""
@@ -613,7 +614,7 @@ def top_callstack(
     if len(offsets) != len(elfs):
         raise TTException("Number of offsets must match the number of elf files")
 
-    elfs_loaded = RiscDebug._read_elfs(cast(list[ParsedElfFile], elfs), offsets)
+    elfs_loaded = RiscDebug._read_elfs(elfs, offsets)
     elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs_loaded, pc, None)
     if frame_description is None or elf is None:
         return []
