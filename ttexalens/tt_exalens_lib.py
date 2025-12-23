@@ -6,6 +6,7 @@ from functools import wraps
 import inspect
 import os
 import struct
+from typing import TypeVar, Callable, Any, cast
 
 from ttexalens.tt_exalens_init import init_ttexalens
 from ttexalens.coordinate import OnChipCoordinate
@@ -19,12 +20,13 @@ _TRACE_FORMATTERS = {
     "addr": hex,
 }
 
+F = TypeVar('F', bound=Callable[..., Any])
 
-def trace_api(func):
+def trace_api(func: F) -> F:
     """Decorator to log API calls when verbosity is set to TRACE."""
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         if Verbosity.supports(Verbosity.TRACE):
             sig = inspect.signature(func)
             bound_args = sig.bind(*args, **kwargs)
@@ -37,7 +39,7 @@ def trace_api(func):
             TRACE(f"[API] {func.__name__}({', '.join(formatted_args)})")
         return func(*args, **kwargs)
 
-    return wrapper
+    return cast(F, wrapper)
 
 
 def check_context(context: Context | None = None) -> Context:
@@ -611,8 +613,8 @@ def top_callstack(
     if len(offsets) != len(elfs):
         raise TTException("Number of offsets must match the number of elf files")
 
-    elfs = RiscDebug._read_elfs(elfs, offsets)
-    elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, None)
+    elfs_loaded = RiscDebug._read_elfs(cast(list[ParsedElfFile], elfs), offsets)
+    elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs_loaded, pc, None)
     if frame_description is None or elf is None:
         return []
     return RiscDebug.get_frame_callstack(elf, pc)[0]
@@ -698,12 +700,15 @@ def coverage(
 
     coordinate = convert_coordinate(location, device_id, context)
     context = coordinate.context
+    parsed_elf: ParsedElfFile
     if isinstance(elf, str):
-        elf = parse_elf(elf, context)
+        parsed_elf = parse_elf(elf, context)
+    else:
+        parsed_elf = elf
 
     from ttexalens.coverage import dump_coverage
 
-    dump_coverage(elf, coordinate, gcda_path, gcno_copy_path)
+    dump_coverage(parsed_elf, coordinate, gcda_path, gcno_copy_path)
 
 
 @trace_api
