@@ -27,10 +27,10 @@ command_metadata = CommandMetadata(
     type="high-level",
     description=__doc__,
     common_option_names=[
-        CommonCommandOptions.Device,
-        CommonCommandOptions.Location,
-        CommonCommandOptions.Risc,
-        CommonCommandOptions.Verbose,
+        "--device",
+        "--loc",
+        "--risc",
+        "--verbose",
     ],
 )
 

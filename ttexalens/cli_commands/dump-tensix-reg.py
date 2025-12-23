@@ -44,7 +44,7 @@ command_metadata = CommandMetadata(
     short_name="tensix",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
+    common_option_names=["--device", "--loc", "--verbose"],
 )
 
 possible_register_groups = ["all", "alu", "pack", "unpack", "gpr"]

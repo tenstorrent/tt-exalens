@@ -40,6 +40,9 @@ command_metadata = CommandMetadata(
     long_name="dump-regfile",
     type="dev",
     description=__doc__,
+    common_option_names=[
+        "--device",
+    ],
 )
 
 

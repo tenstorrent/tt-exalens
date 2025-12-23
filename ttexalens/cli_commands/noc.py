@@ -62,7 +62,7 @@ command_metadata = CommandMetadata(
     long_name="noc",
     type="high-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+    common_option_names=["--device", "--loc"],
 )
 
 
