@@ -41,7 +41,7 @@ from ttexalens.command_parser import CommandMetadata, tt_docopt
 
 OPTIONS = tt_docopt.COMMON_OPTIONS
 for opt in OPTIONS:
-    opt.argument = opt.argument.replace("<", "\<").replace(">", "\>") if opt.argument else ""
+    opt.argument = opt.argument.replace("<", "\<").replace(">", "\>")
 
 
 # We limit what each example can output to avoid spamming the user
