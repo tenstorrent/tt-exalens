@@ -219,3 +219,13 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         elif risc_name == self.ncrisc.risc_name:
             return BlackholeBabyRiscDebug(risc_info=self.ncrisc)
         raise ValueError(f"RISC debug for {risc_name} is not supported in Blackhole functional worker block.")
+
+    def supports_reset(self) -> bool:
+        return True
+
+    def reset(self):
+        from ttexalens.hardware.blackhole.arc_block import BlackholeArcBlock
+
+        arc = self.device.arc_block
+        assert isinstance(arc, BlackholeArcBlock)
+        arc.reset_functional_worker(self)
