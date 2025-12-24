@@ -51,6 +51,14 @@ class CommonCommandOptionMetadata:
     description: str | None = None
     for_each: Callable | None = None
 
+    def to_dict(self) -> dict:
+        return {
+            "short": self.short_name,
+            "long": self.long_name,
+            "arg": self.argument,
+            "description": self.description,
+        }
+
 
 class CommandParsingException(Exception):
     """Custom exception to wrap DocoptExit and SystemExit."""
