@@ -14,7 +14,6 @@ Options:
   --sample=<N>  Number of seconds to sample for. [default: 0] (single read)
   --format=<F>  Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: hex32]
   -o <O>        Address offset. Optional and repeatable.
-  -d <D>        Device ID. Optional and repeatable. Default: current device
 
 Description:
   Reads and prints a block of data from address 'addr' at core <core-loc>.

@@ -10,7 +10,6 @@ Arguments:
   regfile      Register file to read from (0: SRCA, 1: SRCB, 2: DSTACC)
 
 Options:
-  -d <D>                    Device ID. Optional and repeatable. Default: current device
   -t <num-tiles>            Number of tiles to read. Only effective for 32 bit formats on blackhole.
 
 Description:
