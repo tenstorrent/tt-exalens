@@ -60,9 +60,6 @@ class TTExaLensPybind(TTExaLensCommunicator):
             if device is None:
                 raise Exception("Failed to open simulation using pybind library")
         else:
-            # Use UMD's existing env var only for debug case, but don't override if user provided it.
-            if util.Verbosity.get() == util.Verbosity.DEBUG and "TT_LOGGER_LEVEL" not in os.environ:
-                os.environ["TT_LOGGER_LEVEL"] = "debug"
             device = open_device(ttexalens_pybind_path, wanted_devices, init_jtag, initialize_with_noc1)
             if device is None:
                 raise Exception("Failed to open device using pybind library")
@@ -97,6 +94,12 @@ def init_pybind(
 ):
     if not wanted_devices:
         wanted_devices = []
+
+    if "TT_LOGGER_LEVEL" not in os.environ:
+        if util.Verbosity.get() == util.Verbosity.DEBUG:
+            os.environ["TT_LOGGER_LEVEL"] = "debug"
+        elif util.Verbosity.get() == util.Verbosity.TRACE:
+            os.environ["TT_LOGGER_LEVEL"] = "trace"
 
     communicator = TTExaLensPybind(wanted_devices, init_jtag, initialize_with_noc1, simulation_directory)
     util.VERBOSE("Device opened successfully.")
