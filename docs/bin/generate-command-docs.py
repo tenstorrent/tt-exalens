@@ -223,15 +223,10 @@ class CmdParser:
                     "description": metadata.description,
                     "arg": metadata.argument,
                     "short": metadata.short_name,
-                    "type": metadata.type,
                 }
             except ValueError:
                 WARNING(f"Invalid option name: {option}. Skipping...")
                 continue
-            # if option not in OPTIONS:
-            #     WARNING(f"Invalid option name: {option}. Skipping...")
-            #     continue
-            # result[option] = OPTIONS[option]
 
         return result
 

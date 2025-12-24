@@ -49,7 +49,6 @@ class CommonCommandOptionMetadata:
     long_name: str
     argument: str
     description: str | None = None
-    type: str | None = None
     for_each: Callable | None = None
 
 
