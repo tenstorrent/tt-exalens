@@ -212,13 +212,11 @@ class BabyRiscDebugHardware:
         self,
         register_store: RegisterStore,
         risc_info: BabyRiscInfo,
-        verbose: bool = False,
         enable_asserts: bool = True,
     ):
         self.register_store = register_store
         self.risc_info = risc_info
         self.enable_asserts = enable_asserts
-        self.verbose = verbose
 
         self.CONTROL0_WRITE = 0x80010000 + (self.risc_info.risc_id << 17)
         self.CONTROL0_READ = 0x80000000 + (self.risc_info.risc_id << 17)
@@ -248,44 +246,37 @@ class BabyRiscDebugHardware:
             return f"Unknown register {address}"
 
     def __write(self, addr, data):
-        if self.verbose:
-            util.DEBUG(f"{self._get_reg_name_for_address(addr)} <- WR   0x{data:08x}")
+        util.TRACE(f"{self._get_reg_name_for_address(addr)} <- WR   0x{data:08x}")
         write_words_to_device(self.risc_info.noc_block.location, addr, data, self.device._id, self.context)
 
     def __read(self, addr) -> int:
         data = read_word_from_device(self.risc_info.noc_block.location, addr, self.device._id, self.context)
-        if self.verbose:
-            util.DEBUG(f"{self._get_reg_name_for_address(addr)} -> RD == 0x{data:08x}")
+        util.TRACE(f"{self._get_reg_name_for_address(addr)} -> RD == 0x{data:08x}")
         return data
 
     def __trigger_write(self, reg_addr):
-        if self.verbose:
-            util.INFO(f"      __trigger_write({reg_addr})")
+        util.TRACE(f"      __trigger_write({reg_addr})")
         self.__write(self.RISC_DBG_CNTL0, self.CONTROL0_WRITE + reg_addr)
         self.__write(self.RISC_DBG_CNTL0, 0)
 
     def __trigger_read(self, reg_addr):
-        if self.verbose:
-            util.INFO(f"      __trigger_read({reg_addr})")
+        util.TRACE(f"      __trigger_read({reg_addr})")
         self.__write(self.RISC_DBG_CNTL0, self.CONTROL0_READ + reg_addr)
         self.__write(self.RISC_DBG_CNTL0, 0)
 
     def __riscv_write(self, reg_addr, value):
-        if self.verbose:
-            util.INFO(f"    __riscv_write({reg_addr}, 0x{value:08x})")
+        util.TRACE(f"    __riscv_write({reg_addr}, 0x{value:08x})")
         # set wrdata
         self.__write(self.RISC_DBG_CNTL1, value)
         self.__trigger_write(reg_addr)
 
     def __is_read_valid(self):
-        if self.verbose:
-            util.INFO("  __is_read_valid()")
+        util.TRACE("  __is_read_valid()")
         status0 = self.__read(self.RISC_DBG_STATUS0)
         return (status0 & self.risc_info.status_read_valid_mask) == self.risc_info.status_read_valid_mask
 
     def __riscv_read(self, reg_addr) -> int:
-        if self.verbose:
-            util.INFO(f"  __riscv_read({reg_addr})")
+        util.TRACE(f"  __riscv_read({reg_addr})")
         self.__trigger_read(reg_addr)
 
         if self.enable_asserts:
@@ -294,8 +285,7 @@ class BabyRiscDebugHardware:
         return self.__read(self.RISC_DBG_STATUS1)
 
     def enable_debug(self):
-        if self.verbose:
-            util.INFO("  enable_debug()")
+        util.TRACE("  enable_debug()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE)
 
     def _halt_command(self):
@@ -305,8 +295,7 @@ class BabyRiscDebugHardware:
         if self.is_halted():
             util.WARN(f"Halt: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already halted")
             return
-        if self.verbose:
-            util.INFO("  halt()")
+        util.TRACE("  halt()")
         self._halt_command()
         assert (
             self.is_halted()
@@ -319,8 +308,7 @@ class BabyRiscDebugHardware:
         Args:
             pc_address (int): The address to set the PC to after flushing
         """
-        if self.verbose:
-            util.INFO(f"  flush(0x{pc_address:08x})")
+        util.TRACE(f"  flush(0x{pc_address:08x})")
 
         # Set the PC address in COMMAND_ARG_1
         self.__riscv_write(REG_COMMAND_ARG_1, pc_address)
@@ -343,8 +331,7 @@ class BabyRiscDebugHardware:
                 self.cont()
 
     def step(self):
-        if self.verbose:
-            util.INFO("  step()")
+        util.TRACE("  step()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_STEP)
 
     def cont(self):
@@ -353,8 +340,7 @@ class BabyRiscDebugHardware:
                 f"Continue: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already running"
             )
             return
-        if self.verbose:
-            util.INFO("  cont()")
+        util.TRACE("  cont()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_CONTINUE)
 
     def continue_without_debug(self):
@@ -368,31 +354,26 @@ class BabyRiscDebugHardware:
             If the core is already running when method is called
         Side Effects:
             - Writes to RISC-V command register
-            - May log debug information if verbose mode is enabled
         """
         if not self.is_halted():
             util.WARN(
                 f"Continue: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already running"
             )
             return
-        if self.verbose:
-            util.INFO("  cont()")
+        util.TRACE("  continue_without_debug()")
         self.__riscv_write(REG_COMMAND, COMMAND_CONTINUE)
 
     def read_status(self) -> BabyRiscDebugStatus:
-        if self.verbose:
-            util.INFO("  read_status()")
+        util.TRACE("  read_status()")
         status = self.__riscv_read(REG_STATUS)
         return BabyRiscDebugStatus.from_register(status, self.risc_info.max_watchpoints)
 
     def is_halted(self) -> bool:
-        if self.verbose:
-            util.INFO("  is_halted()")
+        util.TRACE("  is_halted()")
         return self.read_status().is_halted
 
     def is_pc_watchpoint_hit(self) -> bool:
-        if self.verbose:
-            util.INFO("  is_pc_watchpoint_hit()")
+        util.TRACE("  is_pc_watchpoint_hit()")
         return self.read_status().is_pc_watchpoint_hit
 
     def assert_halted(self, message=""):
@@ -406,22 +387,19 @@ class BabyRiscDebugHardware:
             raise ValueError(exception_message)
 
     def is_memory_watchpoint_hit(self):
-        if self.verbose:
-            util.INFO("  is_pc_watchpoint_hit()")
+        util.TRACE("  is_memory_watchpoint_hit()")
         return self.read_status().is_memory_watchpoint_hit
 
     def read_gpr(self, reg_index) -> int:
         if not 0 <= reg_index <= 32:
             raise ValueError(f"Invalid register index {reg_index}. Must be between 0 and 32.")
-        if self.verbose:
-            util.INFO(f"  read_gpr({reg_index})")
+        util.TRACE(f"  read_gpr({reg_index})")
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_REGISTER)
         return self.__riscv_read(REG_COMMAND_RETURN_VALUE)
 
     def write_gpr(self, reg_index, value):
-        if self.verbose:
-            util.INFO(f"  write_gpr({reg_index}, 0x{value:08x})")
+        util.TRACE(f"  write_gpr({reg_index}, 0x{value:08x})")
         self.__riscv_write(REG_COMMAND_ARG_1, value)
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_REGISTER)
@@ -429,20 +407,17 @@ class BabyRiscDebugHardware:
     def read_memory(self, addr) -> int:
         if self.enable_asserts:
             self.assert_halted()
-        if self.verbose:
-            util.INFO(f"  read_memory(0x{addr:08x})")
+        util.TRACE(f"  read_memory(0x{addr:08x})")
         self.__riscv_write(REG_COMMAND_ARG_0, addr)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_MEMORY)
         data = self.__riscv_read(REG_COMMAND_RETURN_VALUE)
-        if self.verbose:
-            util.INFO(f"                             read -> 0x{data:08x}")
+        util.TRACE(f"                             read -> 0x{data:08x}")
         return data
 
     def write_memory(self, addr, value):
         if self.enable_asserts:
             self.assert_halted()
-        if self.verbose:
-            util.INFO(f"  write_memory(0x{addr:08x}, 0x{value:08x})")
+        util.TRACE(f"  write_memory(0x{addr:08x}, 0x{value:08x})")
         self.__riscv_write(REG_COMMAND_ARG_1, value)
         self.__riscv_write(REG_COMMAND_ARG_0, addr)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_MEMORY)
@@ -487,18 +462,17 @@ class BabyRiscDebugHardware:
 
 
 class BabyRiscDebug(RiscDebug):
-    def __init__(self, risc_info: BabyRiscInfo, verbose: bool = False, enable_asserts: bool = True):
+    def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool = True):
         super().__init__(RiscLocation(risc_info.noc_block.location, risc_info.neo_id, risc_info.risc_name))
         register_store = risc_info.noc_block.get_register_store(neo_id=risc_info.neo_id)
         self.risc_info = risc_info
         self.register_store = register_store
         self.debug_hardware = (
-            BabyRiscDebugHardware(register_store, risc_info, verbose, enable_asserts)
+            BabyRiscDebugHardware(register_store, risc_info, enable_asserts)
             if risc_info.debug_hardware_present
             else None
         )
         self.enable_asserts = enable_asserts
-        self.verbose = verbose
 
         self.RISC_DBG_SOFT_RESET0 = register_store.get_register_noc_address("RISCV_DEBUG_REG_SOFT_RESET_0")
 
