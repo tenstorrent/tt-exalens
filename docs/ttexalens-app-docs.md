@@ -75,25 +75,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 30668 times
+1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 30701 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 30671 times
+1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 30730 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 30699 times
+1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 30770 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 30228 times
+1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 30505 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 30596 times
+1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 30799 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 30530 times
+1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 30851 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 30427 times
+1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 30857 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 30402 times
+1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 30766 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 30519 times
+1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 31022 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000024 (36) => 0x00001234 (4660) - 29766 times
+1-1 (0,0) (l1) 0x00000024 (36) => 0x00001234 (4660) - 30975 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -336,14 +336,14 @@ Output:
 │ Name                   │ Value                                │
 ├────────────────────────┼──────────────────────────────────────┤
 │ brisc_dbg_obs_cmt_pc   │ [0x160, 0x160, 0x160, 0x160]         │
-│ brisc_dbg_obs_cmt_vld  │ [False, False, True, False]          │
+│ brisc_dbg_obs_cmt_vld  │ [False, True, False, False]          │
 │ brisc_dbg_obs_mem_addr │ [0x10000, 0x10000, 0x10000, 0x10000] │
 │ brisc_dbg_obs_mem_rden │ [False, False, False, False]         │
-│ brisc_i_instrn         │ [0x6f, 0x0, 0x0, 0x6f]               │
+│ brisc_i_instrn         │ [0x0, 0x0, 0x6f, 0x0]                │
 │ brisc_i_instrn_req_rtr │ [True, True, True, True]             │
-│ brisc_i_instrn_vld     │ [True, False, False, True]           │
-│ brisc_o_instrn_addr    │ [0x164, 0x164, 0x160, 0x164]         │
-│ brisc_o_instrn_req     │ [False, True, True, False]           │
+│ brisc_i_instrn_vld     │ [False, False, True, False]          │
+│ brisc_o_instrn_addr    │ [0x164, 0x160, 0x164, 0x164]         │
+│ brisc_o_instrn_req     │ [True, True, False, True]            │
 │ brisc_pc               │ [0x160, 0x160, 0x160, 0x160]         │
 ╰────────────────────────┴──────────────────────────────────────╯
 
@@ -1165,13 +1165,13 @@ NOC0 Status Registers
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ├────────────────────────────┼────────────┼────────────┤ ├────────────────────────────────┼────────────┼────────────┤
-│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x0001e82a │
-│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x001f55b3 │
-│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x001f55b2 │
-│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x001f55b2 │
-│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x0001e82a │
+│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x0002fe7e │
+│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x003de985 │
+│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x003de984 │
+│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x003de984 │
+│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x0002fe7e │
 │ posted write words sent    │ 0xffb20224 │ 0x00000000 │ │ posted write words received    │ 0xffb202e4 │ 0x00000000 │
-│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x0001e82a │
+│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x0002fe7e │
 │ posted write reqs sent     │ 0xffb2022c │ 0x00000000 │ │ posted write reqs received     │ 0xffb202ec │ 0x00000000 │
 ╰────────────────────────────┴────────────┴────────────╯ ╰────────────────────────────────┴────────────┴────────────╯
 
@@ -1203,10 +1203,10 @@ NOC0 Status Registers
 
               Transaction Counters (Received)
 
-  write acks sent                  0xffb202c4   0x0001e82a
-  read resps sent                  0xffb202c8   0x001f55d3
-  read words sent                  0xffb202cc   0x001f55d2
-  read reqs received               0xffb202d4   0x001f55d2
+  write acks sent                  0xffb202c4   0x0002fe7e
+  read resps sent                  0xffb202c8   0x003de9a5
+  read words sent                  0xffb202cc   0x003de9a4
+  read reqs received               0xffb202d4   0x003de9a4
 ...
 ```
 Prints a specific register value
@@ -1270,9 +1270,9 @@ Output:
 │ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00000000 │
 │ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000000 │
 │ NIU_MST_RD_REQ_STARTED        │ 0xffb20238 │ 0x00000000 │
-│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x001f55f0 │
-│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x001f55ee │
-│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x001f55f0 │
+│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x003de9c2 │
+│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x003de9c0 │
+│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x003de9c2 │
 ╰───────────────────────────────┴────────────┴────────────╯
 
                       NOC1 Registers

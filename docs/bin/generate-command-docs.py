@@ -213,7 +213,7 @@ class CmdParser:
 
         return result
 
-    def parse_common_options(self, common_options: list) -> dict:
+    def parse_common_options(self, common_options: list[CommonCommandOptions]) -> dict:
         # Common options are extracted from command metadata
         result = {}
         for option in common_options:
