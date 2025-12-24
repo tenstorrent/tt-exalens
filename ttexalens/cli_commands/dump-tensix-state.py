@@ -226,11 +226,11 @@ def run(cmd_text, context, ui_state: UIState):
                     util.WARN("No L1 address provided. Skipping ADC group. Use -a option to specify L1 address.")
                 else:
                     print(f"{CLR_GREEN}ADCs{CLR_END}")
-                    rwc_signal_groups = [
+                    adc_signal_groups = [
                         group_name for group_name in debug_bus.group_names if group_name.startswith("adc")
                     ]
                     tables_adc: list[str] = []
-                    for signal_group in rwc_signal_groups:
+                    for signal_group in adc_signal_groups:
                         signal_dict_adc: dict[str, str] = {}
                         group_data = debug_bus.read_signal_group(signal_group, l1_address)
                         for signal_name, signal_value in group_data.items():
@@ -240,4 +240,4 @@ def run(cmd_text, context, ui_state: UIState):
 
                         tables_adc.append(dict_list_to_table([signal_dict_adc], signal_group.upper(), ["Values"]))
 
-                    print_3_tables_side_by_side(tables)
+                    print_3_tables_side_by_side(tables_adc)
