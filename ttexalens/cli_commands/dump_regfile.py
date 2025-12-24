@@ -33,7 +33,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import INFO
 from ttexalens.debug_tensix import TILE_SIZE
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
 
 command_metadata = CommandMetadata(
     short_name="dr",
@@ -41,7 +41,7 @@ command_metadata = CommandMetadata(
     type="dev",
     description=__doc__,
     common_option_names=[
-        "--device",
+        CommonCommandOptions.Device,
     ],
 )
 

@@ -44,7 +44,7 @@ command_metadata = CommandMetadata(
     long_name="burst-read-xy",
     type="low-level",
     description=__doc__,
-    common_option_names=["--device"],
+    common_option_names=[CommonCommandOptions.Device],
 )
 
 

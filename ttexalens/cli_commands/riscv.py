@@ -56,7 +56,7 @@ command_metadata = CommandMetadata(
     short_name="rv",
     type="low-level",
     description=__doc__,
-    common_option_names=["--device", "--loc", "--risc"],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Risc],
 )
 
 

@@ -49,7 +49,7 @@ command_metadata = CommandMetadata(
     long_name="tensix-reg",
     type="low-level",
     description=__doc__,
-    common_option_names=["--device", "--loc"],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
 )
 
 # Possible values

@@ -37,7 +37,7 @@ import sys, re, os, importlib.util
 from docopt import docopt
 
 # We need to import common options as they are sometimes injected into the docstrings
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 OPTIONS = tt_docopt.COMMON_OPTIONS
 for opt in OPTIONS:
@@ -217,10 +217,15 @@ class CmdParser:
         # Common options are extracted from command metadata
         result = {}
         for option in common_options:
-            if option not in OPTIONS:
+            try:
+                result[option] = option
+            except ValueError:
                 WARNING(f"Invalid option name: {option}. Skipping...")
                 continue
-            result[option] = OPTIONS[option]
+            # if option not in OPTIONS:
+            #     WARNING(f"Invalid option name: {option}. Skipping...")
+            #     continue
+            # result[option] = OPTIONS[option]
 
         return result
 
