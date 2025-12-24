@@ -7,7 +7,6 @@ Usage:
 
 Options:
   <group>         Tensix group to dump. Options: [all, alu, pack, unpack, gpr, rwc, adc] Default: all
-  -v              Verbose mode. Prints all general purpose registers. (only for gpr group)
   -t <thread-id>  Thread ID. Options: [0, 1, 2] Default: all (only for gpr group)
   -a <l1-address> L1 address to save group data.
 Description:
@@ -120,6 +119,9 @@ def run(cmd_text, context, ui_state: UIState):
                 continue
             register_store = noc_block.get_register_store()
             debug_bus = noc_block.debug_bus
+            if debug_bus is None:
+                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
+                continue
 
             if group == "alu" or group == "all":
                 print(f"{CLR_GREEN}ALU{CLR_END}")
@@ -205,18 +207,18 @@ def run(cmd_text, context, ui_state: UIState):
                     rwc_signal_groups = [
                         group_name for group_name in debug_bus.group_names if group_name.startswith("rwc")
                     ]
-                    tables: list[str] = []
+                    tables_rwc: list[str] = []
                     for signal_group in rwc_signal_groups:
-                        signal_dict: dict[str, int] = {}
+                        signal_dict_rwc: dict[str, str] = {}
                         group_data = debug_bus.read_signal_group(signal_group, l1_address)
                         for signal_name, signal_value in group_data.items():
                             if signal_name.startswith("rwc_"):
                                 signal_name = signal_name[4:]
-                            signal_dict[signal_name] = hex(signal_value)
+                            signal_dict_rwc[signal_name] = hex(signal_value)
 
-                        tables.append(dict_list_to_table([signal_dict], signal_group[4:].upper(), ["Values"]))
+                        tables_rwc.append(dict_list_to_table([signal_dict_rwc], signal_group[4:].upper(), ["Values"]))
 
-                    print_3_tables_side_by_side(tables)
+                    print_3_tables_side_by_side(tables_rwc)
 
             if group == "adc" or group == "all":
 
@@ -227,15 +229,15 @@ def run(cmd_text, context, ui_state: UIState):
                     rwc_signal_groups = [
                         group_name for group_name in debug_bus.group_names if group_name.startswith("adc")
                     ]
-                    tables: list[str] = []
+                    tables_adc: list[str] = []
                     for signal_group in rwc_signal_groups:
-                        signal_dict: dict[str, int] = {}
+                        signal_dict_adc: dict[str, str] = {}
                         group_data = debug_bus.read_signal_group(signal_group, l1_address)
                         for signal_name, signal_value in group_data.items():
                             if signal_name.startswith(signal_group + "_"):
                                 signal_name = signal_name[len(signal_group) + 1 :]
-                            signal_dict[signal_name] = hex(signal_value)
+                            signal_dict_adc[signal_name] = hex(signal_value)
 
-                        tables.append(dict_list_to_table([signal_dict], signal_group.upper(), ["Values"]))
+                        tables_adc.append(dict_list_to_table([signal_dict_adc], signal_group.upper(), ["Values"]))
 
                     print_3_tables_side_by_side(tables)
