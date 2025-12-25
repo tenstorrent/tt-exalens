@@ -13,6 +13,7 @@ Arguments:
 
 Options:
   -o <offsets>        List of offsets for each elf file, comma separated.
+  -r <risc>           RiscV name (e.g. brisc, triscs0, triscs1, triscs2, erisc). [default: first risc]
   -m <max-depth>      Maximum depth of callstack. [Default: 100]
 
 Examples:
@@ -31,7 +32,7 @@ command_metadata = CommandMetadata(
     short_name="bt",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Risc],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
 )
 
 

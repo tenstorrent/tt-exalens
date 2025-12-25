@@ -5,7 +5,8 @@
 Usage:
   device [-d <device-id>] [<axis-coordinate> [<cell-contents>]] [--no-legend]
 
-Arguments:
+Options:
+  -d <device-id>       ID of the device [default: all]
   axis-coordinate      Coordinate system for the axis [default: logical-tensix]
                        Supported: noc0, noc1, translated, die, logical-tensix, logical-eth, logical-dram
   cell-contents        A comma separated list of the cell contents [default: riscv]
@@ -41,7 +42,7 @@ command_metadata = CommandMetadata(
     long_name="device",
     type="high-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device],
+    common_option_names=[],
 )
 
 

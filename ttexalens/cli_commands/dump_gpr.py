@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  gpr   [ <reg-list> ] [ -v ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ]
+  gpr   [ <reg-list> ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ]
 
 Options:
     <reg-list>                          List of registers to dump, comma-separated
@@ -39,7 +39,6 @@ command_metadata = CommandMetadata(
         CommonCommandOptions.Device,
         CommonCommandOptions.Location,
         CommonCommandOptions.Risc,
-        CommonCommandOptions.Verbose,
     ],
 )
 

@@ -8,6 +8,9 @@ Usage:
 Description:
   Loads an elf file into a brisc and runs it.
 
+  Options:
+  -r <risc>           RiscV name (e.g. brisc, triscs0, triscs1, triscs2, erisc). [default: first risc]
+
 Examples:
   run-elf build/riscv-src/wormhole/sample.brisc.elf
 """
@@ -26,7 +29,6 @@ command_metadata = CommandMetadata(
     common_option_names=[
         CommonCommandOptions.Device,
         CommonCommandOptions.Location,
-        CommonCommandOptions.Risc,
         CommonCommandOptions.Verbose,
     ],
 )

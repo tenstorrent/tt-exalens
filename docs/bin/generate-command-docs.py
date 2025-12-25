@@ -219,7 +219,11 @@ class CmdParser:
         for option in common_options:
             try:
                 metadata = tt_docopt.find_common_option_metadata(option)
-                result[option.value] = metadata.to_dict()
+                result[option.value] = {
+                    "short": metadata.short_name,
+                    "arg": metadata.argument,
+                    "description": metadata.description,
+                }
             except ValueError:
                 WARNING(f"Invalid option name: {option}. Skipping...")
                 continue

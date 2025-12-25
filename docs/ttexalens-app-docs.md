@@ -36,7 +36,7 @@ Output:
 ```
 1-1 (0,0) : 0x00000000 (4 total bytes)
 (l1) : 0x00000000 (4 bytes)
-0x00000000:  00001234
+0x00000000:  00000293
 ```
 Read 16 words from address 0
 ```
@@ -46,9 +46,9 @@ Output:
 ```
 1-1 (0,0) : 0x00000000 (64 total bytes)
 (l1) : 0x00000000 (64 bytes)
-0x00000000:  00001234  00001234  00001234  00001234
-0x00000010:  00001234  00001234  00001234  00001234
-0x00000020:  00001234  00001234  0062a023  ffb112b7
+0x00000000:  00000293  00000313  0a628063  ffb112b7
+0x00000010:  00000313  00435313  0062a023  ffb112b7
+0x00000020:  00428293  00004337  0062a023  ffb112b7
 0x00000030:  00828293  00000313  00000393  40638333
 ```
 Prints 32 bytes in i8 format
@@ -59,9 +59,9 @@ Output:
 ```
 1-1 (0,0) : 0x00000000 (128 total bytes)
 (l1) : 0x00000000 (128 bytes)
-0x00000000:  52   18   0    0  52   18   0   0  52   18   0    0    52   18   0    0
-0x00000010:  52   18   0    0  52   18   0   0  52   18   0    0    52   18   0    0
-0x00000020:  52   18   0    0  52   18   0   0  35   160  98   0    183  18   177  255
+0x00000000:  147  2    0    0  19   3    0   0  99   128  98   10   183  18   177  255
+0x00000010:  19   3    0    0  19   83   67  0  35   160  98   0    183  18   177  255
+0x00000020:  147  130  66   0  55   67   0   0  35   160  98   0    183  18   177  255
 0x00000030:  147  130  130  0  19   3    0   0  147  3    0    0    51   131  99   64
 0x00000040:  19   83   67   0  35   160  98  0  183  18   177  255  147  130  194  0
 0x00000050:  19   3    16   0  35   160  98  0  183  18   177  255  147  130  2    1
@@ -75,25 +75,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 24893 times
+1-1 (0,0) (l1) 0x00000000 (0) => 0x00000293 (659) - 24663 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 25066 times
+1-1 (0,0) (l1) 0x00000004 (4) => 0x00000313 (787) - 25046 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 25104 times
+1-1 (0,0) (l1) 0x00000008 (8) => 0x0a628063 (174227555) - 23879 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 25086 times
+1-1 (0,0) (l1) 0x0000000c (12) => 0xffb112b7 (4289794743) - 25026 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 24755 times
+1-1 (0,0) (l1) 0x00000010 (16) => 0x00000313 (787) - 25120 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 25078 times
+1-1 (0,0) (l1) 0x00000014 (20) => 0x00435313 (4412179) - 25325 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 24975 times
+1-1 (0,0) (l1) 0x00000018 (24) => 0x0062a023 (6463523) - 25163 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 25134 times
+1-1 (0,0) (l1) 0x0000001c (28) => 0xffb112b7 (4289794743) - 24945 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 24606 times
+1-1 (0,0) (l1) 0x00000020 (32) => 0x00428293 (4358803) - 24652 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000024 (36) => 0x00001234 (4660) - 25062 times
+1-1 (0,0) (l1) 0x00000024 (36) => 0x00004337 (17207) - 25142 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -142,6 +142,7 @@ Prints callstack using provided elf for a given RiscV core.
 ### Options
 
 - `-o` = **\<offsets\>**: List of offsets for each elf file, comma separated.
+- `-r` = **\<risc\>**: RiscV name (e.g. brisc, triscs0, triscs1, triscs2, erisc). [default: first risc]
 - `-m` = **\<max-depth\>**: Maximum depth of callstack. [Default: 100]
 
 
@@ -161,7 +162,6 @@ File build/riscv-src/wormhole/sample.brisc.elf does not exist
 
 - `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
 - `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
-- `--risc, -r` = **\<risc-name\>**: RiscV name (e.g. brisc, triscs0, trisc1, trisc2, ncrisc, erisc). [default: all]
 
 
 
@@ -241,25 +241,25 @@ debug-bus list-signals --max all
 Output:
 ```
 === Device 0 - location 0,0)
-                                                     Signals
-╭───────────────────────────────┬───────────────────────────────────────────────────────────────────┬────────────╮
-│ Group                         │ Name                                                              │ Value      │
-├───────────────────────────────┼───────────────────────────────────────────────────────────────────┼────────────┤
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_w_counter                                │ 0x0        │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_w_cr                                     │ 0x0        │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_counter                                │ 0x0        │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_cr/0                                   │ 0x0        │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_cr/1                                   │ 0x0        │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_y_counter                                │ 0x0        │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_y_cr                                     │ 0x0        │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_z_counter                                │ 0x0        │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_z_cr                                     │ 0x0        │
-│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_w_counter                                │ 0x0        │
-│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_w_cr                                     │ 0x0        │
-│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_x_counter                                │ 0x0        │
-│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_x_cr/0                                   │ 0x0        │
-│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_x_cr/1                                   │ 0x0        │
-│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_y_counter                                │ 0x0        │
+                                                    Signals
+╭───────────────────────────────┬───────────────────────────────────────────────────────────────────┬──────────╮
+│ Group                         │ Name                                                              │ Value    │
+├───────────────────────────────┼───────────────────────────────────────────────────────────────────┼──────────┤
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_w_counter                                │ 0x0      │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_w_cr                                     │ 0x0      │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_counter                                │ 0x0      │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_cr/0                                   │ 0x0      │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_cr/1                                   │ 0x0      │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_y_counter                                │ 0x0      │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_y_cr                                     │ 0x0      │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_z_counter                                │ 0x0      │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_z_cr                                     │ 0x0      │
+│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_w_counter                                │ 0x0      │
+│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_w_cr                                     │ 0x0      │
+│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_x_counter                                │ 0x0      │
+│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_x_cr/0                                   │ 0x0      │
+│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_x_cr/1                                   │ 0x0      │
+│ adcs0_unpacker0_channel1      │ adcs0_unpacker0_channel1_y_counter                                │ 0x0      │
 ...
 ```
 List up to 5 signals whose names contain 'pc'
@@ -270,16 +270,16 @@ Output:
 ```
 There are matches remaining. To see more results, increase the --max value.
 === Device 0 - location 0,0)
-                        Signals
-╭────────────────┬───────────────────────┬────────────╮
-│ Group          │ Name                  │ Value      │
-├────────────────┼───────────────────────┼────────────┤
-│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x160      │
-│ brisc_group_a  │ brisc_pc              │ 0x160      │
-│ brisc_group_b  │ brisc_id_ex_pc        │ 0x160      │
-│ ncrisc_group_a │ ncrisc_dbg_obs_cmt_pc │ 0x1f12b8e2 │
-│ ncrisc_group_b │ ncrisc_id_ex_pc       │ 0x1d83fdd9 │
-╰────────────────┴───────────────────────┴────────────╯
+                      Signals
+╭────────────────┬───────────────────────┬─────────╮
+│ Group          │ Name                  │ Value   │
+├────────────────┼───────────────────────┼─────────┤
+│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x160   │
+│ brisc_group_a  │ brisc_pc              │ 0x160   │
+│ brisc_group_b  │ brisc_id_ex_pc        │ 0x160   │
+│ ncrisc_group_a │ ncrisc_dbg_obs_cmt_pc │ 0x48164 │
+│ ncrisc_group_b │ ncrisc_id_ex_pc       │ 0x48168 │
+╰────────────────┴───────────────────────┴─────────╯
 
 ```
 List all debug bus signal groups
@@ -336,14 +336,14 @@ Output:
 │ Name                   │ Value                                │
 ├────────────────────────┼──────────────────────────────────────┤
 │ brisc_dbg_obs_cmt_pc   │ [0x160, 0x160, 0x160, 0x160]         │
-│ brisc_dbg_obs_cmt_vld  │ [True, False, False, True]           │
+│ brisc_dbg_obs_cmt_vld  │ [False, True, False, False]          │
 │ brisc_dbg_obs_mem_addr │ [0x10000, 0x10000, 0x10000, 0x10000] │
 │ brisc_dbg_obs_mem_rden │ [False, False, False, False]         │
-│ brisc_i_instrn         │ [0x0, 0x6f, 0x0, 0x0]                │
+│ brisc_i_instrn         │ [0x0, 0x0, 0x6f, 0x0]                │
 │ brisc_i_instrn_req_rtr │ [True, True, True, True]             │
-│ brisc_i_instrn_vld     │ [False, True, False, False]          │
-│ brisc_o_instrn_addr    │ [0x160, 0x164, 0x164, 0x160]         │
-│ brisc_o_instrn_req     │ [True, False, True, True]            │
+│ brisc_i_instrn_vld     │ [False, False, True, False]          │
+│ brisc_o_instrn_addr    │ [0x164, 0x160, 0x164, 0x164]         │
+│ brisc_o_instrn_req     │ [True, True, False, True]            │
 │ brisc_pc               │ [0x160, 0x160, 0x160, 0x160]         │
 ╰────────────────────────┴──────────────────────────────────────╯
 
@@ -370,8 +370,8 @@ debug-bus trisc0_pc,trisc1_pc
 ```
 Output:
 ```
-device:0 loc:1-1 (0,0)  trisc0_pc: 0x1b751654
-device:0 loc:1-1 (0,0)  trisc1_pc: 0x6c40adfd
+device:0 loc:1-1 (0,0)  trisc0_pc: 0x6004
+device:0 loc:1-1 (0,0)  trisc1_pc: 0xa004
 ```
 Print value for a custom signal and trisc2_pc
 ```
@@ -379,8 +379,8 @@ debug-bus {7,0,12,0x3ffffff},trisc2_pc
 ```
 Output:
 ```
-device:0 loc:1-1 (0,0)  Daisy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff: 0x3751654
-device:0 loc:1-1 (0,0)  trisc2_pc: 0x3c80807d
+device:0 loc:1-1 (0,0)  Daisy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff: 0x6004
+device:0 loc:1-1 (0,0)  trisc2_pc: 0xe004
 ```
 
 
@@ -408,10 +408,9 @@ device [-d <device-id>] [<axis-coordinate> [<cell-contents>]] [--no-legend]
 Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
 
 
-### Arguments
+### Options
 
-- `axis-coordinate`: Coordinate system for the axis [default: logical-tensix] Supported: noc0, noc1, translated, die, logical-tensix, logical-eth, logical-dram
-- `cell-contents`: A comma separated list of the cell contents [default: riscv] Supported: riscv - show the status of the RISC-V ('R': running, '-': in reset), or block type if there are no RISC-V cores block - show the type of the block at that coordinate logical, noc0, noc1, translated, die - show coordinate noc0_id - show the NOC0 node ID (x-y) for the block noc1_id - show the NOC1 node ID (x-y) for the block
+- `-d` = **\<device-id\>**: ID of the device [default: all] axis-coordinate
 
 
 ### Examples
@@ -432,7 +431,7 @@ Legend:
 
 ==== Device 0 [0x261832012]
     00     01     02     03     04     05     06     07
-00  R----  -----  -----  -----  -----  -----  -----  -----
+00  R---R  -----  -----  -----  -----  -----  -----  -----
 01  -----  -----  -----  -----  -----  -----  -----  -----
 02  -----  -----  -----  -----  -----  -----  -----  -----
 03  -----  -----  -----  -----  -----  -----  -----  -----
@@ -596,11 +595,6 @@ Output:
 10  arc          functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
 11  dram         harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvest...
 ```
-
-
-### Common options
-
-- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
 
 
 
@@ -965,7 +959,7 @@ cov build_riscv/wormhole/cov_test.coverage.brisc.elf cov_test.gcda cov_test.gcno
 ### Usage
 
 ```
-gpr [ <reg-list> ] [ -v ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ]
+gpr [ <reg-list> ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ]
 ```
 
 
@@ -1023,8 +1017,8 @@ Register    brisc       trisc0    trisc1    trisc2    ncrisc
 1 - ra      0x00000160
 2 - sp      0xffb00ff0
 32 - pc     0x00000160
-Soft reset  False       True      True      True      True
-Halted      False       -         -         -         -
+Soft reset  False       True      True      True      False
+Halted      False       -         -         -         ?
 ```
 
 
@@ -1033,7 +1027,6 @@ Halted      False       -         -         -         -
 - `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
 - `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
 - `--risc, -r` = **\<risc-name\>**: RiscV name (e.g. brisc, triscs0, trisc1, trisc2, ncrisc, erisc). [default: all]
-- `--verbose, -v`: Execute command with verbose output. [default: False]
 
 
 
@@ -1165,13 +1158,13 @@ NOC0 Status Registers
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ├────────────────────────────┼────────────┼────────────┤ ├────────────────────────────────┼────────────┼────────────┤
-│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x000389a8 │
-│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x004a7283 │
-│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x004a7282 │
-│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x004a7282 │
-│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x000389a8 │
+│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x003aa305 │
+│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x00825343 │
+│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x00825342 │
+│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x00825342 │
+│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x003aa305 │
 │ posted write words sent    │ 0xffb20224 │ 0x00000000 │ │ posted write words received    │ 0xffb202e4 │ 0x00000000 │
-│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x000389a8 │
+│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x003aa305 │
 │ posted write reqs sent     │ 0xffb2022c │ 0x00000000 │ │ posted write reqs received     │ 0xffb202ec │ 0x00000000 │
 ╰────────────────────────────┴────────────┴────────────╯ ╰────────────────────────────────┴────────────┴────────────╯
 
@@ -1203,10 +1196,10 @@ NOC0 Status Registers
 
               Transaction Counters (Received)
 
-  write acks sent                  0xffb202c4   0x000389a8
-  read resps sent                  0xffb202c8   0x004a72a3
-  read words sent                  0xffb202cc   0x004a72a2
-  read reqs received               0xffb202d4   0x004a72a2
+  write acks sent                  0xffb202c4   0x003aa305
+  read resps sent                  0xffb202c8   0x00825363
+  read words sent                  0xffb202cc   0x00825362
+  read reqs received               0xffb202d4   0x00825362
 ...
 ```
 Prints a specific register value
@@ -1270,9 +1263,9 @@ Output:
 │ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00000000 │
 │ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000000 │
 │ NIU_MST_RD_REQ_STARTED        │ 0xffb20238 │ 0x00000000 │
-│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x004a72c0 │
-│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x004a72be │
-│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x004a72c0 │
+│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00825380 │
+│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x0082537e │
+│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00825380 │
 ╰───────────────────────────────┴────────────┴────────────╯
 
                       NOC1 Registers
@@ -1444,6 +1437,11 @@ run-elf <elf-file> [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
 Loads an elf file into a brisc and runs it.
 
 
+### Options
+
+- `-r` = **\<risc\>**: RiscV name (e.g. brisc, triscs0, triscs1, triscs2, erisc). [default: first risc]
+
+
 ### Examples
 
 Command:
@@ -1456,7 +1454,6 @@ run-elf build/riscv-src/wormhole/sample.brisc.elf
 
 - `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
 - `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
-- `--risc, -r` = **\<risc-name\>**: RiscV name (e.g. brisc, triscs0, trisc1, trisc2, ncrisc, erisc). [default: all]
 - `--verbose, -v`: Execute command with verbose output. [default: False]
 
 
