@@ -75,25 +75,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 23707 times
+1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 23659 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 24893 times
+1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 24890 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 25356 times
+1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 24715 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 25234 times
+1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 25096 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 25132 times
+1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 25117 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 25267 times
+1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 24891 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 25202 times
+1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 24476 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 25183 times
+1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 25020 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 24856 times
+1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 25159 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000024 (36) => 0x00001234 (4660) - 25277 times
+1-1 (0,0) (l1) 0x00000024 (36) => 0x00001234 (4660) - 24952 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -410,7 +410,9 @@ Shows a device summary. When no argument is supplied, shows the status of the RI
 
 ### Options
 
-- `-d` = **\<device-id\>**: ID of the device [default: all] axis-coordinate
+- `-d` = **\<device-id\>**: ID of the device [default: all]
+- `axis-coordinate`: Coordinate system for the axis [default: logical-tensix] Supported: noc0, noc1, translated, die, logical-tensix, logical-eth, logical-dram
+- `cell-contents`: A comma separated list of the cell contents [default: riscv] Supported: riscv - show the status of the RISC-V ('R': running, '-': in reset), or block type if there are no RISC-V cores block - show the type of the block at that coordinate logical, noc0, noc1, translated, die - show coordinate noc0_id - show the NOC0 node ID (x-y) for the block noc1_id - show the NOC1 node ID (x-y) for the block
 
 
 ### Examples
@@ -1158,13 +1160,13 @@ NOC0 Status Registers
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ├────────────────────────────┼────────────┼────────────┤ ├────────────────────────────────┼────────────┼────────────┤
-│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x003bb959 │
-│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x009bc399 │
-│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x009bc398 │
-│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x009bc398 │
-│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x003bb959 │
+│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x003c4483 │
+│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x00a843a7 │
+│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x00a843a6 │
+│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x00a843a6 │
+│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x003c4483 │
 │ posted write words sent    │ 0xffb20224 │ 0x00000000 │ │ posted write words received    │ 0xffb202e4 │ 0x00000000 │
-│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x003bb959 │
+│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x003c4483 │
 │ posted write reqs sent     │ 0xffb2022c │ 0x00000000 │ │ posted write reqs received     │ 0xffb202ec │ 0x00000000 │
 ╰────────────────────────────┴────────────┴────────────╯ ╰────────────────────────────────┴────────────┴────────────╯
 
@@ -1196,10 +1198,10 @@ NOC0 Status Registers
 
               Transaction Counters (Received)
 
-  write acks sent                  0xffb202c4   0x003bb959
-  read resps sent                  0xffb202c8   0x009bc3b9
-  read words sent                  0xffb202cc   0x009bc3b8
-  read reqs received               0xffb202d4   0x009bc3b8
+  write acks sent                  0xffb202c4   0x003c4483
+  read resps sent                  0xffb202c8   0x00a843c7
+  read words sent                  0xffb202cc   0x00a843c6
+  read reqs received               0xffb202d4   0x00a843c6
 ...
 ```
 Prints a specific register value
@@ -1263,9 +1265,9 @@ Output:
 │ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00000000 │
 │ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000000 │
 │ NIU_MST_RD_REQ_STARTED        │ 0xffb20238 │ 0x00000000 │
-│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x009bc3d6 │
-│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x009bc3d4 │
-│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x009bc3d6 │
+│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00a843e4 │
+│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x00a843e2 │
+│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00a843e4 │
 ╰───────────────────────────────┴────────────┴────────────╯
 
                       NOC1 Registers
