@@ -10,7 +10,6 @@ Arguments:
   regfile      Register file to read from (0: SRCA, 1: SRCB, 2: DSTACC)
 
 Options:
-  -d <D>                    Device ID. Optional and repeatable. Default: current device
   -t <num-tiles>            Number of tiles to read. Only effective for 32 bit formats on blackhole.
 
 Description:
@@ -33,13 +32,16 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import INFO
 from ttexalens.debug_tensix import TILE_SIZE
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
 
 command_metadata = CommandMetadata(
     short_name="dr",
     long_name="dump-regfile",
     type="dev",
     description=__doc__,
+    common_option_names=[
+        CommonCommandOptions.Device,
+    ],
 )
 
 

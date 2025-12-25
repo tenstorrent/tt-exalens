@@ -711,6 +711,7 @@ Set the verbosity level of messages shown.
 - `3`: INFO
 - `4`: VERBOSE
 - `5`: DEBUG
+- `6`: TRACE
 ### get
 
 
@@ -724,7 +725,8 @@ Get the verbosity level of messages shown.
 2: WARN
 3: INFO
 4: VERBOSE
-5: DEBUG### supports
+5: DEBUG
+6: TRACE### supports
 
 
 

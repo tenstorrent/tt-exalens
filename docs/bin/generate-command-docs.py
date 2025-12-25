@@ -37,11 +37,12 @@ import sys, re, os, importlib.util
 from docopt import docopt
 
 # We need to import common options as they are sometimes injected into the docstrings
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
-OPTIONS = tt_docopt.OPTIONS
-for opt in OPTIONS.keys():
-    OPTIONS[opt]["arg"] = OPTIONS[opt].get("arg", "").replace("<", "\<").replace(">", "\>")
+OPTIONS = tt_docopt.COMMON_OPTIONS
+for opt in OPTIONS:
+    opt.argument = opt.argument.replace("<", "\<").replace(">", "\>")
+
 
 # We limit what each example can output to avoid spamming the user
 MAX_OUTPUT_LINES = 20  # Max number of lines to show for each example
@@ -212,14 +213,20 @@ class CmdParser:
 
         return result
 
-    def parse_common_options(self, common_options: list) -> dict:
+    def parse_common_options(self, common_options: list[CommonCommandOptions]) -> dict:
         # Common options are extracted from command metadata
         result = {}
         for option in common_options:
-            if option not in OPTIONS:
+            try:
+                metadata = tt_docopt.find_common_option_metadata(option)
+                result[option.value] = {
+                    "short": metadata.short_name,
+                    "arg": metadata.argument,
+                    "description": metadata.description,
+                }
+            except ValueError:
                 WARNING(f"Invalid option name: {option}. Skipping...")
                 continue
-            result[option] = OPTIONS[option]
 
         return result
 
@@ -275,10 +282,10 @@ def parse_source_file(input_file: str, parser: CmdParser = CmdParser()) -> dict 
     cmd_metadata = get_module_metadata(input_file)
     cmd_doc = cmd_metadata.description if cmd_metadata.description else ""
 
-    if cmd_metadata.type == "dev":
+    if cmd_metadata.type is not None and cmd_metadata.type == "dev":
         WARNING(f"Skipping {input_file} as it is a dev command")
         return None
-    if "limited" not in cmd_metadata.context:
+    if cmd_metadata.context is not None and "limited" not in cmd_metadata.context:
         WARNING(f"Skipping {input_file} as it is not a limited command (context: {cmd_metadata.context})")
         return None
 
