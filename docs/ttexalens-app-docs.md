@@ -36,7 +36,7 @@ Output:
 ```
 1-1 (0,0) : 0x00000000 (4 total bytes)
 (l1) : 0x00000000 (4 bytes)
-0x00000000:  00000293
+0x00000000:  00001234
 ```
 Read 16 words from address 0
 ```
@@ -46,9 +46,9 @@ Output:
 ```
 1-1 (0,0) : 0x00000000 (64 total bytes)
 (l1) : 0x00000000 (64 bytes)
-0x00000000:  00000293  00000313  0a628063  ffb112b7
-0x00000010:  00000313  00435313  0062a023  ffb112b7
-0x00000020:  00428293  00004337  0062a023  ffb112b7
+0x00000000:  00001234  00001234  00001234  00001234
+0x00000010:  00001234  00001234  00001234  00001234
+0x00000020:  00001234  00001234  0062a023  ffb112b7
 0x00000030:  00828293  00000313  00000393  40638333
 ```
 Prints 32 bytes in i8 format
@@ -59,9 +59,9 @@ Output:
 ```
 1-1 (0,0) : 0x00000000 (128 total bytes)
 (l1) : 0x00000000 (128 bytes)
-0x00000000:  147  2    0    0  19   3    0   0  99   128  98   10   183  18   177  255
-0x00000010:  19   3    0    0  19   83   67  0  35   160  98   0    183  18   177  255
-0x00000020:  147  130  66   0  55   67   0   0  35   160  98   0    183  18   177  255
+0x00000000:  52   18   0    0  52   18   0   0  52   18   0    0    52   18   0    0
+0x00000010:  52   18   0    0  52   18   0   0  52   18   0    0    52   18   0    0
+0x00000020:  52   18   0    0  52   18   0   0  35   160  98   0    183  18   177  255
 0x00000030:  147  130  130  0  19   3    0   0  147  3    0    0    51   131  99   64
 0x00000040:  19   83   67   0  35   160  98  0  183  18   177  255  147  130  194  0
 0x00000050:  19   3    16   0  35   160  98  0  183  18   177  255  147  130  2    1
@@ -75,25 +75,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000000 (0) => 0x00000293 (659) - 24663 times
+1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 25546 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000004 (4) => 0x00000313 (787) - 25046 times
+1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 25672 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000008 (8) => 0x0a628063 (174227555) - 23879 times
+1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 25645 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000000c (12) => 0xffb112b7 (4289794743) - 25026 times
+1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 25794 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000010 (16) => 0x00000313 (787) - 25120 times
+1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 25701 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000014 (20) => 0x00435313 (4412179) - 25325 times
+1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 25432 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000018 (24) => 0x0062a023 (6463523) - 25163 times
+1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 25660 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000001c (28) => 0xffb112b7 (4289794743) - 24945 times
+1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 25708 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000020 (32) => 0x00428293 (4358803) - 24652 times
+1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 25413 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000024 (36) => 0x00004337 (17207) - 25142 times
+1-1 (0,0) (l1) 0x00000024 (36) => 0x00001234 (4660) - 25767 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -278,7 +278,7 @@ There are matches remaining. To see more results, increase the --max value.
 │ brisc_group_a  │ brisc_pc              │ 0x160   │
 │ brisc_group_b  │ brisc_id_ex_pc        │ 0x160   │
 │ ncrisc_group_a │ ncrisc_dbg_obs_cmt_pc │ 0x48164 │
-│ ncrisc_group_b │ ncrisc_id_ex_pc       │ 0x48168 │
+│ ncrisc_group_b │ ncrisc_id_ex_pc       │ 0x48164 │
 ╰────────────────┴───────────────────────┴─────────╯
 
 ```
@@ -336,14 +336,14 @@ Output:
 │ Name                   │ Value                                │
 ├────────────────────────┼──────────────────────────────────────┤
 │ brisc_dbg_obs_cmt_pc   │ [0x160, 0x160, 0x160, 0x160]         │
-│ brisc_dbg_obs_cmt_vld  │ [False, True, False, False]          │
+│ brisc_dbg_obs_cmt_vld  │ [False, False, True, False]          │
 │ brisc_dbg_obs_mem_addr │ [0x10000, 0x10000, 0x10000, 0x10000] │
 │ brisc_dbg_obs_mem_rden │ [False, False, False, False]         │
-│ brisc_i_instrn         │ [0x0, 0x0, 0x6f, 0x0]                │
+│ brisc_i_instrn         │ [0x6f, 0x0, 0x0, 0x6f]               │
 │ brisc_i_instrn_req_rtr │ [True, True, True, True]             │
-│ brisc_i_instrn_vld     │ [False, False, True, False]          │
-│ brisc_o_instrn_addr    │ [0x164, 0x160, 0x164, 0x164]         │
-│ brisc_o_instrn_req     │ [True, True, False, True]            │
+│ brisc_i_instrn_vld     │ [True, False, False, True]           │
+│ brisc_o_instrn_addr    │ [0x164, 0x164, 0x160, 0x164]         │
+│ brisc_o_instrn_req     │ [False, True, True, False]           │
 │ brisc_pc               │ [0x160, 0x160, 0x160, 0x160]         │
 ╰────────────────────────┴──────────────────────────────────────╯
 
@@ -1158,13 +1158,13 @@ NOC0 Status Registers
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ├────────────────────────────┼────────────┼────────────┤ ├────────────────────────────────┼────────────┼────────────┤
-│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x003aa305 │
-│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x00825343 │
-│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x00825342 │
-│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x00825342 │
-│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x003aa305 │
+│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x003b2e2f │
+│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x008f2f3b │
+│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x008f2f3a │
+│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x008f2f3a │
+│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x003b2e2f │
 │ posted write words sent    │ 0xffb20224 │ 0x00000000 │ │ posted write words received    │ 0xffb202e4 │ 0x00000000 │
-│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x003aa305 │
+│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x003b2e2f │
 │ posted write reqs sent     │ 0xffb2022c │ 0x00000000 │ │ posted write reqs received     │ 0xffb202ec │ 0x00000000 │
 ╰────────────────────────────┴────────────┴────────────╯ ╰────────────────────────────────┴────────────┴────────────╯
 
@@ -1196,10 +1196,10 @@ NOC0 Status Registers
 
               Transaction Counters (Received)
 
-  write acks sent                  0xffb202c4   0x003aa305
-  read resps sent                  0xffb202c8   0x00825363
-  read words sent                  0xffb202cc   0x00825362
-  read reqs received               0xffb202d4   0x00825362
+  write acks sent                  0xffb202c4   0x003b2e2f
+  read resps sent                  0xffb202c8   0x008f2f5b
+  read words sent                  0xffb202cc   0x008f2f5a
+  read reqs received               0xffb202d4   0x008f2f5a
 ...
 ```
 Prints a specific register value
@@ -1263,9 +1263,9 @@ Output:
 │ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00000000 │
 │ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000000 │
 │ NIU_MST_RD_REQ_STARTED        │ 0xffb20238 │ 0x00000000 │
-│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00825380 │
-│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x0082537e │
-│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00825380 │
+│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x008f2f78 │
+│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x008f2f76 │
+│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x008f2f78 │
 ╰───────────────────────────────┴────────────┴────────────╯
 
                       NOC1 Registers
@@ -1439,15 +1439,7 @@ Loads an elf file into a brisc and runs it.
 
 ### Options
 
-- `-r` = **\<risc\>**: RiscV name (e.g. brisc, triscs0, triscs1, triscs2, erisc). [default: first risc]
-
-
-### Examples
-
-Command:
-```
-run-elf build/riscv-src/wormhole/sample.brisc.elf
-```
+- `-r` = **\<risc\>**: RiscV name (brisc, triscs0, triscs1, triscs2, ncrisc, erisc). [default: first risc] Examples: run-elf build/riscv-src/wormhole/sample.brisc.elf
 
 
 ### Common options
