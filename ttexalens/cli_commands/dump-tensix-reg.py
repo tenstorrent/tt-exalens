@@ -7,7 +7,6 @@ Usage:
 
 Options:
   <reg-group>     Tensix register group to dump. Options: [all, alu, pack, unpack, gpr] Default: all
-  -v              Verbose mode. Prints all general purpose registers.
   -t <thread-id>  Thread ID. Options: [0, 1, 2] Default: all
 Description:
   Prints the tensix register group of the given name, at the specified location and device.
@@ -44,7 +43,7 @@ command_metadata = CommandMetadata(
     short_name="tensix",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
 )
 
 possible_register_groups = ["all", "alu", "pack", "unpack", "gpr"]

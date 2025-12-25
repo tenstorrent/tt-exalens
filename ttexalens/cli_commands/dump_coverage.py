@@ -6,8 +6,6 @@ Usage:
   dump-coverage <elf> <gcda_path> [<gcno_copy_path>] [-d <device>...] [-l <loc>]
 
 Arguments:
-  device          ID of the device [default: current active]
-  loc             Location identifier (e.g. 0-0) [default: current active]
   elf             Path to the currently running ELF
   gcda_path       Output path for the gcda
   gcno_copy_path  Optional path to copy the gcno file
@@ -32,7 +30,7 @@ command_metadata = CommandMetadata(
     long_name="dump-coverage",
     type="high-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
 )
 
 

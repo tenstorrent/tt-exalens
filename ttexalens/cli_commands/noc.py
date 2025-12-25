@@ -9,9 +9,7 @@ Usage:
 
 
 Arguments:
-    device-id         ID of the device [default: current active]
     noc-id            Identifier for the NOC (e.g. 0, 1) [default: both noc0 and noc1]
-    loc               Location identifier (e.g. 0-0) [default: current active]
     reg-names         Name of specific NOC register(s) to display, can be comma-separated
     reg-pattern       Pattern in wildcard format for finding registers (mutually exclusive with <reg-names>)
     max-regs          Limit --search output (default: 10, use --max "all" to print all matches)

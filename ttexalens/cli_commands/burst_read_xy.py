@@ -14,7 +14,6 @@ Options:
   --sample=<N>  Number of seconds to sample for. [default: 0] (single read)
   --format=<F>  Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: hex32]
   -o <O>        Address offset. Optional and repeatable.
-  -d <D>        Device ID. Optional and repeatable. Default: current device
 
 Description:
   Reads and prints a block of data from address 'addr' at core <core-loc>.
@@ -37,13 +36,14 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_words_from_device, read_word_from_device
 from ttexalens.object import DataArray
 from ttexalens import util as util
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
 
 command_metadata = CommandMetadata(
     short_name="brxy",
     long_name="burst-read-xy",
     type="low-level",
     description=__doc__,
+    common_option_names=[CommonCommandOptions.Device],
 )
 
 

@@ -9,7 +9,7 @@ Description:
   Loads an elf file into a brisc and runs it.
 
 Options:
-  -r <risc>           RiscV name (brisc, triscs0, triscs1, triscs2, ncrisc, erisc). [default: first risc]
+   -r <risc>           RiscV name (brisc, triscs0, triscs1, triscs2, ncrisc, erisc). [default: first risc]
 
 Examples:
   run-elf build/riscv-src/wormhole/sample.brisc.elf
@@ -26,7 +26,11 @@ command_metadata = CommandMetadata(
     long_name="run-elf",
     type="high-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
+    common_option_names=[
+        CommonCommandOptions.Device,
+        CommonCommandOptions.Location,
+        CommonCommandOptions.Verbose,
+    ],
 )
 
 # TODO: Do we need this function?
