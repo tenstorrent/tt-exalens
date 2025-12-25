@@ -232,7 +232,7 @@ def run(cmd_text, context, ui_state: UIState):
                     tables_adc: list[str] = []
                     for signal_group in adc_signal_groups:
                         signal_dict_adc: dict[str, str] = {}
-                        group_data = debug_bus.read_signal_group(signal_group, l1_address)
+                        group_data = debug_bus.read_signal_group_unsafe(signal_group)
                         for signal_name, signal_value in group_data.items():
                             if signal_name.startswith(signal_group + "_"):
                                 signal_name = signal_name[len(signal_group) + 1 :]
