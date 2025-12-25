@@ -106,7 +106,7 @@ def run(cmd_text, context, ui_state: UIState):
 
     device: Device
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
-        conf_reg_desc = device.get_tensix_registers_description()
+        tensix_reg_desc = device.get_tensix_registers_description()
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             INFO(f"Tensix registers for location {loc} on device {device.id()}")
 
@@ -125,25 +125,29 @@ def run(cmd_text, context, ui_state: UIState):
 
             if group == "alu" or group == "all":
                 print(f"{CLR_GREEN}ALU{CLR_END}")
-                alu_config_table = config_regs_to_table(conf_reg_desc.alu_config, "ALU CONFIG", register_store)
+                alu_config_table = config_regs_to_table(tensix_reg_desc.alu_config, "ALU CONFIG", register_store)
                 print(alu_config_table)
             if group == "unpack" or group == "all":
                 print(f"{CLR_GREEN}UNPACKER{CLR_END}")
                 tile_descriptor_table = config_regs_to_table(
-                    conf_reg_desc.unpack_tile_descriptor, "TILE DESCRIPTOR", register_store
+                    tensix_reg_desc.unpack_tile_descriptor, "TILE DESCRIPTOR", register_store
                 )
-                unpack_config_table = config_regs_to_table(conf_reg_desc.unpack_config, "UNPACK CONFIG", register_store)
+                unpack_config_table = config_regs_to_table(
+                    tensix_reg_desc.unpack_config, "UNPACK CONFIG", register_store
+                )
                 print(put_table_list_side_by_side([unpack_config_table, tile_descriptor_table]))
             if group == "pack" or group == "all":
                 print(f"{CLR_GREEN}PACKER{CLR_END}")
-                pack_config_table = config_regs_to_table(conf_reg_desc.pack_config, "PACK CONFIG", register_store)
-                pack_counters_table = config_regs_to_table(conf_reg_desc.pack_counters, "COUNTERS", register_store)
-                edge_offset_table = config_regs_to_table(conf_reg_desc.pack_edge_offset, "EDGE OFFSET", register_store)
-                pack_strides_table = config_regs_to_table(conf_reg_desc.pack_strides, "STRIDES", register_store)
+                pack_config_table = config_regs_to_table(tensix_reg_desc.pack_config, "PACK CONFIG", register_store)
+                pack_counters_table = config_regs_to_table(tensix_reg_desc.pack_counters, "COUNTERS", register_store)
+                edge_offset_table = config_regs_to_table(
+                    tensix_reg_desc.pack_edge_offset, "EDGE OFFSET", register_store
+                )
+                pack_strides_table = config_regs_to_table(tensix_reg_desc.pack_strides, "STRIDES", register_store)
                 if device.is_wormhole() or device.is_blackhole():
-                    relu_config_table = config_regs_to_table(conf_reg_desc.relu_config, "RELU CONFIG", register_store)
+                    relu_config_table = config_regs_to_table(tensix_reg_desc.relu_config, "RELU CONFIG", register_store)
                     dest_rd_ctrl_table = config_regs_to_table(
-                        conf_reg_desc.pack_dest_rd_ctrl, "DEST RD CTRL", register_store
+                        tensix_reg_desc.pack_dest_rd_ctrl, "DEST RD CTRL", register_store
                     )
                     print(pack_counters_table)
                     print(pack_config_table)
@@ -161,7 +165,7 @@ def run(cmd_text, context, ui_state: UIState):
                 print(f"{CLR_GREEN}GPR{CLR_END}")
                 tables: list[str] = []
                 for thread_id in thread_ids:
-                    gpr_mapping = conf_reg_desc.general_purpose_registers[thread_id]
+                    gpr_mapping = tensix_reg_desc.general_purpose_registers[thread_id]
                     rows: list[list[str]] = []
                     merged_registers: dict[str, int] = {}
                     for register_name in gpr_mapping:
