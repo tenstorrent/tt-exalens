@@ -120,7 +120,8 @@ def parse_signal_groups(
     return signal_dicts
 
 
-def debug_bus_to_tables(signal_dicts: list[dict[str, str]]) -> list[str]:
+def debug_bus_to_tables(signal_dicts: dict[str, dict[str, str]]) -> list[str]:
+    """Converts group dictionaries to tables."""
     return [
         dict_list_to_table([signal_dict], signal_group.upper(), ["Values"])
         for signal_group, signal_dict in signal_dicts.items()
