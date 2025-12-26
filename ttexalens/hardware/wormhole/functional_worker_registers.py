@@ -1041,7 +1041,7 @@ def get_general_purpose_registers() -> list[dict[str, str]]:
     return register_mapping_by_thread
 
 
-configuration_registers_descriptions = TensixRegisterDescription(
+tensix_registers_descriptions = TensixRegisterDescription(
     # ALU CONFIG
     alu_config=[
         {

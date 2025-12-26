@@ -6,7 +6,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.blackhole.arc_block import BlackholeArcBlock
 from ttexalens.hardware.blackhole.dram_block import BlackholeDramBlock
 from ttexalens.hardware.blackhole.eth_block import BlackholeEthBlock
-from ttexalens.hardware.blackhole.functional_worker_registers import configuration_registers_descriptions
+from ttexalens.hardware.blackhole.functional_worker_registers import tensix_registers_descriptions
 from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import tensix_debug_bus_description
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
 from ttexalens.hardware.blackhole.harvested_worker_block import BlackholeHarvestedWorkerBlock
@@ -80,7 +80,7 @@ class BlackholeDevice(Device):
         raise ValueError(f"Unsupported block type: {block_type}")
 
     def get_tensix_registers_description(self) -> TensixRegisterDescription:
-        return configuration_registers_descriptions
+        return tensix_registers_descriptions
 
     def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
         return tensix_debug_bus_description

@@ -8,13 +8,13 @@ Usage:
 Options:
   <group>         Tensix group to dump. Options: [all, alu, pack, unpack, gpr, rwc, adc] Default: all
   -t <thread-id>  Thread ID. Options: [0, 1, 2] Default: all (only for gpr group)
-  -a <l1-address> L1 address to save group data.
+  -a <l1-address> L1 address to save group data. Only used for RWC and ADC groups.
 Description:
   Prints the tensix group of the given name, at the specified location and device.
 
 Examples:
-  tensix              # Prints tensix state for current device and core (excludes RWC and ADC groups)
-  tensix -a 0x0       # Prints tensix state for current device and core using L1 address 0x0
+  tensix              # Prints tensix state for current device and core
+  tensix -a 0x0       # Prints tensix state for current device and core using L1 address 0x0 for RWC and ADC groups
   tensix -d 0         # Prints tensix state for device with id 0 and current core
   tensix -l 0,0       # Prints tensix state for current device and core at location 0,0
   tensix all          # Prints tensix state for current device and core
@@ -24,11 +24,12 @@ Examples:
   tensix gpr          # Prints general purpose registers for current device and core
   tensix gpr -v       # Prints all general purpose registers for current device and core
   tensix gpr -t 0,1   # Prints general purpose registers for threads 0 and 1 for current device and core
-  tensix rwc -a 0x0   # Prints RWC registers for current device and core using L1 address 0x0
-  tensix adc -a 0x0   # Prints ADC registers for current device and core using L1 address 0x0
+  tensix rwc          # Prints RWC group for current device and core
+  tensix rwc -a 0x0   # Prints RWC group for current device and core using L1 address 0x0
+  tensix adc          # Prints ADC group for current device and core
+  tensix adc -a 0x0   # Prints ADC group for current device and core using L1 address 0x0
 """
 
-from dataclasses import dataclass
 import tabulate
 
 from ttexalens import util
@@ -113,10 +114,8 @@ def parse_signal_groups(
             if signal_name.startswith(to_remove):
                 signal_name = signal_name[len(to_remove) :]
             signal_dict[signal_name] = hex(signal_value)
-        if prefix is not None:
-            signal_dicts[signal_group[len(prefix) + 1 :]] = signal_dict
-        else:
-            signal_dicts[signal_group] = signal_dict
+        signal_group_name = signal_group[len(prefix) + 1 :] if prefix is not None else signal_group
+        signal_dicts[signal_group_name] = signal_dict
     return signal_dicts
 
 

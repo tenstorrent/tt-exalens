@@ -467,7 +467,7 @@ class DebugBusSignalStore:
         """
         return self._read_signal_group_samples(signal_group, l1_address, samples=1)[0]
 
-    def read_signal_group_unsafe(self, signal_group: str) -> SignalGroupSample:
+    def _find_signals_to_read(self, signal_group: str) -> list[DebugBusSignalDescription]:
         rd_sels: set[int] = {0, 1, 2, 3}
         signals_to_read: list[DebugBusSignalDescription] = []
 
@@ -493,10 +493,13 @@ class DebugBusSignalStore:
                 if signal_desc.rd_sel in rd_sels:
                     add_signal_to_read(signal_desc)
 
+        return signals_to_read
+
+    def read_signal_group_unsafe(self, signal_group: str) -> SignalGroupSample:
+        signals_to_read = self._find_signals_to_read(signal_group)
         data: int = 0  # 128-bit data
         for signal_desc in signals_to_read:
             data |= self._read_signal_data(signal_desc) << (WORD_SIZE_BITS * signal_desc.rd_sel)
-
         return SignalGroupSample(data, self.signal_groups[signal_group])
 
     @staticmethod
