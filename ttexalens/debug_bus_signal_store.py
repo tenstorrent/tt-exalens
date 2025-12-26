@@ -467,38 +467,12 @@ class DebugBusSignalStore:
         """
         return self._read_signal_group_samples(signal_group, l1_address, samples=1)[0]
 
-    def _find_signals_to_read(self, signal_group: str) -> list[DebugBusSignalDescription]:
-        rd_sels: set[int] = {0, 1, 2, 3}
-        signals_to_read: list[DebugBusSignalDescription] = []
-
-        def add_signal_to_read(signal_desc: DebugBusSignalDescription) -> None:
-            rd_sels.remove(signal_desc.rd_sel)
-            signals_to_read.append(signal_desc)
-
-        for signal_name in self.get_signal_names_in_group(signal_group):
-            if not rd_sels:
-                break
-            if signal_name not in self.signals:
-                # Deal with combined signals
-                counter = 0
-                simple_signal_name = signal_name + f"/{counter}"
-                while simple_signal_name in self.signals:
-                    signal_desc = self.get_signal_description(simple_signal_name)
-                    if signal_desc.rd_sel in rd_sels:
-                        add_signal_to_read(signal_desc)
-                    counter += 1
-                    simple_signal_name = signal_name + f"/{counter}"
-            else:
-                signal_desc = self.get_signal_description(signal_name)
-                if signal_desc.rd_sel in rd_sels:
-                    add_signal_to_read(signal_desc)
-
-        return signals_to_read
-
     def read_signal_group_unsafe(self, signal_group: str) -> SignalGroupSample:
-        signals_to_read = self._find_signals_to_read(signal_group)
+        daisy_sel, sig_sel = self.group_map[signal_group]
         data: int = 0  # 128-bit data
-        for signal_desc in signals_to_read:
+        # Read all 4 32-bit words (1 per read select)
+        for rd_sel in range(4):
+            signal_desc = DebugBusSignalDescription(rd_sel=rd_sel, daisy_sel=daisy_sel, sig_sel=sig_sel)
             data |= self._read_signal_data(signal_desc) << (WORD_SIZE_BITS * signal_desc.rd_sel)
         return SignalGroupSample(data, self.signal_groups[signal_group])
 
