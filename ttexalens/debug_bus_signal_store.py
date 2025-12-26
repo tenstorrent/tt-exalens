@@ -243,6 +243,17 @@ class DebugBusSignalStore:
                 f"When sampling groups, sampling_interval must be between 2 and 256, but got {sampling_interval}"
             )
 
+    def _read_signal_data(self, signal_desc: DebugBusSignalDescription) -> int:
+        """Reads the 32 data register value from the debug bus using debug hardware"""
+        # Configure debug bus to read the signal
+        en = 1
+        config = (en << 29) | (signal_desc.rd_sel << 25) | (signal_desc.daisy_sel << 16) | (signal_desc.sig_sel << 0)
+        write_words_to_device(
+            self.location, self._control_register_address, config, self.device._id, self.device._context
+        )
+        # Read the data
+        return read_word_from_device(self.location, self._data_register_address, self.device._id, self.device._context)
+
     def read_signal(
         self,
         signal: DebugBusSignalDescription | str,
@@ -273,14 +284,8 @@ class DebugBusSignalStore:
         else:
             raise ValueError(f"Invalid signal type: {type(signal)}")
 
-        # Configure debug bus to read the signal
-        en = 1
-        config = (en << 29) | (signal_desc.rd_sel << 25) | (signal_desc.daisy_sel << 16) | (signal_desc.sig_sel << 0)
-        write_words_to_device(
-            self.location, self._control_register_address, config, self.device._id, self.device._context
-        )
-        # Read the data
-        data = read_word_from_device(self.location, self._data_register_address, self.device._id, self.device._context)
+        # Read 32-bit data
+        data = self._read_signal_data(signal_desc)
 
         # Apply mask
         value = data & signal_desc.mask
@@ -461,6 +466,15 @@ class DebugBusSignalStore:
             value is sampled value for given signal name.
         """
         return self._read_signal_group_samples(signal_group, l1_address, samples=1)[0]
+
+    def read_signal_group_unsafe(self, signal_group: str) -> SignalGroupSample:
+        daisy_sel, sig_sel = self.group_map[signal_group]
+        data: int = 0  # 128-bit data
+        # Read all 4 32-bit words (1 per read select)
+        for rd_sel in range(4):
+            signal_desc = DebugBusSignalDescription(rd_sel=rd_sel, daisy_sel=daisy_sel, sig_sel=sig_sel)
+            data |= self._read_signal_data(signal_desc) << (WORD_SIZE_BITS * signal_desc.rd_sel)
+        return SignalGroupSample(data, self.signal_groups[signal_group])
 
     @staticmethod
     def create_initialization(

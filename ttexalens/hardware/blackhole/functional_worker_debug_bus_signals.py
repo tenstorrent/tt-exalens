@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
+from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription
 
 # Commented signals marked with "# Duplicate signal name" are true duplicates -
 # their name already exists in the map and they represent the same signal so suffix "_dup" is added.
@@ -2088,3 +2089,8 @@ group_map: dict[str, tuple[int, int]] = {
     "packed_p5_signals": (14, 5),
     "tdma_packer_pos": (14, 6),
 }
+
+tensix_debug_bus_description = TensixDebugBusDescription(
+    register_window_counter_groups=[group_name for group_name in group_map.keys() if group_name.startswith("rwc")],
+    address_counter_groups=[group_name for group_name in group_map.keys() if group_name.startswith("adc")],
+)

@@ -24,3 +24,12 @@ class TensixRegisterDescription:
 
     # GENERAL PURPOSE REGISTERS
     general_purpose_registers: list[dict[str, str]] = field(default_factory=list)
+
+
+@dataclass
+class TensixDebugBusDescription:
+    # REGISTER WINDOW COUNTERS
+    register_window_counter_groups: list[str] = field(default_factory=list)
+
+    # ADDRESS COUNTERS
+    address_counter_groups: list[str] = field(default_factory=list)

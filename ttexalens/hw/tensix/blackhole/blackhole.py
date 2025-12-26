@@ -6,7 +6,8 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.blackhole.arc_block import BlackholeArcBlock
 from ttexalens.hardware.blackhole.dram_block import BlackholeDramBlock
 from ttexalens.hardware.blackhole.eth_block import BlackholeEthBlock
-from ttexalens.hardware.blackhole.functional_worker_registers import configuration_registers_descriptions
+from ttexalens.hardware.blackhole.functional_worker_registers import tensix_registers_descriptions
+from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import tensix_debug_bus_description
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
 from ttexalens.hardware.blackhole.harvested_worker_block import BlackholeHarvestedWorkerBlock
 from ttexalens.hardware.blackhole.harvested_eth_block import BlackholeHarvestedEthBlock
@@ -16,7 +17,7 @@ from ttexalens.hardware.blackhole.pcie_block import BlackholePcieBlock
 from ttexalens.hardware.blackhole.router_only_block import BlackholeRouterOnlyBlock
 from ttexalens.hardware.blackhole.security_block import BlackholeSecurityBlock
 from ttexalens.hardware.noc_block import NocBlock
-from ttexalens.hardware.tensix_configuration_registers_description import TensixRegisterDescription
+from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
 import ttexalens.util as util
 from ttexalens.device import TensixInstructions, Device
 
@@ -79,4 +80,7 @@ class BlackholeDevice(Device):
         raise ValueError(f"Unsupported block type: {block_type}")
 
     def get_tensix_registers_description(self) -> TensixRegisterDescription:
-        return configuration_registers_descriptions
+        return tensix_registers_descriptions
+
+    def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
+        return tensix_debug_bus_description
