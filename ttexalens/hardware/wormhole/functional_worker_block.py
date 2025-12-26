@@ -9,7 +9,6 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.memory_map import MemoryMap
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
@@ -212,3 +211,13 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
         elif risc_name == self.ncrisc.risc_name:
             return WormholeBabyRiscDebug(risc_info=self.ncrisc)
         raise ValueError(f"RISC debug for {risc_name} is not supported in Wormhole functional worker block.")
+
+    def supports_reset(self) -> bool:
+        return True
+
+    def reset(self):
+        from ttexalens.hardware.wormhole.arc_block import WormholeArcBlock
+
+        arc = self.device.arc_block
+        assert isinstance(arc, WormholeArcBlock)
+        arc.reset_functional_worker(self)

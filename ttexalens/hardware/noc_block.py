@@ -77,3 +77,15 @@ class NocBlock:
         This method should be overridden in subclasses to provide a specific implementation.
         """
         raise NotImplementedError(f"Noc block on location {self.location.to_user_str()} doesn't have RISC cores.")
+
+    def supports_reset(self) -> bool:
+        """
+        Indicates whether the NocBlock supports reset functionality.
+        """
+        return False
+
+    def reset(self):
+        """
+        Resets the NocBlock. This method should be overridden in subclasses to provide a specific implementation.
+        """
+        raise NotImplementedError(f"Noc block on location {self.location.to_user_str()} doesn't support reset.")
