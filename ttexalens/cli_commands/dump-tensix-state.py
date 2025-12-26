@@ -6,9 +6,10 @@ Usage:
   dump-tensix-state [ <group> ] [ -d <device> ] [ -l <loc> ] [ -v ] [ -t <thread-id> ] [ -a <l1-address> ]
 
 Options:
-  <group>         Tensix group to dump. Options: [all, alu, pack, unpack, gpr, rwc, adc] Default: all
-  -t <thread-id>  Thread ID. Options: [0, 1, 2] Default: all (only for gpr group)
-  -a <l1-address> L1 address to save group data. Only used for RWC and ADC groups.
+  <group>           Tensix group to dump. Options: [all, alu, pack, unpack, gpr, rwc, adc]
+  -t <thread-id>    Thread ID. Options: [0, 1, 2] Default: all (only for gpr group)
+  -a <l1-address>   L1 address to save group data. Only used for RWC and ADC groups.
+
 Description:
   Prints the tensix group of the given name, at the specified location and device.
 
