@@ -8,7 +8,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
-from ttexalens.hardware.tensix_configuration_registers_description import TensixRegisterDescription
+from ttexalens.hardware.tensix_registers_description import TensixRegisterDescription
 
 #
 # Device

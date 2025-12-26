@@ -468,18 +468,35 @@ class DebugBusSignalStore:
         return self._read_signal_group_samples(signal_group, l1_address, samples=1)[0]
 
     def read_signal_group_unsafe(self, signal_group: str) -> SignalGroupSample:
-        signal_descs = sorted(
-            [self.get_signal_description(signal_name) for signal_name in self.get_signal_names_in_group(signal_group)],
-            key=lambda x: x.rd_sel,
-        )
+        rd_sels: set[int] = {0, 1, 2, 3}
+        signals_to_read: list[DebugBusSignalDescription] = []
+
+        def add_signal_to_read(signal_desc: DebugBusSignalDescription) -> None:
+            rd_sels.remove(signal_desc.rd_sel)
+            signals_to_read.append(signal_desc)
+
+        for signal_name in self.get_signal_names_in_group(signal_group):
+            if not rd_sels:
+                break
+            if signal_name not in self.signals:
+                # Deal with combined signals
+                counter = 0
+                simple_signal_name = signal_name + f"/{counter}"
+                while simple_signal_name in self.signals:
+                    signal_desc = self.get_signal_description(simple_signal_name)
+                    if signal_desc.rd_sel in rd_sels:
+                        add_signal_to_read(signal_desc)
+                    counter += 1
+                    simple_signal_name = signal_name + f"/{counter}"
+            else:
+                signal_desc = self.get_signal_description(signal_name)
+                if signal_desc.rd_sel in rd_sels:
+                    add_signal_to_read(signal_desc)
+
         data: int = 0  # 128-bit data
-        current_rd_sel = 0
-        for signal_desc in signal_descs:
-            if signal_desc.rd_sel == current_rd_sel:
-                data |= self._read_signal_data(signal_desc) << (WORD_SIZE_BITS * signal_desc.rd_sel)
-                current_rd_sel += 1
-                if current_rd_sel > 3:
-                    break
+        for signal_desc in signals_to_read:
+            data |= self._read_signal_data(signal_desc) << (WORD_SIZE_BITS * signal_desc.rd_sel)
+
         return SignalGroupSample(data, self.signal_groups[signal_group])
 
     @staticmethod

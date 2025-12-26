@@ -4,10 +4,11 @@
 from functools import cache
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
-from ttexalens.hardware.tensix_configuration_registers_description import TensixRegisterDescription
+from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
 from ttexalens.hardware.wormhole.arc_block import WormholeArcBlock
 from ttexalens.hardware.wormhole.dram_block import WormholeDramBlock
 from ttexalens.hardware.wormhole.eth_block import WormholeEthBlock
+from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import tensix_debug_bus_description
 from ttexalens.hardware.wormhole.functional_worker_registers import configuration_registers_descriptions
 from ttexalens.hardware.wormhole.functional_worker_block import WormholeFunctionalWorkerBlock
 from ttexalens.hardware.wormhole.harvested_worker_block import WormholeHarvestedWorkerBlock
@@ -71,6 +72,9 @@ class WormholeDevice(Device):
 
     def get_tensix_registers_description(self) -> TensixRegisterDescription:
         return configuration_registers_descriptions
+
+    def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
+        return tensix_debug_bus_description
 
 
 # end of class WormholeDevice

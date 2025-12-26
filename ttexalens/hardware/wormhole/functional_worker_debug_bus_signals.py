@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
+from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription
 
 
 # Commented signals marked with "# Duplicate signal name" are true duplicates -
@@ -925,3 +926,8 @@ group_map = {
     "l1_access_ports_addr_b": (8, 3),
     "l1_access_ports_addr_c": (8, 5),
 }
+
+tensix_debug_bus_description = TensixDebugBusDescription(
+    register_window_counter_groups=[group_name for group_name in group_map if group_name.startswith("rwc")],
+    address_counter_groups=[group_name for group_name in group_map if group_name.startswith("adc")],
+)

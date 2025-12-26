@@ -11,7 +11,7 @@ from ttexalens.context import Context
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.hardware.tensix_configuration_registers_description import TensixRegisterDescription
+from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
 from ttexalens.object import TTObject
 from ttexalens import util as util
 from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
@@ -260,6 +260,10 @@ class Device(TTObject):
 
     @abstractmethod
     def get_tensix_registers_description(self) -> TensixRegisterDescription:
+        pass
+
+    @abstractmethod
+    def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
         pass
 
     def get_block_locations(self, block_type="functional_workers") -> list[OnChipCoordinate]:

@@ -28,9 +28,11 @@ Examples:
   tensix adc -a 0x0   # Prints ADC registers for current device and core using L1 address 0x0
 """
 
+from dataclasses import dataclass
 import tabulate
 
 from ttexalens import util
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore, SignalGroupSample
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
 from ttexalens.device import Device
@@ -87,6 +89,44 @@ def config_regs_to_table(config_regs: list[dict[str, str]], table_name: str, reg
     return dict_list_to_table(config_reg_values, table_name, create_column_names(len(config_reg_values)))
 
 
+def read_signal_groups(
+    signal_groups: list[str], debug_bus: DebugBusSignalStore, l1_address: int | None
+) -> dict[str, SignalGroupSample]:
+    """Reads signal groups from debug bus and returns a dictionary of signal group samples."""
+    group_reader = (
+        lambda signal_group: debug_bus.read_signal_group(signal_group, l1_address)
+        if l1_address is not None
+        else debug_bus.read_signal_group_unsafe(signal_group)
+    )
+    return {signal_group: group_reader(signal_group) for signal_group in signal_groups}
+
+
+def parse_signal_groups(
+    groups_dict: dict[str, SignalGroupSample], prefix: str | None = None
+) -> dict[str, dict[str, str]]:
+    """Parses signal groups and returns a dictionary of signal group names and signal names and values ready to be printed."""
+    signal_dicts: dict[str, dict[str, str]] = {}
+    for signal_group, group_data in groups_dict.items():
+        signal_dict: dict[str, str] = {}
+        for signal_name, signal_value in group_data.items():
+            to_remove = signal_group + "_" if prefix is None else prefix + "_"
+            if signal_name.startswith(to_remove):
+                signal_name = signal_name[len(to_remove) :]
+            signal_dict[signal_name] = hex(signal_value)
+        if prefix is not None:
+            signal_dicts[signal_group[len(prefix) + 1 :]] = signal_dict
+        else:
+            signal_dicts[signal_group] = signal_dict
+    return signal_dicts
+
+
+def debug_bus_to_tables(signal_dicts: list[dict[str, str]]) -> list[str]:
+    return [
+        dict_list_to_table([signal_dict], signal_group.upper(), ["Values"])
+        for signal_group, signal_dict in signal_dicts.items()
+    ]
+
+
 def print_3_tables_side_by_side(tables: list[str]):
     tables = sorted(tables, key=lambda table: len(table))
     for i in range(0, len(tables), 3):
@@ -107,6 +147,7 @@ def run(cmd_text, context, ui_state: UIState):
     device: Device
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         tensix_reg_desc = device.get_tensix_registers_description()
+        tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             INFO(f"Tensix registers for location {loc} on device {device.id()}")
 
@@ -199,49 +240,30 @@ def run(cmd_text, context, ui_state: UIState):
                 print(put_table_list_side_by_side(tables))
 
             if group == "rwc" or group == "all":
-
                 if device.is_blackhole():
                     util.WARN(
                         "Skipping RWC group since they are currently not supported on Blackhole devices. Issue: #729"
                     )
-                elif l1_address is None:
-                    util.WARN("No L1 address provided. Skipping RWC group. Use -a option to specify L1 address.")
                 else:
                     print(f"{CLR_GREEN}RWCs{CLR_END}")
-                    rwc_signal_groups = [
-                        group_name for group_name in debug_bus.group_names if group_name.startswith("rwc")
-                    ]
-                    tables_rwc: list[str] = []
-                    for signal_group in rwc_signal_groups:
-                        signal_dict_rwc: dict[str, str] = {}
-                        group_data = debug_bus.read_signal_group(signal_group, l1_address)
-                        for signal_name, signal_value in group_data.items():
-                            if signal_name.startswith("rwc_"):
-                                signal_name = signal_name[4:]
-                            signal_dict_rwc[signal_name] = hex(signal_value)
-
-                        tables_rwc.append(dict_list_to_table([signal_dict_rwc], signal_group[4:].upper(), ["Values"]))
-
+                    rwc_signal_dicts = read_signal_groups(
+                        tensix_debug_bus_desc.register_window_counter_groups, debug_bus, l1_address
+                    )
+                    parsed_rwc_signal_dicts = parse_signal_groups(rwc_signal_dicts, "rwc")
+                    tables_rwc = debug_bus_to_tables(parsed_rwc_signal_dicts)
                     print_3_tables_side_by_side(tables_rwc)
 
             if group == "adc" or group == "all":
 
+                print(f"{CLR_GREEN}ADCs{CLR_END}")
                 if l1_address is None:
-                    util.WARN("No L1 address provided. Skipping ADC group. Use -a option to specify L1 address.")
-                else:
-                    print(f"{CLR_GREEN}ADCs{CLR_END}")
-                    adc_signal_groups = [
-                        group_name for group_name in debug_bus.group_names if group_name.startswith("adc")
-                    ]
-                    tables_adc: list[str] = []
-                    for signal_group in adc_signal_groups:
-                        signal_dict_adc: dict[str, str] = {}
-                        group_data = debug_bus.read_signal_group_unsafe(signal_group)
-                        for signal_name, signal_value in group_data.items():
-                            if signal_name.startswith(signal_group + "_"):
-                                signal_name = signal_name[len(signal_group) + 1 :]
-                            signal_dict_adc[signal_name] = hex(signal_value)
+                    util.WARN(
+                        "No L1 address provided. Disabling atomic group reading for ADC group. Use -a option to specify L1 address."
+                    )
+                adc_signal_dicts = read_signal_groups(
+                    tensix_debug_bus_desc.address_counter_groups, debug_bus, l1_address
+                )
+                parsed_adc_signal_dicts = parse_signal_groups(adc_signal_dicts)
+                tables_adc = debug_bus_to_tables(parsed_adc_signal_dicts)
 
-                        tables_adc.append(dict_list_to_table([signal_dict_adc], signal_group.upper(), ["Values"]))
-
-                    print_3_tables_side_by_side(tables_adc)
+                print_3_tables_side_by_side(tables_adc)

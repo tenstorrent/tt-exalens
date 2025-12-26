@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-from ttexalens.hardware.tensix_configuration_registers_description import TensixRegisterDescription
+from ttexalens.hardware.tensix_registers_description import TensixRegisterDescription
 from ttexalens.register_store import (
     REGISTER_DATA_TYPE,
     ConfigurationRegisterDescription,
