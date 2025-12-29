@@ -5,10 +5,10 @@ project(RISCVProject LANGUAGES CXX ASM)
 
 # Set toolchain and tools
 set(TOOL_PATH "${SFPI_RELEASE_PATH}/compiler/bin")
-set(GXX "${TOOL_PATH}/riscv32-tt-elf-g++")
-set(OBJDUMP "${TOOL_PATH}/riscv32-tt-elf-objdump")
-set(OBJCOPY "${TOOL_PATH}/riscv32-tt-elf-objcopy")
-set(READELF "${TOOL_PATH}/riscv32-tt-elf-readelf")
+set(GXX "${TOOL_PATH}/riscv-tt-elf-g++")
+set(OBJDUMP "${TOOL_PATH}/riscv-tt-elf-objdump")
+set(OBJCOPY "${TOOL_PATH}/riscv-tt-elf-objcopy")
+set(READELF "${TOOL_PATH}/riscv-tt-elf-readelf")
 
 # Compiler options for optimized builds
 set(OPTIMIZED_OPTIONS_ALL -O3 -mabi=ilp32 -std=c++17 -g -ffast-math -flto)
@@ -27,11 +27,11 @@ set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section -DCOVERAGE)
 # Define project paths: source files, ELFs, and object files
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
 set(RISCV_OUTPUT "${CMAKE_SOURCE_DIR}/build_riscv")
-set(RISCV_OBJECT "${CMAKE_BINARY_DIR}/obj/riscv-src")
+set(RISCV_OBJECT "${CMAKE_SOURCE_DIR}/build_riscv/obj")
 
 # Define architectures, applications, and cores
 set(RISCV_ARCHITECTURES "wormhole" "blackhole")
-set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc")
+set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc" "erisc0" "erisc1")
 set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test")
 
 # Create the object file output directory
@@ -149,6 +149,14 @@ endfunction()
 foreach(CORE ${RISCV_CORES})
     foreach(APP ${RISCV_APPS})
         foreach(ARCH ${RISCV_ARCHITECTURES})
+            if (ARCH STREQUAL "blackhole" AND CORE MATCHES "^erisc$")
+                # Skip invalid combinations of blackhole architecture with erisc cores
+                continue()
+            endif()
+            if (ARCH STREQUAL "wormhole" AND (CORE MATCHES "^erisc0$" OR CORE MATCHES "^erisc1$"))
+                # Skip invalid combinations of wormhole architecture with erisc0 and erisc1 cores
+                continue()
+            endif()
             foreach(BUILD_TYPE debug release coverage)
                 create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE})
             endforeach()

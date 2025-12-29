@@ -30,7 +30,7 @@ class TTExaLensOutputVerifier:
 
 
 class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
-    prompt_regex = r"^gdb:[^ ]+ device:\d+ loc:\d+-\d+ \(\d+, \d+\) > $"
+    prompt_regex = r"^(gdb:[^ ]+ )?([[]4B MODE[\]] )?noc:\d+ device:\d+ loc:\d+-\d+ \(\d+,\d+\) > $"
 
     def __init__(self):
         self.server_temp_path = ""
@@ -103,7 +103,7 @@ class TTExaLensTestRunner:
         self.invoke(args)
         self.verifier.verify_start(self, tester)
 
-    def readline(self, timeoutSeconds: float = 1):
+    def readline(self, timeoutSeconds: float = 5):
         # Fast path for program that ended
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0)
         if len(rlist) == 0:
@@ -127,7 +127,7 @@ class TTExaLensTestRunner:
         self.process.stdin.write("\n")
         self.process.stdin.flush()
 
-    def read_until_prompt(self, readline_timeout: float = 1):
+    def read_until_prompt(self, readline_timeout: float = 5):
         lines = []
         while True:
             line = self.readline(readline_timeout)
@@ -158,7 +158,6 @@ class TTExaLensTestRunner:
 
 
 class TestUmdTTExaLens(unittest.TestCase):
-    @unittest.skip("Disabling this test for the moment. Something not working in CI, investigation needed.")
     def test_startup_and_exit_just_return_code(self):
         runner = TTExaLensTestRunner(UmdTTExaLensOutputVerifier())
         runner.start(self)

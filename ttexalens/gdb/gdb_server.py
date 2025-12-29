@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from io import StringIO
 import threading
-from typing import Callable
+from typing import Callable, IO
 from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 
 from ttexalens.gdb.gdb_communication import (
@@ -52,7 +52,7 @@ class GdbThreadListPaged:
 # Class that serves gdb client requests
 # Gdb remote protocol documentation: https://sourceware.org/gdb/current/onlinedocs/gdb.html/Remote-Protocol.html
 class GdbServer(threading.Thread):
-    def __init__(self, context: Context, server: ServerSocket):
+    def __init__(self, context: Context, server: ServerSocket, error_stream: IO[str] | None = None):
         super().__init__(daemon=True)  # Spawn as daemon, so we don't block exit
         self.context = context  # TTExaLens context
         self.server = server  # server socket used for listening to incoming connections
@@ -89,6 +89,7 @@ class GdbServer(threading.Thread):
         self._last_available_processes: dict[
             RiscLocation, GdbProcess
         ] = {}  # Dictionary of last executed available processes that can be debugged (key: pid)
+        self.error_stream: IO[str] | None = error_stream
 
     @property
     def available_processes(self):
@@ -149,7 +150,7 @@ class GdbServer(threading.Thread):
                     self.process_client(client)
                 except Exception as e:
                     # Just log exceptions and continue with next client
-                    util.ERROR(f"Unhandled exception in GDB implementation: {e}")
+                    util.ERROR(f"Unhandled exception in GDB implementation: {e}", file=self.error_stream)
                 client.close()
                 self.is_connected = False
                 if self.on_disconnected is not None:
@@ -160,7 +161,7 @@ class GdbServer(threading.Thread):
         util.VERBOSE("GDB client connected")
         self.current_process = None
         self.debugging_threads.clear()
-        input_stream = GdbInputStream(client)
+        input_stream = GdbInputStream(client, self.error_stream)
         writer = GdbMessageWriter(client)
         while not self.stop_event.is_set():
             parser = input_stream.read()
@@ -181,7 +182,7 @@ class GdbServer(threading.Thread):
             except Exception as e:
                 client.write(b"-")
                 util.VERBOSE(f"sent response to GDB: -")
-                util.ERROR(f"GDB exception: {e}")
+                util.ERROR(f"GDB exception: {e}", file=self.error_stream)
         util.VERBOSE("GDB client closed")
 
     def process_message(self, parser: GdbMessageParser, writer: GdbMessageWriter):
@@ -190,7 +191,7 @@ class GdbServer(threading.Thread):
             return False
 
         if parser.is_ack_error:
-            util.ERROR("GDB client error")
+            util.ERROR("GDB client error", file=self.error_stream)
             # Ignore this message
             return False
 
@@ -226,10 +227,12 @@ class GdbServer(threading.Thread):
             address = parser.parse_hex()
             if address is not None:
                 util.WARN(
-                    f"GDB: client want to continue at address: {address}, but we don't support that. We will continue at current address."
+                    f"GDB: client want to continue at address: {address}, but we don't support that. We will continue at current address.",
+                    file=self.error_stream,
                 )
             util.ERROR(
-                f"GDB: client uses single threaded continue instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message"
+                f"GDB: client uses single threaded continue instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message",
+                file=self.error_stream,
             )
             writer.append(b"E01")
         elif parser.parse(
@@ -280,6 +283,12 @@ class GdbServer(threading.Thread):
             for j in range(0, GdbServer.REGISTER_COUNT):
                 assert self.current_process is not None, "Current process should not be None when reading registers"
                 value = self.current_process.risc_debug.read_gpr(j)
+                if j == 32:
+                    # If ebreak was hit, pc will point to the instruction after it
+                    risc_debug_status = self.current_process.risc_debug.read_status()
+                    if risc_debug_status.is_ebreak_hit:
+                        # Rewind pc to unwind callstack from the ebreak instruction
+                        value -= 4
                 writer.append_register_hex(value)
         elif parser.parse(b"G"):  # Write general registers.
             # ‘G XX...’
@@ -317,7 +326,10 @@ class GdbServer(threading.Thread):
                         # Every time before sending message with actual pid/thread id gdb sends Hgp0.0
                         if not (thread_id.process_id == 0 and thread_id.thread_id == 0):
                             # Unknown process!!!
-                            util.ERROR(f"GDB: Unknown process id in self.debugging_threads: {thread_id.process_id}")
+                            util.ERROR(
+                                f"GDB: Unknown process id in self.debugging_threads: {thread_id.process_id}",
+                                file=self.error_stream,
+                            )
                         writer.append(b"E01")
                         return True
                     thread_id = t
@@ -326,7 +338,10 @@ class GdbServer(threading.Thread):
                 process = self.available_processes.get(thread_id.process_id)
                 if process is None:
                     # Unknown process!!!
-                    util.ERROR(f"GDB: Unknown process id in self.available_processes: {thread_id.process_id}")
+                    util.ERROR(
+                        f"GDB: Unknown process id in self.available_processes: {thread_id.process_id}",
+                        file=self.error_stream,
+                    )
                     writer.append(b"E01")
                 else:
                     self.current_process = process
@@ -355,31 +370,9 @@ class GdbServer(threading.Thread):
             elif address is None or length is None or length <= 0:
                 writer.append(b"E01")
             else:
-                # Read first 4 bytes of unaligned data
-                first_offset = address % 4
-                if first_offset != 0:
-                    value = self.current_process.risc_debug.read_memory(address - first_offset)
-                    buffer = value.to_bytes(4, byteorder="little")
-                    used_bytes = min(4 - first_offset, length)
-                    writer.append_hex(
-                        int.from_bytes(buffer[first_offset : first_offset + used_bytes], byteorder="little"),
-                        2 * used_bytes,
-                    )
-                    length -= used_bytes
-                    address += used_bytes
-
-                # Read aligned data
-                while length >= 4:
-                    value = self.current_process.risc_debug.read_memory(address)
-                    writer.append_register_hex(value)
-                    length -= 4
-                    address += 4
-
-                # Read last 4 bytes of unaligned data
-                if length > 0:
-                    value = self.current_process.risc_debug.read_memory(address)
-                    buffer = value.to_bytes(4, byteorder="little")
-                    writer.append_hex(int.from_bytes(buffer[:length], byteorder="little"), 2 * length)
+                # Read memory bytes
+                buffer = self.current_process.risc_debug.read_memory_bytes(address, length)
+                writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
         elif parser.parse(b"M"):  # Write length addressable memory units starting at address addr.
             # ‘M addr,length:XX…’
             address = parser.parse_hex()
@@ -394,52 +387,17 @@ class GdbServer(threading.Thread):
                 # Return error if we are not debugging any process
                 writer.append(b"E02")
             else:
-                # Write first 4 bytes of unaligned data
-                first_offset = address % 4
-                if first_offset != 0:
-                    # First read 4 bytes, since we don't want to override existing data
-                    value = self.current_process.risc_debug.read_memory(address - first_offset)
-                    used_bytes = min(4 - first_offset, length)
+                # Parse all the hex data into bytes
+                data = bytearray()
+                for _ in range(length):
+                    digit = parser.read_hex(2)
+                    if digit is None:
+                        writer.append(b"E03")
+                        return True
+                    data.append(digit)
 
-                    # Update number
-                    new_value = value
-                    for i in range(first_offset, first_offset + used_bytes):
-                        mask = 0xFF << (8 * i)
-                        digit = parser.read_hex(2)
-                        if digit is None:
-                            writer.append(b"E03")
-                            return True
-                        new_value = (new_value & mask) + digit
-
-                    # Write bytes
-                    self.current_process.risc_debug.write_memory(address - first_offset, new_value)
-                    length -= used_bytes
-                    address += used_bytes
-
-                # Write aligned data
-                while length >= 4:
-                    value = parser.read_register_hex()
-                    self.current_process.risc_debug.write_memory(address, value)
-                    length -= 4
-                    address += 4
-
-                # Write last 4 bytes of unaligned data
-                if length > 0:
-                    # First read 4 bytes, since we don't want to override existing data
-                    value = self.current_process.risc_debug.read_memory(address)
-
-                    # Update number
-                    new_value = value
-                    for i in range(0, length):
-                        mask = 0xFF << (8 * i)
-                        digit = parser.read_hex(2)
-                        if digit is None:
-                            writer.append(b"E04")
-                            return True
-                        new_value = (new_value & mask) + digit
-
-                    # Write bytes
-                    self.current_process.risc_debug.write_memory(address, new_value)
+                # Write memory bytes
+                self.current_process.risc_debug.write_memory_bytes(address, bytes(data))
                 writer.append(b"OK")
         elif parser.parse(b"p"):  # Read the value of register n; n is in hex.
             # ‘p n’
@@ -532,12 +490,12 @@ class GdbServer(threading.Thread):
             annex = parser.read_until(GDB_ASCII_COLON)
             offset = parser.parse_hex()
             if offset is None or not parser.parse(b","):
-                util.ERROR(f"GDB: Something wrong with offset and length: {parser.data!r}")
+                util.ERROR(f"GDB: Something wrong with offset and length: {parser.data!r}", file=self.error_stream)
                 writer.append(b"E01")
                 return True
             length = parser.parse_hex()
             if object is None or annex is None or length is None:
-                util.ERROR(f"GDB: Something wrong with arguments of qXfer: {parser.data!r}")
+                util.ERROR(f"GDB: Something wrong with arguments of qXfer: {parser.data!r}", file=self.error_stream)
                 writer.append(b"E01")
                 return True
             object = object.decode()
@@ -562,7 +520,7 @@ class GdbServer(threading.Thread):
                 pid = int(annex, 16)
                 process = self.available_processes.get(pid)
                 if process is None:
-                    util.ERROR(f"GDB: bad process id: {pid} ({annex})")
+                    util.ERROR(f"GDB: bad process id: {pid} ({annex})", file=self.error_stream)
                     writer.append(b"E01")
                 else:
                     self.prepared_responses_for_paging[paging_key] = (
@@ -571,7 +529,7 @@ class GdbServer(threading.Thread):
                     self.write_paged_message(self.prepared_responses_for_paging[paging_key], offset, length, writer)
             else:
                 # We don't support this message
-                util.ERROR(f"GDB: unsupported message: {parser.data!r}")
+                util.ERROR(f"GDB: unsupported message: {parser.data!r}", file=self.error_stream)
                 pass
         elif parser.parse(b"qSymbol"):  # Notify the target that GDB is prepared to serve symbol lookup requests.
             # We don't need symbol lookup (for now)
@@ -592,10 +550,12 @@ class GdbServer(threading.Thread):
             address = parser.parse_hex()
             if address is not None:
                 util.WARN(
-                    f"GDB: client want to single step at address: {address}, but we don't support that. We will single step at current address."
+                    f"GDB: client want to single step at address: {address}, but we don't support that. We will single step at current address.",
+                    file=self.error_stream,
                 )
             util.ERROR(
-                f"GDB: client uses single threaded single step instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message"
+                f"GDB: client uses single threaded single step instead of multi-threaded version. Returning error to GDB client and waiting for 'vCont' message",
+                file=self.error_stream,
             )
             writer.append(b"E01")
         elif parser.parse(b"S"):  # Step with signal.
@@ -622,7 +582,7 @@ class GdbServer(threading.Thread):
                 pid = parser.parse_hex()
                 # Check if pid is in the list of available processes and respond with error if it is not
                 if pid is None or pid not in self.available_processes:
-                    util.ERROR(f"GDB: client tried to attach to unknown process id: {pid}")
+                    util.ERROR(f"GDB: client tried to attach to unknown process id: {pid}", file=self.error_stream)
                     writer.append(b"E01")
                     return True
                 process = self.available_processes.get(pid)
@@ -631,7 +591,10 @@ class GdbServer(threading.Thread):
             if process is None:
                 writer.append(b"E01")
             elif self.debugging_threads.get(process.process_id) is not None:
-                util.WARN(f"GDB: attaching to process that we are already debugging: {process.process_id}")
+                util.WARN(
+                    f"GDB: attaching to process that we are already debugging: {process.process_id}",
+                    file=self.error_stream,
+                )
                 writer.append(b"E01")
             else:
                 try:
@@ -653,7 +616,7 @@ class GdbServer(threading.Thread):
                     writer.append(b";")
                     self.current_process = process
                 except Exception as e:
-                    util.ERROR(f"++ exception while halting: {e}")
+                    util.ERROR(f"++ exception while halting: {e}", file=self.error_stream)
                     writer.clear()
                     writer.append(b"E01")
         elif parser.parse(b"vCont?"):  # Request a list of actions supported by the ‘vCont’ packet.
@@ -691,13 +654,19 @@ class GdbServer(threading.Thread):
                     signal = parser.parse_hex()  # ignore signal
                 elif action == 116:  # 't' - stop
                     if not self.is_non_stop:
-                        util.WARN(f"GDB: client wanted to stop thread, but we are not in non-stop mode")
+                        util.WARN(
+                            f"GDB: client wanted to stop thread, but we are not in non-stop mode",
+                            file=self.error_stream,
+                        )
                         writer.append(b"E01")
                         return True
                     thread_action = "t"
                 else:
                     # Unsupported action
-                    util.WARN(f"GDB: unsupported continue action: {chr(action) if action else '[EOM]'}")
+                    util.WARN(
+                        f"GDB: unsupported continue action: {chr(action) if action else '[EOM]'}",
+                        file=self.error_stream,
+                    )
                     writer.append(b"E01")
                     return True
 
@@ -709,7 +678,9 @@ class GdbServer(threading.Thread):
                         if thread_id.process_id == -1:
                             thread_id = None
                         elif thread_id.process_id not in self.debugging_threads:
-                            util.WARN(f"GDB: we are not debugging process id: {thread_id.process_id}")
+                            util.WARN(
+                                f"GDB: we are not debugging process id: {thread_id.process_id}", file=self.error_stream
+                            )
                             writer.append(b"E01")
                             return True
                 else:
@@ -747,7 +718,7 @@ class GdbServer(threading.Thread):
                 # NOTE: The server must ignore ‘c’, ‘C’, ‘s’, ‘S’, and ‘r’ actions for threads that are already running. Conversely, the server must ignore ‘t’ actions for threads that are already stopped.
                 process = available_processes.get(pid)
                 if process is None:
-                    util.ERROR(f"GDB: process with id {pid} is not available")
+                    util.ERROR(f"GDB: process with id {pid} is not available", file=self.error_stream)
                     continue
                 action = thread_actions[pid]
                 if action == "c":  # Continue
@@ -862,7 +833,7 @@ class GdbServer(threading.Thread):
             # ‘vFile:open: filename, flags, mode’
             filename = parser.read_until(GDB_ASCII_COMMA)
             if filename is None:
-                util.ERROR(f"GDB: Something wrong with filename of vFile:open: {parser.data!r}")
+                util.ERROR(f"GDB: Something wrong with filename of vFile:open: {parser.data!r}", file=self.error_stream)
                 writer.append(b"F-1")
                 return True
             filename = filename.decode()
@@ -871,7 +842,9 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             mode = parser.parse_hex()
             if flags is None or mode is None:
-                util.ERROR(f"GDB: Something wrong with flags or mode of vFile:open: {parser.data!r}")
+                util.ERROR(
+                    f"GDB: Something wrong with flags or mode of vFile:open: {parser.data!r}", file=self.error_stream
+                )
                 writer.append(b"F-1")
                 return True
             result = self.file_server.open(filename, flags, mode)
@@ -898,7 +871,10 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             offset = parser.parse_hex()
             if fd is None or count is None or offset is None:
-                util.ERROR(f"GDB: Something wrong with fd, count or offset of vFile:pread: {parser.data!r}")
+                util.ERROR(
+                    f"GDB: Something wrong with fd, count or offset of vFile:pread: {parser.data!r}",
+                    file=self.error_stream,
+                )
                 writer.append(b"F-1")
                 return True
             pread_result = self.file_server.pread(fd, count, offset)
@@ -921,7 +897,10 @@ class GdbServer(threading.Thread):
             data = parser.read_rest()
             writer.append(b"F-1")
             if fd is None or data is None or offset is None:
-                util.ERROR(f"GDB: Something wrong with fd, data or offset of vFile:pwrite: {parser.data!r}")
+                util.ERROR(
+                    f"GDB: Something wrong with fd, data or offset of vFile:pwrite: {parser.data!r}",
+                    file=self.error_stream,
+                )
                 writer.append(b"F-1")
                 return True
             pwrite_result = self.file_server.pwrite(fd, offset, data)
@@ -933,6 +912,23 @@ class GdbServer(threading.Thread):
                 assert type(pwrite_result) is int
                 writer.append(b"F")
                 writer.append_hex(pwrite_result)
+        elif parser.parse(b"x"):  # Read length addressable memory units starting at address addr.
+            # ‘x addr,length’
+            address = parser.parse_hex()
+            parser.parse(b",")
+            length = parser.parse_hex()
+
+            if self.current_process is None:
+                # Return error if we are not debugging any process
+                writer.append(b"E02")
+            elif address is None or length is None or length <= 0:
+                writer.append(b"E01")
+            else:
+                # Reply with data should start with 'b'
+                writer.append(b"b")
+                # Read memory bytes
+                buffer = self.current_process.risc_debug.read_memory_bytes(address, length)
+                writer.append(buffer)
         elif parser.parse(b"X"):  # Write data to memory, where the data is transmitted in binary.
             # ‘X addr,length:XX…’
             try:
@@ -949,49 +945,8 @@ class GdbServer(threading.Thread):
                 elif self.current_process is None:
                     writer.append(b"E02")
                 else:
-                    data_index = 0
-
-                    # Write first 4 bytes of unaligned data
-                    first_offset = address % 4
-                    if first_offset != 0:
-                        # First read 4 bytes, since we don't want to override existing data
-                        value = self.current_process.risc_debug.read_memory(address - first_offset)
-                        used_bytes = min(4 - first_offset, length)
-
-                        # Update number
-                        new_value = value
-                        for i in range(first_offset, first_offset + used_bytes):
-                            mask = 0xFF << (8 * i)
-                            new_value = (new_value & mask) + data[data_index]
-                            data_index += 1
-
-                        # Write bytes
-                        self.current_process.risc_debug.write_memory(address - first_offset, new_value)
-                        length -= used_bytes
-                        address += used_bytes
-
-                    # Write aligned data
-                    while length >= 4:
-                        value = int.from_bytes(data[data_index : data_index + 4], byteorder="little")
-                        data_index += 4
-                        self.current_process.risc_debug.write_memory(address, value)
-                        length -= 4
-                        address += 4
-
-                    # Write last 4 bytes of unaligned data
-                    if length > 0:
-                        # First read 4 bytes, since we don't want to override existing data
-                        value = self.current_process.risc_debug.read_memory(address)
-
-                        # Update number
-                        new_value = value
-                        for i in range(0, length):
-                            mask = 0xFF << (8 * i)
-                            new_value = (new_value & mask) + data[data_index]
-                            data_index += 1
-
-                        # Write bytes
-                        self.current_process.risc_debug.write_memory(address, new_value)
+                    # Write memory bytes
+                    self.current_process.risc_debug.write_memory_bytes(address, data[:length])
                     writer.append(b"OK")
             except:
                 writer.append(b"E03")
@@ -1063,7 +1018,7 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             kind = parser.parse_hex()
             if addr is None:
-                util.ERROR(f"GDB: Something wrong with address of Z0: {parser.data!r}")
+                util.ERROR(f"GDB: Something wrong with address of Z0: {parser.data!r}", file=self.error_stream)
                 writer.append(b"E01")
                 return True
             # TODO: Add support for conditional break point
@@ -1087,7 +1042,7 @@ class GdbServer(threading.Thread):
                     return True
 
             # No more free slots for setting breakpoint
-            util.WARN(f"GDB: No more free slots for setting breakpoint...")
+            util.WARN(f"GDB: No more free slots for setting breakpoint...", file=self.error_stream)
             writer.append(b"E01")
         elif parser.parse(b"Z1,"):  # Insert a hardware breakpoint at address of type kind.
             # ‘Z1,addr,kind[;cond_list…][;cmds:persist,cmd_list…]’
@@ -1103,7 +1058,7 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             kind = parser.parse_hex()
             if addr is None:
-                util.ERROR(f"GDB: Something wrong with address of Z2: {parser.data!r}")
+                util.ERROR(f"GDB: Something wrong with address of Z2: {parser.data!r}", file=self.error_stream)
                 writer.append(b"E01")
                 return True
 
@@ -1127,7 +1082,7 @@ class GdbServer(threading.Thread):
                     return True
 
             # No more free slots for setting breakpoint
-            util.WARN(f"GDB: No more free slots for setting breakpoint...")
+            util.WARN(f"GDB: No more free slots for setting breakpoint...", file=self.error_stream)
             writer.append(b"E01")
         elif parser.parse(
             b"Z3,"
@@ -1137,7 +1092,7 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             kind = parser.parse_hex()
             if addr is None:
-                util.ERROR(f"GDB: Something wrong with address of Z3: {parser.data!r}")
+                util.ERROR(f"GDB: Something wrong with address of Z3: {parser.data!r}", file=self.error_stream)
                 writer.append(b"E01")
                 return True
 
@@ -1161,7 +1116,7 @@ class GdbServer(threading.Thread):
                     return True
 
             # No more free slots for setting breakpoint
-            util.WARN(f"GDB: No more free slots for setting breakpoint...")
+            util.WARN(f"GDB: No more free slots for setting breakpoint...", file=self.error_stream)
             writer.append(b"E01")
         elif parser.parse(
             b"Z4,"
@@ -1171,7 +1126,7 @@ class GdbServer(threading.Thread):
             parser.parse(b",")
             kind = parser.parse_hex()
             if addr is None:
-                util.ERROR(f"GDB: Something wrong with address of Z4: {parser.data!r}")
+                util.ERROR(f"GDB: Something wrong with address of Z4: {parser.data!r}", file=self.error_stream)
                 writer.append(b"E01")
                 return True
 
@@ -1195,11 +1150,11 @@ class GdbServer(threading.Thread):
                     return True
 
             # No more free slots for setting breakpoint
-            util.WARN(f"GDB: No more free slots for setting breakpoint...")
+            util.WARN(f"GDB: No more free slots for setting breakpoint...", file=self.error_stream)
             writer.append(b"E01")
         else:
             # Return unsupported message
-            util.WARN(f"GDB: unsupported message: {parser.data!r}")
+            util.WARN(f"GDB: unsupported message: {parser.data!r}", file=self.error_stream)
             pass
         return True
 

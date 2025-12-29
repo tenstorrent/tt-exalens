@@ -8,7 +8,10 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+option(TT_UMD_BUILD_TESTS "Force UMD to build its tests" OFF)
 option(TT_UMD_BUILD_SIMULATION "Force UMD to include its simulation harnessing" ON)
+option(TT_UMD_BUILD_STATIC "Force UMD to build as a static library" ON)
+option(TT_UMD_BUILD_PYTHON "Force UMD to build its python bindings" ON)
 
 include(third_party/umd/cmake/compilers.cmake)
 
@@ -29,7 +32,12 @@ else()
     FIND_AND_SET_CLANG17()
 endif()
 
-project(ttexalens)
+# Read version from VERSION file
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" TT_EXALENS_VERSION)
+string(STRIP "${TT_EXALENS_VERSION}" TT_EXALENS_VERSION)
+
+project(ttexalens
+        VERSION ${TT_EXALENS_VERSION})
 
 CHECK_COMPILERS()
 
@@ -47,6 +55,9 @@ target_compile_options(compiler_flags INTERFACE -mavx2 -fPIC -DFMT_HEADER_ONLY -
 set(CMAKE_BUILD_BIN_DIR "${CMAKE_BINARY_DIR}/bin")
 set(TTEXALENS_HOME "${PROJECT_SOURCE_DIR}")
 set(UMD_HOME "${PROJECT_SOURCE_DIR}/third_party/umd")
+
+# Always compile UMD with trace/debug logging enabled
+set(TT_UMD_ENABLE_LOGGING ON CACHE BOOL "Enables inclusion of log_trace and log_debug into the binary." FORCE)
 
 # Third party dependencies
 add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/umd)

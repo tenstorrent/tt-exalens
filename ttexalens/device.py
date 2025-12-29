@@ -11,7 +11,7 @@ from ttexalens.context import Context
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
+from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
 from ttexalens.object import TTObject
 from ttexalens import util as util
 from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
@@ -153,8 +153,8 @@ class Device(TTObject):
                 self._noc0_to_block_type[loc._noc0_coord] = block_type
 
         # Fill in coordinate maps from UMD coordinate manager
-        self._from_noc0 = {}
-        self._to_noc0 = {}
+        self._from_noc0: dict[tuple[tuple[int, int], str], tuple[tuple[int, int], str]] = {}
+        self._to_noc0: dict[tuple[tuple[int, int], str, str], tuple[int, int]] = {}
         umd_supported_coordinates = ["noc1", "logical", "translated"]
         unique_coordinates = ["noc1", "translated"]
         for noc0_location, block_type in self._noc0_to_block_type.items():
@@ -213,7 +213,7 @@ class Device(TTObject):
         pass
 
     @cache
-    def get_blocks(self, block_type="functional_workers"):
+    def get_blocks(self, block_type: str = "functional_workers") -> list[NocBlock]:
         """
         Returns all blocks of a given type
         """
@@ -259,7 +259,11 @@ class Device(TTObject):
         return [self.get_block(location) for location in self.idle_eth_block_locations]
 
     @abstractmethod
-    def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
+    def get_tensix_registers_description(self) -> TensixRegisterDescription:
+        pass
+
+    @abstractmethod
+    def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
         pass
 
     def get_block_locations(self, block_type="functional_workers") -> list[OnChipCoordinate]:
@@ -269,7 +273,7 @@ class Device(TTObject):
         return self._block_locations[block_type]
 
     @cached_property
-    def _block_locations(self):
+    def _block_locations(self) -> dict[str, list[OnChipCoordinate]]:
         """
         Returns locations of all blocks as dictionary of tuples (unchanged coordinates from YAML)
         """
@@ -295,8 +299,10 @@ class Device(TTObject):
             "color": util.CLR_GREEN,
         },
         "eth": {"symbol": "E", "desc": "Ethernet", "core_type": "eth", "color": util.CLR_YELLOW},
+        "harvested_eth": {"symbol": "e", "desc": "Harvested Ethernet", "core_type": "eth", "color": util.CLR_RED},
         "arc": {"symbol": "A", "desc": "ARC", "core_type": "arc", "color": util.CLR_GREY},
         "dram": {"symbol": "D", "desc": "DRAM", "core_type": "dram", "color": util.CLR_TEAL},
+        "harvested_dram": {"symbol": "d", "desc": "Harvested DRAM", "core_type": "dram", "color": util.CLR_RED},
         "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie", "color": util.CLR_GREY},
         "router_only": {"symbol": " ", "desc": "Router only", "core_type": "router_only", "color": util.CLR_GREY},
         "harvested_workers": {"symbol": "-", "desc": "Harvested", "core_type": "tensix", "color": util.CLR_RED},

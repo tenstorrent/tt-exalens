@@ -4,14 +4,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [--devices=<devices>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1]
+  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [--devices=<devices>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--disable-4B-mode]
   tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
-  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
+  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--disable-4B-mode]
   tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help
+  tt-exalens --version
 
 Options:
   -h --help                       Show this help message and exit.
+  --version                       Show version and exit.
   --server                        Start a TTExaLens server. If not specified, the port will be set to 5555.
   --remote                        Attach to the remote TTExaLens server. If not specified, IP defaults to localhost and port to 5555.
   --port=<port>                   Port of the TTExaLens server. If not specified, defaults to 5555.  [default: 5555]
@@ -26,6 +28,7 @@ Options:
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
   --use-noc1                      Initialize with NOC1 and use NOC1 for communication with the device.
+  --disable-4B-mode               Disable 4-byte mode for communication with the device.
   --gdb                           Start RISC-V gdb client with the specified arguments.
 
 Description:
@@ -53,45 +56,45 @@ except ModuleNotFoundError as e:
     exit(1)
 
 
+from ttexalens import init_ttexalens, init_ttexalens_remote
 from ttexalens import tt_exalens_ifc
-from ttexalens import tt_exalens_init
 from ttexalens import tt_exalens_server
 from ttexalens import util as util
+from ttexalens.context import Context
 from ttexalens.uistate import UIState
-from ttexalens.command_parser import find_command, CommandParsingException
-
-from ttexalens import Verbosity
+from ttexalens.command_parser import tt_docopt, CommandMetadata, find_command, CommandParsingException
+from ttexalens.gdb.gdb_client import get_gdb_client_path
 
 
 # Creates rows for tabulate for all commands of a given type
-def format_commands(commands, type, specific_cmd=None, verbose=False):
+def format_commands(commands: list[CommandMetadata], type, specific_cmd=None, verbose=False):
     rows = []
     for c in commands:
-        if c["type"] == type and (specific_cmd is None or c["long"] == specific_cmd or c["short"] == specific_cmd):
-            description = c["description"]
+        if c.type == type and (specific_cmd is None or c.long_name == specific_cmd or c.short_name == specific_cmd):
             if verbose:
-                row = [f"{util.CLR_INFO}{c['long']}{util.CLR_END}", f"{c['short']}", ""]
+                row = [f"{util.CLR_INFO}{c.long_name}{util.CLR_END}", f"{c.short_name}", ""]
                 rows.append(row)
-                row2 = [f"", f"", f"{description}"]
+                row2 = [f"", f"", f"{c.description}"]
                 rows.append(row2)
                 rows.append(["<--MIDRULE-->", "", ""])
             else:
-                description = description.split("\n")
+                descriptions = c.description.split("\n") if c.description is not None else []
                 # Iterate to find the line containing "Description:". Then take the following line.
                 # If there is no such line, take the first line.
                 found_description = False
-                for line in description:
+                description = ""
+                for line in descriptions:
                     if found_description:
                         description = line
                         break
                     if "Description:" in line:
                         found_description = True
                 if not found_description:
-                    description = description[0]
+                    description = descriptions[0]
                 description = description.strip()
                 row = [
-                    f"{util.CLR_INFO}{c['long']}{util.CLR_END}",
-                    f"{c['short']}",
+                    f"{util.CLR_INFO}{c.long_name}{util.CLR_END}",
+                    f"{c.short_name}",
                     f"{description}",
                 ]
                 rows.append(row)
@@ -99,9 +102,10 @@ def format_commands(commands, type, specific_cmd=None, verbose=False):
 
 
 # Print all commands (help)
-def print_help(commands, cmd):
-    help_command_description = find_command(commands, "help")["description"]
-    args = docopt(help_command_description, argv=" ".join(cmd[1:]))
+def print_help(commands: list[CommandMetadata], cmd):
+    help_command = find_command(commands, "help")
+    assert help_command is not None and help_command.description is not None
+    args = tt_docopt(help_command, " ".join(cmd)).args
 
     specific_cmd = args["<command>"] if "<command>" in args else None
     verbose = ("-v" in args and args["-v"]) or specific_cmd is not None
@@ -110,7 +114,8 @@ def print_help(commands, cmd):
     rows += format_commands(commands, "housekeeping", specific_cmd, verbose)
     rows += format_commands(commands, "low-level", specific_cmd, verbose)
     rows += format_commands(commands, "high-level", specific_cmd, verbose)
-    # rows += format_commands (commands, 'dev', "Development")
+    if args["--all"]:
+        rows += format_commands(commands, "dev", specific_cmd, verbose)
 
     if not rows:
         util.WARN(f"Command '{specific_cmd}' not found")
@@ -147,39 +152,39 @@ def print_navigation_suggestions(navigation_suggestions):
 
 # Imports 'plugin' commands from cli_commands/ directory
 # With 'reload' argument set to True, the cli_commands can be live-reloaded (using importlib.reload)
-def import_commands(reload=False):
+def import_commands(reload: bool = False) -> list[CommandMetadata]:
     # Built-in commands
     commands = [
-        {
-            "long": "exit",
-            "short": "x",
-            "type": "housekeeping",
-            "description": "Description:\n  Exits the program. The optional argument represents the exit code. Defaults to 0.",
-            "context": "util",
-        },
-        {
-            "long": "help",
-            "short": "h",
-            "type": "housekeeping",
-            "description": "Usage:\n  help [-v] [<command>]\n\n"
+        CommandMetadata(
+            long_name="exit",
+            short_name="x",
+            type="housekeeping",
+            description="Description:\n  Exits the program. The optional argument represents the exit code. Defaults to 0.",
+            context=["util"],
+        ),
+        CommandMetadata(
+            long_name="help",
+            short_name="h",
+            type="housekeeping",
+            description="Usage:\n  help [-v] [--all] [<command>]\n\n"
             + "Description:\n  Prints documentation summary. Use -v for details. If a command name is specified, it prints documentation for that command only.\n\n"
-            + "Options:\n  -v   If specified, prints verbose documentation.",
-            "context": "util",
-        },
-        {
-            "long": "reload",
-            "short": "rl",
-            "type": "housekeeping",
-            "description": "Description:\n  Reloads files in cli_commands directory. Useful for development of commands.",
-            "context": "util",
-        },
-        {
-            "long": "eval",
-            "short": "ev",
-            "type": "dev",
-            "description": "Description:\n  Evaluates a Python expression.\n\nExamples:\n  eval 3+5\n  eval hex(@brisc.EPOCH_INFO_PTR.epoch_id)",
-            "context": "util",
-        },
+            + "Options:\n  -v      If specified, prints verbose documentation.\n  --all   If specified, prints all commands.\n",
+            context=["util"],
+        ),
+        CommandMetadata(
+            long_name="reload",
+            short_name="rl",
+            type="housekeeping",
+            description="Description:\n  Reloads files in cli_commands directory. Useful for development of commands.",
+            context=["util"],
+        ),
+        CommandMetadata(
+            long_name="eval",
+            short_name="ev",
+            type="dev",
+            description="Description:\n  Evaluates a Python expression.\n\nExamples:\n  eval 3+5\n  eval hex(@brisc.EPOCH_INFO_PTR.epoch_id)",
+            context=["util"],
+        ),
     ]
 
     cmd_files = []
@@ -200,36 +205,72 @@ def import_commands(reload=False):
             # Print call stack
             util.notify_exception(type(e), e, e.__traceback__)
             continue
-        command_metadata = cmd_module.command_metadata
-        command_metadata["module"] = cmd_module
+        command_metadata: CommandMetadata = cmd_module.command_metadata
+        command_metadata._module = cmd_module
 
         # Make the module name the default 'long' invocation string
-        if "long" not in command_metadata:
-            command_metadata["long"] = cmd_module.__name__
-        util.VERBOSE(f"Importing command {command_metadata['long']} from '{cmd_module.__name__}'")
+        if not command_metadata.long_name:
+            command_metadata.long_name = cmd_module.__name__
+        util.VERBOSE(f"Importing command {command_metadata.long_name} from '{cmd_module.__name__}'")
 
         if reload:
             importlib.reload(cmd_module)
 
         # Check command names/shortcut overlap (only when not reloading)
         for cmd in commands:
-            if cmd["long"] == command_metadata["long"]:
-                util.FATAL(f"Command {cmd['long']} already exists")
-            if cmd["short"] == command_metadata["short"]:
+            if cmd.long_name == command_metadata.long_name:
+                util.FATAL(f"Command {cmd.long_name} already exists")
+            if cmd.short_name == command_metadata.short_name:
                 util.FATAL(
-                    f"Commands {cmd['long']} and {command_metadata['long']} use the same shortcut: {cmd['short']}"
+                    f"Commands {cmd.long_name} and {command_metadata.long_name} use the same shortcut: {cmd.short_name}"
                 )
+        dopt = tt_docopt(command_metadata, command_metadata.long_name)
+        command_metadata = command_metadata.copy()
+        command_metadata.description = dopt.doc
         commands.append(command_metadata)
     return commands
 
 
-def main_loop(args, context):
+def extract_command_file_output(command_text: str) -> str | None:
+    # Check if command ends with '>file_name' or '>>file_name' or '|>file_name' or '|>>file_name' where file_name can have space at the start
+    import re
+
+    regex_pattern = r"((\|)?(>)?>[ ]*([^ ]+|\"[^\"]*\"|'[^']*')+)$"
+    match = re.search(regex_pattern, command_text)
+    if match:
+        return match.group(1)
+    return None
+
+
+def redirect_command_output_to_file(file_output: str | None):
+    if file_output is None:
+        return util.redirect_output_to_file_and_terminal(None)
+
+    show_terminal_output = True
+    if file_output.startswith("|"):
+        show_terminal_output = False
+        file_output = file_output[1:]
+
+    append = False
+    if file_output.startswith(">>"):
+        append = True
+        file_output = file_output[2:]
+    else:
+        assert file_output.startswith(">")
+        file_output = file_output[1:]
+
+    file_output = file_output.strip()
+    file_output = file_output.replace('"', "").replace("'", "")
+    return util.redirect_output_to_file_and_terminal(file_output, show_terminal_output, append)
+
+
+def main_loop(args, context: Context):
     """
     Main loop: read-eval-print
     """
     cmd_raw = ""
 
-    context.filter_commands(
+    context.assign_commands(
         import_commands()
     )  # Set the commands in the context so we can call commands from other commands
 
@@ -277,6 +318,8 @@ def main_loop(args, context):
                             if ui_state.gdb_server.is_connected:
                                 gdb_status += "(connected)"
                             my_prompt += f"gdb:{gdb_status} "
+                        if ui_state.context.use_4B_mode:
+                            my_prompt += f"{util.CLR_PROMPT}[4B MODE] {util.CLR_PROMPT_END}"
                         noc_prompt = "1" if ui_state.context.use_noc1 else "0"
                         if ui_state.current_device.is_blackhole() or ui_state.current_device.is_wormhole():
                             my_prompt += f"noc:{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
@@ -295,42 +338,49 @@ def main_loop(args, context):
                 # Trim comments
                 cmd_raw = cmd_raw.split("#")[0].strip()
 
-                cmd_int = try_int(cmd_raw)
-                if type(cmd_int) == int:
-                    if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
-                        cmd_raw = navigation_suggestions[cmd_int]["cmd"]
-                    else:
-                        raise util.TTException(f"Invalid speed dial number: {cmd_int}")
+                # Check if command should be serialized to a file
+                file_output = extract_command_file_output(cmd_raw)
+                if file_output is not None:
+                    cmd_raw = cmd_raw[: -len(file_output)].strip()
 
-                cmd = cmd_raw.split()
-                if len(cmd) > 0:
-                    cmd_string = cmd[0]
-                    found_command = None
-
-                    # Look for command to execute
-                    for c in context.commands:
-                        if c["short"] == cmd_string or c["long"] == cmd_string:
-                            found_command = c
-
-                    if found_command == None:
-                        # Print help on invalid commands
-                        print_help(context.commands, cmd)
-                        raise util.TTException(f"Invalid command '{cmd_string}'")
-                    else:
-                        if found_command["long"] == "exit":
-                            exit_code = int(cmd[1]) if len(cmd) > 1 else 0
-                            return exit_code
-                        elif found_command["long"] == "help":
-                            print_help(context.commands, cmd)
-                        elif found_command["long"] == "reload":
-                            import_commands(reload=True)
-                        elif found_command["long"] == "eval":
-                            eval_str = " ".join(cmd[1:])
-                            eval_str = context.elf.substitute_names_with_values(eval_str)
-                            print(f"{eval_str} = {eval(eval_str)}")
+                with redirect_command_output_to_file(file_output) as terminal_override:
+                    cmd_int = try_int(cmd_raw)
+                    if type(cmd_int) == int:
+                        if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
+                            cmd_raw = navigation_suggestions[cmd_int]["cmd"]
                         else:
-                            new_navigation_suggestions = found_command["module"].run(cmd_raw, context, ui_state)
-                            navigation_suggestions = new_navigation_suggestions
+                            raise util.TTException(f"Invalid speed dial number: {cmd_int}")
+
+                    cmd = cmd_raw.split()
+                    if len(cmd) > 0:
+                        cmd_string = cmd[0]
+                        found_command = None
+
+                        # Look for command to execute
+                        for c in context.commands:
+                            if c.short_name == cmd_string or c.long_name == cmd_string:
+                                found_command = c
+                                break
+
+                        if found_command == None:
+                            # Print help on invalid commands
+                            print_help(context.commands, cmd)
+                            raise util.TTException(f"Invalid command '{cmd_string}'")
+                        else:
+                            if found_command.long_name == "exit":
+                                exit_code = int(cmd[1]) if len(cmd) > 1 else 0
+                                return exit_code
+                            elif found_command.long_name == "help":
+                                print_help(context.commands, cmd)
+                            elif found_command.long_name == "reload":
+                                import_commands(reload=True)
+                            elif found_command.long_name == "eval":
+                                eval_str = " ".join(cmd[1:])
+                                print(f"{eval_str} = {eval(eval_str)}")
+                            else:
+                                assert found_command._module is not None
+                                new_navigation_suggestions = found_command._module.run(cmd_raw, context, ui_state)
+                                navigation_suggestions = new_navigation_suggestions
 
             except CommandParsingException as e:
                 if e.is_parsing_error():
@@ -371,11 +421,7 @@ def main_loop(args, context):
 
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == "--gdb":
-        gdb_client_path = os.path.abspath(util.application_path() + "/sfpi/compiler/bin/riscv32-tt-elf-gdb")
-        if not os.path.isfile(gdb_client_path):
-            gdb_client_path = os.path.abspath(
-                util.application_path() + "/../build_riscv/sfpi/compiler/bin/riscv32-tt-elf-gdb"
-            )
+        gdb_client_path = get_gdb_client_path()
         gdb_client_args = sys.argv[2:]
 
         # Start gdb client with the specified arguments
@@ -386,13 +432,27 @@ def main():
 
     args = docopt(__doc__)
 
+    if args["--version"]:
+        import importlib.metadata as importlib_metadata
+
+        try:
+            installed_version = importlib_metadata.version("tt-exalens")
+            print(f"tt-exalens version {installed_version}")
+        except importlib_metadata.PackageNotFoundError:
+            print("tt-exalens version not found (not installed via pip)")
+            # Alternatively, read from VERSION file
+            with open(os.path.join(util.application_path(), "../VERSION"), "r") as version_file:
+                version = version_file.read().strip()
+            print(f"tt-exalens version from VERSION file: {version}")
+        return
+
     # SETTING VERBOSITY
     try:
         verbosity = int(args["--verbosity"])
-        Verbosity.set(verbosity)
+        util.Verbosity.set(verbosity)
     except:
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
-    util.VERBOSE(f"Verbosity level: {Verbosity.get().name} ({Verbosity.get().value})")
+    util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 
     wanted_devices: list[int] | None = None
     if args["--devices"]:
@@ -433,12 +493,14 @@ def main():
         server_ip = address[0] if address[0] != "" else "localhost"
         server_port = address[-1]
         util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
-        context = tt_exalens_init.init_ttexalens_remote(server_ip, int(server_port))
+        use_4B_mode = False if args["--disable-4B-mode"] else True
+        context = init_ttexalens_remote(server_ip, int(server_port), use_4B_mode)
     else:
-        context = tt_exalens_init.init_ttexalens(
+        context = init_ttexalens(
             wanted_devices=wanted_devices,
             init_jtag=args["--jtag"],
             use_noc1=args["--use-noc1"],
+            use_4B_mode=False if args["--disable-4B-mode"] else True,
             simulation_directory=args["-s"],
         )
 

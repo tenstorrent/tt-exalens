@@ -12,6 +12,7 @@ from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_add
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.memory_map import MemoryMap
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     DebugRegisterDescription,
@@ -23,6 +24,10 @@ from ttexalens.register_store import (
 
 # TODO #432: Once signals are added, we can remove type hint
 debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
+
+# TODO(#651) Once signals are grouped, we can remove type hint
+group_map: dict[str, tuple[int, int]] = {}
+
 
 register_map: dict[str, RegisterDescription] = {
     "RISCV_DEBUG_REG_PERF_CNT_INSTRN_THREAD0": DebugRegisterDescription(offset=0x00),
@@ -136,11 +141,16 @@ register_store_noc0_initialization = RegisterStore.create_initialization(
 register_store_noc1_initialization = RegisterStore.create_initialization(
     [register_map, niu_register_map], get_register_base_address_callable(noc_id=1)
 )
+debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
 
 class BlackholeDramBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
-        super().__init__(location, block_type="dram", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self))
+        super().__init__(
+            location,
+            block_type="dram",
+            debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
+        )
 
         self.dram_bank = MemoryBlock(
             # TODO #432: Check if this size is correct
@@ -175,6 +185,13 @@ class BlackholeDramBlock(BlackholeNocBlock):
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+        self.memory_map.map_blocks(
+            {
+                "l1": self.l1,
+                "dram_bank": self.dram_bank,
+            }
+        )
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:

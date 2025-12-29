@@ -4,8 +4,8 @@
 import math
 import unittest
 from parameterized import parameterized_class, parameterized
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens import tt_exalens_init
-from ttexalens import tt_exalens_lib as lib
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
@@ -27,7 +27,7 @@ class TestTensixDebug(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = tt_exalens_init.init_ttexalens()
+        cls.context = init_cached_test_context()
 
     def setUp(self):
         self.location = OnChipCoordinate.create(self.location_str, device=self.context.devices[0])
@@ -35,24 +35,6 @@ class TestTensixDebug(unittest.TestCase):
 
     def is_blackhole(self) -> bool:
         return self.context.devices[0]._arch == "blackhole"
-
-    def test_read_write_cfg_register(self):
-        cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
-        self.tensix_debug.write_tensix_register(cfg_reg_name, 10)
-        assert self.tensix_debug.read_tensix_register(cfg_reg_name) == 10
-        self.tensix_debug.write_tensix_register(cfg_reg_name, 0)
-        assert self.tensix_debug.read_tensix_register(cfg_reg_name) == 0
-        self.tensix_debug.write_tensix_register(cfg_reg_name, 5)
-        assert self.tensix_debug.read_tensix_register(cfg_reg_name) == 5
-
-    def test_read_write_dbg_register(self):
-        dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
-        self.tensix_debug.write_tensix_register(dbg_reg_name, 10)
-        assert self.tensix_debug.read_tensix_register(dbg_reg_name) == 10
-        self.tensix_debug.write_tensix_register(dbg_reg_name, 0)
-        assert self.tensix_debug.read_tensix_register(dbg_reg_name) == 0
-        self.tensix_debug.write_tensix_register(dbg_reg_name, 5)
-        assert self.tensix_debug.read_tensix_register(dbg_reg_name) == 5
 
     @parameterized.expand(
         [

@@ -18,9 +18,10 @@ GLOBAL_CONTEXT: Context | None = None
 
 
 def init_ttexalens(
-    wanted_devices: list | None = None,
+    wanted_devices: list[int] | None = None,
     init_jtag: bool = False,
     use_noc1: bool = False,
+    use_4B_mode: bool = True,
     simulation_directory: str | None = None,
 ) -> Context:
     """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
@@ -30,6 +31,7 @@ def init_ttexalens(
         wanted_devices (list, optional): List of device IDs we want to connect to. If None, connect to all available devices.
         init_jtag (bool): Whether to initialize JTAG interface. Default is False.
         use_noc1 (bool): Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
+        use_4B_mode (bool): Whether to use 4B mode for communication with the device. Default is True.
         simulation_directory (str, optional): If specified, starts the simulator from the given build output directory.
 
     Returns:
@@ -38,12 +40,13 @@ def init_ttexalens(
 
     lens_ifc = tt_exalens_ifc.init_pybind(wanted_devices, init_jtag, use_noc1, simulation_directory)
 
-    return load_context(lens_ifc, use_noc1)
+    return load_context(lens_ifc, use_noc1, use_4B_mode)
 
 
 def init_ttexalens_remote(
     ip_address: str = "localhost",
     port: int = 5555,
+    use_4B_mode: bool = True,
 ) -> Context:
     """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
     Interfacing device is done remotely through TTExaLens client.
@@ -51,6 +54,7 @@ def init_ttexalens_remote(
     Args:
             ip_address (str): IP address of the TTExaLens server. Default is 'localhost'.
             port (int): Port number of the TTExaLens server interface. Default is 5555.
+            use_4B_mode (bool): Whether to use 4B mode for communication with the device. Default is True.
 
     Returns:
             Context: TTExaLens context object.
@@ -58,7 +62,7 @@ def init_ttexalens_remote(
 
     lens_ifc = tt_exalens_ifc.connect_to_server(ip_address, port)
 
-    return load_context(lens_ifc)
+    return load_context(lens_ifc, use_4B_mode=use_4B_mode)
 
 
 def get_cluster_desc_yaml(lens_ifc: tt_exalens_ifc.TTExaLensCommunicator) -> util.YamlFile:
@@ -73,9 +77,11 @@ def get_cluster_desc_yaml(lens_ifc: tt_exalens_ifc.TTExaLensCommunicator) -> uti
     return cluster_desc_yaml
 
 
-def load_context(server_ifc: tt_exalens_ifc.TTExaLensCommunicator, use_noc1: bool = False) -> Context:
+def load_context(
+    server_ifc: tt_exalens_ifc.TTExaLensCommunicator, use_noc1: bool = False, use_4B_mode: bool = True
+) -> Context:
     """Load the TTExaLens context object with specified parameters."""
-    context = LimitedContext(server_ifc, get_cluster_desc_yaml(server_ifc), use_noc1)
+    context = LimitedContext(server_ifc, get_cluster_desc_yaml(server_ifc), use_noc1, use_4B_mode)
 
     global GLOBAL_CONTEXT
     GLOBAL_CONTEXT = context
@@ -83,7 +89,7 @@ def load_context(server_ifc: tt_exalens_ifc.TTExaLensCommunicator, use_noc1: boo
     return context
 
 
-def set_active_context(context: Context) -> None:
+def set_active_context(context: Context | None) -> None:
     """
     Set the active TTExaLens context object.
 

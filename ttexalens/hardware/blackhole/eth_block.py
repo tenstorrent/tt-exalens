@@ -25,10 +25,83 @@ from ttexalens.register_store import (
 debug_bus_signal_map = {
     "erisc0_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 9 + 1, mask=0x3FFFFFFF),
     "erisc1_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 10 + 1, mask=0x3FFFFFFF),
+    "erisc0_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x200),
+    "erisc0_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x40000000
+    ),
+    "erisc0_id_ex_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x100),
+    "erisc0_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x80000000
+    ),
+    "erisc0_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x80),
+    "erisc0_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x20),
+    "erisc0_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x1F),
+    "erisc0_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=19, mask=0xFFFFFFFF),
+    "erisc0_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x3FFFFFFF),
+    "erisc0_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x10000000),
+    "erisc0_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x1F00000),
+    "erisc0_id_rf_p1_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x40000),
+    "erisc0_id_rf_p1_rdaddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7C00),
+    "erisc0_id_rf_p0_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x100),
+    "erisc0_id_rf_p0_rdaddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x1F),
+    "erisc0_i_instrn_vld": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "erisc0_i_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
+    "erisc0_i_instrn_req_rtr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "erisc0_(o_instrn_req_early&~o_instrn_req_cancel)": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x40000000
+    ),
+    "erisc0_o_instrn_addr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x3FFFFFFF),
+    "erisc0_dbg_obs_mem_wren": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "erisc0_dbg_obs_mem_rden": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x40000000),
+    "erisc0_dbg_obs_mem_addr": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x3FFFFFFF),
+    "erisc0_dbg_obs_cmt_vld": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "erisc0_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
+    "erisc1_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x200),
+    "erisc1_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=21, mask=0x40000000
+    ),
+    "erisc1_id_ex_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x100),
+    "erisc1_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=21, mask=0x80000000
+    ),
+    "erisc1_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x80),
+    "erisc1_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x20),
+    "erisc1_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x1F),
+    "erisc1_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=21, mask=0xFFFFFFFF),
+    "erisc1_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=21, mask=0x3FFFFFFF),
+    "erisc1_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x10000000),
+    "erisc1_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x1F00000),
+    "erisc1_id_rf_p1_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x40000),
+    "erisc1_id_rf_p1_rdaddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x7C00),
+    "erisc1_id_rf_p0_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x100),
+    "erisc1_id_rf_p0_rdaddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x1F),
+    "erisc1_i_instrn_vld": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x80000000),
+    "erisc1_i_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x7FFFFFFF),
+    "erisc1_i_instrn_req_rtr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=20, mask=0x80000000),
+    "erisc1_(o_instrn_req_early&~o_instrn_req_cancel)": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=7, sig_sel=20, mask=0x40000000
+    ),
+    "erisc1_o_instrn_addr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=20, mask=0x3FFFFFFF),
+    "erisc1_dbg_obs_mem_wren": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=20, mask=0x80000000),
+    "erisc1_dbg_obs_mem_rden": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=20, mask=0x40000000),
+    "erisc1_dbg_obs_mem_addr": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=20, mask=0x3FFFFFFF),
+    "erisc1_dbg_obs_cmt_vld": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x80000000),
+    "erisc1_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x7FFFFFFF),
+}
+
+# Signal name mapping to (DaisySel, sig_sel)
+group_map: dict[str, tuple[int, int]] = {
+    "erisc0_group_a": (7, 18),
+    "erisc0_group_b": (7, 19),
+    "erisc1_group_a": (7, 20),
+    "erisc1_group_b": (7, 21),
 }
 
 register_map = {
     "RISCV_IC_INVALIDATE_InvalidateAll": ConfigurationRegisterDescription(index=185, mask=0x1F),
+    "RISCV_DEBUG_REG_DBG_L1_MEM_REG0": DebugRegisterDescription(offset=0x048),
+    "RISCV_DEBUG_REG_DBG_L1_MEM_REG1": DebugRegisterDescription(offset=0x04C),
+    "RISCV_DEBUG_REG_DBG_L1_MEM_REG2": DebugRegisterDescription(offset=0x050),
     "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG": DebugRegisterDescription(offset=0x54),
     "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(offset=0x58),
     "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(offset=0x5C),
@@ -89,11 +162,16 @@ register_store_noc0_initialization = RegisterStore.create_initialization(
 register_store_noc1_initialization = RegisterStore.create_initialization(
     [register_map, niu_register_map], get_register_base_address_callable(noc_id=1)
 )
+debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
 
 class BlackholeEthBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
-        super().__init__(location, block_type="eth", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self))
+        super().__init__(
+            location,
+            block_type="eth",
+            debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
+        )
 
         self.l1 = MemoryBlock(
             size=512 * 1024,
@@ -142,6 +220,8 @@ class BlackholeEthBlock(BlackholeNocBlock):
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+        self.memory_map.map_block("l1", self.l1)
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:

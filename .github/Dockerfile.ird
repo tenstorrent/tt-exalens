@@ -1,8 +1,15 @@
 ARG GIT_SHA
 ARG FROM_TAG=${GIT_SHA:-latest}
+ARG UBUNTU_VERSION=22.04
 
-FROM ghcr.io/tenstorrent/tt-exalens/tt-exalens-ci-ubuntu-22-04:${FROM_TAG}
+FROM ghcr.io/tenstorrent/tt-exalens/tt-exalens-ci-ubuntu-${UBUNTU_VERSION}:${FROM_TAG}
 SHELL ["/bin/bash", "-c"]
+
+# Enable starting sshd service
+COPY /.github/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -14,7 +21,7 @@ RUN mkdir -p ${TT_EXALENS_INFRA_DIR}
 
 # Install dependencies
 RUN apt-get update && apt-get install -y \
-    docker \
+    docker.io \
     gh \
     git-lfs \
     libgmp-dev \
@@ -39,5 +46,5 @@ RUN [ "$UBUNTU_VERSION" != "24.04" ] \
 
 # Install tt-smi, tt-flash
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && pip install git+https://github.com/tenstorrent/tt-smi.git \
-    && pip install git+https://github.com/tenstorrent/tt-flash.git
+    && pip install --ignore-installed git+https://github.com/tenstorrent/tt-smi.git \
+    && pip install --ignore-installed git+https://github.com/tenstorrent/tt-flash.git

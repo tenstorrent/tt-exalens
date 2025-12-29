@@ -1,16 +1,46 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+import datetime
+from functools import wraps
+import inspect
 import os
-import re
 import struct
+from typing import TypeVar, Callable, Any, cast
 
-from ttexalens import tt_exalens_init
-from ttexalens.util import FirmwareVersion
+from ttexalens.tt_exalens_init import init_ttexalens
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.parse_elf import ParsedElfFile, read_elf
-from ttexalens.util import TTException
+from ttexalens.elf import read_elf, ParsedElfFile
+from ttexalens.hardware.risc_debug import CallstackEntry
+from ttexalens.util import TTException, Verbosity, TRACE
+
+# Parameter name to formatter function mapping for trace_api decorator
+_TRACE_FORMATTERS = {
+    "addr": hex,
+}
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def trace_api(func: F) -> F:
+    """Decorator to log API calls when verbosity is set to TRACE."""
+
+    @wraps(func)
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
+        if Verbosity.supports(Verbosity.TRACE):
+            sig = inspect.signature(func)
+            bound_args = sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+
+            formatted_args = []
+            for k, v in bound_args.arguments.items():
+                formatter = _TRACE_FORMATTERS.get(k, repr)
+                formatted_args.append(f"{k}={formatter(v)}")
+            TRACE(f"[API] {func.__name__}({', '.join(formatted_args)})")
+        return func(*args, **kwargs)
+
+    return cast(F, wrapper)
 
 
 def check_context(context: Context | None = None) -> Context:
@@ -21,9 +51,11 @@ def check_context(context: Context | None = None) -> Context:
     if context is not None:
         return context
 
-    if not tt_exalens_init.GLOBAL_CONTEXT:
-        tt_exalens_init.GLOBAL_CONTEXT = tt_exalens_init.init_ttexalens()
-    return tt_exalens_init.GLOBAL_CONTEXT
+    import ttexalens.tt_exalens_init as init
+
+    if not init.GLOBAL_CONTEXT:
+        init.GLOBAL_CONTEXT = init_ttexalens()
+    return init.GLOBAL_CONTEXT
 
 
 def check_noc_id(noc_id: int | None, context: Context) -> int:
@@ -31,6 +63,12 @@ def check_noc_id(noc_id: int | None, context: Context) -> int:
         return 1 if context.use_noc1 else 0
     assert noc_id in (0, 1), f"Invalid NOC ID {noc_id}. Expected 0 or 1."
     return noc_id
+
+
+def check_4B_mode(use_4B_mode: bool | None, context: Context) -> bool:
+    if use_4B_mode is None:
+        return context.use_4B_mode
+    return use_4B_mode
 
 
 def validate_addr(addr: int) -> None:
@@ -65,6 +103,7 @@ def convert_coordinate(
     return location
 
 
+@trace_api
 def read_word_from_device(
     location: str | OnChipCoordinate,
     addr: int,
@@ -81,6 +120,7 @@ def read_word_from_device(
         device_id (int, default 0):	ID number of device to read from.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
+        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
     Returns:
         int: Data read from the device.
@@ -95,6 +135,7 @@ def read_word_from_device(
     return word
 
 
+@trace_api
 def read_words_from_device(
     location: str | OnChipCoordinate,
     addr: int,
@@ -102,6 +143,7 @@ def read_words_from_device(
     word_count: int = 1,
     context: Context | None = None,
     noc_id: int | None = None,
+    use_4B_mode: bool | None = None,
 ) -> list[int]:
     """
     Reads word_count four-byte words of data, starting from address 'addr' at specified location using specified noc.
@@ -113,6 +155,7 @@ def read_words_from_device(
         word_count (int, default 1): Number of 4-byte words to read.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
+        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
     Returns:
         list[int]: Data read from the device.
@@ -122,15 +165,19 @@ def read_words_from_device(
 
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
+    use_4B_mode = check_4B_mode(use_4B_mode, context)
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    bytes_data = context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, 4 * word_count)
+    bytes_data = context.server_ifc.read(
+        noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, 4 * word_count, use_4B_mode
+    )
     data = list(struct.unpack(f"<{word_count}I", bytes_data))
     return data
 
 
+@trace_api
 def read_from_device(
     location: str | OnChipCoordinate,
     addr: int,
@@ -138,6 +185,7 @@ def read_from_device(
     num_bytes: int = 4,
     context: Context | None = None,
     noc_id: int | None = None,
+    use_4B_mode: bool | None = None,
 ) -> bytes:
     """
     Reads num_bytes of data starting from address 'addr' at specified location using specified noc.
@@ -158,13 +206,15 @@ def read_from_device(
 
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
+    use_4B_mode = check_4B_mode(use_4B_mode, context)
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    return context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes)
+    return context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes, use_4B_mode)
 
 
+@trace_api
 def write_words_to_device(
     location: str | OnChipCoordinate,
     addr: int,
@@ -172,6 +222,7 @@ def write_words_to_device(
     device_id: int = 0,
     context: Context | None = None,
     noc_id: int | None = None,
+    use_4B_mode: bool | None = None,
 ) -> int:
     """
     Writes data word to address 'addr' at specified location using specified noc.
@@ -183,6 +234,7 @@ def write_words_to_device(
         device_id (int, default 0): ID number of device to write to.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
+        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
     Returns:
         int: If the execution is successful, return value should be 4 (number of bytes written).
@@ -192,15 +244,17 @@ def write_words_to_device(
 
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
+    use_4B_mode = check_4B_mode(use_4B_mode, context)
 
     noc_loc = context.convert_loc_to_umd(coordinate)
     if isinstance(data, int):
         return context.server_ifc.write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
     byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data)
+    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data, use_4B_mode)
 
 
+@trace_api
 def write_to_device(
     location: str | OnChipCoordinate,
     addr: int,
@@ -208,6 +262,7 @@ def write_to_device(
     device_id: int = 0,
     context: Context | None = None,
     noc_id: int | None = None,
+    use_4B_mode: bool | None = None,
 ) -> int:
     """
     Writes data to address 'addr' at specified location using specified noc.
@@ -219,6 +274,7 @@ def write_to_device(
         device_id (int, default 0):	ID number of device to write to.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
+        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
     Returns:
         int: If the execution is successful, return value should be number of bytes written.
@@ -228,6 +284,7 @@ def write_to_device(
 
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, context)
+    use_4B_mode = check_4B_mode(use_4B_mode, context)
 
     if isinstance(data, list):
         data = bytes(data)
@@ -236,9 +293,10 @@ def write_to_device(
         raise TTException("Data to write must not be empty.")
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
+    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data, use_4B_mode)
 
 
+@trace_api
 def load_elf(
     elf_file: str,
     location: str | OnChipCoordinate | list[str | OnChipCoordinate],
@@ -246,7 +304,8 @@ def load_elf(
     neo_id: int | None = None,
     device_id: int = 0,
     context: Context | None = None,
-) -> None:
+    return_start_address: bool = False,
+) -> None | int | list[int]:
     """
     Loads the given ELF file into the specified RISC core. RISC core must be in reset before loading the ELF.
 
@@ -287,12 +346,21 @@ def load_elf(
         raise TTException(f"ELF file {elf_file} does not exist.")
 
     assert locations, "No valid core locations provided."
+    returns = []
     for loc in locations:
         risc_debug = loc.noc_block.get_risc_debug(risc_name, neo_id)
         elf_loader = ElfLoader(risc_debug)
-        elf_loader.load_elf(elf_file)
+        start_address = elf_loader.load_elf(elf_file, return_start_address=return_start_address)
+        if return_start_address:
+            assert start_address is not None
+            returns.append(start_address)
+    if return_start_address:
+        return returns if len(returns) > 1 else returns[0]
+    else:
+        return None
 
 
+@trace_api
 def run_elf(
     elf_file: str,
     location: str | OnChipCoordinate | list[str | OnChipCoordinate],
@@ -346,13 +414,13 @@ def run_elf(
         elf_loader.run_elf(elf_file)
 
 
+@trace_api
 def arc_msg(
     device_id: int,
     msg_code: int,
     wait_for_done: bool,
-    arg0: int,
-    arg1: int,
-    timeout: int,
+    args: list[int],
+    timeout: datetime.timedelta,
     context: Context | None = None,
     noc_id: int | None = None,
 ) -> list[int]:
@@ -363,9 +431,8 @@ def arc_msg(
         device_id (int): ID number of device to send message to.
         msg_code (int): Message code to send.
         wait_for_done (bool): If True, waits for the message to be processed.
-        arg0 (int): First argument to the message.
-        arg1 (int): Second argument to the message.
-        timeout (int): Timeout in milliseconds.
+        args (list[int]): Arguments to the message.
+        timeout (datetime.timedelta): Timeout.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
@@ -376,12 +443,13 @@ def arc_msg(
     noc_id = check_noc_id(noc_id, context)
 
     validate_device_id(device_id, context)
-    if timeout < 0:
+    if timeout < datetime.timedelta(0):
         raise TTException("Timeout must be greater than or equal to 0.")
 
-    return list(context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, arg0, arg1, timeout))
+    return list(context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, args, timeout))
 
 
+@trace_api
 def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None) -> int:
     """
     Reads an ARC telemetry entry from the device.
@@ -420,7 +488,8 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
     return context.server_ifc.read_arc_telemetry_entry(device_id, telemetry_tag_id)
 
 
-def read_tensix_register(
+@trace_api
+def read_register(
     location: str | OnChipCoordinate,
     register,
     noc_id: int = 0,
@@ -429,7 +498,7 @@ def read_tensix_register(
     context: Context | None = None,
 ) -> int:
     """
-    Reads the value of a register from the tensix core.
+    Reads the value of a register from the noc location.
 
     Args:
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
@@ -452,10 +521,11 @@ def read_tensix_register(
             f"Invalid register type. Must be an str or instance of RegisterDescription or its subclasses, but got {type(register)}"
         )
     register_store = coordinate.noc_block.get_register_store(noc_id, neo_id)
-    return register_store.read_register(register)
+    return register_store.read_register(register)  # type: ignore
 
 
-def write_tensix_register(
+@trace_api
+def write_register(
     location: str | OnChipCoordinate,
     register,
     value: int,
@@ -465,7 +535,7 @@ def write_tensix_register(
     context: Context | None = None,
 ) -> None:
     """
-    Writes value to a register on the tensix core.
+    Writes value to a register on the noc location.
 
     Args:
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
@@ -491,6 +561,7 @@ def write_tensix_register(
     register_store.write_register(register, value)
 
 
+@trace_api
 def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
     """
     Reads the ELF file and returns a ParsedElfFile object.
@@ -502,12 +573,13 @@ def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
     return read_elf(context.server_ifc, elf_path)
 
 
+@trace_api
 def top_callstack(
     pc: int,
     elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile,
     offsets: int | None | list[int | None] = None,
     context: Context | None = None,
-) -> list:
+) -> list[CallstackEntry]:
 
     """
     Retrieves the top frame of the callstack for the specified PC on the given ELF.
@@ -518,6 +590,7 @@ def top_callstack(
         elfs (list[str] | str | list[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
         offsets (list[int], int, optional): List of offsets for each ELF file. Default: None.
         context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+
     Returns:
         List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
     """
@@ -541,13 +614,14 @@ def top_callstack(
     if len(offsets) != len(elfs):
         raise TTException("Number of offsets must match the number of elf files")
 
-    elfs = RiscDebug._read_elfs(elfs, offsets)
-    elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, None)
+    elfs_loaded = RiscDebug._read_elfs(elfs, offsets)
+    elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs_loaded, pc, None)
     if frame_description is None or elf is None:
         return []
     return RiscDebug.get_frame_callstack(elf, pc)[0]
 
 
+@trace_api
 def callstack(
     location: str | OnChipCoordinate,
     elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile,
@@ -558,7 +632,7 @@ def callstack(
     stop_on_main: bool = True,
     device_id: int = 0,
     context: Context | None = None,
-) -> list:
+) -> list[CallstackEntry]:
     """
     Retrieves the callstack of the specified RISC core for a given ELF.
 
@@ -572,6 +646,7 @@ def callstack(
         stop_on_main (bool): If True, stops at the main function. Default: True.
         device_id (int): ID of the device on which the kernel is run. Default: 0.
         context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+
     Returns:
         List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
     """
@@ -600,9 +675,10 @@ def callstack(
     risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
     if risc_debug.is_in_reset():
         raise TTException(f"RiscV core {risc_debug.risc_location} is in reset")
-    return risc_debug.get_callstack(elfs, offsets, max_depth, stop_on_main)
+    return risc_debug.get_callstack(elfs, offsets, max_depth, stop_on_main)  # type: ignore
 
 
+@trace_api
 def coverage(
     location: str | OnChipCoordinate,
     elf: str | ParsedElfFile,
@@ -625,14 +701,18 @@ def coverage(
 
     coordinate = convert_coordinate(location, device_id, context)
     context = coordinate.context
+    parsed_elf: ParsedElfFile
     if isinstance(elf, str):
-        elf = parse_elf(elf, context)
+        parsed_elf = parse_elf(elf, context)
+    else:
+        parsed_elf = elf
 
     from ttexalens.coverage import dump_coverage
 
-    dump_coverage(elf, coordinate, gcda_path, gcno_copy_path)
+    dump_coverage(parsed_elf, coordinate, gcda_path, gcno_copy_path)
 
 
+@trace_api
 def read_riscv_memory(
     location: str | OnChipCoordinate,
     addr: int,
@@ -675,9 +755,10 @@ def read_riscv_memory(
         )
 
     with risc_debug.ensure_private_memory_access():
-        return risc_debug.read_memory(addr)
+        return int(risc_debug.read_memory(addr))
 
 
+@trace_api
 def write_riscv_memory(
     location: str | OnChipCoordinate,
     addr: int,

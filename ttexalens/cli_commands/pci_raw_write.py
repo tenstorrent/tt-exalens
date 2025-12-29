@@ -16,21 +16,19 @@ Examples:
   pciw 0x0 0x0
 """
 
-from docopt import docopt
-
 from ttexalens.uistate import UIState
+from ttexalens.command_parser import CommandMetadata, tt_docopt
 
-
-command_metadata = {
-    "short": "pciw",
-    "type": "dev",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-}
+command_metadata = CommandMetadata(
+    short_name="pciw",
+    long_name="pci-raw-write",
+    type="dev",
+    description=__doc__,
+)
 
 
 def run(cmd_text, context, ui_state: UIState):
-    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    args = tt_docopt(command_metadata, cmd_text).args
     addr = int(args["<addr>"], 0)
     data = int(args["<data>"], 0)
     pci_write_result = context.server_ifc.pci_write32_raw(ui_state.current_device_id, addr, data)

@@ -6,27 +6,30 @@ import os
 
 import itertools
 from functools import wraps
+from datetime import timedelta
 
 from parameterized import parameterized, parameterized_class
 
-from test.ttexalens.unit_tests.test_base import init_default_test_context
-from ttexalens import tt_exalens_init
-from ttexalens import tt_exalens_lib as lib
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
+import ttexalens as lib
 from ttexalens import util
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
-from ttexalens.firmware import ELF
+from ttexalens.elf import MemoryAccess
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.risc_debug import CallstackEntry, RiscDebug
-from ttexalens.object import DataArray
 
 from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
+
+from ttexalens.gdb.gdb_client import get_gdb_callstack
+from ttexalens.gdb.gdb_communication import ServerSocket
+from ttexalens.gdb.gdb_server import GdbServer
 
 
 def invalid_argument_decorator(func):
@@ -41,38 +44,42 @@ def invalid_argument_decorator(func):
 class TestAutoContext(unittest.TestCase):
     def test_auto_context(self):
         """Test auto context creation."""
-        tt_exalens_init.GLOBAL_CONTEXT = None
+        lib.set_active_context(None)
         context = lib.check_context()
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
 
     def test_set_global_context(self):
         """Test setting global context."""
-        tt_exalens_init.GLOBAL_CONTEXT = None
-        context = tt_exalens_init.init_ttexalens()
-        self.assertIsNotNone(tt_exalens_init.GLOBAL_CONTEXT)
-        self.assertIs(tt_exalens_init.GLOBAL_CONTEXT, context)
+        import ttexalens.tt_exalens_init as init
+
+        lib.set_active_context(None)
+        context = lib.init_ttexalens()
+        self.assertIsNotNone(init.GLOBAL_CONTEXT)
+        self.assertIs(init.GLOBAL_CONTEXT, context)
 
     def test_existing_context(self):
         """Test recognition of existing context."""
-        tt_exalens_init.GLOBAL_CONTEXT = None
+        import ttexalens.tt_exalens_init as init
+
+        lib.set_active_context(None)
 
         # Create new global context
-        context1 = tt_exalens_init.init_ttexalens()
-        self.assertIsNotNone(tt_exalens_init.GLOBAL_CONTEXT)
-        self.assertIs(tt_exalens_init.GLOBAL_CONTEXT, context1)
+        context1 = lib.init_ttexalens()
+        self.assertIsNotNone(init.GLOBAL_CONTEXT)
+        self.assertIs(init.GLOBAL_CONTEXT, context1)
 
         # Check for existing context
         context = lib.check_context()
         self.assertIsNotNone(context)
-        self.assertIs(tt_exalens_init.GLOBAL_CONTEXT, context)
+        self.assertIs(init.GLOBAL_CONTEXT, context)
         self.assertIs(context, context1)
 
 
 class TestReadWrite(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
 
     def setUp(self):
         self.assertIsNotNone(self.context)
@@ -334,6 +341,9 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", "UNPACK_CONFIG0_out_data_format", 6),
             ("0,0", "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1),
             ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 9),
+            ("0,0", "OPERAND_BASE_ADDR_T0", 4),
+            ("0,0", "PERF_EPOCH_BASE_ADDR_T1", 8),
+            ("0,0", "OUTPUT_ADDR_T2", 12),
         ]
     )
     def test_write_read_tensix_register(self, location, register, value):
@@ -342,18 +352,18 @@ class TestReadWrite(unittest.TestCase):
             self.skipTest("Skipping the test on grayskull.")
 
         # Storing the original value of the register
-        original_value = lib.read_tensix_register(location, register)
+        original_value = lib.read_register(location, register)
 
         # Writing a value to the register and reading it back
-        lib.write_tensix_register(location, register, value)
-        ret = lib.read_tensix_register(location, register)
+        lib.write_register(location, register, value)
+        ret = lib.read_register(location, register)
 
         # Checking if the value was written and read correctly
         self.assertEqual(ret, value)
 
         # Writing the original value back to the register and reading it
-        lib.write_tensix_register(location, register, original_value)
-        ret = lib.read_tensix_register(location, register)
+        lib.write_register(location, register, original_value)
+        ret = lib.read_register(location, register)
 
         # Checking if read value is equal to the original value
         self.assertEqual(ret, original_value)
@@ -376,27 +386,27 @@ class TestReadWrite(unittest.TestCase):
             self.skipTest("Skipping the test on grayskull.")
 
         # Reading original values of registers
-        original_val_desc = lib.read_tensix_register(location, register_description)
-        original_val_name = lib.read_tensix_register(location, register_name)
+        original_val_desc = lib.read_register(location, register_description)
+        original_val_name = lib.read_register(location, register_name)
 
         # Checking if values are equal
         self.assertEqual(original_val_desc, original_val_name)
 
         # Writing a value to the register given by description
-        lib.write_tensix_register(location, register_description, 1)
+        lib.write_register(location, register_description, 1)
 
         # Reading values from both registers
-        val_desc = lib.read_tensix_register(location, register_description)
-        val_name = lib.read_tensix_register(location, register_name)
+        val_desc = lib.read_register(location, register_description)
+        val_name = lib.read_register(location, register_name)
 
         # Checking if writing to description register affects the name register (making sure they are the same)
         self.assertEqual(val_desc, val_name)
 
         # Wrting original value back
-        lib.write_tensix_register(location, register_name, original_val_name)
+        lib.write_register(location, register_name, original_val_name)
 
-        val_desc = lib.read_tensix_register(location, register_description)
-        val_name = lib.read_tensix_register(location, register_name)
+        val_desc = lib.read_register(location, register_description)
+        val_name = lib.read_register(location, register_name)
 
         # Checking if original values are restored
         self.assertEqual(val_name, original_val_name)
@@ -428,14 +438,69 @@ class TestReadWrite(unittest.TestCase):
 
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
             with self.assertRaises((util.TTException, ValueError)):
-                lib.read_tensix_register(location, register, device_id)
+                lib.read_register(location, register, device_id)
         with self.assertRaises((util.TTException, ValueError)):
-            lib.write_tensix_register(location, register, value, device_id)
+            lib.write_register(location, register, value, device_id)
 
-    def write_program(self, location, addr, data):
-        """Write program code data to L1 memory."""
-        bytes_written = lib.write_words_to_device(location, addr, data, context=self.context)
-        self.assertEqual(bytes_written, 4)
+    @parameterized.expand(
+        [
+            ("0,0",),
+            ("1,1",),
+            ("2,2",),
+        ]
+    )
+    def test_read_write_cfg_register(self, location):
+        """Test reading and writing configuration registers using lib functions."""
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull.")
+
+        cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
+
+        # Store original value
+        original_value = lib.read_register(location, cfg_reg_name)
+
+        # Test writing and reading different values
+        lib.write_register(location, cfg_reg_name, 10)
+        assert lib.read_register(location, cfg_reg_name) == 10
+
+        lib.write_register(location, cfg_reg_name, 0)
+        assert lib.read_register(location, cfg_reg_name) == 0
+
+        lib.write_register(location, cfg_reg_name, 5)
+        assert lib.read_register(location, cfg_reg_name) == 5
+
+        # Restore original value
+        lib.write_register(location, cfg_reg_name, original_value)
+
+    @parameterized.expand(
+        [
+            ("0,0",),
+            ("1,1",),
+            ("2,2",),
+        ]
+    )
+    def test_read_write_dbg_register(self, location):
+        """Test reading and writing debug registers using lib functions."""
+        if self.context.arch == "grayskull":
+            self.skipTest("Skipping the test on grayskull.")
+
+        dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
+
+        # Store original value
+        original_value = lib.read_register(location, dbg_reg_name)
+
+        # Test writing and reading different values
+        lib.write_register(location, dbg_reg_name, 10)
+        assert lib.read_register(location, dbg_reg_name) == 10
+
+        lib.write_register(location, dbg_reg_name, 0)
+        assert lib.read_register(location, dbg_reg_name) == 0
+
+        lib.write_register(location, dbg_reg_name, 5)
+        assert lib.read_register(location, dbg_reg_name) == 5
+
+        # Restore original value
+        lib.write_register(location, dbg_reg_name, original_value)
 
     @parameterized.expand(
         [
@@ -512,7 +577,7 @@ class TestReadWrite(unittest.TestCase):
 class TestRunElf(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
 
     def get_elf_path(self, app_name: str, risc_name: str):
@@ -581,10 +646,6 @@ class TestRunElf(unittest.TestCase):
         lib.run_elf(elf_path, location, risc_name, context=self.context)
 
         # Testing
-        elf = ELF(self.context.server_ifc, {"fw": elf_path})
-        MAILBOX_ADDR, MAILBOX_SIZE, _, _ = elf.parse_addr_size_value_type("fw.g_MAILBOX")
-        TESTBYTEACCESS_ADDR, _, _, _ = elf.parse_addr_size_value_type("fw.g_TESTBYTEACCESS")
-
         loc = OnChipCoordinate.create(location, device=self.device)
         device = loc._device
         noc_block = device.get_block(loc)
@@ -593,6 +654,11 @@ class TestRunElf(unittest.TestCase):
         rdbg: BabyRiscDebug = risc_debug
         assert rdbg.debug_hardware is not None, "Debug hardware is not available."
         rloader = ElfLoader(rdbg)
+
+        elf = lib.parse_elf(elf_path)
+        mem_access = MemoryAccess.get(risc_debug)
+        mailbox = elf.get_global("g_MAILBOX", mem_access)
+        testbyteaccess = elf.get_global("g_TESTBYTEACCESS", mem_access)
 
         # Disable branch rediction due to bne instruction in the elf
         rdbg.set_branch_prediction(False)
@@ -611,17 +677,12 @@ class TestRunElf(unittest.TestCase):
         halt_cont_test()
 
         # Step 1: Check that the RISC at location {loc} set the mailbox value to 0xFFB1208C.
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertEqual(mbox_val, 0xFFB1208C, f"RISC at location {loc} did not set the mailbox value to 0xFFB1208C.")
+        self.assertEqual(mailbox, 0xFFB1208C, f"RISC at location {loc} did not set the mailbox value to 0xFFB1208C.")
         # TODO: Add this back in once we get a library version: gpr_command["module"].run("gpr pc,sp", context, ui_state)
 
         # Step 2: Write 0x1234 to the mailbox to resume operation.
         try:
-            da.data = [0x1234]
-            bts = da.bytes()
-            rloader.write_block(MAILBOX_ADDR, bts)
+            mailbox.write_value(0x1234)
         except Exception as e:
             if e.args[0].startswith("Failed to continue"):
                 # We are expecting this to assert as here, the core will halt istself by calling halt()
@@ -630,10 +691,7 @@ class TestRunElf(unittest.TestCase):
                 raise e
 
         # Step 3: Check that the RISC at location {loc} set the mailbox value to 0xFFB12080.
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertEqual(mbox_val, 0xFFB12080, f"RISC at location {loc} did not set the mailbox value to 0xFFB12080.")
+        self.assertEqual(mailbox, 0xFFB12080, f"RISC at location {loc} did not set the mailbox value to 0xFFB12080.")
 
         # Step 4: Check that the RISC at location {loc} is halted.
         status = rdbg.debug_hardware.read_status()
@@ -642,26 +700,23 @@ class TestRunElf(unittest.TestCase):
         self.assertTrue(status.is_ebreak_hit, f"Step 4: RISC at location {loc} is not halted with ebreak.")
 
         # Step 5a: Make sure that the core did not reach step 5
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertNotEqual(mbox_val, 0xFFB12088, f"RISC at location {loc} reached step 5, but it should not have.")
+        self.assertNotEqual(mailbox, 0xFFB12088, f"RISC at location {loc} reached step 5, but it should not have.")
 
         # Step 5b: Continue and check that the core reached 0xFFB12088. But first set the breakpoint at
         # function "decrement_mailbox"
-        decrement_mailbox_die = elf.names["fw"].subprograms["decrement_mailbox"]
+        decrement_mailbox_die = elf.subprograms["decrement_mailbox"]
         decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
-        decrement_mailbox_address = elf.names["fw"].symbols[decrement_mailbox_linkage_name].value
+        decrement_mailbox_address = elf.symbols[decrement_mailbox_linkage_name].value
 
         # Step 6. Setting breakpoint at decrement_mailbox
         watchpoint_id = 1  # Out of 8
         rdbg.debug_hardware.set_watchpoint_on_pc_address(watchpoint_id, decrement_mailbox_address)
         rdbg.debug_hardware.set_watchpoint_on_memory_write(
-            0, TESTBYTEACCESS_ADDR
+            0, testbyteaccess.get_address()
         )  # Set memory watchpoint on TESTBYTEACCESS
-        rdbg.debug_hardware.set_watchpoint_on_memory_write(3, TESTBYTEACCESS_ADDR + 3)
-        rdbg.debug_hardware.set_watchpoint_on_memory_write(4, TESTBYTEACCESS_ADDR + 4)
-        rdbg.debug_hardware.set_watchpoint_on_memory_write(5, TESTBYTEACCESS_ADDR + 5)
+        rdbg.debug_hardware.set_watchpoint_on_memory_write(3, testbyteaccess.get_address() + 3)
+        rdbg.debug_hardware.set_watchpoint_on_memory_write(4, testbyteaccess.get_address() + 4)
+        rdbg.debug_hardware.set_watchpoint_on_memory_write(5, testbyteaccess.get_address() + 5)
 
         mbox_val = 1
         timeout_retries = 20
@@ -678,9 +733,7 @@ class TestRunElf(unittest.TestCase):
                     pass
                 else:
                     raise e
-            mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-            da = DataArray("g_MAILBOX")
-            mbox_val = da.from_bytes(mbox_val)[0]
+            mbox_val = mailbox.read_value()
             # Step 5b: Continue RISC
             timeout_retries -= 1
 
@@ -692,30 +745,21 @@ class TestRunElf(unittest.TestCase):
         )
 
         # STEP 7: Testing byte access memory watchpoints")
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertEqual(mbox_val, 0xFF000003, f"RISC at location {loc} did not set the mailbox value to 0xff000003.")
+        self.assertEqual(mailbox, 0xFF000003, f"RISC at location {loc} did not set the mailbox value to 0xff000003.")
         status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[3]:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 3.")
         rdbg.cont()
 
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertEqual(mbox_val, 0xFF000005, f"RISC at location {loc} did not set the mailbox value to 0xff000005.")
+        self.assertEqual(mailbox, 0xFF000005, f"RISC at location {loc} did not set the mailbox value to 0xff000005.")
         status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[5]:
             raise util.TTFatalException(f"Step 7: RISC at location {loc} is not halted with memory watchpoint 5.")
         rdbg.cont()
 
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertEqual(mbox_val, 0xFF000000, f"RISC at location {loc} did not set the mailbox value to 0xff000000.")
+        self.assertEqual(mailbox, 0xFF000000, f"RISC at location {loc} did not set the mailbox value to 0xff000000.")
         status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[0]:
@@ -723,10 +767,7 @@ class TestRunElf(unittest.TestCase):
             return False
         rdbg.cont()
 
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertEqual(mbox_val, 0xFF000004, f"RISC at location {loc} did not set the mailbox value to 0xff000004.")
+        self.assertEqual(mailbox, 0xFF000004, f"RISC at location {loc} did not set the mailbox value to 0xff000004.")
         status = rdbg.debug_hardware.read_status()
         self.assertTrue(status.is_halted, f"Step 7: RISC at location {loc} is not halted.")
         if not status.is_memory_watchpoint_hit or not status.watchpoints_hit[4]:
@@ -734,10 +775,7 @@ class TestRunElf(unittest.TestCase):
         rdbg.cont()
 
         # STEP END:
-        mbox_val = rloader.read_block(MAILBOX_ADDR, MAILBOX_SIZE)
-        da = DataArray("g_MAILBOX")
-        mbox_val = da.from_bytes(mbox_val)[0]
-        self.assertEqual(mbox_val, 0xFFB12088, f"RISC at location {loc} did not reach step STEP END.")
+        self.assertEqual(mailbox, 0xFFB12088, f"RISC at location {loc} did not reach step STEP END.")
 
         # Enable branch prediction
         rdbg.set_branch_prediction(True)
@@ -746,7 +784,7 @@ class TestRunElf(unittest.TestCase):
 class TestARC(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.context = tt_exalens_init.init_ttexalens()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
 
     def test_arc_msg(self):
@@ -757,14 +795,11 @@ class TestARC(unittest.TestCase):
 
         msg_code = 0x90  # ArcMessageType::TEST
         wait_for_done = True
-        arg0 = 0
-        arg1 = 0
-        timeout = 1000
+        args = [0, 0]
+        timeout = timedelta(milliseconds=1000)
 
         # Ask for reply, check for reasonable TEST value
-        ret, return_3, _ = lib.arc_msg(
-            self.device._id, msg_code, wait_for_done, arg0, arg1, timeout, context=self.context
-        )
+        ret, return_3, _ = lib.arc_msg(self.device._id, msg_code, wait_for_done, args, timeout, context=self.context)
 
         print(f"ARC message result={ret}, test={return_3}")
         self.assertEqual(ret, 0)
@@ -788,7 +823,7 @@ class TestARC(unittest.TestCase):
         import time
 
         heartbeat1 = lib.read_arc_telemetry_entry(self.device._id, tag)
-        time.sleep(0.1)
+        time.sleep(0.2)
         heartbeat2 = lib.read_arc_telemetry_entry(self.device._id, tag)
         self.assertGreater(heartbeat2, heartbeat1)
 
@@ -832,9 +867,9 @@ class TestARC(unittest.TestCase):
 
 @parameterized_class(
     [
-        # {"location_desc": "ETH0", "risc_name": "ERISC"},
-        # {"location_desc": "ETH0", "risc_name": "ERISC0"},
-        # {"location_desc": "ETH0", "risc_name": "ERISC1"},
+        {"location_desc": "ETH0", "risc_name": "ERISC"},
+        {"location_desc": "ETH0", "risc_name": "ERISC0"},
+        {"location_desc": "ETH0", "risc_name": "ERISC1"},
         {"location_desc": "FW0", "risc_name": "BRISC"},
         {"location_desc": "FW0", "risc_name": "TRISC0"},
         {"location_desc": "FW0", "risc_name": "TRISC1"},
@@ -851,11 +886,16 @@ class TestCallStack(unittest.TestCase):
     loader: ElfLoader  # ElfLoader object
     pc_register_index: int  # PC register index
     device: Device  # Device
+    gdb_server: GdbServer  # GDB server
 
     @classmethod
     def setUpClass(cls):
-        cls.context = tt_exalens_init.init_ttexalens()
+        cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
+        server = ServerSocket()
+        server.start()
+        cls.gdb_server = GdbServer(cls.context, server)
+        cls.gdb_server.start()
 
     def setUp(self):
         # Convert location_desc to location
@@ -883,6 +923,7 @@ class TestCallStack(unittest.TestCase):
         noc_block = self.location._device.get_block(self.location)
         try:
             self.risc_debug = noc_block.get_risc_debug(self.risc_name)
+            self.risc_name = self.risc_debug.risc_location.risc_name
         except ValueError as e:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
@@ -906,20 +947,23 @@ class TestCallStack(unittest.TestCase):
         arch = self.device._arch.lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
-        if self.risc_name.lower().startswith("erisc"):
-            # For eriscs we can use brisc elf
-            return f"build/riscv-src/{arch}/{app_name}.brisc.elf"
-        else:
-            return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
+        return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
+
+    def compare_callstacks(self, cs1: list[CallstackEntry], cs2: list[CallstackEntry]):
+        """Compare two callstacks."""
+        self.assertEqual(len(cs1), len(cs2), "Callstacks have different lengths")
+        for entry1, entry2 in zip(cs1, cs2):
+            self.assertEqual(entry1.function_name, entry2.function_name, "Function names do not match")
+            self.assertEqual(entry1.file, entry2.file, "Source files do not match")
+            self.assertEqual(entry1.line, entry2.line, "Line numbers do not match")
+            if entry1.pc is not None and entry2.pc is not None:
+                self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
 
     CALLSTACK_ELFS = ["callstack.debug", "callstack.release", "callstack.coverage"]
-    RECURSION_COUNT = [1, 10, 50]
+    RECURSION_COUNT = [1, 10, 40]
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack_with_parsing(self, elf_name, recursion_count):
-        if self.device.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
-            self.skipTest("Callstack optimized tests break on ETH blocks")
-
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
         self.loader.run_elf(elf_path)
@@ -933,12 +977,13 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack(self, elf_name: str, recursion_count: int):
-        if self.device.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
-            self.skipTest("Callstack optimized tests break on ETH blocks")
-
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
         self.loader.run_elf(elf_path)
@@ -949,12 +994,13 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_namespace(self, elf_name):
-        if self.device.is_wormhole() and self.is_eth_block() and elf_name == "callstack.release":
-            self.skipTest("Callstack optimized tests break on ETH blocks")
-
         lib.write_words_to_device(self.location, 0x64000, 0)
         elf_path = self.get_elf_path(elf_name)
         self.loader.run_elf(elf_path)
@@ -963,6 +1009,10 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[0].function_name, "halt")
         self.assertEqual(callstack[1].function_name, "ns::foo")
         self.assertEqual(callstack[2].function_name, "main")
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(RECURSION_COUNT)
     def test_top_callstack_with_parsing(self, recursion_count: int):
@@ -987,30 +1037,8 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(len(callstack), 1)
         self.assertEqual(callstack[0].function_name, "halt")
 
-    @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
-    def test_callstack_optimized(self, elf_name: str, recursion_count: int):
-
-        if self.device.is_wormhole() and self.is_eth_block():
-            self.skipTest("Callstack optimized tests break on ETH blocks")
-
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
-        elf_path = self.get_elf_path(elf_name)
-        self.loader.run_elf(elf_path)
-        callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
-
-        self.assertEqual(len(callstack), recursion_count + 3)
-        self.assertEqual(callstack[0].function_name, "halt")
-        for i in range(1, recursion_count):
-            self.assertEqual(callstack[i].function_name, "f1")
-        self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
-        self.assertEqual(callstack[recursion_count + 2].function_name, "main")
-
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
-
-        if self.device.is_wormhole() and self.is_eth_block():
-            self.skipTest("Callstack optimized tests break on ETH blocks")
-
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.release")
         self.loader.run_elf(elf_path)

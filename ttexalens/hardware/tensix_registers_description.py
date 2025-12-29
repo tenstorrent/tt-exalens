@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 
 
 @dataclass
-class TensixConfigurationRegistersDescription:
+class TensixRegisterDescription:
     # ALU
     alu_config: list[dict[str, str]] = field(default_factory=list)
 
@@ -21,3 +21,15 @@ class TensixConfigurationRegistersDescription:
     pack_edge_offset: list[dict[str, str]] = field(default_factory=list)
     pack_counters: list[dict[str, str]] = field(default_factory=list)
     pack_strides: list[dict[str, str]] = field(default_factory=list)
+
+    # GENERAL PURPOSE REGISTERS
+    general_purpose_registers: list[dict[str, str]] = field(default_factory=list)
+
+
+@dataclass
+class TensixDebugBusDescription:
+    # REGISTER WINDOW COUNTERS
+    register_window_counter_groups: list[str] = field(default_factory=list)
+
+    # ADDRESS COUNTERS
+    address_counter_groups: list[str] = field(default_factory=list)

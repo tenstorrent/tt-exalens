@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/chrono.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/tuple.h>
@@ -44,9 +45,9 @@ class TTExaLensImplementation {
         return _check_result(implementation->write32(noc_id, chip_id, noc_x, noc_y, address, data));
     }
 
-    nanobind::bytes read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                         uint32_t size) {
-        auto data = implementation->read(noc_id, chip_id, noc_x, noc_y, address, size);
+    nanobind::bytes read(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address, uint32_t size,
+                         bool use_4B_mode) {
+        auto data = implementation->read(noc_id, chip_id, noc_x, noc_y, address, size, use_4B_mode);
         if (data) {
             // For nanobind, we can use nanobind::bytes directly
             return nanobind::bytes(reinterpret_cast<const char *>(data.value().data()), size);
@@ -55,10 +56,11 @@ class TTExaLensImplementation {
     }
 
     uint32_t write(uint8_t noc_id, uint8_t chip_id, uint8_t noc_x, uint8_t noc_y, uint64_t address,
-                   nanobind::bytes data) {
+                   nanobind::bytes data, bool use_4B_mode) {
         const char *data_ptr = data.c_str();
         return _check_result(implementation->write(noc_id, chip_id, noc_x, noc_y, address,
-                                                   reinterpret_cast<const uint8_t *>(data_ptr), data.size()));
+                                                   reinterpret_cast<const uint8_t *>(data_ptr), data.size(),
+                                                   use_4B_mode));
     }
 
     uint32_t pci_read32_raw(uint8_t chip_id, uint64_t address) {
@@ -94,8 +96,8 @@ class TTExaLensImplementation {
     }
 
     std::tuple<int, uint32_t, uint32_t> arc_msg(uint8_t noc_id, uint8_t chip_id, uint32_t msg_code, bool wait_for_done,
-                                                uint32_t arg0, uint32_t arg1, int timeout) {
-        return _check_result(implementation->arc_msg(noc_id, chip_id, msg_code, wait_for_done, arg0, arg1, timeout));
+                                                const std::vector<uint32_t> &args, std::chrono::milliseconds timeout) {
+        return _check_result(implementation->arc_msg(noc_id, chip_id, msg_code, wait_for_done, args, timeout));
     }
 
     uint32_t read_arc_telemetry_entry(uint8_t chip_id, uint8_t telemetry_tag) {
@@ -108,6 +110,11 @@ class TTExaLensImplementation {
 
     std::optional<uint64_t> get_device_unique_id(uint8_t chip_id) {
         return implementation->get_device_unique_id(chip_id);
+    }
+
+    void warm_reset(bool is_galaxy_configuration) { implementation->warm_reset(is_galaxy_configuration); }
+    std::optional<std::tuple<uint8_t, uint8_t>> get_remote_transfer_eth_core(uint8_t chip_id) {
+        return implementation->get_remote_transfer_eth_core(chip_id);
     }
 };
 
@@ -147,9 +154,9 @@ NB_MODULE(ttexalens_pybind, m) {
         .def("write32", &TTExaLensImplementation::write32, "Writes 4 bytes to address", "noc_id"_a, "chip_id"_a,
              "noc_x"_a, "noc_y"_a, "address"_a, "data"_a)
         .def("read", &TTExaLensImplementation::read, "Reads data from address", "noc_id"_a, "chip_id"_a, "noc_x"_a,
-             "noc_y"_a, "address"_a, "size"_a)
+             "noc_y"_a, "address"_a, "size"_a, "use_4B_mode"_a)
         .def("write", &TTExaLensImplementation::write, "Writes data to address", "noc_id"_a, "chip_id"_a, "noc_x"_a,
-             "noc_y"_a, "address"_a, "data"_a)
+             "noc_y"_a, "address"_a, "data"_a, "use_4B_mode"_a)
         .def("pci_read32_raw", &TTExaLensImplementation::pci_read32_raw, "Reads 4 bytes from PCI address", "chip_id"_a,
              "address"_a)
         .def("pci_write32_raw", &TTExaLensImplementation::pci_write32_raw, "Writes 4 bytes to PCI address", "chip_id"_a,
@@ -168,13 +175,17 @@ NB_MODULE(ttexalens_pybind, m) {
         .def("get_device_soc_description", &TTExaLensImplementation::get_device_soc_description,
              "Returns device SoC description", "chip_id"_a)
         .def("arc_msg", &TTExaLensImplementation::arc_msg, "Send ARC message", "noc_id"_a, "chip_id"_a, "msg_code"_a,
-             "wait_for_done"_a, "arg0"_a, "arg1"_a, "timeout"_a)
+             "wait_for_done"_a, "args"_a, "timeout"_a)
         .def("read_arc_telemetry_entry", &TTExaLensImplementation::read_arc_telemetry_entry, "Read ARC telemetry entry",
              "chip_id"_a, "telemetry_tag"_a)
         .def("get_firmware_version", &TTExaLensImplementation::get_firmware_version, "Returns firmware version",
              "chip_id"_a)
         .def("get_device_unique_id", &TTExaLensImplementation::get_device_unique_id, "Returns device unique id",
-             "chip_id"_a);
+             "chip_id"_a)
+        .def("warm_reset", &TTExaLensImplementation::warm_reset, "Warm resets the device",
+             "is_galaxy_configuration"_a = false)
+        .def("get_remote_transfer_eth_core", &TTExaLensImplementation::get_remote_transfer_eth_core,
+             "Returns currently active Ethernet core", "chip_id"_a);
 
     // Bind factory functions
     m.def("open_device", &open_device, "Opens tt device. Returns TTExaLensImplementation object or None if failed.",

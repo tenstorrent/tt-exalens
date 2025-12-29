@@ -10,5 +10,10 @@ permissions:
 
 jobs:
   build-and-test:
+    strategy:
+      matrix:
+        ubuntu-version: [ "22.04", "24.04" ]
     uses: ./.github/workflows/build-and-test.yml
+    with:
+      ubuntu-version: ${{ matrix.ubuntu-version }}
     secrets: inherit

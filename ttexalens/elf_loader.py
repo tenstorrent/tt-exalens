@@ -18,8 +18,7 @@ class ElfLoader:
     This class is used to load elf file to a RISC-V core.
     """
 
-    def __init__(self, risc_debug: RiscDebug, verbose=False):
-        self.verbose = verbose
+    def __init__(self, risc_debug: RiscDebug):
         self.risc_debug = risc_debug
 
     @property
@@ -82,22 +81,15 @@ class ElfLoader:
         """
         Writes a block of data to a given address through the debug interface.
         """
-        with self.risc_debug.ensure_halted():
-            for i in range(0, len(data), 4):
-                word = data[i : i + 4]
-                word = word.ljust(4, b"\x00")
-                word = int.from_bytes(word, byteorder="little")
-                self.risc_debug.write_memory(address + i, word)
+        with self.risc_debug.ensure_private_memory_access():
+            self.risc_debug.write_memory_bytes(address, data)
 
     def read_block_through_debug(self, address, byte_count):
         """
         Reads a block of data from a given address through the debug interface.
         """
-        with self.risc_debug.ensure_halted():
-            data = bytearray()
-            for i in range(0, byte_count, 4):
-                word = self.risc_debug.read_memory(address + i)
-                data.extend(word.to_bytes(4, byteorder="little"))
+        with self.risc_debug.ensure_private_memory_access():
+            data = self.risc_debug.read_memory_bytes(address, byte_count)
         return data
 
     @staticmethod
@@ -243,15 +235,21 @@ class ElfLoader:
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
 
-    def load_elf(self, elf_path: str):
+    def load_elf(self, elf_path: str, return_start_address: bool = False) -> int | None:
         # Risc must be in reset
         assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.risc_location} is not in reset."
 
         # Load elf file to the L1 memory; avoid writing to private sections
-        init_section_address = self.load_elf_sections(elf_path, loader_data=".loader_init", loader_code=".loader_code")
+        init_section_address: int | None = self.load_elf_sections(
+            elf_path, loader_data=".loader_init", loader_code=".loader_code"
+        )
         assert init_section_address is not None, "No .init section found in the ELF file"
 
-        self.risc_debug.set_code_start_address(init_section_address)
+        if return_start_address:
+            return init_section_address
+        else:
+            self.risc_debug.set_code_start_address(init_section_address)
+            return None
 
     def run_elf(self, elf_path: str):
         # Make sure risc is in reset

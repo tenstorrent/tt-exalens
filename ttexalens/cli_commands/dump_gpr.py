@@ -3,11 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  gpr   [ <reg-list> ] [ <elf-file> ] [ -v ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ]
+  gpr   [ <reg-list> ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ]
 
 Options:
     <reg-list>                          List of registers to dump, comma-separated
-    <elf-file>                          Name of the elf file to use to resolve the source code location
 
 Description:
   Prints all RISC-V registers for BRISC, TRISC0, TRISC1, and TRISC2 on the current core.
@@ -18,25 +17,30 @@ Examples:
   gpr
   gpr ra,sp,pc
 """
-command_metadata = {
-    "short": "gpr",
-    "type": "low-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc", "--verbose", "--risc"],
-}
-
 import tabulate
 
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+import ttexalens.tt_exalens_lib as lib
 from ttexalens.hardware.baby_risc_debug import get_register_index, get_register_name
+from ttexalens.hardware.risc_debug import CallstackEntry, RiscLocation
 from ttexalens.uistate import UIState
 
-from ttexalens import command_parser
 from ttexalens import util as util
-from ttexalens.firmware import ELF
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
+
+command_metadata = CommandMetadata(
+    short_name="gpr",
+    long_name="dump-gpr",
+    type="low-level",
+    description=__doc__,
+    common_option_names=[
+        CommonCommandOptions.Device,
+        CommonCommandOptions.Location,
+        CommonCommandOptions.Risc,
+    ],
+)
 
 
 def reg_included(reg_index, regs_to_include):
@@ -48,12 +52,9 @@ def reg_included(reg_index, regs_to_include):
 def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, args, riscs_to_include):
     regs_to_include = args["<reg-list>"].split(",") if args["<reg-list>"] else []
     regs_to_include = [get_register_index(reg) for reg in regs_to_include]
-    elf_file = args["<elf-file>"] if args["<elf-file>"] else None
-    elf = ELF(context.server_ifc, {"elf": elf_file}) if elf_file else None
-    pc_map = elf.names["elf"].file_line if elf else None
 
-    reg_value: dict[int, dict[int, int]] = {}
-
+    reg_value: dict[str, dict[int, int]] = {}
+    callstack_value: dict[str, list[CallstackEntry]] = {}
     halted_state = {}
     reset_state = {}
 
@@ -83,6 +84,14 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
                 reg_value[risc_name][reg_id] = reg_val
             if not already_halted:
                 risc.cont()  # Resume the core if it was not found halted
+            try:
+                elf_path = context.get_risc_elf_path(RiscLocation(loc, neo_id=None, risc_name=risc_name))
+                if elf_path is not None:
+                    elf = lib.parse_elf(elf_path, context)
+                    callstack_value[risc_name] = lib.top_callstack(risc.get_pc(), elf, None, context)
+            except:
+                # Unable to load ELF file for this RISC
+                pass
         else:
             util.ERROR(f"Core {risc_name} cannot be halted.")
 
@@ -98,12 +107,10 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
                 row.append("")
                 continue
             src_location = ""
-            if pc_map and reg_id == 32:
-                PC = reg_value[risc_id][reg_id]
-                if PC in pc_map:
-                    source_loc = pc_map[PC]
-                    if source_loc:
-                        src_location = f"- {source_loc[0].decode('utf-8')}:{source_loc[1]}"
+            if reg_id == 32:  # PC register
+                top_callstack = callstack_value.get(risc_id, None)
+                if top_callstack is not None and len(top_callstack) > 0:
+                    src_location = f"- {top_callstack[0].file}:{top_callstack[0].line}"
             row.append(f"0x{reg_value[risc_id][reg_id]:08x}{src_location}" if reg_id in reg_value[risc_id] else "-")
         table.append(row)
 
@@ -129,15 +136,12 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
 
 
 def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
-
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            riscs_to_include = list(dopt.for_each("--risc", context, ui_state, device=device, location=loc))
+    dopt = tt_docopt(command_metadata, cmd_text)
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
+            riscs_to_include = list(
+                dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc)
+            )
             table = get_register_data(device, context, loc, dopt.args, riscs_to_include)
             if table:
                 util.INFO(f"RISC-V registers for location {loc} on device {device.id()}")

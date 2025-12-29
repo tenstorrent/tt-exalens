@@ -10,7 +10,8 @@ from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.blackhole.baby_risc_debug import BlackholeBabyRiscDebug
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import debug_bus_signal_map
+from ttexalens.memory_map import MemoryMap
+from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
 from ttexalens.hardware.blackhole.functional_worker_registers import register_map
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
@@ -18,6 +19,7 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
+    TensixGeneralPurposeRegisterDescription,
     RegisterDescription,
     RegisterStore,
 )
@@ -27,6 +29,8 @@ def get_register_base_address_callable(noc_id: int) -> Callable[[RegisterDescrip
     def get_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
         if isinstance(register_description, ConfigurationRegisterDescription):
             return DeviceAddress(private_address=0xFFEF0000)
+        elif isinstance(register_description, TensixGeneralPurposeRegisterDescription):
+            return DeviceAddress(private_address=0xFFE00000)
         elif isinstance(register_description, DebugRegisterDescription):
             return DeviceAddress(private_address=0xFFB12000, noc_address=0xFFB12000)
         elif noc_id == 0:
@@ -48,12 +52,15 @@ register_store_noc0_initialization = RegisterStore.create_initialization(
 register_store_noc1_initialization = RegisterStore.create_initialization(
     [register_map, niu_register_map], get_register_base_address_callable(noc_id=1)
 )
+debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
 
 class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
         super().__init__(
-            location, block_type="functional_workers", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self)
+            location,
+            block_type="functional_workers",
+            debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
         )
 
         self.l1 = MemoryBlock(
@@ -171,6 +178,17 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+        self.memory_map.map_blocks(
+            {
+                "l1": self.l1,
+                "brisc_data_private_memory": self.brisc.data_private_memory,  # type: ignore[dict-item]
+                "ncrisc_data_private_memory": self.ncrisc.data_private_memory,  # type: ignore[dict-item]
+                "trisc0_data_private_memory": self.trisc0.data_private_memory,  # type: ignore[dict-item]
+                "trisc1_data_private_memory": self.trisc1.data_private_memory,  # type: ignore[dict-item]
+                "trisc2_data_private_memory": self.trisc2.data_private_memory,  # type: ignore[dict-item]
+            }
+        )
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:

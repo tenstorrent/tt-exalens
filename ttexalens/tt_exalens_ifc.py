@@ -49,7 +49,7 @@ class TTExaLensPybind(TTExaLensCommunicator):
 
     def __init__(
         self,
-        wanted_devices: list = [],
+        wanted_devices: list[int] = [],
         init_jtag=False,
         initialize_with_noc1=False,
         simulation_directory: str | None = None,
@@ -425,6 +425,12 @@ def init_pybind(
 ):
     if not wanted_devices:
         wanted_devices = []
+
+    if "TT_LOGGER_LEVEL" not in os.environ:
+        if util.Verbosity.get() == util.Verbosity.DEBUG:
+            os.environ["TT_LOGGER_LEVEL"] = "debug"
+        elif util.Verbosity.get() == util.Verbosity.TRACE:
+            os.environ["TT_LOGGER_LEVEL"] = "trace"
 
     communicator = TTExaLensUmdImplementation(wanted_devices, init_jtag, initialize_with_noc1, simulation_directory)
     util.VERBOSE("Device opened successfully.")

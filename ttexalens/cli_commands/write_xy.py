@@ -21,20 +21,19 @@ Examples:
   wxy 0,0 0x0 0x1234 --repeat 10
 """
 
-command_metadata = {
-    "short": "wxy",
-    "type": "low-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-}
-
-from docopt import docopt
-
 from ttexalens.uistate import UIState
 import ttexalens.util as util
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import write_words_to_device
+from ttexalens.command_parser import CommandMetadata, tt_docopt
+
+command_metadata = CommandMetadata(
+    short_name="wxy",
+    long_name="write-xy",
+    type="low-level",
+    description=__doc__,
+)
 
 
 # A helper to print the result of a single PCI read
@@ -44,7 +43,7 @@ def print_a_write(core_loc_str, addr, val, comment=""):
 
 
 def run(cmd_text, context, ui_state: UIState):
-    args = docopt(__doc__, argv=cmd_text.split()[1:])
+    args = tt_docopt(command_metadata, cmd_text).args
 
     core_loc_str = args["<core-loc>"]
     addr = int(args["<addr>"], 0)

@@ -16,8 +16,6 @@ Options:
   --type <data-type>  Data type of the register. This affects print format. Options: [INT_VALUE, ADDRESS, MASK, FLAGS, TENSIX_DATA_FORMAT]. Default: INT_VALUE.
   --write <value>     Value to write to the register. If not given, register is dumped instead.
   --max <max-regs>    Maximum number of register names to print when searching or all for everything. Default: 10.
-  -d <device>         Device ID. Optional. Default: current device.
-  -l <loc>            Core location in X-Y or R,C format. Default: current core.
   -n <noc-id>         NOC ID. Optional. Default: 0.
 
 Description:
@@ -39,20 +37,20 @@ Examples:
   reg dbg(0x54) -d 0                                  # Prints debug register with address 0x54 for device 0
 """
 
-command_metadata = {
-    "short": "reg",
-    "type": "low-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "command_option_names": ["--device", "--loc"],
-}
-
 from fnmatch import fnmatch
-from ttexalens import command_parser
 from ttexalens.device import Device
 from ttexalens.register_store import REGISTER_DATA_TYPE, format_register_value, parse_register_value
 from ttexalens.uistate import UIState
 from ttexalens.util import INFO, WARN
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
+
+command_metadata = CommandMetadata(
+    short_name="reg",
+    long_name="tensix-reg",
+    type="low-level",
+    description=__doc__,
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+)
 
 # Possible values
 reg_types = ["cfg", "dbg"]
@@ -73,10 +71,7 @@ def print_matches(pattern: str, strings: list[str], max_prints: int) -> None:
 
 
 def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-    )
+    dopt = tt_docopt(command_metadata, cmd_text)
 
     value: int | None = None
     value_str: str | None = None
@@ -97,8 +92,8 @@ def run(cmd_text, context, ui_state: UIState):
         value = parse_register_value(value_str) if value_str else None
 
     device: Device
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             noc_block = device.get_block(loc)
             register_store = noc_block.get_register_store(noc_id)
 

@@ -106,13 +106,13 @@ class MyBuild(build_ext):
             "ttexalens_lib": {"path": "ttexalens", "files": get_ttexalens_py_files(), "output": "ttexalens"},
             "libs": {
                 "path": "build/lib",
-                "files": ["libdevice.so", get_pybind_filename()] + get_libjtag(),
+                "files": [get_pybind_filename()] + get_libjtag(),
                 "output": "ttexalens/lib",
                 "strip": True,
             },
             "gdb-client": {
                 "path": "build_riscv/sfpi/compiler/bin",
-                "files": ["riscv32-tt-elf-gdb"],
+                "files": ["riscv-tt-elf-gdb"],
                 "output": "ttexalens/sfpi/compiler/bin",
                 "strip": True,
             },
@@ -139,33 +139,11 @@ class MyBuild(build_ext):
 # Fake TTExaLens extension
 ttexalens_fake_extension = TTExtension("ttexalens.fake_extension")
 
-with open("README.md", "r") as f:
-    long_description = f.read()
-
-# Add specific requirements for TTExaLens
-with open(f"{ttexalens_folder_path}/requirements.txt", "r") as f:
-    requirements = [r for r in f.read().splitlines() if not r.startswith("-r")]
-
-short_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"]).decode("ascii").strip()
-date = datetime.today().strftime("%y%m%d")
-
-version = "0.1." + date + "+dev." + short_hash
-
 setup(
-    name="ttexalens",
-    version=version,
+    name="tt-exalens",
     packages=["ttexalens"],
     package_dir={"ttexalens": "ttexalens"},
-    author="Tenstorrent",
-    url="http://www.tenstorrent.com",
-    author_email="info@tenstorrent.com",
-    description="Debugger for Tenstorrent devices",
-    python_requires=">=3.8",
     ext_modules=[ttexalens_fake_extension],
     cmdclass=dict(build_ext=MyBuild),
     zip_safe=False,
-    install_requires=requirements,
-    license="Apache-2.0",
-    keywords="debugging tenstorrent",
-    entry_points={"console_scripts": ["tt-lens = ttexalens.cli:main", "tt-exalens = ttexalens.cli:main"]},
 )

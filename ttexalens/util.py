@@ -2,13 +2,74 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from contextlib import nullcontext, AbstractContextManager, contextmanager
+from typing import Any, Iterator
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
 import traceback, socket
 import ryml, yaml
-from ttexalens import Verbosity
 from fnmatch import fnmatch
+from enum import Enum
+
+
+# Setting the verbosity of messages shown
+class Verbosity(Enum):
+    NONE = 0
+    ERROR = 1
+    WARN = 2
+    INFO = 3
+    VERBOSE = 4
+    DEBUG = 5
+    TRACE = 6
+
+    @staticmethod
+    def set(verbosity: "int | Verbosity") -> None:
+        """Set the verbosity level of messages shown.
+
+        Args:
+            verbosity (int): Verbosity level.
+                1: ERROR
+                2: WARN
+                3: INFO
+                4: VERBOSE
+                5: DEBUG
+                6: TRACE
+        """
+        global VERBOSITY_VALUE
+
+        VERBOSITY_VALUE = Verbosity(verbosity)
+
+    @staticmethod
+    def get() -> "Verbosity":
+        """Get the verbosity level of messages shown.
+
+        Returns:
+            int: Verbosity level.
+                1: ERROR
+                2: WARN
+                3: INFO
+                4: VERBOSE
+                5: DEBUG
+                6: TRACE
+        """
+        global VERBOSITY_VALUE
+
+        return VERBOSITY_VALUE
+
+    @staticmethod
+    def supports(verbosity: "Verbosity") -> bool:
+        """Check if the verbosity level is supported and should be printed.
+
+        Returns:
+            bool: True if supported, False otherwise.
+        """
+        global VERBOSITY_VALUE
+
+        return VERBOSITY_VALUE.value >= verbosity.value
+
+
+VERBOSITY_VALUE: Verbosity = Verbosity.INFO
 
 # Pretty print exceptions (traceback)
 def notify_exception(exc_type, exc_value, tb):
@@ -78,24 +139,29 @@ def with_hex_if_possible(val):
     return f"{val}{to_hex_if_possible(val)}"
 
 
-# Colors
-CLR_RED = "\033[31m"
-CLR_GREEN = "\033[32m"
-CLR_YELLOW = "\033[33m"
-CLR_BLUE = "\033[34m"
-CLR_VIOLET = "\033[35m"
-CLR_TEAL = "\033[36m"
-CLR_GREY = "\033[37m"
-CLR_ORANGE = "\033[38:2:205:106:0m"
-CLR_WHITE = "\033[38:2:255:255:255m"
+# Cache the result of should_use_color
+_USE_COLOR = sys.stdout.isatty()
 
-CLR_END = "\033[0m"
+
+# Colors
+CLR_RED = "\033[31m" if _USE_COLOR else ""
+CLR_GREEN = "\033[32m" if _USE_COLOR else ""
+CLR_YELLOW = "\033[33m" if _USE_COLOR else ""
+CLR_BLUE = "\033[34m" if _USE_COLOR else ""
+CLR_VIOLET = "\033[35m" if _USE_COLOR else ""
+CLR_TEAL = "\033[36m" if _USE_COLOR else ""
+CLR_GREY = "\033[30m" if _USE_COLOR else ""
+CLR_ORANGE = "\033[38:2:205:106:0m" if _USE_COLOR else ""
+CLR_WHITE = "\033[37m" if _USE_COLOR else ""
+
+CLR_END = "\033[0m" if _USE_COLOR else ""
 
 CLR_ERR = CLR_RED
 CLR_WARN = CLR_ORANGE
 CLR_INFO = CLR_BLUE
 CLR_VERBOSE = CLR_GREY
 CLR_DEBUG = CLR_GREEN
+CLR_TRACE = CLR_TEAL
 
 CLR_PROMPT = "<style color='green'>"
 CLR_PROMPT_END = "</style>"
@@ -146,6 +212,11 @@ def DEBUG(s, **kwargs):
         print(f"{CLR_DEBUG}{s}{CLR_END}", **kwargs)
 
 
+def TRACE(s, **kwargs):
+    if Verbosity.supports(Verbosity.TRACE):
+        print(f"{CLR_TRACE}{s}{CLR_END}", **kwargs)
+
+
 def INFO(s, **kwargs):
     if Verbosity.supports(Verbosity.INFO):
         print(f"{CLR_INFO}{s}{CLR_END}", **kwargs)
@@ -154,6 +225,61 @@ def INFO(s, **kwargs):
 def VERBOSE(s, **kwargs):
     if Verbosity.supports(Verbosity.VERBOSE):
         print(f"{CLR_VERBOSE}{s}{CLR_END}", **kwargs)
+
+
+def trim_ascii_escape(input: Any) -> Any:
+    if not isinstance(input, str):
+        return input
+
+    import re
+
+    # Regex pattern to match ANSI escape sequences
+    ansi_escape = re.compile(r"(?:\x1B[@-Z\\-_]|[\x80-\x9A\x9C-\x9F]|(?:\x1B\[|\x9B)[0-?]*[ -/]*[@-~])")
+    return ansi_escape.sub("", input)
+
+
+class Tee:
+    def __init__(self, terminal_output, file_output):
+        self.terminal_output = terminal_output
+        self.file_output = file_output
+
+    def write(self, data):
+        if self.terminal_output is not None:
+            self.terminal_output.write(data)
+        self.file_output.write(trim_ascii_escape(data))
+
+    def flush(self):
+        if self.terminal_output is not None:
+            self.terminal_output.flush()
+        self.file_output.flush()
+
+    def __call__(self, *args: Any, **kwds: Any) -> Any:
+        raise NotImplementedError()
+
+
+def redirect_output_to_file_and_terminal(
+    file_path: str | None, show_terminal_output: bool = True, append: bool = False
+) -> AbstractContextManager[None]:
+    if file_path is None:
+        # No redirection needed
+        return nullcontext()
+
+    mode = "a" if append else "w"
+
+    @contextmanager
+    def redirect_output():
+        original_stdout = sys.stdout
+        original_stderr = sys.stderr
+        try:
+            with open(file_path, mode) as f:
+                sys.stdout = Tee(original_stdout if show_terminal_output else None, f)
+                sys.stderr = Tee(original_stderr if show_terminal_output else None, f)
+                yield
+        finally:
+            sys.stdout = original_stdout
+            sys.stderr = original_stderr
+
+    return redirect_output()
 
 
 # Given a list l of possibly shuffled integers from 0 to len(l), the function returns reverse mapping
@@ -174,11 +300,13 @@ def dict_to_table(dct):
 
 
 # Converts list of dictionaries with same keys to a table where every column is one dictionary.
-def dict_list_to_table(dicts: list[dict], table_name: str, column_names: list[str]) -> str:
+def dict_list_to_table(
+    dicts: list[dict[str, int]] | list[dict[str, str]], table_name: str, column_names: list[str]
+) -> str:
     keys = dicts[0].keys()
     data = []
     for key in keys:
-        row = [key]
+        row: list[str | int] = [key]
         for d in dicts:
             if key in d:
                 row.append(d[key])
@@ -344,8 +472,8 @@ KeyType = TypeVar("KeyType")
 ValueType = TypeVar("ValueType")
 
 
-class RymlLazyDictionaryIterator:
-    def __init__(self, dictionary: "RymlLazyDictionary"):
+class RymlLazyDictionaryIterator(Iterator[KeyType]):
+    def __init__(self, dictionary: "RymlLazyDictionary[KeyType, ValueType]"):
         self.dictionary = dictionary
         self.index = 0
 
@@ -367,7 +495,7 @@ class RymlLazyDictionary(Mapping[KeyType, ValueType]):
         self.tree = tree
         self.node = node
         self.length = self.tree.num_children(self.node)
-        self._items = dict()
+        self._items: dict[KeyType, ValueType] = dict()
 
     @cached_property
     def child_nodes(self):
@@ -376,17 +504,18 @@ class RymlLazyDictionary(Mapping[KeyType, ValueType]):
             child_nodes[self.get_key(child_node)] = child_node
         return child_nodes
 
-    def get_key(self, child_node):
-        return try_int(str(self.tree.key(child_node), "utf8"), base=0)
+    def get_key(self, child_node) -> KeyType:
+        return try_int(str(self.tree.key(child_node), "utf8"), base=0)  # type: ignore
 
     def __contains__(self, key):
         return key in self.child_nodes
 
     def __getitem__(self, key: KeyType) -> ValueType:
-        item = self._items.get(key)
-        if item == None:
+        item: ValueType | None = self._items.get(key)
+        if item is None:
             child_node = self.child_nodes[key]
             item = ryml_to_lazy(self.tree, child_node)
+            assert item is not None
             self._items[key] = item
         return item
 
@@ -879,7 +1008,7 @@ def color_text_by_index(text, color_index):
 
 # Return a list of up to n elements from strings that match the given wildcard pattern.
 # Defaults to 10 elements, negative values of max or "all" mean all.
-def search(strings: list[str], pattern: str, max: str | int = "all") -> list[str]:
+def search(strings: list[str], pattern: str = "*", max: str | int = "all") -> list[str]:
     try:
         if max != "all":
             n = int(max)
@@ -894,7 +1023,7 @@ def search(strings: list[str], pattern: str, max: str | int = "all") -> list[str
 
     pattern = pattern.lower()
     results = []
-
+    strings = sorted(strings)
     for s in strings:
         if n == 0:
             print(f"There are matches remaining. To see more results, increase the --max value.")

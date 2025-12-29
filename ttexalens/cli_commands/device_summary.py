@@ -5,11 +5,11 @@
 Usage:
   device [-d <device-id>] [<axis-coordinate> [<cell-contents>]] [--no-legend]
 
-Arguments:
-  device-id            ID of the device [default: all]
-  axis-coordinate      Coordinate system for the axis [default: logical-tensix]
+Options:
+  -d <device-id>       ID of the device [default: all]
+  <axis-coordinate>    Coordinate system for the axis [default: logical-tensix]
                        Supported: noc0, noc1, translated, die, logical-tensix, logical-eth, logical-dram
-  cell-contents        A comma separated list of the cell contents [default: riscv]
+  <cell-contents>      A comma separated list of the cell contents [default: riscv]
                        Supported:
                          riscv - show the status of the RISC-V ('R': running, '-': in reset), or block type if there are no RISC-V cores
                          block - show the type of the block at that coordinate
@@ -30,23 +30,20 @@ Examples:
   device -d 0 noc0 block --no-legend  # Shows the block type on noc0 axis for device 0 without legend
 """  # Note: Limit the above comment to 120 characters in width
 
-command_metadata = {
-    "short": "d",
-    "long": "device",
-    "type": "high-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "common_option_names": ["--device"],
-}
-
-from docopt import docopt
-
-from ttexalens import command_parser, util as util
+from ttexalens import util as util
 from ttexalens.device import Device
 from ttexalens.coordinate import VALID_COORDINATE_TYPES, OnChipCoordinate
 from ttexalens.context import LimitedContext
-from ttexalens.tt_exalens_lib import read_words_from_device
 from ttexalens.uistate import UIState
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
+
+command_metadata = CommandMetadata(
+    short_name="d",
+    long_name="device",
+    type="high-level",
+    description=__doc__,
+    common_option_names=[],
+)
 
 
 def color_block(text: str, block_type: str):
@@ -77,11 +74,7 @@ def get_riscv_run_status(device: Device, loc: OnChipCoordinate) -> str:
 
 
 def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
+    dopt = tt_docopt(command_metadata, cmd_text)
     dont_print_legend = dopt.args["--no-legend"]
     axis_coordinate = dopt.args["<axis-coordinate>"] or "logical-tensix"
     valid_axis_types = [coord for coord in VALID_COORDINATE_TYPES if coord != "logical"]
@@ -127,7 +120,7 @@ def run(cmd_text, context, ui_state: UIState):
         print_legend("")
 
     device: Device
-    for device in dopt.for_each("--device", context, ui_state):
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
         device_id_str = f"{device.id()}"
         if device.unique_id is not None:

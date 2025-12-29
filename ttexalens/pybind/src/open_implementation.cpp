@@ -92,6 +92,7 @@ static std::string create_simulation_cluster_descriptor_file(tt::ARCH arch) {
     cluster_descriptor << "boardtype: {" << std::endl;
     cluster_descriptor << "   0: " << arch_str << "Simulator," << std::endl;
     cluster_descriptor << "}" << std::endl;
+    cluster_descriptor << "io_device_type: SIMULATION" << std::endl;
 
     return cluster_descriptor_path;
 }
@@ -143,8 +144,8 @@ static std::string jtag_create_device_soc_descriptor(const tt::umd::SocDescripto
 namespace tt::exalens {
 
 template <typename BaseClass>
-open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> device)
-    : BaseClass(device.get()), device(std::move(device)) {}
+open_implementation<BaseClass>::open_implementation(std::unique_ptr<DeviceType> device, bool is_simulation)
+    : BaseClass(device.get(), is_simulation), device(std::move(device)), is_simulation(is_simulation) {}
 
 template <typename BaseClass>
 open_implementation<BaseClass>::~open_implementation() {
@@ -157,15 +158,19 @@ template <>
 std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd_implementation>::open(
     const std::filesystem::path &binary_directory, const std::vector<uint8_t> &wanted_devices,
     bool initialize_with_noc1, bool init_jtag) {
-    // Disable UMD logging
-    tt::umd::logging::set_level(tt::umd::logging::level::error);
+    // Respect UMD's existing env var first; default to ERROR otherwise.
+    // If Python wants DEBUG, it can set TT_LOGGER_LEVEL=debug before calling into this function.
+    const char *tt_logger_level = std::getenv("TT_LOGGER_LEVEL");
+    if (tt_logger_level == nullptr) {
+        tt::umd::logging::set_level(tt::umd::logging::level::error);
+    }
 
     // TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use
     // noc1
     tt::umd::TTDevice::use_noc1(initialize_with_noc1);
     tt::umd::IODeviceType device_type = init_jtag ? tt::umd::IODeviceType::JTAG : tt::umd::IODeviceType::PCIe;
 
-    auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor("", {}, device_type);
+    auto cluster_descriptor = tt::umd::Cluster::create_cluster_descriptor("", device_type);
 
     if (cluster_descriptor->get_number_of_chips() == 0) {
         throw std::runtime_error("No Tenstorrent devices were detected on this system.");
@@ -218,7 +223,7 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     }
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
-        new open_implementation<umd_implementation>(std::move(cluster)));
+        new open_implementation<umd_implementation>(std::move(cluster), false));
     auto &unique_ids = cluster_descriptor->get_chip_unique_ids();
 
     for (auto device_id : device_ids) {
@@ -271,9 +276,8 @@ std::unique_ptr<open_implementation<umd_implementation>> open_implementation<umd
     }
 
     auto implementation = std::unique_ptr<open_implementation<umd_implementation>>(
-        new open_implementation<umd_implementation>(std::move(cluster)));
+        new open_implementation<umd_implementation>(std::move(cluster), true));
 
-    implementation->is_simulation = true;
     implementation->cluster_descriptor_path = create_simulation_cluster_descriptor_file(soc_descriptor.arch);
     implementation->device_ids = device_ids;
     implementation->device_soc_descriptors_yamls = std::move(device_soc_descriptors_yamls);
@@ -375,6 +379,17 @@ std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::conv
     } catch (...) {
         return {};
     }
+}
+
+template <typename BaseClass>
+void open_implementation<BaseClass>::warm_reset(bool is_galaxy_configuration) {
+    BaseClass::warm_reset(is_galaxy_configuration);
+}
+
+template <typename BaseClass>
+std::optional<std::tuple<uint8_t, uint8_t>> open_implementation<BaseClass>::get_remote_transfer_eth_core(
+    uint8_t chip_id) {
+    return BaseClass::get_remote_transfer_eth_core(chip_id);
 }
 
 }  // namespace tt::exalens

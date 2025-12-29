@@ -8,6 +8,7 @@ L0_BASE = 0xFFB00000;
 BRISC_L0_LENGTH = 4K;
 TRISC_L0_LENGTH = 2K;
 NCRISC_L0_LENGTH = 4K;
+ERISC_L0_LENGTH = 4K;
 
 L1_BASE = 0x0;
 UNDEFINED = 0;
@@ -19,6 +20,13 @@ UNDEFINED = 0;
  * LOCAL_DATA and CODE regions are spacious because of instrumentation and less optimized kernels.
  * NCRISC gets its code in L1 as well, to avoid the eventuality of IMEM overflow for the same reasons.
  * L0 is only used for the stack.
+ *
+ * On ETH, space layout is simple:
+ * [ERISC] (...) [L0]
+ * LOADER_INIT region is undefined, as no data is in L0.
+ * LOADER_CODE region is undefined, as no code is in IMEM.
+ * LOCAL_DATA and CODE regions are spacious because of instrumentation and less optimized kernels.
+ * L0 is only used for the stack.
  */
 
 MEMORY
@@ -29,6 +37,7 @@ MEMORY
     TRISC1_STACK_MEM        : ORIGIN = L0_BASE, LENGTH = TRISC_L0_LENGTH
     TRISC2_STACK_MEM        : ORIGIN = L0_BASE, LENGTH = TRISC_L0_LENGTH
     NCRISC_STACK_MEM        : ORIGIN = L0_BASE, LENGTH = NCRISC_L0_LENGTH
+    ERISC_STACK_MEM         : ORIGIN = L0_BASE, LENGTH = ERISC_L0_LENGTH
 
 
     /* L1 layout */
@@ -53,6 +62,12 @@ MEMORY
     NCRISC_GCOV_MEM         : ORIGIN = ORIGIN(NCRISC_LOCAL_DATA_MEM) + LENGTH(NCRISC_LOCAL_DATA_MEM), LENGTH = 8K
 
 
+    /* ETH L1 layout */
+    ERISC_CODE              : ORIGIN = L1_BASE, LENGTH = 32K
+    ERISC_LOCAL_DATA_MEM    : ORIGIN = ORIGIN(ERISC_CODE) + LENGTH(ERISC_CODE), LENGTH = 32K
+    ERISC_GCOV_MEM          : ORIGIN = ORIGIN(ERISC_LOCAL_DATA_MEM) + LENGTH(ERISC_LOCAL_DATA_MEM), LENGTH = 8K
+
+
     /* (discarded) */
     BRISC_LOADER_INIT_MEM   : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
     BRISC_LOADER_CODE_MEM   : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
@@ -64,4 +79,6 @@ MEMORY
     TRISC2_LOADER_CODE_MEM  : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
     NCRISC_LOADER_INIT_MEM  : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
     NCRISC_LOADER_CODE_MEM  : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
+    ERISC_LOADER_INIT_MEM   : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
+    ERISC_LOADER_CODE_MEM   : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
 }
