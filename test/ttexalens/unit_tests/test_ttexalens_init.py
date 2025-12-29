@@ -14,7 +14,7 @@ from ttexalens import (
     write_to_device,
 )
 from ttexalens.tt_exalens_ifc import init_pybind
-from ttexalens.tt_exalens_server import start_server
+from ttexalens.server import start_server
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 
 
