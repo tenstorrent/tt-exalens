@@ -7,7 +7,7 @@ from functools import cached_property
 from elftools.dwarf.callframe import FDE
 from typing import TYPE_CHECKING
 
-from ttexalens.memory_access import RiscDebugMemoryAccess
+from ttexalens.memory_access import MemoryAccess
 
 if TYPE_CHECKING:
     from ttexalens.hardware.risc_debug import RiscDebug
@@ -40,13 +40,20 @@ class FrameDescription:
             else:
                 address = None
             if address is not None:
-                l1 = self.risc_debug.get_l1()
-                private_data = self.risc_debug.get_data_private_memory()
-                if (l1 is not None and l1.contains_private_address(address)) or (
-                    private_data is not None and private_data.contains_private_address(address)
-                ):
-                    return self.risc_debug.read_memory(address)
-                return None
+                try:
+                    mem = MemoryAccess.get(
+                        self.risc_debug,
+                        ensure_halted_access=True,
+                        restricted_access=True,
+                    )
+                    data_bytes = mem.read(address, 4)
+                    return int.from_bytes(data_bytes, byteorder="little")
+                except Exception as e:
+                    # If access was restricted (outside L1/data_private_memory), return None
+                    if "restricted access" in str(e):
+                        return None
+                    # Otherwise, re-raise the exception
+                    raise
         return self.risc_debug.read_gpr(register_index)
 
     def read_previous_cfa(self, current_cfa: int | None = None) -> int | None:
