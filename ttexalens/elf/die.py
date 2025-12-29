@@ -575,7 +575,8 @@ class ElfDie:
         """
         Read the value of the variable represented by this DIE using the provided frame inspection context.
         """
-        from ttexalens.elf.variable import ElfVariable, FixedMemoryAccess
+        from ttexalens.elf.variable import ElfVariable
+        from ttexalens.memory_access import FixedMemoryAccess
 
         # TODO: Check if it is variable (global, local, member, argument)
         if not self.tag_is("formal_parameter") and not self.tag_is("variable"):
@@ -678,7 +679,8 @@ class ElfDie:
     def _evaluate_location_expression(
         self, parsed_expression: list[DWARFExprOp], frame_inspection: FrameInspection | None = None
     ) -> tuple[bool, Any | None]:
-        from ttexalens.elf.variable import ElfVariable, FixedMemoryAccess
+        from ttexalens.elf.variable import ElfVariable
+        from ttexalens.memory_access import FixedMemoryAccess
 
         util.DEBUG(f"   {parsed_expression}")
 

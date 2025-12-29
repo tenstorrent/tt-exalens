@@ -7,7 +7,7 @@ from functools import cached_property
 from elftools.dwarf.callframe import FDE
 from typing import TYPE_CHECKING
 
-from ttexalens.elf.variable import RiscDebugMemoryAccess
+from ttexalens.memory_access import RiscDebugMemoryAccess
 
 if TYPE_CHECKING:
     from ttexalens.hardware.risc_debug import RiscDebug

@@ -13,7 +13,8 @@ import os
 import ttexalens.util as util
 from ttexalens.elf.dwarf import ElfDwarf, ElfDwarfWithOffset
 from ttexalens.elf.frame import FrameInfoProvider, FrameInfoProviderWithOffset
-from ttexalens.elf.variable import ElfVariable, MemoryAccess
+from ttexalens.elf.variable import ElfVariable
+from ttexalens.memory_access import MemoryAccess
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:

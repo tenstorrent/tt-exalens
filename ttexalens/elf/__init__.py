@@ -6,7 +6,8 @@ from .cu import ElfCompileUnit
 from .die import ElfDie
 from .dwarf import ElfDwarf
 from .parsed import ParsedElfFile, ParsedElfFileWithOffset, read_elf
-from .variable import ElfVariable, MemoryAccess
+from .variable import ElfVariable
+from ttexalens.memory_access import MemoryAccess
 from .frame import FrameInspection
 
 __all__ = [
