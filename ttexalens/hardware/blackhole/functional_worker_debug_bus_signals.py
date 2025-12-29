@@ -746,12 +746,16 @@ debug_bus_signal_map = {
     "rwc1_dst_cr": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0xFFC00000),
     "rwc1_dst": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3FF000),
     "rwc0_dst_cr": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0xFFC),
-    # "rwc0_dst/1": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3),          # Signal spans two consecutive groups, so its value cannot be read atomically.
-    # "rwc0_dst/0": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=2, mask=0xFF000000),   # Signal spans two consecutive groups, so its value cannot be read atomically.
+    "rwc0_dst/1": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3
+    ),  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    "rwc0_dst/0": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=3, sig_sel=2, mask=0xFF000000
+    ),  # Signal spans two consecutive groups, so its value cannot be read atomically.
     "rwc2_srcb_cr": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=2, mask=0xFC000),
     "rwc2_srcb": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=2, mask=0x3F0),
     "rwc1_srcb_cr": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=2, mask=0xFC000000),
-    "rwc1_srcb": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=2, mask=0x3F0000),
+    "rwc1_srcb": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=2, mask=0x3F0),
     "rwc0_srcb_cr": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=2, mask=0xFC0),
     "rwc0_srcb/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=2, mask=0x3),
     "rwc0_srcb/0": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=2, mask=0xF0000000),
@@ -759,7 +763,7 @@ debug_bus_signal_map = {
     "rwc2_srca": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=2, mask=0x3F00),
     "rwc1_srca_cr/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=2, mask=0xF),
     "rwc1_srca_cr/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=2, mask=0xC0000000),
-    "rwc1_srca": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=2, mask=0x3F00000),
+    "rwc1_srca": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=2, mask=0x3F),
     "rwc0_srca_cr": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=2, mask=0xFC00),
     "rwc0_srca": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=2, mask=0x3F),
     "rwc0_(math_winner_combo&math_instrn_pipe_ack)": DebugBusSignalDescription(
