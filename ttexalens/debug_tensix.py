@@ -78,6 +78,9 @@ class TensixDebug:
         else:
             self.core_loc = core_loc
 
+        # Using TRISC0 debug hardware to read/write memory
+        self.mem_access = MemoryAccess.get(self.noc_block.get_risc_debug(risc_name="trisc0"), restricted_access=False)
+
     def dbg_buff_status(self):
         return self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS")
 
@@ -179,8 +182,6 @@ class TensixDebug:
 
     def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int]:
         data: list[int] = []
-        # Using TRISC0 debug hardware to read memory
-        risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
         if not isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
             raise TTException("Direct dest reading not supported for this architecture.")
 
@@ -191,19 +192,12 @@ class TensixDebug:
         if size_bytes > dest_size:
             raise TTException(f"Size {size_bytes} bytes is out of bounds for destination memory block.")
 
-        mem = MemoryAccess.get(
-            risc_debug,
-            ensure_halted_access=True,
-            restricted_access=True,
-        )
-        bytes_data = mem.read(base_address, size_bytes)
-        for i in range(0, size_bytes, 4):
-            data.append(int.from_bytes(bytes_data[i : i + 4], byteorder="little"))
+        bytes_data = self.mem_access.read(base_address, size_bytes)
+        data.extend(int.from_bytes(bytes_data[i : i + 4], byteorder="little") for i in range(0, size_bytes, 4))
 
         return data
 
     def direct_dest_write(self, data: list[int], df: TensixDataFormat) -> None:
-        risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
         if not isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
             raise TTException("Direct dest writing not supported for this architecture.")
         dest_size = self.noc_block.dest.size
@@ -214,12 +208,7 @@ class TensixDebug:
         assert base_address is not None
         bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in data)
 
-        mem = MemoryAccess.get(
-            risc_debug,
-            ensure_halted_access=True,
-            restricted_access=True,
-        )
-        mem.write(base_address, bytes_data)
+        self.mem_access.write(base_address, bytes_data)
 
     def read_regfile_data(
         self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None

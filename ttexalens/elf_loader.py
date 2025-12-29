@@ -21,6 +21,7 @@ class ElfLoader:
 
     def __init__(self, risc_debug: RiscDebug):
         self.risc_debug = risc_debug
+        self.mem_access = MemoryAccess.get(risc_debug)
 
     @property
     def risc_name(self) -> str:
@@ -82,24 +83,13 @@ class ElfLoader:
         """
         Writes a block of data to a given address through the debug interface.
         """
-        mem = MemoryAccess.get(
-            self.risc_debug,
-            ensure_halted_access=True,
-            restricted_access=True,
-        )
-        mem.write(address, data)
+        self.mem_access.write(address, data)
 
     def read_block_through_debug(self, address, byte_count):
         """
         Reads a block of data from a given address through the debug interface.
         """
-        mem = MemoryAccess.get(
-            self.risc_debug,
-            ensure_halted_access=True,
-            restricted_access=True,
-        )
-        data = mem.read(address, byte_count)
-        return data
+        return self.mem_access.read(address, byte_count)
 
     @staticmethod
     def __inside_private_memory(memory_block: MemoryBlock | None, address: int) -> bool:

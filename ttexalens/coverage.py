@@ -5,7 +5,8 @@
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_from_device
 from ttexalens.tt_exalens_lib import TTException
-from ttexalens.elf import ParsedElfFile, MemoryAccess
+from ttexalens.elf import ParsedElfFile
+from ttexalens.memory_access import MemoryAccess
 
 """
 Extract the coverage data from the device into a .gcda file.

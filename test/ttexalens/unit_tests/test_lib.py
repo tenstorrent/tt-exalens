@@ -18,7 +18,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
-from ttexalens.elf import MemoryAccess
+from ttexalens.memory_access import MemoryAccess
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.risc_debug import CallstackEntry, RiscDebug
 

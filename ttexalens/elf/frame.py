@@ -18,6 +18,7 @@ class FrameDescription:
         self.pc = pc
         self.fde = fde
         self.risc_debug = risc_debug
+        self.mem_access = MemoryAccess.get(risc_debug)
 
         # Go through fde and try to find one that fits the pc
         decoded = self.fde.get_decoded()
@@ -41,13 +42,7 @@ class FrameDescription:
                 address = None
             if address is not None:
                 try:
-                    mem = MemoryAccess.get(
-                        self.risc_debug,
-                        ensure_halted_access=True,
-                        restricted_access=True,
-                    )
-                    data_bytes = mem.read(address, 4)
-                    return int.from_bytes(data_bytes, byteorder="little")
+                    return self.mem_access.read_word(address)
                 except Exception as e:
                     # If access was restricted (outside L1/data_private_memory), return None
                     if "restricted access" in str(e):
@@ -90,10 +85,7 @@ class FrameInspection:
         self.loaded_offset = loaded_offset
         self.frame_description = frame_description
         self.cfa = cfa
-
-    @cached_property
-    def mem_access(self):
-        return MemoryAccess.get(self.risc_debug)
+        self.mem_access = MemoryAccess.get(risc_debug)
 
     @cached_property
     def pc(self) -> int:

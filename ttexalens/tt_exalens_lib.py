@@ -755,13 +755,7 @@ def read_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    mem = MemoryAccess.get(
-        risc_debug,
-        ensure_halted_access=True,
-        restricted_access=True,
-    )
-    data_bytes = mem.read(addr, 4)
-    return int.from_bytes(data_bytes, byteorder="little")
+    return MemoryAccess.get(risc_debug).read_word(addr)
 
 
 @trace_api
@@ -807,9 +801,4 @@ def write_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    mem = MemoryAccess.get(
-        risc_debug,
-        ensure_halted_access=True,
-        restricted_access=True,
-    )
-    mem.write(addr, value.to_bytes(4, byteorder="little"))
+    MemoryAccess.get(risc_debug).write_word(addr, value)

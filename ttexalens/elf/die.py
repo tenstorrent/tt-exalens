@@ -828,11 +828,9 @@ class ElfDie:
                     read_address = int(value)
                 except:
                     return False, None
-                read_size = 4  # Default to 4 bytes
                 if frame_inspection is None:
                     return False, None
-                memory = frame_inspection.mem_access.read(read_address, read_size)
-                value = int.from_bytes(memory, byteorder="little")
+                value = frame_inspection.mem_access.read_word(read_address)  # Default to 4 bytes as generic type
                 is_address = False
             elif op.op_name == "DW_OP_const_type":
                 if (
@@ -921,11 +919,9 @@ class ElfDie:
                     return False, None
                 address = stack.pop()
                 address_space_id = stack.pop()  # TODO: Does our architecture support multiple address spaces?
-                read_size = 4  # Default to 4 bytes as generic type
                 if frame_inspection is None:
                     return False, None
-                memory = frame_inspection.mem_access.read(address, read_size)
-                value = int.from_bytes(memory, byteorder="little")
+                value = frame_inspection.mem_access.read_word(address)  # Default to 4 bytes as generic type
                 is_address = False
             elif op.op_name == "DW_OP_abs":
                 if len(stack) > 0:

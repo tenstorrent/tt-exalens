@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 class MemoryAccess(ABC):
     """
-    Simple class that allows reading and writing memory from a given address.
+    Abstract interface for reading and writing data from a target address space.
     """
 
     @abstractmethod
@@ -25,12 +25,26 @@ class MemoryAccess(ABC):
         """
         pass
 
+    def read_word(self, address: int) -> int:
+        """
+        Read a word from 'address' and return it as an integer.
+        """
+        data_bytes = self.read(address, 4)
+        return int.from_bytes(data_bytes, byteorder="little")
+
     @abstractmethod
     def write(self, address: int, data: bytes) -> None:
         """
         Write 'data' bytes to 'address'.
         """
         pass
+
+    def write_word(self, address: int, value: int) -> None:
+        """
+        Write a word to 'address'.
+        """
+        data_bytes = value.to_bytes(4, byteorder="little")
+        self.write(address, data_bytes)
 
     @staticmethod
     def get(risc_debug: RiscDebug, ensure_halted_access: bool = True, restricted_access: bool = True) -> "MemoryAccess":
@@ -44,6 +58,15 @@ class MemoryAccess(ABC):
 
 
 class L1MemoryAccess(MemoryAccess):
+    """
+    MemoryAccess implementation that talks directly to on‑chip memory at a given
+    OnChipCoordinate via tt_exalens_lib.{read,write}_from_device.
+
+    This is used when we know an address is in the device’s global address space
+    (e.g. L1 or other device-visible memory mapped region) and we want to access
+    it without going through the RiscDebug abstraction.
+    """
+
     def __init__(self, location: OnChipCoordinate):
         self._location = location
 
@@ -59,6 +82,15 @@ class L1MemoryAccess(MemoryAccess):
 
 
 class FixedMemoryAccess(MemoryAccess):
+    """
+    Read‑only MemoryAccess backed by an in‑memory byte buffer.
+
+    Used when DWARF evaluation has already produced the bytes for a value
+    (e.g. a temporary, non‑addressable expression result), so further reads
+    should come from that snapshot rather than device memory. Writes are
+    forbidden and will raise.
+    """
+
     def __init__(self, data: bytes):
         self._data = data
 
@@ -70,6 +102,17 @@ class FixedMemoryAccess(MemoryAccess):
 
 
 class RiscDebugMemoryAccess(MemoryAccess):
+    """
+    MemoryAccess implementation that uses a RiscDebug instance to read/write
+    a core’s private address space (L1 + data private memory by default).
+
+    It can optionally:
+      * ensure the core is halted while accessing memory, and
+      * restrict accesses to L1/DataPrivate regions only, rejecting any
+        address outside those MemoryBlocks to avoid accidental global
+        or invalid accesses.
+    """
+
     def __init__(self, risc_debug: RiscDebug, ensure_halted_access: bool = True, restricted_access: bool = True):
         self._risc_debug = risc_debug
         self._ensure_halted_access = ensure_halted_access  # will ensure the RISC will be halted for memory access
@@ -113,6 +156,11 @@ class RiscDebugMemoryAccess(MemoryAccess):
 
 
 class CachedReadMemoryAccess(MemoryAccess):
+    """
+    MemoryAccess implementation that serves reads from a cached byte range when
+    possible, and otherwise falls back to an underlying MemoryAccess.
+    """
+
     def __init__(self, cached_address: int, cached_data: bytes, base_mem_access: MemoryAccess):
         self._base_mem_access = base_mem_access
         self._cached_address = cached_address
