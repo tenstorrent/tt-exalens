@@ -16,6 +16,7 @@ from ttexalens.pack_unpack_regfile import (
     pack_data_direct_access,
     TensixDataFormat,
 )
+from ttexalens.memory_access import MemoryAccess
 
 
 def validate_thread_id(thread_id: int) -> None:
@@ -189,10 +190,15 @@ class TensixDebug:
         size_bytes = num_tiles * TILE_SIZE * 4
         if size_bytes > dest_size:
             raise TTException(f"Size {size_bytes} bytes is out of bounds for destination memory block.")
-        with risc_debug.ensure_private_memory_access():
-            bytes_data = risc_debug.read_memory_bytes(base_address, size_bytes)
-            for i in range(0, size_bytes, 4):
-                data.append(int.from_bytes(bytes_data[i : i + 4], byteorder="little"))
+
+        mem = MemoryAccess.get(
+            risc_debug,
+            ensure_halted_access=True,
+            restricted_access=True,
+        )
+        bytes_data = mem.read(base_address, size_bytes)
+        for i in range(0, size_bytes, 4):
+            data.append(int.from_bytes(bytes_data[i : i + 4], byteorder="little"))
 
         return data
 
@@ -207,8 +213,13 @@ class TensixDebug:
         base_address = self.noc_block.dest.address.private_address
         assert base_address is not None
         bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in data)
-        with risc_debug.ensure_private_memory_access():
-            risc_debug.write_memory_bytes(base_address, bytes_data)
+
+        mem = MemoryAccess.get(
+            risc_debug,
+            ensure_halted_access=True,
+            restricted_access=True,
+        )
+        mem.write(base_address, bytes_data)
 
     def read_regfile_data(
         self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None

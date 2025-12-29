@@ -11,6 +11,7 @@ from ttexalens.device import Device
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.tt_exalens_lib import read_from_device, write_to_device
+from ttexalens.memory_access import MemoryAccess
 
 
 class ElfLoader:
@@ -81,15 +82,23 @@ class ElfLoader:
         """
         Writes a block of data to a given address through the debug interface.
         """
-        with self.risc_debug.ensure_private_memory_access():
-            self.risc_debug.write_memory_bytes(address, data)
+        mem = MemoryAccess.get(
+            self.risc_debug,
+            ensure_halted_access=True,
+            restricted_access=True,
+        )
+        mem.write(address, data)
 
     def read_block_through_debug(self, address, byte_count):
         """
         Reads a block of data from a given address through the debug interface.
         """
-        with self.risc_debug.ensure_private_memory_access():
-            data = self.risc_debug.read_memory_bytes(address, byte_count)
+        mem = MemoryAccess.get(
+            self.risc_debug,
+            ensure_halted_access=True,
+            restricted_access=True,
+        )
+        data = mem.read(address, byte_count)
         return data
 
     @staticmethod
