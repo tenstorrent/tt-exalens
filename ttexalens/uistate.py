@@ -13,7 +13,7 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from ttexalens.context import Context
 from ttexalens.gdb.gdb_server import GdbServer, ServerSocket
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.tt_exalens_server import TTExaLensServer, start_server
+from ttexalens.server import TTExaLensServer, start_server
 
 
 class TTExaLensCompleter(Completer):

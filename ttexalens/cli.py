@@ -58,7 +58,7 @@ except ModuleNotFoundError as e:
 
 from ttexalens import init_ttexalens, init_ttexalens_remote
 from ttexalens import tt_exalens_ifc
-from ttexalens import tt_exalens_server
+from ttexalens import server
 from ttexalens import util as util
 from ttexalens.context import Context
 from ttexalens.uistate import UIState
@@ -467,7 +467,7 @@ def main():
                 initialize_with_noc1=args["--use-noc1"],
                 simulation_directory=args["-s"],
             )
-            ttexalens_server = tt_exalens_server.start_server(port=int(args["--port"]), communicator=communicator)
+            ttexalens_server = server.start_server(port=int(args["--port"]), communicator=communicator)
 
             util.INFO("The debug server is running in the background.")
             util.INFO("To stop the server, use the command: touch exit.server")
