@@ -93,7 +93,7 @@ class FrameInspection:
 
     @cached_property
     def mem_access(self):
-        return RiscDebugMemoryAccess(self.risc_debug)
+        return MemoryAccess.get(self.risc_debug)
 
     @cached_property
     def pc(self) -> int:
