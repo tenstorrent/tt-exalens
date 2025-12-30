@@ -90,101 +90,138 @@ class TTExaLensPybind(TTExaLensCommunicator):
 
 
 try:
-    import tt_umd
+    from contextlib import contextmanager
+    import datetime
     import tempfile
+    import time
+    from typing import Sequence
+    import tt_umd
+    import threading
 
-    class TTExaLensUmdImplementation(TTExaLensCommunicator):
+    umd_noc_lock = threading.Lock()
+
+    @contextmanager
+    def switch_umd_noc(noc_id: int):
+        with umd_noc_lock:
+            tt_umd.TTDevice.use_noc1(noc_id == 1)
+            yield
+
+    class TimeoutDeviceRegisterError(Exception):
+        def __init__(
+            self, chip_id: int, coord: tt_umd.CoreCoord, address: int, size: int, is_read: bool, duration_us: float
+        ):
+            self.chip_id = chip_id
+            self.coord = coord
+            self.address = address
+            self.size = size
+            self.is_read = is_read
+            self.duration_us = duration_us
+
+        def __str__(self):
+            operation = "read" if self.is_read else "write"
+            return (
+                f"TimeoutDeviceRegisterError: Timeout during {operation} operation on device {self.chip_id}, "
+                f"coord ({self.coord.x}, {self.coord.y}, {self.coord.core_type}), address {hex(self.address)}, "
+                f"size {self.size} bytes after {self.duration_us:.2f} us."
+            )
+
+    class UmdDeviceWrapper:
         def __init__(
             self,
-            wanted_devices: list = [],
-            init_jtag=False,
-            initialize_with_noc1=False,
-            simulation_directory: str | None = None,
+            device: tt_umd.TTDevice,
+            device_id: int,
+            unique_id: int,
+            active_eth_coords_on_mmio_chip: list[tuple[int, int]] = [],
         ):
-            self.temp_working_directory = tempfile.mkdtemp(prefix="ttexalens_server_XXXXXX")
+            self.__device = device
+            self.arch = device.get_arch()
+            self.is_mmio_capable = not device.is_remote()
+            self.soc_descriptor = tt_umd.SocDescriptor(device)
+            self.device_id = device_id
+            self.unique_id = unique_id
+            self.active_eth_coords_on_mmio_chip = active_eth_coords_on_mmio_chip  # in translated coords
+            self.is_simulation = False  # TODO: Update this when UMD supports simulation
 
-            # // Disable UMD logging
-            # tt::umd::logging::set_level(tt::umd::logging::level::error);
+            # TODO: Until UMD implements timeout exception, we measure time here
+            self.__write_timeout_lock = threading.Lock()
+            self.__write_timeout_events: list[TimeoutDeviceRegisterError] = []
 
-            # TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use noc1
-            tt_umd.TTDevice.use_noc1(initialize_with_noc1)
+        def __configure_working_active_eth(self):
+            tensix_coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
+            tensix_translated_coord = self.soc_descriptor.translate_coord_to(
+                tensix_coord, tt_umd.CoordSystem.TRANSLATED
+            )
+            for translated_coord in self.active_eth_coords_on_mmio_chip:
+                self.__device.get_remote_communication().set_remote_transfer_ethernet_cores([translated_coord])
+                try:
+                    self.__read_from_device_reg(tensix_translated_coord.x, tensix_translated_coord.y, 0, 4)
+                    return
+                except:
+                    continue
+            raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
-            device_type = tt_umd.IODeviceType.PCIe if not init_jtag else tt_umd.IODeviceType.JTAG
-            self.cluster_descriptor, self.devices = tt_umd.TopologyDiscovery.discover()
+        def __convert_noc0_to_device_coords(self, noc0_x: int, noc0_y: int):
+            return self.soc_descriptor.translate_coord_to(
+                tt_umd.tt_xy_pair(noc0_x, noc0_y), tt_umd.CoordSystem.NOC0, tt_umd.CoordSystem.TRANSLATED
+            )
 
-            if len(self.cluster_descriptor.get_all_chips()) == 0:
-                raise RuntimeError("No Tenstorrent devices were detected on this system.")
+        READ_TIMEOUT = float(os.environ.get("TT_EXALENS_READ_TIMEOUT_MS", 2)) / 1_000  # seconds
+        WRITE_TIMEOUT = float(os.environ.get("TT_EXALENS_WRITE_TIMEOUT_MS", 2)) / 1_000  # seconds
+        NUM_OF_CONSECUTIVE_TIMEOUTS = int(os.environ.get("TT_EXALENS_NUM_OF_CONSECUTIVE_TIMEOUTS", 5))
 
-            self.cluster_descriptor_path = os.path.join(self.temp_working_directory, "cluster_desc.yaml")
-            self.cluster_descriptor.serialize_to_file(self.cluster_descriptor_path)
-
-            # Setup used devices
-            self.device_ids = []
-            target_devices = set()
-
-            for i in self.cluster_descriptor.get_all_chips():
-                self.device_ids.append(i)
-
-            self.device_id_to_unique_id = {}
-            unique_ids = self.cluster_descriptor.get_chip_unique_ids()
-            for device_id in self.device_ids:
-                if device_id in unique_ids:
-                    self.device_id_to_unique_id[device_id] = unique_ids[device_id]
-
-            # If we specified which devices we want, check that they are available and then extract their ids
-            if len(wanted_devices) > 0:
-                for wanted_device in wanted_devices:
-                    if wanted_device not in self.device_ids:
-                        raise RuntimeError(f"Device {wanted_device} is not available.")
-                self.device_ids = wanted_devices
-
-            for device_id in self.device_ids:
-                target_devices.add(device_id)
-            self.soc_descriptors = {}
-            self.device_soc_descriptors_yamls = {}
-            self.cached_arc_telemetry_readers = {}
-            for chip_id, device in self.devices.items():
-
-                soc_descriptor = tt_umd.SocDescriptor(device)
-                file_name = os.path.join(self.temp_working_directory, f"device_desc_runtime_{chip_id}.yaml")
-
-                soc_descriptor.serialize_to_file(file_name)
-                self.device_soc_descriptors_yamls[chip_id] = file_name
-                self.soc_descriptors[chip_id] = soc_descriptor
-
-                self.cached_arc_telemetry_readers[chip_id] = None
-
-        def get_device(self, chip_id: int) -> tt_umd.TTDevice:
-            if chip_id not in self.devices:
-                raise RuntimeError(f"Device with chip id {chip_id} not found.")
-            return self.devices[chip_id]
-
-        def get_noc0_to_device_coords(self, chip_id: int, noc_x: int, noc_y: int):
-            soc_descriptor = self.soc_descriptors[chip_id]
-            noc0_coord = soc_descriptor.get_coord_at(tt_umd.tt_xy_pair(noc_x, noc_y), tt_umd.CoordSystem.NOC0)
-            translated_coord = soc_descriptor.translate_coord_to(noc0_coord, tt_umd.CoordSystem.TRANSLATED)
-            return tt_umd.tt_xy_pair(translated_coord.x, translated_coord.y)
-
-        def is_chip_mmio_capable(self, chip_id: int) -> bool:
-            return self.cluster_descriptor.is_chip_mmio_capable(chip_id)
-
-        def get_arc_telemetry_reader(self, chip_id: int):
-            if self.cached_arc_telemetry_readers[chip_id] is None:
-                self.cached_arc_telemetry_readers[chip_id] = tt_umd.ArcTelemetryReader.create_arc_telemetry_reader(
-                    self.devices[chip_id]
+        def __read_from_device_reg(self, coord_x: int, coord_y: int, address: int, size: int) -> bytes:
+            # TODO: Until UMD implements timeout exception, we measure time here
+            start_time = time.time()
+            result = self.__device.noc_read(coord_x, coord_y, address, size)
+            end_time = time.time()
+            elapsed_time = end_time - start_time  # seconds
+            if (
+                self.is_mmio_capable
+                and not self.is_simulation
+                and elapsed_time > UmdDeviceWrapper.READ_TIMEOUT
+                and result[-4:] == b"\xFF\xFF\xFF\xFF"
+            ):
+                translated_coord = self.soc_descriptor.translate_coord_to(
+                    tt_umd.tt_xy_pair(coord_x, coord_y), tt_umd.CoordSystem.TRANSLATED, tt_umd.CoordSystem.LOGICAL
                 )
-            return self.cached_arc_telemetry_readers[chip_id]
+                raise TimeoutDeviceRegisterError(self.device_id, translated_coord, address, size, True, elapsed_time)
+            return result
 
-        def read_from_device_reg_unaligned(
-            self, device: tt_umd.TTDevice, noc_id: int, noc_coords: tt_umd.tt_xy_pair, address: int, size: int
+        def __write_to_device_reg(self, coord_x: int, coord_y: int, address: int, data: bytes):
+            # TODO: Until UMD implements timeout exception, we measure time here
+            start_time = time.time()
+            self.__device.noc_write(coord_x, coord_y, address, data)
+            end_time = time.time()
+            elapsed_time = end_time - start_time  # seconds
+            if (
+                self.is_mmio_capable
+                and not self.is_simulation
+                and len(data) == 4
+                and elapsed_time > UmdDeviceWrapper.WRITE_TIMEOUT
+            ):
+                translated_coord = self.soc_descriptor.translate_coord_to(
+                    tt_umd.tt_xy_pair(coord_x, coord_y), tt_umd.CoordSystem.TRANSLATED, tt_umd.CoordSystem.LOGICAL
+                )
+                event = TimeoutDeviceRegisterError(
+                    self.device_id, translated_coord, address, len(data), False, elapsed_time
+                )
+                with self.__write_timeout_lock:
+                    self.__write_timeout_events.append(event)
+                    if len(self.__write_timeout_events) >= UmdDeviceWrapper.NUM_OF_CONSECUTIVE_TIMEOUTS:
+                        raise self.__write_timeout_events[0]
+            else:
+                with self.__write_timeout_lock:
+                    self.__write_timeout_events.clear()
+
+        def __read_from_device_reg_unaligned_helper(
+            self, coord: tt_umd.CoreCoord, address: int, size: int, use_4B_mode: bool
         ) -> bytes:
-            # TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
-            tt_umd.TTDevice.use_noc1(noc_id == 1)
+            assert coord.coord_system == tt_umd.CoordSystem.TRANSLATED
 
             # Read first unaligned word
             first_unaligned_index = address % 4
             if first_unaligned_index != 0:
-                temp = device.read_from_device(noc_coords, address - first_unaligned_index, 4)
+                temp = self.__read_from_device_reg(coord.x, coord.y, address - first_unaligned_index, 4)
                 if first_unaligned_index + size <= 4:
                     return temp[first_unaligned_index : first_unaligned_index + size]
                 mem_ptr = bytearray()
@@ -196,144 +233,168 @@ try:
 
             # Read aligned bytes
             aligned_size = size - (size % 4)
-            if aligned_size > 0:
-                mem_ptr.extend(device.read_from_device(noc_coords, address, aligned_size))
-                address += aligned_size
-                size -= aligned_size
+            block_size = 4 if use_4B_mode and not self.is_simulation else aligned_size
+            while aligned_size > 0:
+                mem_ptr.extend(self.__read_from_device_reg(coord.x, coord.y, address, block_size))
+                aligned_size -= block_size
+                address += block_size
+                size -= block_size
 
             # Read last unaligned word
             last_unaligned_size = size
             if last_unaligned_size != 0:
-                temp = device.read_from_device(noc_coords, address, 4)
+                temp = self.__read_from_device_reg(coord.x, coord.y, address, 4)
                 mem_ptr.extend(temp[:last_unaligned_size])
 
             return bytes(mem_ptr)
 
-        def write_to_device_reg_unaligned(
-            self, device: tt_umd.TTDevice, mem_ptr: bytes, noc_id: int, noc_coords: tt_umd.tt_xy_pair, address: int
-        ):
+        def __read_from_device_reg_unaligned(
+            self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool
+        ) -> bytes:
             # TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
-            tt_umd.TTDevice.use_noc1(noc_id == 1)
+            with switch_umd_noc(noc_id):
+                coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+                try:
+                    return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode)
+                except TimeoutDeviceRegisterError as e:
+                    raise
+                except:
+                    if self.is_simulation or self.is_mmio_capable:
+                        raise
+                    self.__configure_working_active_eth()
+                    return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode)
 
-            size_in_bytes = len(mem_ptr)
+        def __write_to_device_reg_unaligned_helper(
+            self, coord: tt_umd.CoreCoord, address: int, data: bytes, use_4B_mode: bool
+        ):
+            assert coord.coord_system == tt_umd.CoordSystem.TRANSLATED
+            size_in_bytes = len(data)
 
             # Read/Write first unaligned word
             first_unaligned_index = address % 4
             if first_unaligned_index != 0:
                 aligned_address = address - first_unaligned_index
-                temp = device.read_from_device(noc_coords, aligned_address, 4)
+                temp = self.__read_from_device_reg(coord.x, coord.y, aligned_address, 4)
                 if first_unaligned_index + size_in_bytes <= 4:
                     temp = (
                         temp[0:first_unaligned_index]
-                        + mem_ptr[0:size_in_bytes]
+                        + data[0:size_in_bytes]
                         + temp[first_unaligned_index + size_in_bytes : 4]
                     )
-                    device.write_to_device(temp, noc_coords, aligned_address)
+                    self.__write_to_device_reg(coord.x, coord.y, aligned_address, temp)
                     return
-                temp = temp[0:first_unaligned_index] + mem_ptr[0 : 4 - first_unaligned_index]
-                device.write_to_device(temp, noc_coords, aligned_address)
-                mem_ptr = mem_ptr[4 - first_unaligned_index :]
+                temp = temp[0:first_unaligned_index] + data[0 : 4 - first_unaligned_index]
+                self.__write_to_device_reg(coord.x, coord.y, aligned_address, temp)
+                data = data[4 - first_unaligned_index :]
                 address += 4 - first_unaligned_index
                 size_in_bytes -= 4 - first_unaligned_index
 
             # Write aligned bytes
             aligned_size = size_in_bytes - (size_in_bytes % 4)
-            if aligned_size > 0:
-                device.write_to_device(mem_ptr[0:aligned_size], noc_coords, address)
-                mem_ptr = mem_ptr[aligned_size:]
-                address += aligned_size
-                size_in_bytes -= aligned_size
+            block_size = 4 if use_4B_mode and not self.is_simulation else aligned_size
+            while aligned_size > 0:
+                self.__write_to_device_reg(coord.x, coord.y, address, data[0:block_size])
+                aligned_size -= block_size
+                data = data[block_size:]
+                address += block_size
+                size_in_bytes -= block_size
 
             # Read/Write last unaligned word
             last_unaligned_size = size_in_bytes
             if last_unaligned_size != 0:
-                temp = device.read_from_device(noc_coords, address, 4)
-                temp = mem_ptr[0:last_unaligned_size] + temp[last_unaligned_size:4]
-                device.write_to_device(temp, noc_coords, address)
+                temp = self.__read_from_device_reg(coord.x, coord.y, address, 4)
+                temp = data[0:last_unaligned_size] + temp[last_unaligned_size:4]
+                self.__write_to_device_reg(coord.x, coord.y, address, temp)
 
-        def read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int) -> int:
-            result = self.read_from_device_reg_unaligned(
-                self.get_device(chip_id), noc_id, self.get_noc0_to_device_coords(chip_id, noc_x, noc_y), address, 4
-            )
+        def __write_to_device_reg_unaligned(
+            self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool
+        ):
+            # TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
+            with switch_umd_noc(noc_id):
+                coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+                try:
+                    self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode)
+                except TimeoutDeviceRegisterError as e:
+                    raise
+                except:
+                    if self.is_simulation or self.is_mmio_capable:
+                        raise
+                    self.__configure_working_active_eth()
+                    self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode)
+
+        ##################################################################
+        ## OLD API METHODS FROM TTExaLensImplementation TO BE FORWARDED ##
+        ##################################################################
+
+        def read32(self, noc_id: int, noc0_x: int, noc0_y: int, address: int) -> int:
+            """Reads 4 bytes from address"""
+            result = self.__read_from_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, 4, True)
             return int.from_bytes(result, byteorder="little")
 
-        def write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int) -> int:
-            self.write_to_device_reg_unaligned(
-                self.get_device(chip_id),
-                data.to_bytes(4, byteorder="little"),
-                noc_id,
-                self.get_noc0_to_device_coords(chip_id, noc_x, noc_y),
-                address,
+        def write32(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: int) -> int:
+            """Writes 4 bytes to address"""
+            self.__write_to_device_reg_unaligned(
+                noc_id, noc0_x, noc0_y, address, data.to_bytes(4, byteorder="little"), True
             )
             return 4
 
-        def read(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int) -> bytes:
-            device = self.get_device(chip_id)
-            noc_coords = self.get_noc0_to_device_coords(chip_id, noc_x, noc_y)
-
+        def read(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool) -> bytes:
+            """Reads data from address"""
             # TODO #124: Mitigation for UMD bug #77
-            if not self.is_chip_mmio_capable(chip_id):
+            if not self.is_mmio_capable:
                 result = bytearray()
-                done = 0
-                while done < size:
-                    block = min(size - done, 1024)
+                for chunk_start in range(0, size, 1024):
+                    chunk_size = min(1024, size - chunk_start)
                     result.extend(
-                        self.read_from_device_reg_unaligned(device, noc_id, noc_coords, address + done, block)
+                        self.__read_from_device_reg_unaligned(
+                            noc_id, noc0_x, noc0_y, address + chunk_start, chunk_size, use_4B_mode
+                        )
                     )
-                    done += block
                 return bytes(result)
-            return self.read_from_device_reg_unaligned(device, noc_id, noc_coords, address, size)
+            return self.__read_from_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, size, use_4B_mode)
 
-        def write(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes) -> int:
+        def write(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool) -> int:
+            """Writes data to address"""
             size = len(data)
-            device = self.get_device(chip_id)
-            noc_coords = self.get_noc0_to_device_coords(chip_id, noc_x, noc_y)
-
             # TODO #124: Mitigation for UMD bug #77
-            if not self.is_chip_mmio_capable(chip_id):
-                done = 0
-                while done < size:
-                    block = min(size - done, 1024)
-                    self.write_to_device_reg_unaligned(
-                        device, data[done : done + block], noc_id, noc_coords, address + done
+            if not self.is_mmio_capable:
+                for chunk_start in range(0, size, 1024):
+                    chunk_size = min(1024, size - chunk_start)
+                    self.__write_to_device_reg_unaligned(
+                        noc_id,
+                        noc0_x,
+                        noc0_y,
+                        address + chunk_start,
+                        data[chunk_start : chunk_start + chunk_size],
+                        use_4B_mode,
                     )
-                    done += block
                 return size
-
-            self.write_to_device_reg_unaligned(device, data, noc_id, noc_coords, address)
+            self.__write_to_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, data, use_4B_mode)
             return size
 
-        def pci_read32_raw(self, chip_id: int, address: int) -> int:
-            if self.is_chip_mmio_capable(chip_id):
-                return self.get_device(chip_id).bar_read32(address)
-            raise RuntimeError(f"Device with chip id {chip_id} is not mmio capable.")
+        def pci_read32_raw(self, address: int) -> int:
+            """Reads 4 bytes from PCI address"""
+            if self.is_mmio_capable:
+                return self.__device.bar_read32(address)
+            raise RuntimeError("Device is not mmio capable.")
 
-        def pci_write32_raw(self, chip_id: int, address: int, data: int) -> int:
-            if self.is_chip_mmio_capable(chip_id):
-                return self.get_device(chip_id).bar_write32(address, data)
-            raise RuntimeError(f"Device with chip id {chip_id} is not mmio capable.")
+        def pci_write32_raw(self, address: int, data: int) -> int:
+            """Writes 4 bytes to PCI address"""
+            if self.is_mmio_capable:
+                self.__device.bar_write32(address, data)
+                return 4
+            raise RuntimeError("Device is not mmio capable.")
 
-        def dma_buffer_read32(self, chip_id: int, address: int, channel: int) -> int:
-            raise NotImplementedError("dma_buffer_read32 is not implemented in UMD implementation.")
+        def dma_buffer_read32(self, address: int, channel: int) -> int:
+            """Reads 4 bytes from DMA buffer"""
+            raise NotImplementedError("dma_buffer_read32 is not implemented in UmdDeviceWrapper.")
 
-        def pci_read_tile(
-            self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int
-        ) -> bytes:
-            raise NotImplementedError("pci_read_tile is not implemented in UMD implementation.")
+        def pci_read_tile(self, noc_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int) -> str:
+            """Reads tile from address"""
+            raise NotImplementedError("pci_read_tile is not implemented in UmdDeviceWrapper.")
 
-        def get_cluster_description(self):
-            return self.cluster_descriptor_path
-
-        def get_device_ids(self):
-            return self.device_ids
-
-        def get_device_arch(self, chip_id: int) -> str:
-            return str(self.devices[chip_id].get_arch())
-
-        def get_device_soc_description(self, chip_id: int) -> str:
-            return self.device_soc_descriptors_yamls[chip_id]
-
-        def convert_from_noc0(self, chip_id: int, noc_x: int, noc_y: int, core_type: str, coord_system: str):
+        def convert_from_noc0(self, noc_x: int, noc_y: int, core_type: str, coord_system: str) -> tuple[int, int]:
+            """Convert noc0 coordinate into specified coordinate system"""
             if core_type == "arc":
                 core_type_enum = tt_umd.CoreType.ARC
             elif core_type == "dram":
@@ -372,33 +433,226 @@ try:
             else:
                 raise RuntimeError(f"Unknown coordinate system: {coord_system}")
 
-            soc_descriptor = self.soc_descriptors[chip_id]
             core_coord = tt_umd.CoreCoord(noc_x, noc_y, core_type_enum, tt_umd.CoordSystem.NOC0)
-            output = soc_descriptor.translate_coord_to(core_coord, coord_system_enum)
+            output = self.soc_descriptor.translate_coord_to(core_coord, coord_system_enum)
             return (output.x, output.y)
 
         def arc_msg(
-            self, noc_id: int, chip_id: int, msg_code: int, wait_for_done: bool, arg0: int, arg1: int, timeout: int
-        ):
+            self,
+            noc_id: int,
+            msg_code: int,
+            wait_for_done: bool,
+            args: Sequence[int],
+            timeout: datetime.timedelta | float,
+        ) -> tuple[int, int, int]:
+            """Send ARC message"""
             # TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
-            tt_umd.TTDevice.use_noc1(noc_id == 1)
+            with switch_umd_noc(noc_id):
+                timeout_ms = (
+                    timeout.total_seconds() * 1000 if isinstance(timeout, datetime.timedelta) else timeout * 1000
+                )
+                return self.__device.arc_msg(msg_code, wait_for_done, args, int(timeout_ms))
 
-            return self.get_device(chip_id).get_arc_messenger().send_message(msg_code, arg0, arg1, timeout)
+        def read_arc_telemetry_entry(self, telemetry_tag: int) -> int:
+            """Read ARC telemetry entry"""
 
-        def read_arc_telemetry_entry(self, chip_id: int, telemetry_tag: int) -> int | None:
-            arc_telemetry_reader = self.get_arc_telemetry_reader(chip_id)
-            umd_telemetry_tag = tt_umd.TelemetryTag(telemetry_tag)
-            if not arc_telemetry_reader.is_entry_available(umd_telemetry_tag):
-                return None
-            return arc_telemetry_reader.read_entry(umd_telemetry_tag)
+            def do_read(telemetry_tag: int) -> int:
+                arc_telemetry_reader = self.__device.get_arc_telemetry_reader()
+                if not arc_telemetry_reader.is_entry_available(telemetry_tag):
+                    raise RuntimeError(f"Telemetry tag {telemetry_tag} is not available on device {self.device_id}.")
+                return arc_telemetry_reader.read_entry(telemetry_tag)
 
-        def get_firmware_version(self, chip_id: int):
-            tt_device = self.get_device(chip_id)
-            firmware_version = tt_device.get_firmware_version()
+            try:
+                return do_read(telemetry_tag)
+            except:
+                if not self.is_mmio_capable:
+                    raise
+                # TODO: We should retry only if it was remote read error
+                self.__configure_working_active_eth()
+                return do_read(telemetry_tag)
+
+        def get_firmware_version(self) -> tuple[int, int, int]:
+            """Returns firmware version"""
+
+            def do_read():
+                firmware_info_provider = self.__device.get_firmware_info_provider()
+                return firmware_info_provider.get_firmware_version()
+
+            try:
+                firmware_version = do_read()
+            except:
+                if not self.is_mmio_capable:
+                    raise
+                # TODO: We should retry only if it was remote read error
+                self.__configure_working_active_eth()
+                firmware_version = do_read()
             return (firmware_version.major, firmware_version.minor, firmware_version.patch)
 
+        def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
+            """Returns currently active Ethernet core in logical coordinates"""
+            remote_communication = self.__device.get_remote_communication()
+            if remote_communication is None:
+                return None
+            translated_coord = remote_communication.get_remote_transfer_ethernet_core()
+            logical_coord = self.soc_descriptor.translate_coord_to(
+                tt_umd.tt_xy_pair(translated_coord[0], translated_coord[1]),
+                tt_umd.CoordSystem.TRANSLATED,
+                tt_umd.CoordSystem.LOGICAL,
+            )
+            return (logical_coord.x, logical_coord.y)
+
+    class TTExaLensUmdImplementation(TTExaLensCommunicator):
+        def __init__(
+            self,
+            wanted_devices: list = [],
+            init_jtag=False,
+            initialize_with_noc1=False,
+            simulation_directory: str | None = None,
+        ):
+            self.temp_working_directory = tempfile.mkdtemp(prefix="ttexalens_server_XXXXXX")
+
+            # Respect UMD's existing env var first; default to ERROR otherwise.
+            # If Python wants DEBUG, it can set TT_LOGGER_LEVEL=debug before calling into this function.
+            if "TT_LOGGER_LEVEL" not in os.environ:
+                tt_umd.logging.set_level(tt_umd.logging.Level.Error)
+
+            # TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use noc1
+            tt_umd.TTDevice.use_noc1(initialize_with_noc1)
+
+            discovery_options = tt_umd.TopologyDiscoveryOptions()
+            discovery_options.io_device_type = tt_umd.IODeviceType.PCIe if not init_jtag else tt_umd.IODeviceType.JTAG
+            # TODO: discovery_options.no_wait_for_eth_training = True
+            # TODO: discovery_options.no_eth_firmware_strictness = True
+            self.cluster_descriptor, devices = tt_umd.TopologyDiscovery.discover(discovery_options)
+
+            if len(self.cluster_descriptor.get_all_chips()) == 0:
+                raise RuntimeError("No Tenstorrent devices were detected on this system.")
+
+            self.cluster_descriptor_path = os.path.join(self.temp_working_directory, "cluster_desc.yaml")
+            self.cluster_descriptor.serialize_to_file(self.cluster_descriptor_path)
+
+            # Setup used devices
+            self.device_ids: list[int] = []
+            for i in self.cluster_descriptor.get_all_chips():
+                self.device_ids.append(i)
+
+            device_id_to_unique_id = {}
+            unique_ids = self.cluster_descriptor.get_chip_unique_ids()
+            for device_id in self.device_ids:
+                if device_id in unique_ids:
+                    device_id_to_unique_id[device_id] = unique_ids[device_id]
+
+            # If we specified which devices we want, check that they are available and then extract their ids
+            if len(wanted_devices) > 0:
+                for wanted_device in wanted_devices:
+                    if wanted_device not in self.device_ids:
+                        raise RuntimeError(f"Device {wanted_device} is not available.")
+                self.device_ids = wanted_devices
+
+            self.device_soc_descriptors_yamls: dict[int, str] = {}
+            self.devices: dict[int, UmdDeviceWrapper] = {}
+            for chip_id in self.device_ids:
+                device = devices[chip_id]
+                unique_id = device_id_to_unique_id.get(chip_id, None)
+                assert unique_id is not None, f"Unique ID for device {chip_id} not found."
+
+                if not self.cluster_descriptor.is_chip_mmio_capable(chip_id):
+                    soc_descriptor = tt_umd.SocDescriptor(device)
+                    mmio_chip_id = self.cluster_descriptor.get_closest_mmio_capable_chip(chip_id)
+                    active_eth_channels = self.cluster_descriptor.get_active_eth_channels(mmio_chip_id)
+                    active_eth_cores = soc_descriptor.get_eth_cores_for_channels(
+                        active_eth_channels, tt_umd.CoordSystem.TRANSLATED
+                    )
+                    active_eth_coords_on_mmio_chip = [(core.x, core.y) for core in active_eth_cores]
+                else:
+                    active_eth_coords_on_mmio_chip = []
+
+                wrapped_device = UmdDeviceWrapper(device, chip_id, unique_id, active_eth_coords_on_mmio_chip)
+                assert wrapped_device.is_mmio_capable == self.cluster_descriptor.is_chip_mmio_capable(chip_id)
+                self.devices[chip_id] = wrapped_device
+
+                file_name = os.path.join(self.temp_working_directory, f"device_desc_runtime_{chip_id}.yaml")
+                wrapped_device.soc_descriptor.serialize_to_file(file_name)
+                self.device_soc_descriptors_yamls[chip_id] = file_name
+
+        def __get_device(self, chip_id: int) -> UmdDeviceWrapper:
+            if chip_id not in self.devices:
+                raise RuntimeError(f"Device with chip id {chip_id} not found.")
+            return self.devices[chip_id]
+
+        def read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int) -> int:
+            return self.__get_device(chip_id).read32(noc_id, noc_x, noc_y, address)
+
+        def write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int) -> int:
+            return self.__get_device(chip_id).write32(noc_id, noc_x, noc_y, address, data)
+
+        def read(
+            self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, use_4B_mode: bool
+        ) -> bytes:
+            return self.__get_device(chip_id).read(noc_id, noc_x, noc_y, address, size, use_4B_mode)
+
+        def write(
+            self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes, use_4B_mode: bool
+        ) -> int:
+            return self.__get_device(chip_id).write(noc_id, noc_x, noc_y, address, data, use_4B_mode)
+
+        def pci_read32_raw(self, chip_id: int, address: int) -> int:
+            return self.__get_device(chip_id).pci_read32_raw(address)
+
+        def pci_write32_raw(self, chip_id: int, address: int, data: int) -> int:
+            return self.__get_device(chip_id).pci_write32_raw(address, data)
+
+        def dma_buffer_read32(self, chip_id: int, address: int, channel: int) -> int:
+            return self.__get_device(chip_id).dma_buffer_read32(address, channel)
+
+        def pci_read_tile(
+            self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int
+        ) -> str:
+            return self.__get_device(chip_id).pci_read_tile(noc_id, noc_x, noc_y, address, size, data_format)
+
+        def get_cluster_description(self):
+            return self.cluster_descriptor_path
+
+        def get_device_ids(self):
+            return self.device_ids
+
+        def get_device_arch(self, chip_id: int) -> str:
+            return str(self.__get_device(chip_id).arch)
+
+        def get_device_soc_description(self, chip_id: int) -> str:
+            return self.device_soc_descriptors_yamls[chip_id]
+
+        def convert_from_noc0(self, chip_id: int, noc_x: int, noc_y: int, core_type: str, coord_system: str):
+            return self.__get_device(chip_id).convert_from_noc0(noc_x, noc_y, core_type, coord_system)
+
+        def arc_msg(
+            self,
+            noc_id: int,
+            chip_id: int,
+            msg_code: int,
+            wait_for_done: bool,
+            args: Sequence[int],
+            timeout: datetime.timedelta | float,
+        ):
+            return self.__get_device(chip_id).arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
+
+        def read_arc_telemetry_entry(self, chip_id: int, telemetry_tag: int) -> int:
+            return self.__get_device(chip_id).read_arc_telemetry_entry(telemetry_tag)
+
+        def get_firmware_version(self, chip_id: int) -> tuple[int, int, int]:
+            return self.__get_device(chip_id).get_firmware_version()
+
+        def warm_reset(self, is_galaxy_configuration: bool = False) -> None:
+            if is_galaxy_configuration:
+                tt_umd.WarmReset.ubb_warm_reset()
+            else:
+                tt_umd.WarmReset.warm_reset()
+
+        def get_remote_transfer_eth_cores(self, chip_id: int) -> tuple[int, int] | None:
+            return self.__get_device(chip_id).get_remote_transfer_eth_core()
+
         def get_device_unique_id(self, chip_id: int) -> int:
-            return self.device_id_to_unique_id[chip_id]
+            return self.__get_device(chip_id).unique_id
 
         def get_file(self, file_path: str) -> str:
             with open(file_path, "r") as f:
