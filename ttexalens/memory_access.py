@@ -62,23 +62,40 @@ class L1MemoryAccess(MemoryAccess):
     MemoryAccess implementation that talks directly to on‑chip memory at a given
     OnChipCoordinate via tt_exalens_lib.{read,write}_from_device.
 
-    This is used when we know an address is in the device’s global address space
-    (e.g. L1 or other device-visible memory mapped region) and we want to access
+    This is used when we know an address is L1 and we want to access
     it without going through the RiscDebug abstraction.
     """
 
     def __init__(self, location: OnChipCoordinate):
         self._location = location
+        l1 = location.noc_block.get_noc_memory_map().get_block_by_name("l1")
+        if l1 is None:
+            raise Exception(f"L1MemoryAccess could not find L1 memory block at location {location}")
+
+        self.base_address = l1.address.noc_address
+        self.size = l1.size
 
     def read(self, address: int, size_bytes: int) -> bytes:
+        self.validate_access(address, size_bytes)
+
         from ttexalens.tt_exalens_lib import read_from_device
 
         return read_from_device(location=self._location, addr=address, num_bytes=size_bytes)
 
     def write(self, address: int, data: bytes) -> None:
+        self.validate_access(address, len(data))
+
         from ttexalens.tt_exalens_lib import write_to_device
 
         write_to_device(location=self._location, addr=address, data=data)
+
+    def validate_access(self, address: int, size_bytes: int) -> None:
+        address_end = address + size_bytes
+        if address < self.base_address or address_end > self.base_address + self.size:
+            raise Exception(
+                f"L1MemoryAccess restricted access: Address range [0x{address:08x}, 0x{address_end:08x}) is outside of L1 memory range "
+                f"[0x{self.base_address:08x}, 0x{self.base_address + self.size:08x})"
+            )
 
 
 class FixedMemoryAccess(MemoryAccess):
