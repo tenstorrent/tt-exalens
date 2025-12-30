@@ -13,6 +13,15 @@ if TYPE_CHECKING:
     from ttexalens.hardware.risc_debug import RiscDebug
 
 
+class RestrictedMemoryAccessError(Exception):
+    """
+    Raised when attempting to access memory outside of allowed regions
+    (e.g., outside L1 or data private memory when restricted_access for them is is enabled).
+    """
+
+    pass
+
+
 class MemoryAccess(ABC):
     """
     Abstract interface for reading and writing data from a target address space.
@@ -47,13 +56,15 @@ class MemoryAccess(ABC):
         self.write(address, data_bytes)
 
     @staticmethod
-    def get(risc_debug: RiscDebug, ensure_halted_access: bool = True, restricted_access: bool = True) -> "MemoryAccess":
+    def create(
+        risc_debug: RiscDebug, ensure_halted_access: bool = True, restricted_access: bool = True
+    ) -> "MemoryAccess":
         return RiscDebugMemoryAccess(
             risc_debug, ensure_halted_access=ensure_halted_access, restricted_access=restricted_access
         )
 
     @staticmethod
-    def get_l1(location: OnChipCoordinate) -> "MemoryAccess":
+    def create_l1(location: OnChipCoordinate) -> "MemoryAccess":
         return L1MemoryAccess(location)
 
 
@@ -90,11 +101,10 @@ class L1MemoryAccess(MemoryAccess):
         write_to_device(location=self._location, addr=address, data=data)
 
     def validate_access(self, address: int, size_bytes: int) -> None:
-        address_end = address + size_bytes
-        if address < self.base_address or address_end > self.base_address + self.size:
-            raise Exception(
-                f"L1MemoryAccess restricted access: Address range [0x{address:08x}, 0x{address_end:08x}) is outside of L1 memory range "
-                f"[0x{self.base_address:08x}, 0x{self.base_address + self.size:08x})"
+        if address < self.base_address or address + size_bytes > self.base_address + self.size:
+            raise RestrictedMemoryAccessError(
+                f"L1MemoryAccess restricted access: Address range [0x{address:08x}, 0x{address + size_bytes - 1:08x}] is outside of L1 memory range "
+                f"[0x{self.base_address:08x}, 0x{self.base_address + self.size - 1:08x}]"
             )
 
 
@@ -157,19 +167,25 @@ class RiscDebugMemoryAccess(MemoryAccess):
         if self._restricted_access:
             l1: MemoryBlock = self._risc_debug.get_l1()
             data_private_memory: MemoryBlock | None = self._risc_debug.get_data_private_memory()
-            inside_l1: bool = l1.contains_private_address(address) and l1.contains_private_address(
-                address + size_bytes - 1
-            )
+
+            address_end = address + size_bytes - 1
+            inside_l1: bool = l1.contains_private_address(address) and l1.contains_private_address(address_end)
             inside_data_private_memory: bool = (
                 data_private_memory is not None
                 and data_private_memory.contains_private_address(address)
-                and data_private_memory.contains_private_address(address + size_bytes - 1)
+                and data_private_memory.contains_private_address(address_end)
             )
 
             if not inside_l1 and not inside_data_private_memory:
-                raise Exception(
-                    f"RiscDebugMemoryAccess restricted access: Address 0x{address:08x} is outside of L1 and Data Private Memory"
+                error_msg = (
+                    f"RiscDebugMemoryAccess restricted access: Address range [0x{address:08x}, 0x{address_end:08x}] leaves L1 and Data Private Memory regions"
+                    f" (L1: [0x{l1.address.private_address:08x}, 0x{l1.address.private_address + l1.size - 1:08x}]"
                 )
+                if data_private_memory is not None:
+                    error_msg += f", Data Private Memory: [0x{data_private_memory.address.private_address:08x}, 0x{data_private_memory.address.private_address + data_private_memory.size - 1:08x}])"
+                else:
+                    error_msg += ")"
+                raise RestrictedMemoryAccessError(error_msg)
 
 
 class CachedReadMemoryAccess(MemoryAccess):

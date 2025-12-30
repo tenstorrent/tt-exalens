@@ -79,7 +79,10 @@ class TensixDebug:
             self.core_loc = core_loc
 
         # Using TRISC0 debug hardware to read/write memory
-        self.mem_access = MemoryAccess.get(self.noc_block.get_risc_debug(risc_name="trisc0"), restricted_access=False)
+        # Use restricted_access=False because the Tensix dest is outside L1/data_private, but we still need to read/write it via TRISC0 debug hardware.
+        self.mem_access = MemoryAccess.create(
+            self.noc_block.get_risc_debug(risc_name="trisc0"), restricted_access=False
+        )
 
     def dbg_buff_status(self):
         return self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS")

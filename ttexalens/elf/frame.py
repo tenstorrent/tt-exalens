@@ -7,7 +7,7 @@ from functools import cached_property
 from elftools.dwarf.callframe import FDE
 from typing import TYPE_CHECKING
 
-from ttexalens.memory_access import MemoryAccess
+from ttexalens.memory_access import MemoryAccess, RestrictedMemoryAccessError
 
 if TYPE_CHECKING:
     from ttexalens.hardware.risc_debug import RiscDebug
@@ -18,7 +18,7 @@ class FrameDescription:
         self.pc = pc
         self.fde = fde
         self.risc_debug = risc_debug
-        self.mem_access = MemoryAccess.get(risc_debug)
+        self.mem_access = MemoryAccess.create(risc_debug)
 
         # Go through fde and try to find one that fits the pc
         decoded = self.fde.get_decoded()
@@ -43,12 +43,9 @@ class FrameDescription:
             if address is not None:
                 try:
                     return self.mem_access.read_word(address)
-                except Exception as e:
+                except RestrictedMemoryAccessError:
                     # If access was restricted (outside L1/data_private_memory), return None
-                    if "restricted access" in str(e):
-                        return None
-                    # Otherwise, re-raise the exception
-                    raise
+                    return None
         return self.risc_debug.read_gpr(register_index)
 
     def read_previous_cfa(self, current_cfa: int | None = None) -> int | None:
@@ -85,7 +82,7 @@ class FrameInspection:
         self.loaded_offset = loaded_offset
         self.frame_description = frame_description
         self.cfa = cfa
-        self.mem_access = MemoryAccess.get(risc_debug)
+        self.mem_access = MemoryAccess.create(risc_debug)
 
     @cached_property
     def pc(self) -> int:

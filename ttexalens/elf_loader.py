@@ -21,7 +21,7 @@ class ElfLoader:
 
     def __init__(self, risc_debug: RiscDebug):
         self.risc_debug = risc_debug
-        self.mem_access = MemoryAccess.get(risc_debug)
+        self.mem_access = MemoryAccess.create(risc_debug)
 
     @property
     def risc_name(self) -> str:

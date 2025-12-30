@@ -59,7 +59,7 @@ class TestDebugSymbols(unittest.TestCase):
         cls.parsed_elf = cls.core_sim.parse_elf("globals_test.release")
 
         # Create the memory access wrapper
-        original_mem_access = MemoryAccess.get(risc_debug)
+        original_mem_access = MemoryAccess.create(risc_debug)
         cls.mem_access = MemoryAccessWrapper(original_mem_access)
 
         assert not cls.core_sim.is_in_reset()
