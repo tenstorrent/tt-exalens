@@ -10,7 +10,7 @@ from ttexalens.hardware.memory_block import MemoryBlock
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
-    from ttexalens.hardware.risc_debug import RiscDebug
+    from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation
 
 
 class RestrictedMemoryAccessError(Exception):
@@ -19,7 +19,38 @@ class RestrictedMemoryAccessError(Exception):
     (e.g., outside L1 or data private memory when restricted_access for them is is enabled).
     """
 
-    pass
+    def __init__(self, access_start: int, access_end: int, location: OnChipCoordinate | RiscLocation):
+        """
+        Args:
+            access_start: Starting address of the attempted access
+            access_end: Ending address of the attempted access (inclusive)
+            location: Location of the RISC or on-chip memory where the access was attempted
+        """
+
+        from ttexalens.coordinate import OnChipCoordinate
+
+        self.access_start = access_start
+        self.access_end = access_end
+        if isinstance(location, OnChipCoordinate):
+            self.risc_name = None
+            self.neo_id = None
+            self.location = location
+        else:
+            self.risc_name = location.risc_name
+            self.neo_id = location.neo_id
+            self.location = location.location
+
+    def __str__(self) -> str:
+        """Generate error message lazily when the exception is converted to string."""
+
+        msg = f"Restricted access: Address range [0x{self.access_start:08x}, 0x{self.access_end:08x}] is outside allowed memory regions."
+        if self.risc_name:
+            if self.neo_id is not None:
+                return f"RISC '{self.risc_name}' (Neo ID {self.neo_id}) at {self.location.to_user_str()}, {msg}"
+            else:
+                return f"RISC '{self.risc_name}' at {self.location.to_user_str()}, {msg}"
+
+        return f"{self.location.to_user_str()}, {msg}"
 
 
 class MemoryAccess(ABC):
@@ -105,8 +136,7 @@ class L1MemoryAccess(MemoryAccess):
     def validate_access(self, address: int, size_bytes: int) -> None:
         if address < self.base_address or address + size_bytes > self.base_address + self.size:
             raise RestrictedMemoryAccessError(
-                f"Restricted access: Address range [0x{address:08x}, 0x{address + size_bytes - 1:08x}] is outside of L1 memory range "
-                f"[0x{self.base_address:08x}, 0x{self.base_address + self.size - 1:08x}]"
+                access_start=address, access_end=address + size_bytes - 1, location=self._location
             )
 
 
@@ -168,7 +198,13 @@ class RiscDebugMemoryAccess(MemoryAccess):
     def validate_access(self, address: int, size_bytes: int) -> None:
         if self._restricted_access:
             l1: MemoryBlock = self._risc_debug.get_l1()
+            assert l1.address.private_address is not None, "L1 memory block has no private address"
+
             data_private_memory: MemoryBlock | None = self._risc_debug.get_data_private_memory()
+            if data_private_memory is not None:
+                assert (
+                    data_private_memory.address.private_address is not None
+                ), "Data Private Memory block has no private address"
 
             address_end = address + size_bytes - 1
             inside_l1: bool = l1.contains_private_address(address) and l1.contains_private_address(address_end)
@@ -179,15 +215,9 @@ class RiscDebugMemoryAccess(MemoryAccess):
             )
 
             if not inside_l1 and not inside_data_private_memory:
-                error_msg = (
-                    f"Restricted access: Address range [0x{address:08x}, 0x{address_end:08x}] leaves L1 and Data Private Memory regions"
-                    f" (L1: [0x{l1.address.private_address:08x}, 0x{l1.address.private_address + l1.size - 1:08x}]"  # type: ignore[operator]
+                raise RestrictedMemoryAccessError(
+                    access_start=address, access_end=address_end, location=self._risc_debug.risc_location.location
                 )
-                if data_private_memory is not None:
-                    error_msg += f", Data Private Memory: [0x{data_private_memory.address.private_address:08x}, 0x{data_private_memory.address.private_address + data_private_memory.size - 1:08x}])"  # type: ignore[operator]
-                else:
-                    error_msg += ", Data Private Memory: None)"
-                raise RestrictedMemoryAccessError(error_msg)
 
 
 class CachedReadMemoryAccess(MemoryAccess):
