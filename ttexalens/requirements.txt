@@ -1,4 +1,4 @@
-tt-umd>=0.7.2
+tt-umd>=0.7.1
 deprecation>=2.1.0
 docopt>=0.6.2
 fastnumbers>=5.1.0
@@ -14,5 +14,3 @@ sortedcontainers>=2.4.0
 tabulate>=0.9.0
 rich
 cxxfilt
---extra-index-url https://test.pypi.org/simple/
-tt-umd>=0.7.1
