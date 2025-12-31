@@ -5,21 +5,22 @@
 
 set -eo pipefail
 
-TTEXALENS_INSTALL=${TTEXALENS_INSTALL:-}
-TEST_INSTALL=${TEST_INSTALL:-}
-WHEEL_INSTALL=${WHEEL_INSTALL:-}
+EXALENS_HOME=$(dirname "$0")/..
 
-if [ -n "$TTEXALENS_INSTALL" ]; then
-    echo "Installing ttexalens dependencies..."
-    pip install -r ttexalens/requirements.txt
+# Parse command line arguments
+PIP_QUIET=""
+if [[ "$1" == "--quiet" || "$1" == "-q" ]]; then
+    PIP_QUIET="-q"
 fi
 
-if [ -n "$TEST_INSTALL" ]; then
-    echo "Installing test dependencies..."
-    pip install -r test/test_requirements.txt
-fi
+echo "Installing ttexalens dependencies..."
+pip install $PIP_QUIET --extra-index-url https://test.pypi.org/simple/ -r $EXALENS_HOME/ttexalens/requirements.txt
 
-if [ -n "$WHEEL_INSTALL" ]; then
-    echo "Installing wheel dependencies..."
-    pip install -r wheel build setuptools
-fi
+echo "Installing ttexalens dev dependencies..."
+pip install $PIP_QUIET -r $EXALENS_HOME/ttexalens/dev-requirements.txt
+
+echo "Installing test dependencies..."
+pip install $PIP_QUIET -r $EXALENS_HOME/test/test_requirements.txt
+
+echo "Installing wheel dependencies..."
+pip install $PIP_QUIET wheel build setuptools
