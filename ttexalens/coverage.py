@@ -5,7 +5,8 @@
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_from_device
 from ttexalens.tt_exalens_lib import TTException
-from ttexalens.elf import ParsedElfFile, MemoryAccess
+from ttexalens.elf import ParsedElfFile
+from ttexalens.memory_access import MemoryAccess
 
 """
 Extract the coverage data from the device into a .gcda file.
@@ -36,7 +37,7 @@ def dump_coverage(
         raise TTException("__coverage_end not found")
 
     # Find coverage header in device memory.
-    coverage_header = elf.get_global("coverage_header", MemoryAccess.get_l1(location))
+    coverage_header = elf.get_global("coverage_header", MemoryAccess.create_l1(location))
     if coverage_header is None:
         raise TTException("coverage_header not found")
     coverage_header = coverage_header.dereference()

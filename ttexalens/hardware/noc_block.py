@@ -33,7 +33,7 @@ class NocBlock:
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
         pass
 
-    def get_noc_memory_map(self) -> MemoryMap | None:
+    def get_noc_memory_map(self) -> MemoryMap:
         # Currently only mapping NoC address space
         return self.memory_map
 

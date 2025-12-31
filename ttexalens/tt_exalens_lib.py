@@ -14,6 +14,7 @@ from ttexalens.context import Context
 from ttexalens.elf import read_elf, ParsedElfFile
 from ttexalens.hardware.risc_debug import CallstackEntry
 from ttexalens.util import TTException, Verbosity, TRACE
+from ttexalens.memory_access import MemoryAccess
 
 # Parameter name to formatter function mapping for trace_api decorator
 _TRACE_FORMATTERS = {
@@ -754,8 +755,7 @@ def read_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    with risc_debug.ensure_private_memory_access():
-        return int(risc_debug.read_memory(addr))
+    return MemoryAccess.create(risc_debug).read_word(addr)
 
 
 @trace_api
@@ -801,5 +801,4 @@ def write_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    with risc_debug.ensure_private_memory_access():
-        risc_debug.write_memory(addr, value)
+    MemoryAccess.create(risc_debug).write_word(addr, value)
