@@ -17,3 +17,8 @@ source $PYTHON_ENV_DIR/bin/activate
 echo "Ensuring pip is installed and up-to-date"
 python3 -m ensurepip
 pip install --upgrade pip
+
+EXALENS_HOME=$(dirname "$0")/..
+pip install -r $EXALENS_HOME/ttexalens/requirements.txt
+pip install -r $EXALENS_HOME/ttexalens/dev-requirements.txt
+pip install -r $EXALENS_HOME/test/test_requirements.txt
