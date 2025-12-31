@@ -675,7 +675,7 @@ try:
 
 except:
     print("Error: Failed to import tt_umd module.")
-    TTExaLensUmdImplementation = TTExaLensPybind
+    TTExaLensUmdImplementation = TTExaLensPybind  # type: ignore
 
 
 def init_pybind(
