@@ -224,18 +224,18 @@ try:
                 temp = self.__read_from_device_reg(coord.x, coord.y, address - first_unaligned_index, 4)
                 if first_unaligned_index + size <= 4:
                     return temp[first_unaligned_index : first_unaligned_index + size]
-                mem_ptr = bytearray()
-                mem_ptr.extend(temp[first_unaligned_index:4])
+                data = bytearray()
+                data.extend(temp[first_unaligned_index:4])
                 address += 4 - first_unaligned_index
                 size -= 4 - first_unaligned_index
             else:
-                mem_ptr = bytearray()
+                data = bytearray()
 
             # Read aligned bytes
             aligned_size = size - (size % 4)
             block_size = 4 if use_4B_mode and not self.is_simulation else aligned_size
             while aligned_size > 0:
-                mem_ptr.extend(self.__read_from_device_reg(coord.x, coord.y, address, block_size))
+                data.extend(self.__read_from_device_reg(coord.x, coord.y, address, block_size))
                 aligned_size -= block_size
                 address += block_size
                 size -= block_size
@@ -244,9 +244,9 @@ try:
             last_unaligned_size = size
             if last_unaligned_size != 0:
                 temp = self.__read_from_device_reg(coord.x, coord.y, address, 4)
-                mem_ptr.extend(temp[:last_unaligned_size])
+                data.extend(temp[:last_unaligned_size])
 
-            return bytes(mem_ptr)
+            return bytes(data)
 
         def __read_from_device_reg_unaligned(
             self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool
@@ -292,12 +292,14 @@ try:
             # Write aligned bytes
             aligned_size = size_in_bytes - (size_in_bytes % 4)
             block_size = 4 if use_4B_mode and not self.is_simulation else aligned_size
+            offset = 0
             while aligned_size > 0:
-                self.__write_to_device_reg(coord.x, coord.y, address, data[0:block_size])
+                self.__write_to_device_reg(coord.x, coord.y, address, data[offset : offset + block_size])
                 aligned_size -= block_size
-                data = data[block_size:]
+                offset += block_size
                 address += block_size
                 size_in_bytes -= block_size
+            data = data[offset:]
 
             # Read/Write last unaligned word
             last_unaligned_size = size_in_bytes
@@ -494,9 +496,11 @@ try:
             if remote_communication is None:
                 return None
             translated_coord = remote_communication.get_remote_transfer_ethernet_core()
-            logical_coord = self.soc_descriptor.translate_coord_to(
-                tt_umd.tt_xy_pair(translated_coord[0], translated_coord[1]),
-                tt_umd.CoordSystem.TRANSLATED,
+            local_device = remote_communication.get_local_device()
+            logical_coord = tt_umd.SocDescriptor(local_device).translate_coord_to(
+                tt_umd.CoreCoord(
+                    translated_coord[0], translated_coord[1], tt_umd.CoreType.ETH, tt_umd.CoordSystem.TRANSLATED
+                ),
                 tt_umd.CoordSystem.LOGICAL,
             )
             return (logical_coord.x, logical_coord.y)
@@ -648,7 +652,7 @@ try:
             else:
                 tt_umd.WarmReset.warm_reset()
 
-        def get_remote_transfer_eth_cores(self, chip_id: int) -> tuple[int, int] | None:
+        def get_remote_transfer_eth_core(self, chip_id: int) -> tuple[int, int] | None:
             return self.__get_device(chip_id).get_remote_transfer_eth_core()
 
         def get_device_unique_id(self, chip_id: int) -> int:
