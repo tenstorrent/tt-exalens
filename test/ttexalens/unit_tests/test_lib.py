@@ -18,7 +18,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
-from ttexalens.elf import MemoryAccess
+from ttexalens.memory_access import MemoryAccess
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.risc_debug import CallstackEntry, RiscDebug
 
@@ -656,7 +656,7 @@ class TestRunElf(unittest.TestCase):
         rloader = ElfLoader(rdbg)
 
         elf = lib.parse_elf(elf_path)
-        mem_access = MemoryAccess.get(risc_debug)
+        mem_access = MemoryAccess.create(risc_debug)
         mailbox = elf.get_global("g_MAILBOX", mem_access)
         testbyteaccess = elf.get_global("g_TESTBYTEACCESS", mem_access)
 
