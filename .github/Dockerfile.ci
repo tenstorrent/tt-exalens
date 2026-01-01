@@ -32,10 +32,11 @@ RUN apt-get update && apt-get install -y \
 RUN rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED && \
     pip install --upgrade pip --ignore-installed
 
-# Copy the requirements files for pip
-COPY ttexalens/requirements.txt .
-COPY ttexalens/dev-requirements.txt .
-COPY test/test_requirements.txt .
+# Copy the requirements files for pip in current directory
+COPY ttexalens/requirements.txt \
+    ttexalens/dev-requirements.txt \
+    test/test_requirements.txt \
+    ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --extra-index-url https://test.pypi.org/simple/ -r requirements.txt && \
