@@ -150,11 +150,11 @@ Prints callstack using provided elf for a given RiscV core.
 
 Command:
 ```
-callstack build/riscv-src/wormhole/sample.brisc.elf -r brisc
+callstack build_riscv/wormhole/sample.brisc.elf -r brisc
 ```
 Output:
 ```
-File build/riscv-src/wormhole/sample.brisc.elf does not exist
+File build_riscv/wormhole/sample.brisc.elf does not exist
 ```
 
 
@@ -1594,7 +1594,7 @@ Loads an elf file into a brisc and runs it.
 
 Command:
 ```
-run-elf build/riscv-src/wormhole/sample.brisc.elf
+run-elf build_riscv/wormhole/sample.brisc.elf
 ```
 
 

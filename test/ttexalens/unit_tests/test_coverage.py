@@ -55,7 +55,7 @@ class TestCoverage(unittest.TestCase):
         else:
             self.skipTest(f"Unsupported architecture: {self.context.arch}")
 
-        self.elf_root = "build/riscv-src/" + arch + "/"
+        self.elf_root = "build_riscv/" + arch + "/"
 
         # Convert core_desc to core_loc
         if self.core_desc.startswith("ETH"):

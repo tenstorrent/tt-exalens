@@ -36,7 +36,7 @@ After the symbols are loaded, you can display the call stack using the `bt` (bac
 
 ## Sample app debugging script:
 
-Once you started gdb server, you can use run-elf command to execute `ttexalens/riscv-src/sample.cc` application on chip. For wormhole, you can execute `re build/riscv-src/wormhole/sample.brisc.elf` to run application on brisc core.
+Once you started gdb server, you can use run-elf command to execute `ttexalens/riscv-src/sample.cc` application on chip. For wormhole, you can execute `re build_riscv/wormhole/sample.brisc.elf` to run application on brisc core.
 
 After that, you can execute this example script in gdb client to debug it:
 
