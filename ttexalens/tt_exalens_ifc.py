@@ -110,17 +110,8 @@ try:
             self.devices: dict[int, UmdDeviceWrapper] = {}
             self.device_ids: list[int] = []
 
-            # Respect UMD's existing env var first; default to ERROR otherwise.
-            # If Python wants DEBUG, it can set TT_LOGGER_LEVEL=debug before calling into this function.
-            if "TT_LOGGER_LEVEL" not in os.environ:
-                tt_umd.logging.set_level(
-                    tt_umd.logging.Level.Error if simulation_directory is None else tt_umd.logging.Level.Debug
-                )
-
-            # TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use noc1
-            tt_umd.TTDevice.use_noc1(initialize_with_noc1)
-
             if simulation_directory is not None:
+                tt_umd.logging.set_level(tt_umd.logging.Level.Debug)
                 tt_device = tt_umd.RtlSimulationTTDevice.create(simulation_directory)
                 soc_descriptor = tt_device.get_soc_descriptor()
                 if tt_device.get_arch() == tt_umd.ARCH.BLACKHOLE:
@@ -158,6 +149,14 @@ try:
                     f.write(f"io_device_type: SIMULATION\n")
                 # TODO: In destructor we need to call close device so that emulation can stop reservation and simulation can stop waveform?!?
             else:
+                # Respect UMD's existing env var first; default to ERROR otherwise.
+                # If Python wants DEBUG, it can set TT_LOGGER_LEVEL=debug before calling into this function.
+                if "TT_LOGGER_LEVEL" not in os.environ:
+                    tt_umd.logging.set_level(tt_umd.logging.Level.Error)
+
+                # TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use noc1
+                tt_umd.TTDevice.use_noc1(initialize_with_noc1)
+
                 discovery_options = tt_umd.TopologyDiscoveryOptions()
                 discovery_options.io_device_type = (
                     tt_umd.IODeviceType.PCIe if not init_jtag else tt_umd.IODeviceType.JTAG
