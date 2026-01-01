@@ -9,10 +9,33 @@ project(ttexalens VERSION ${TT_EXALENS_VERSION})
 
 # Set default values for variables/options
 set(TTEXALENS_HOME "${PROJECT_SOURCE_DIR}")
+option(BUILD_PYTHON_WHEEL "Only download SFPI, skip RISCV kernel builds" OFF)
+option(STRIP_SYMBOLS "Strip symbols from GDB binary" OFF)
 
 # Check for SFPI release
 include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
 
-# As build_<type>/riscv-src is a symlink, CMake can't put its configuration files there
-# directly, so we specify here that it should place them in build_riscv instead.
-add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src ${PROJECT_SOURCE_DIR}/build_riscv)
+# Build RISCV kernels unless building Python wheel
+if(NOT BUILD_PYTHON_WHEEL)
+    # As build_<type>/riscv-src is a symlink, CMake can't put its configuration files there
+    # directly, so we specify here that it should place them in build_riscv instead.
+    add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src ${PROJECT_SOURCE_DIR}/build_riscv)
+endif()
+
+# Install target for Python wheel: copy GDB binary to source tree
+set(SFPI_GDB_SOURCE "${SFPI_RELEASE_PATH}/compiler/bin/riscv-tt-elf-gdb")
+set(SFPI_GDB_DEST "${PROJECT_SOURCE_DIR}/ttexalens/sfpi/compiler/bin/riscv-tt-elf-gdb")
+
+add_custom_target(install-gdb-for-wheel ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_SOURCE_DIR}/ttexalens/sfpi/compiler/bin"
+    COMMAND ${CMAKE_COMMAND} -E copy "${SFPI_GDB_SOURCE}" "${SFPI_GDB_DEST}"
+    COMMENT "Installing GDB binary for Python wheel packaging"
+)
+
+# Add optional strip command if STRIP_SYMBOLS is enabled
+if(STRIP_SYMBOLS)
+    add_custom_command(TARGET install-gdb-for-wheel POST_BUILD
+        COMMAND strip "${SFPI_GDB_DEST}"
+        COMMENT "Stripping symbols from GDB binary"
+    )
+endif()

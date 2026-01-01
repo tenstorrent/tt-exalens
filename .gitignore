@@ -20,6 +20,7 @@ __pycache__
 ttexalens-export*.zip
 ttexalens-export
 ttexalens-server.pkl
+ttexalens/sfpi/**
 
 # ClangD
 compile_commands.json
