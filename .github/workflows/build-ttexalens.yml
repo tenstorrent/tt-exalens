@@ -45,14 +45,12 @@ jobs:
           key: ttexalens-${{ inputs.config }}-${{ inputs.os }}
       - name: Build TTEXALENS
         run: |
-          make debug
-          make release
+          make
       - name: Run mypy
         run: |
           make mypy
       - name: Build wheel
         run: |
-          make wheel_develop
           make wheel
       - name: Remove SFPI from build artifacts
         run: |
@@ -67,5 +65,4 @@ jobs:
           name: ttexalens-build-${{ inputs.os }}
           path: |
             build
-            build_release
             build_riscv
