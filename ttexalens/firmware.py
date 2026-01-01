@@ -37,8 +37,8 @@ class ELF:
     def __init__(self, file_ifc, filemap, extra_vars=None) -> None:
         """
         Given a filemap "prefix" -> "filename", load all the ELF files and store them in
-        self.names. For example, if filemap is { "brisc" : "./build/riscv-src/wormhole/sample.brisc.elf" },
-        the parsed content of "./build/riscv-src/wormhole/sample.brisc.elf" will be stored in self.names["brisc"].
+        self.names. For example, if filemap is { "brisc" : "./build_riscv/wormhole/sample.brisc.elf" },
+        the parsed content of "./build_riscv/wormhole/sample.brisc.elf" will be stored in self.names["brisc"].
         """
         self.names: dict[str, ParsedElfFile] = dict()
         self.filemap = filemap

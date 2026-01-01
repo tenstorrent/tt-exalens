@@ -12,10 +12,10 @@ To quickly get coverage info for your kernels, you can use our repo:
 mkdir coverage
 ./tt-exalens
 
-re build/riscv-src/wormhole/foo.coverage.trisc0.elf -r trisc0
-re build/riscv-src/wormhole/bar.coverage.trisc1.elf -r trisc1
-cov build/riscv-src/wormhole/foo.coverage.trisc0.elf coverage/foo.gcda coverage/foo.gcno
-cov build/riscv-src/wormhole/bar.coverage.trisc1.elf coverage/bar.gcda coverage/bar.gcno
+re build_riscv/wormhole/foo.coverage.trisc0.elf -r trisc0
+re build_riscv/wormhole/bar.coverage.trisc1.elf -r trisc1
+cov build_riscv/wormhole/foo.coverage.trisc0.elf coverage/foo.gcda coverage/foo.gcno
+cov build_riscv/wormhole/bar.coverage.trisc1.elf coverage/bar.gcda coverage/bar.gcno
 exit
 ```
 3. Get your coverage report by running:
