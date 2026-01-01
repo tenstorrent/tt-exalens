@@ -165,9 +165,7 @@ class TTExaLensUmdImplementation:
         return self.__get_device(chip_id).pci_read_tile(noc_id, noc_x, noc_y, address, size, data_format)
 
     def get_cluster_description(self):
-        print("Getting cluster description path...")
         value = self.cluster_descriptor_path
-        print("Got value: ", value)
         return value
 
     def get_device_ids(self):
