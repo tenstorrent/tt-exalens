@@ -65,7 +65,7 @@ def init_ttexalens_remote(
     return load_context(lens_ifc, use_4B_mode=use_4B_mode)
 
 
-def get_cluster_desc_yaml(lens_ifc: tt_exalens_ifc.TTExaLensCommunicator) -> util.YamlFile:
+def get_cluster_desc_yaml(lens_ifc: tt_exalens_ifc.TTExaLensUmdImplementation) -> util.YamlFile:
     """Get the runtime data and cluster description yamls through the TTExaLens interface."""
 
     try:
@@ -78,7 +78,7 @@ def get_cluster_desc_yaml(lens_ifc: tt_exalens_ifc.TTExaLensCommunicator) -> uti
 
 
 def load_context(
-    server_ifc: tt_exalens_ifc.TTExaLensCommunicator, use_noc1: bool = False, use_4B_mode: bool = True
+    server_ifc: tt_exalens_ifc.TTExaLensUmdImplementation, use_noc1: bool = False, use_4B_mode: bool = True
 ) -> Context:
     """Load the TTExaLens context object with specified parameters."""
     context = LimitedContext(server_ifc, get_cluster_desc_yaml(server_ifc), use_noc1, use_4B_mode)

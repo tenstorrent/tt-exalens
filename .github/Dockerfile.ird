@@ -32,6 +32,24 @@ RUN apt-get update && apt-get install -y \
     nano \
     htop
 
+# Install CMake 3.27 from official releases
+RUN wget https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.sh && \
+    chmod +x cmake-3.27.9-linux-x86_64.sh && \
+    ./cmake-3.27.9-linux-x86_64.sh --skip-license --prefix=/usr/local && \
+    rm cmake-3.27.9-linux-x86_64.sh
+
+# Install clang 17
+RUN wget https://apt.llvm.org/llvm.sh && \
+    chmod u+x llvm.sh && \
+    ./llvm.sh 17 && \
+    apt install -y libc++-17-dev libc++abi-17-dev && \
+    ln -s /usr/bin/clang-17 /usr/bin/clang && \
+    ln -s /usr/bin/clang++-17 /usr/bin/clang++
+
+# Install clang-format
+RUN apt install -y clang-format-17 && \
+    ln -s /usr/bin/clang-format-17 /usr/bin/clang-format
+
 # Remove gdb if we aren't on Ubuntu 24.04
 # 24.04 has gdb 15.1 by default, lets give that a chance before we decide we need to build something
 RUN [ "$UBUNTU_VERSION" != "24.04" ] && apt-get remove -y gdb || true
