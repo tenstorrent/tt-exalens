@@ -13,19 +13,9 @@ RUN apt-get update && apt-get install -y \
     software-properties-common \
     build-essential \
     git \
-    libyaml-cpp-dev \
-    libhwloc-dev \
-    libnsl2 \
     sudo \
     wget \
-    xxd \
-    curl \
-    jq
-
-# Install test dependencies
-RUN apt-get update && apt-get install -y \
-    libgtest-dev \
-    libgmock-dev
+    curl
 
 # Install minimal dependencies for Python environment, pip, and wheel builds
 RUN apt-get update && apt-get install -y \
@@ -40,25 +30,8 @@ RUN apt-get update && apt-get install -y \
 # Install build tools
 RUN apt-get update && apt-get install -y \
     ccache \
-    ninja-build
-
-# Install CMake 3.27 from official releases
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.sh && \
-    chmod +x cmake-3.27.9-linux-x86_64.sh && \
-    ./cmake-3.27.9-linux-x86_64.sh --skip-license --prefix=/usr/local && \
-    rm cmake-3.27.9-linux-x86_64.sh
-
-# Install clang 17
-RUN wget https://apt.llvm.org/llvm.sh && \
-    chmod u+x llvm.sh && \
-    ./llvm.sh 17 && \
-    apt install -y libc++-17-dev libc++abi-17-dev && \
-    ln -s /usr/bin/clang-17 /usr/bin/clang && \
-    ln -s /usr/bin/clang++-17 /usr/bin/clang++
-
-# Install clang-format
-RUN apt install -y clang-format-17 && \
-    ln -s /usr/bin/clang-format-17 /usr/bin/clang-format
+    ninja-build \
+    cmake
 
 # Clean package cache
 RUN apt-get clean

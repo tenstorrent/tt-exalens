@@ -12,7 +12,7 @@ from sortedcontainers import SortedSet
 
 from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.hardware.risc_debug import RiscLocation
-from ttexalens.tt_exalens_ifc import TTExaLensCommunicator
+from ttexalens.tt_exalens_ifc import TTExaLensUmdImplementation
 
 if TYPE_CHECKING:
     from ttexalens.device import Device
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 class Context:
     def __init__(
         self,
-        server_ifc: TTExaLensCommunicator,
+        server_ifc: TTExaLensUmdImplementation,
         cluster_desc: util.YamlFile,
         short_name: str,
         use_noc1=False,
@@ -99,7 +99,7 @@ class Context:
 
 
 class LimitedContext(Context):
-    def __init__(self, server_ifc: TTExaLensCommunicator, cluster_desc_yaml, use_noc1=False, use_4B_mode=True):
+    def __init__(self, server_ifc: TTExaLensUmdImplementation, cluster_desc_yaml, use_noc1=False, use_4B_mode=True):
         super().__init__(server_ifc, cluster_desc_yaml, "limited", use_noc1, use_4B_mode)
         self.loaded_elfs: dict[RiscLocation, str] = {}
 
