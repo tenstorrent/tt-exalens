@@ -2,9 +2,6 @@ ARG UBUNTU_VERSION=22.04
 FROM ubuntu:${UBUNTU_VERSION}
 SHELL ["/bin/bash", "-c"]
 
-RUN mkdir /home/workdir
-WORKDIR /home/workdir
-
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -41,7 +38,7 @@ COPY ttexalens/dev-requirements.txt .
 COPY test/test_requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir --extra-index-url https://test.pypi.org/simple/ -r requirements.txt
-RUN pip install --no-cache-dir -r dev-requirements.txt
-RUN pip install --no-cache-dir -r test_requirements.txt
-RUN pip install wheel build setuptools
+RUN pip install --no-cache-dir --extra-index-url https://test.pypi.org/simple/ -r requirements.txt && \
+    pip install --no-cache-dir -r dev-requirements.txt && \
+    pip install --no-cache-dir -r test_requirements.txt && \
+    pip install wheel build setuptools
