@@ -15,7 +15,7 @@ build:
 
 .PHONY: clean
 clean:
-	@rm -rf build build_riscv
+	@rm -rf build
 
 .PHONY: test
 test:
