@@ -48,13 +48,13 @@ mypy:
 wheel_develop:
 	@mkdir -p build_debug
 	@ln -sfn "$(abspath build_debug)" build
-	CONFIG=Debug pip wheel --no-deps --no-cache-dir . --wheel-dir build_debug/ttexalens_wheel
+	CONFIG=Debug pip wheel --no-deps --no-cache-dir --extra-index-url https://test.pypi.org/simple/ . --wheel-dir build_debug/ttexalens_wheel
 
 .PHONY: wheel
 wheel:
 	@mkdir -p build_release
 	@ln -sfn "$(abspath build_release)" build
-	STRIP_SYMBOLS=1 CONFIG=Release pip wheel --no-deps --no-cache-dir . --wheel-dir build_release/ttexalens_wheel
+	STRIP_SYMBOLS=1 CONFIG=Release pip wheel --no-deps --no-cache-dir --extra-index-url https://test.pypi.org/simple/ . --wheel-dir build_release/ttexalens_wheel
 
 TTEXALENS_HOME ?= $(shell git rev-parse --show-toplevel)
 
