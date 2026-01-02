@@ -17,20 +17,8 @@ ENV TT_EXALENS_INFRA_DIR=/opt/tt_exalens_infra
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Create directories for infra
-RUN mkdir -p ${TT_EXALENS_INFRA_DIR}
-
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    docker.io \
-    gh \
-    git-lfs \
-    libgmp-dev \
-    libmpfr-dev \
-    rsync \
-    ssh \
-    vim \
-    nano \
-    htop
+COPY .github/Dockerfile.ird.sh ./
+RUN ./Dockerfile.ird.sh
 
 # Remove gdb if we aren't on Ubuntu 24.04
 # 24.04 has gdb 15.1 by default, lets give that a chance before we decide we need to build something
@@ -43,8 +31,3 @@ RUN [ "$UBUNTU_VERSION" != "24.04" ] \
     && make -j$(nproc) \
     && make install \
     && rm -rf /tmp/gdb-build
-
-# Install tt-smi, tt-flash
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && pip install --ignore-installed git+https://github.com/tenstorrent/tt-smi.git \
-    && pip install --ignore-installed git+https://github.com/tenstorrent/tt-flash.git

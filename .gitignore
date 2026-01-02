@@ -9,9 +9,6 @@ core
 
 .cpmcache
 /build
-/build_debug
-/build_release
-/build_riscv
 
 __pycache__
 .venv
@@ -20,6 +17,7 @@ __pycache__
 ttexalens-export*.zip
 ttexalens-export
 ttexalens-server.pkl
+ttexalens/sfpi/**
 
 # ClangD
 compile_commands.json

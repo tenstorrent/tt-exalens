@@ -2,78 +2,15 @@ ARG UBUNTU_VERSION=22.04
 FROM ubuntu:${UBUNTU_VERSION}
 SHELL ["/bin/bash", "-c"]
 
-RUN mkdir /home/workdir
-WORKDIR /home/workdir
-
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install run dependencies
-RUN apt-get update && apt-get install -y \
-    software-properties-common \
-    build-essential \
-    git \
-    libyaml-cpp-dev \
-    libhwloc-dev \
-    libnsl2 \
-    sudo \
-    wget \
-    xxd \
-    curl \
-    jq
+# Copy the requirements files for pip in current directory
+COPY ttexalens/requirements.txt \
+    ttexalens/dev-requirements.txt \
+    test/test_requirements.txt \
+    .github/Dockerfile.ci.sh \
+    ./
 
-# Install test dependencies
-RUN apt-get update && apt-get install -y \
-    libgtest-dev \
-    libgmock-dev
-
-# Install minimal dependencies for Python environment, pip, and wheel builds
-RUN apt-get update && apt-get install -y \
-    libssl-dev \
-    python3 \
-    python3-venv \
-    python3-pip \
-    python3-dev \
-    build-essential \
-    python3-wheel
-
-# Install build tools
-RUN apt-get update && apt-get install -y \
-    ccache \
-    ninja-build
-
-# Install CMake 3.27 from official releases
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.sh && \
-    chmod +x cmake-3.27.9-linux-x86_64.sh && \
-    ./cmake-3.27.9-linux-x86_64.sh --skip-license --prefix=/usr/local && \
-    rm cmake-3.27.9-linux-x86_64.sh
-
-# Install clang 17
-RUN wget https://apt.llvm.org/llvm.sh && \
-    chmod u+x llvm.sh && \
-    ./llvm.sh 17 && \
-    apt install -y libc++-17-dev libc++abi-17-dev && \
-    ln -s /usr/bin/clang-17 /usr/bin/clang && \
-    ln -s /usr/bin/clang++-17 /usr/bin/clang++
-
-# Install clang-format
-RUN apt install -y clang-format-17 && \
-    ln -s /usr/bin/clang-format-17 /usr/bin/clang-format
-
-# Clean package cache
-RUN apt-get clean
-
-# Remove externally-managed marker (Ubuntu 24.04+) and upgrade to latest pip
-RUN rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED && \
-    pip install --upgrade pip --ignore-installed
-
-# Copy the requirements files for pip
-COPY ttexalens/requirements.txt .
-COPY ttexalens/dev-requirements.txt .
-COPY test/test_requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir --extra-index-url https://test.pypi.org/simple/ -r requirements.txt
-RUN pip install --no-cache-dir -r dev-requirements.txt
-RUN pip install --no-cache-dir -r test_requirements.txt
-RUN pip install wheel build setuptools
+# Run single script to setup the environment in order to generate a single layer
+RUN ./Dockerfile.ci.sh

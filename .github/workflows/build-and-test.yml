@@ -20,6 +20,7 @@ jobs:
     outputs:
       docker-image: ${{ steps.build.outputs.docker-image }}
       public-docker-image: ${{ steps.build.outputs.public-docker-image }}
+    name: Build Docker image
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -82,7 +83,7 @@ jobs:
           echo "Setting latest tag on the image $IRD_IMAGE_NAME:$DOCKER_TAG"
           skopeo copy "docker://$IRD_IMAGE_NAME:$DOCKER_TAG" "docker://$IRD_IMAGE_NAME:latest"
 
-  build-and-run-unit-tests:
+  run-tests:
     needs:
       - build
       - build-image
@@ -108,7 +109,7 @@ jobs:
         - /dev/hugepages-1G:/dev/hugepages-1G
         - /etc/udev/rules.d:/etc/udev/rules.d
         - /lib/modules:/lib/modules
-    name: Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ inputs.ubuntu-version }})
+    name: Run tests | ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}
     steps:
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
@@ -122,20 +123,13 @@ jobs:
         with:
           name: ttexalens-build-ubuntu-${{ inputs.ubuntu-version }}
 
-      - name: Fetch job id
-        id: fetch-job-id
-        uses: tenstorrent/tt-github-actions/.github/actions/job_id@main
-        with:
-          job_name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ inputs.ubuntu-version }})"
-          # gh_token: ${{ secrets.GH_TOKEN }}
-
       - name: Set reusable strings
         id: strings
         shell: bash
-        env:
-          JOB_ID: ${{ steps.fetch-job-id.outputs.job_id }}
         run: |
-          echo "test_report_path=report_$JOB_ID.xml" >> "$GITHUB_OUTPUT"
+          # Create unique identifier using run_id and matrix parameters
+          JOB_ID="${{ github.run_id }}_ubuntu_${{ inputs.ubuntu-version }}_${{ matrix.runner-info.arch }}_${{ matrix.runner-info.board }}"
+          echo "test_report_path=report_${JOB_ID}.xml" >> "$GITHUB_OUTPUT"
 
       - name: Run Python tests for ttexalens library
         run: |
@@ -152,44 +146,6 @@ jobs:
         run: |
           python3 -m unittest discover -v -t . -s test/app -p *test*.py
 
-
-  wheel-test:
-    needs:
-      - build
-      - build-image
-    strategy:
-      matrix:
-        runner-info: [
-          {arch: "blackhole", board: "p150b", runs-on: "tt-ubuntu-2204-p150b-stable"},
-          {arch: "wormhole_b0", board: "n150", runs-on: "tt-ubuntu-2204-n150-stable"},
-          {arch: "wormhole_b0", board: "n300", runs-on: "tt-ubuntu-2204-n300-stable"},
-        ]
-    env:
-      ARCH_NAME: ${{ matrix.runner-info.arch }}
-      CONFIG: ci
-      # So we can get all the makefile output we want
-      VERBOSE: 5
-    runs-on: ${{ matrix.runner-info.runs-on }}
-    container:
-      image: ${{ needs.build-image.outputs.docker-image }}
-      options: --device /dev/tenstorrent/0
-      volumes:
-        - /dev/hugepages:/dev/hugepages
-        - /dev/hugepages-1G:/dev/hugepages-1G
-        - /etc/udev/rules.d:/etc/udev/rules.d
-        - /lib/modules:/lib/modules
-    name: Build, install wheel and test it on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ inputs.ubuntu-version }})
-    steps:
-      - name: Git safe dir
-        run: git config --global --add safe.directory '*'
-
-      - name: Checkout repo
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - uses: pyTooling/download-artifact@v4
-        with:
-          name: ttexalens-build-ubuntu-${{ inputs.ubuntu-version }}
       - name: Install wheel
         run: |
           pip install build/ttexalens_wheel/*.whl

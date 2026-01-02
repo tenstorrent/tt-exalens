@@ -1084,11 +1084,11 @@ and place it into the output directory along with its gcno.
 
 Pre-requisite: we have to run the elf before running coverage
 ```
-re build_riscv/wormhole/cov_test.coverage.brisc.elf -r brisc
+re build/riscv-src/wormhole/cov_test.coverage.brisc.elf -r brisc
 ```
 Command:
 ```
-cov build_riscv/wormhole/cov_test.coverage.brisc.elf cov_test.gcda cov_test.gcno
+cov build/riscv-src/wormhole/cov_test.coverage.brisc.elf cov_test.gcda cov_test.gcno
 ```
 
 

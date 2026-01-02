@@ -1,89 +1,39 @@
-cmake_minimum_required(VERSION 3.27)
-cmake_policy(VERSION 3.27)
-
-# Sanity check, forgetting to clone submodules is a common omission and results in a poor error message
-if (NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/umd/CMakeLists.txt")
-    message(FATAL_ERROR "Missing submodules.  Run: git submodule update --init --recursive")
-endif()
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-option(TT_UMD_BUILD_TESTS "Force UMD to build its tests" OFF)
-option(TT_UMD_BUILD_SIMULATION "Force UMD to include its simulation harnessing" ON)
-option(TT_UMD_BUILD_STATIC "Force UMD to build as a static library" ON)
-option(TT_UMD_BUILD_PYTHON "Force UMD to build its python bindings" ON)
-
-include(third_party/umd/cmake/compilers.cmake)
-
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-
-if (DEFINED ENV{CMAKE_C_COMPILER} AND DEFINED ENV{CMAKE_CXX_COMPILER})
-    message(STATUS "Setting C and C++ compiler from environment variables")
-    set(CMAKE_C_COMPILER $ENV{CMAKE_C_COMPILER})
-    set(CMAKE_CXX_COMPILER $ENV{CMAKE_CXX_COMPILER})
-endif()
-
-if (CMAKE_CXX_COMPILER AND CMAKE_C_COMPILER)
-    message(STATUS "Using specifed C++ compiler: ${CMAKE_CXX_COMPILER}")
-    message(STATUS "Using specifed C compiler: ${CMAKE_C_COMPILER}")
-else()
-    message(STATUS "No C or C++ compiler specified, defaulting to Clang-17")
-    FIND_AND_SET_CLANG17()
-endif()
+cmake_minimum_required(VERSION 3.22)
+cmake_policy(VERSION 3.22)
 
 # Read version from VERSION file
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" TT_EXALENS_VERSION)
 string(STRIP "${TT_EXALENS_VERSION}" TT_EXALENS_VERSION)
 
-project(ttexalens
-        VERSION ${TT_EXALENS_VERSION})
-
-CHECK_COMPILERS()
-
-# Creating interface libraries needed for UMD
-add_library(linker_flags INTERFACE)
-
-add_library(compiler_warnings INTERFACE)
-target_compile_options(compiler_warnings INTERFACE -Werror -Wdelete-non-virtual-dtor -Wreturn-type -Wswitch -Wuninitialized -Wno-unused-parameter)
-
-add_library(compiler_flags INTERFACE)
-target_link_libraries(compiler_flags INTERFACE linker_flags)
-target_compile_options(compiler_flags INTERFACE -mavx2 -fPIC -DFMT_HEADER_ONLY -fvisibility-inlines-hidden -fno-lto)
+project(ttexalens VERSION ${TT_EXALENS_VERSION})
 
 # Set default values for variables/options
-set(CMAKE_BUILD_BIN_DIR "${CMAKE_BINARY_DIR}/bin")
 set(TTEXALENS_HOME "${PROJECT_SOURCE_DIR}")
-set(UMD_HOME "${PROJECT_SOURCE_DIR}/third_party/umd")
-
-# Always compile UMD with trace/debug logging enabled
-set(TT_UMD_ENABLE_LOGGING ON CACHE BOOL "Enables inclusion of log_trace and log_debug into the binary." FORCE)
-
-# Third party dependencies
-add_subdirectory(${PROJECT_SOURCE_DIR}/third_party/umd)
-
-# Handle symlinks: build should point to build_debug or build_release,
-# and build_*/riscv-src should point to build_riscv
-set(BUILD_SYMLINK "${CMAKE_SOURCE_DIR}/build")
-set(RISCV_SYMLINK "${CMAKE_BINARY_DIR}/riscv-src")
-file(MAKE_DIRECTORY "build_riscv")
+option(BUILD_PYTHON_WHEEL "Only download SFPI, skip RISCV kernel builds" OFF)
+option(STRIP_SYMBOLS "Strip symbols from GDB binary" OFF)
 
 # Check for SFPI release
 include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
 
-# Refresh the symlinks
-file(REMOVE_RECURSE "${BUILD_SYMLINK}")
-file(CREATE_LINK "${CMAKE_BINARY_DIR}" "${BUILD_SYMLINK}" SYMBOLIC)
-file(REMOVE_RECURSE "${RISCV_SYMLINK}")
-file(CREATE_LINK "${CMAKE_SOURCE_DIR}/build_riscv" "${RISCV_SYMLINK}" SYMBOLIC)
+# Build RISCV kernels unless building Python wheel
+if(NOT BUILD_PYTHON_WHEEL)
+    add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src)
+endif()
 
-# Include pybind custom functions
-include(${PROJECT_SOURCE_DIR}/cmake/pybind.cmake)
+# Install target for Python wheel: copy GDB binary to source tree
+set(SFPI_GDB_SOURCE "${SFPI_RELEASE_PATH}/compiler/bin/riscv-tt-elf-gdb")
+set(SFPI_GDB_DEST "${PROJECT_SOURCE_DIR}/ttexalens/sfpi/compiler/bin/riscv-tt-elf-gdb")
 
-# Add subdirectories
-add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens)
-add_subdirectory(${PROJECT_SOURCE_DIR}/utils)
+add_custom_target(install-gdb-for-wheel ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_SOURCE_DIR}/ttexalens/sfpi/compiler/bin"
+    COMMAND ${CMAKE_COMMAND} -E copy "${SFPI_GDB_SOURCE}" "${SFPI_GDB_DEST}"
+    COMMENT "Installing GDB binary for Python wheel packaging"
+)
 
-# As build_<type>/riscv-src is a symlink, CMake can't put its configuration files there
-# directly, so we specify here that it should place them in build_riscv instead.
-add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src ${PROJECT_SOURCE_DIR}/build_riscv)
+# Add optional strip command if STRIP_SYMBOLS is enabled
+if(STRIP_SYMBOLS)
+    add_custom_command(TARGET install-gdb-for-wheel POST_BUILD
+        COMMAND strip "${SFPI_GDB_DEST}"
+        COMMENT "Stripping symbols from GDB binary"
+    )
+endif()
