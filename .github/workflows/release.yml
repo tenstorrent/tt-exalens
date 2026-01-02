@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/tenstorrent/tt-exalens/tt-exalens-ird-ubuntu-${{ matrix.ubuntu-version }}:latest
+      image: ghcr.io/tenstorrent/tt-exalens/tt-exalens-ci-ubuntu-${{ matrix.ubuntu-version }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
