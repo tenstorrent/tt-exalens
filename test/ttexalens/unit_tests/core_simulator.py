@@ -199,9 +199,9 @@ class RiscvCoreSimulator:
             arch = "wormhole"
         if self.risc_name.lower().startswith("erisc"):
             # For eriscs we can use brisc elf
-            return f"build_riscv/{arch}/{app_name}.brisc.elf"
+            return f"build/riscv-src/{arch}/{app_name}.brisc.elf"
         else:
-            return f"build_riscv/{arch}/{app_name}.{self.risc_name.lower()}.elf"
+            return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
 
     def load_elf(self, app_name: str):
         elf_path = self.get_elf_path(app_name)

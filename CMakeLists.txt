@@ -17,9 +17,7 @@ include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
 
 # Build RISCV kernels unless building Python wheel
 if(NOT BUILD_PYTHON_WHEEL)
-    # As build_<type>/riscv-src is a symlink, CMake can't put its configuration files there
-    # directly, so we specify here that it should place them in build_riscv instead.
-    add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src ${PROJECT_SOURCE_DIR}/build_riscv)
+    add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src)
 endif()
 
 # Install target for Python wheel: copy GDB binary to source tree

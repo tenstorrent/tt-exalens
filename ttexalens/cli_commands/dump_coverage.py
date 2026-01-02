@@ -15,8 +15,8 @@ Description:
   and place it into the output directory along with its gcno.
 
 Examples:
-  re build_riscv/wormhole/cov_test.coverage.brisc.elf -r brisc # Pre-requisite: we have to run the elf before running coverage
-  cov build_riscv/wormhole/cov_test.coverage.brisc.elf cov_test.gcda cov_test.gcno
+  re build/riscv-src/wormhole/cov_test.coverage.brisc.elf -r brisc # Pre-requisite: we have to run the elf before running coverage
+  cov build/riscv-src/wormhole/cov_test.coverage.brisc.elf cov_test.gcda cov_test.gcno
 """
 
 from ttexalens import util

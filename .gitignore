@@ -9,9 +9,6 @@ core
 
 .cpmcache
 /build
-/build_debug
-/build_release
-/build_riscv
 
 __pycache__
 .venv

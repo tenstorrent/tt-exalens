@@ -150,11 +150,11 @@ Prints callstack using provided elf for a given RiscV core.
 
 Command:
 ```
-callstack build_riscv/wormhole/sample.brisc.elf -r brisc
+callstack build/riscv-src/wormhole/sample.brisc.elf -r brisc
 ```
 Output:
 ```
-File build_riscv/wormhole/sample.brisc.elf does not exist
+File build/riscv-src/wormhole/sample.brisc.elf does not exist
 ```
 
 
@@ -1084,11 +1084,11 @@ and place it into the output directory along with its gcno.
 
 Pre-requisite: we have to run the elf before running coverage
 ```
-re build_riscv/wormhole/cov_test.coverage.brisc.elf -r brisc
+re build/riscv-src/wormhole/cov_test.coverage.brisc.elf -r brisc
 ```
 Command:
 ```
-cov build_riscv/wormhole/cov_test.coverage.brisc.elf cov_test.gcda cov_test.gcno
+cov build/riscv-src/wormhole/cov_test.coverage.brisc.elf cov_test.gcda cov_test.gcno
 ```
 
 
@@ -1594,7 +1594,7 @@ Loads an elf file into a brisc and runs it.
 
 Command:
 ```
-run-elf build_riscv/wormhole/sample.brisc.elf
+run-elf build/riscv-src/wormhole/sample.brisc.elf
 ```
 
 

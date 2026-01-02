@@ -26,8 +26,8 @@ set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section -DCOVERAGE)
 
 # Define project paths: source files, ELFs, and object files
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
-set(RISCV_OUTPUT "${CMAKE_SOURCE_DIR}/build_riscv")
-set(RISCV_OBJECT "${CMAKE_SOURCE_DIR}/build_riscv/obj")
+set(RISCV_OUTPUT "${CMAKE_SOURCE_DIR}/build/riscv-src")
+set(RISCV_OBJECT "${CMAKE_SOURCE_DIR}/build/riscv-src/obj")
 
 # Define architectures, applications, and cores
 set(RISCV_ARCHITECTURES "wormhole" "blackhole")

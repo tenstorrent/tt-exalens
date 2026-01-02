@@ -144,13 +144,13 @@ int main() {
 }```
 
 This program writes the value `0x12345678` into L1 memory at address `0x64000`, and then enters an infinite loop (due to the C runtime).
-To compile the .elf file, you can simply run `make build` and use the output generated in `build_riscv/wormhole/run_elf_test.debug.brisc.elf`.
+To compile the .elf file, you can simply run `make build` and use the output generated in `build/riscv-src/wormhole/run_elf_test.debug.brisc.elf`.
 It can then be run on a brisc core through the TTExaLens library.
 
 ```python
 from ttexalens.tt_exalens_lib import run_elf, read_words_from_device
 
-run_elf("build_riscv/wormhole/run_elf_test.debug.brisc.elf", "0,0")
+run_elf("build/riscv-src/wormhole/run_elf_test.debug.brisc.elf", "0,0")
 
 ret = read_words_from_device("0,0", 0x64000)
 print(hex(ret[0]))
