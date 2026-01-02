@@ -36,10 +36,12 @@ RUN rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED && \
 COPY ttexalens/requirements.txt \
     ttexalens/dev-requirements.txt \
     test/test_requirements.txt \
+    .pre-commit-config.yaml \
     ./
 
 # Install Python dependencies
 RUN pip install --no-cache-dir --extra-index-url https://test.pypi.org/simple/ -r requirements.txt && \
     pip install --no-cache-dir -r dev-requirements.txt && \
     pip install --no-cache-dir -r test_requirements.txt && \
-    pip install wheel build setuptools
+    pip install wheel build setuptools && \
+    pre-commit install-hooks
