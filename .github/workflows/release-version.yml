@@ -1,5 +1,4 @@
 name: "Release"
-description: "Release ttexalens wheel, triggered by updating VERSION on main."
 
 on:
   push:
@@ -17,3 +16,5 @@ jobs:
   build-and-release:
     name: "Build and release wheel of version specified in VERSION file"
     uses: ./.github/workflows/release.yml
+    with:
+      publish-to-pypi: true

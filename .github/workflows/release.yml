@@ -1,5 +1,4 @@
 name: "Release"
-description: "Release ttexalens wheel, triggered by other workflows. Will create a prerelease."
 
 on:
   workflow_call:
@@ -9,6 +8,11 @@ on:
         required: false
         type: string
         default: ""
+      publish-to-pypi:
+        description: "Whether to publish the built wheel to PyPI"
+        required: false
+        type: boolean
+        default: false
 
 run-name: "Release by @${{ github.actor }} for ${{ github.ref_name }}"
 
@@ -20,7 +24,7 @@ jobs:
     name: "Prepare Release"
     strategy:
       matrix:
-        ubuntu-version: [ "22.04", "24.04" ]
+        ubuntu-version: [ "22.04" ]
 
     runs-on: ubuntu-latest
 
@@ -50,12 +54,15 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "Version is $version"
 
-      - name: "Build and upload wheel artifacts"
-        uses: ./.github/actions/prepare-wheel-for-release
-        id: prepare-wheel
+      - name: "Build wheel"
+        run: |
+          make wheel
+
+      - name: "Upload wheel artifact"
+        uses: actions/upload-artifact@v4
         with:
-          build-version: ${{ steps.get-version.outputs.version }}
-          ubuntu-version: ${{ matrix.ubuntu-version }}
+          name: ttexalens_wheel
+          path: build/ttexalens_wheel/*.whl
 
   release:
     needs: prepare-release
@@ -91,3 +98,22 @@ jobs:
           prerelease: true
           files: |
             */*.whl
+
+  pypi-publish:
+    name: Upload release to PyPI
+    if: ${{ inputs.publish-to-pypi }}
+    runs-on: ubuntu-latest
+    # Specifying a GitHub environment is optional, but strongly encouraged
+    environment: testpypi-release
+    permissions:
+      # IMPORTANT: this permission is mandatory for Trusted Publishing
+      id-token: write
+    steps:
+      - name: "Download wheel artifacts"
+        uses: actions/download-artifact@v4
+
+      - name: Publish package distributions to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: build/ttexalens_wheel
