@@ -16,7 +16,7 @@ After starting gdb server, you can stop it with `gdb` command. Run `gdb stop`.
 ## Getting gdb client
 
 There are three ways to obtain the GDB client:
-- Use the version that is automatically downloaded and extracted during the build process at `build/riscv-src/sfpi/compiler/bin/riscv-tt-elf-gdb`.
+- Use the version that is automatically downloaded and extracted during the build process at `build/sfpi/compiler/bin/riscv-tt-elf-gdb`.
 - Use `tt-exalens --gdb` as a wrapper to start the GDB client (this uses the same binary as above). This is also available in the wheel.
 - Download your preferred version manually from https://github.com/tenstorrent/sfpi or build it yourself from source.
 
