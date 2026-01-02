@@ -44,4 +44,8 @@ RUN pip install --no-cache-dir --extra-index-url https://test.pypi.org/simple/ -
     pip install --no-cache-dir -r dev-requirements.txt && \
     pip install --no-cache-dir -r test_requirements.txt && \
     pip install wheel build setuptools && \
-    pre-commit install-hooks
+    # Install pre-commit hooks in a temporary git repo to cache them
+    mkdir -p /opt/tt-exalens/git_empty_repo && \
+    cd /opt/tt-exalens/git_empty_repo && git init && \
+    pre-commit install-hooks && \
+    cd / && rm -rf /opt/tt-exalens/git_empty_repo
