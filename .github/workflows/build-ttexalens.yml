@@ -52,15 +52,14 @@ jobs:
           make wheel
       - name: Remove SFPI from build artifacts
         run: |
-          mv build/riscv-src/sfpi build/riscv-src/sfpi_backup
-          mkdir -p build/riscv-src/sfpi/compiler/bin/
-          cp build/riscv-src/sfpi_backup/compiler/bin/riscv-tt-elf-gdb build/riscv-src/sfpi/compiler/bin/riscv-tt-elf-gdb
-          rm -rf build/riscv-src/sfpi_backup
-          rm -f build/riscv-src/sfpi_*
+          mv build/sfpi build/sfpi_backup
+          mkdir -p build/sfpi/compiler/bin/
+          cp build/sfpi_backup/compiler/bin/riscv-tt-elf-gdb build/sfpi/compiler/bin/riscv-tt-elf-gdb
+          rm -rf build/sfpi_backup
+          rm -f build/sfpi_*
       - name: Upload libraries as artifacts
         uses: pyTooling/upload-artifact@v4
         with:
           name: ttexalens-build-${{ inputs.os }}
           path: |
             build
-            build/riscv-src
