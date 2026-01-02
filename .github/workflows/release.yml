@@ -8,11 +8,6 @@ on:
         required: false
         type: string
         default: ""
-      publish-to-pypi:
-        description: "Whether to publish the built wheel to PyPI"
-        required: false
-        type: boolean
-        default: false
 
 run-name: "Release by @${{ github.actor }} for ${{ github.ref_name }}"
 
@@ -98,22 +93,3 @@ jobs:
           prerelease: true
           files: |
             */*.whl
-
-  pypi-publish:
-    name: Upload release to PyPI
-    if: ${{ inputs.publish-to-pypi }}
-    runs-on: ubuntu-latest
-    # Specifying a GitHub environment is optional, but strongly encouraged
-    environment: testpypi-release
-    permissions:
-      # IMPORTANT: this permission is mandatory for Trusted Publishing
-      id-token: write
-    steps:
-      - name: "Download wheel artifacts"
-        uses: actions/download-artifact@v4
-
-      - name: Publish package distributions to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          packages-dir: build/ttexalens_wheel
