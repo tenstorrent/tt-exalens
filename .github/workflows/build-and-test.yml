@@ -20,7 +20,7 @@ jobs:
     outputs:
       docker-image: ${{ steps.build.outputs.docker-image }}
       public-docker-image: ${{ steps.build.outputs.public-docker-image }}
-    name: Build Docker image | ubuntu-${{ inputs.ubuntu-version }}
+    name: Build Docker image
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -109,7 +109,7 @@ jobs:
         - /dev/hugepages-1G:/dev/hugepages-1G
         - /etc/udev/rules.d:/etc/udev/rules.d
         - /lib/modules:/lib/modules
-    name: Run tests | ubuntu-${{ inputs.ubuntu-version }} | ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}
+    name: Run tests | ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}
     steps:
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
@@ -127,7 +127,7 @@ jobs:
         id: fetch-job-id
         uses: tenstorrent/tt-github-actions/.github/actions/job_id@main
         with:
-          job_name: "Run tests | ubuntu-${{ inputs.ubuntu-version }} | ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}"
+          job_name: "Run tests | ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}"
           # gh_token: ${{ secrets.GH_TOKEN }}
 
       - name: Set reusable strings
