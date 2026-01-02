@@ -22,12 +22,12 @@ endif()
 
 # Install target for Python wheel: copy GDB binary to source tree
 set(SFPI_GDB_SOURCE "${SFPI_RELEASE_PATH}/compiler/bin/riscv-tt-elf-gdb")
-set(SFPI_GDB_DEST "${PROJECT_SOURCE_DIR}/ttexalens/sfpi/compiler/bin/riscv-tt-elf-gdb")
+set(SFPI_GDB_DEST "${CMAKE_SOURCE_DIR}/build/stripped/riscv-tt-elf-gdb")
 
 add_custom_target(install-gdb-for-wheel ALL
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${PROJECT_SOURCE_DIR}/ttexalens/sfpi/compiler/bin"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/build/stripped"
     COMMAND ${CMAKE_COMMAND} -E copy "${SFPI_GDB_SOURCE}" "${SFPI_GDB_DEST}"
-    COMMENT "Installing GDB binary for Python wheel packaging"
+    COMMENT "Copying GDB binary for Python wheel packaging"
 )
 
 # Add optional strip command if STRIP_SYMBOLS is enabled
@@ -36,4 +36,11 @@ if(STRIP_SYMBOLS)
         COMMAND strip "${SFPI_GDB_DEST}"
         COMMENT "Stripping symbols from GDB binary"
     )
+endif()
+
+# Install the GDB binary for the wheel when BUILD_PYTHON_WHEEL is enabled
+if(BUILD_PYTHON_WHEEL)
+    install(FILES "${SFPI_GDB_DEST}"
+            DESTINATION "sfpi/compiler/bin"
+            COMPONENT python_wheel)
 endif()
