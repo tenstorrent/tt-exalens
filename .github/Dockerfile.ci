@@ -47,5 +47,6 @@ RUN pip install --no-cache-dir --extra-index-url https://test.pypi.org/simple/ -
     # Install pre-commit hooks in a temporary git repo to cache them
     mkdir -p /opt/tt-exalens/git_empty_repo && \
     cd /opt/tt-exalens/git_empty_repo && git init && \
+    cp /pre-commit-config.yaml . && \
     pre-commit install-hooks && \
     cd / && rm -rf /opt/tt-exalens/git_empty_repo
