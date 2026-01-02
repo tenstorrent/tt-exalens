@@ -31,19 +31,22 @@ jobs:
     runs-on: ${{ inputs.runs-on }}
     container:
       image: ${{ inputs.docker-image }}
-    name: "Build TT-EXALENS on ${{ inputs.os }}"
+    name: "Build tt-exalens | ${{ inputs.os }}"
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Git safe dir
         run: git config --global --add safe.directory $(pwd)
-      - name: Build TTEXALENS
+      - name: Run pre-commit
         run: |
-          make
+          pre-commit run --all-files --show-diff-on-failure
       - name: Run mypy
         run: |
           make mypy
+      - name: Build test kernels
+        run: |
+          make
       - name: Build wheel
         run: |
           make wheel
