@@ -127,7 +127,7 @@ jobs:
         id: fetch-job-id
         uses: tenstorrent/tt-github-actions/.github/actions/job_id@main
         with:
-          job_name: "Build and run unit test on ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }} (Ubuntu ${{ inputs.ubuntu-version }})"
+          job_name: "Run tests | ubuntu-${{ inputs.ubuntu-version }} | ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}"
           # gh_token: ${{ secrets.GH_TOKEN }}
 
       - name: Set reusable strings
