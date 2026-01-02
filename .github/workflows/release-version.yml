@@ -3,9 +3,7 @@ name: "Release"
 on:
   push:
     branches:
-      - "main"
-    paths:
-      - "VERSION"
+      - "vjovanovic/testpypi"
 
 run-name: "Release by @${{ github.actor }} for ${{ github.ref_name }}"
 
