@@ -51,6 +51,7 @@ jobs:
 
       - name: "Build wheel"
         run: |
+          make
           make wheel
 
       - name: "Upload wheel artifact"
