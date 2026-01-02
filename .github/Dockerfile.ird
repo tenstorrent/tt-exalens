@@ -17,38 +17,8 @@ ENV TT_EXALENS_INFRA_DIR=/opt/tt_exalens_infra
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Create directories for infra
-RUN mkdir -p ${TT_EXALENS_INFRA_DIR}
-
-# Install dependencies
-RUN apt-get update && apt-get install -y \
-    docker.io \
-    gh \
-    git-lfs \
-    libgmp-dev \
-    libmpfr-dev \
-    rsync \
-    ssh \
-    vim \
-    nano \
-    htop
-
-# Install CMake 3.27 from official releases
-RUN wget https://github.com/Kitware/CMake/releases/download/v3.27.9/cmake-3.27.9-linux-x86_64.sh && \
-    chmod +x cmake-3.27.9-linux-x86_64.sh && \
-    ./cmake-3.27.9-linux-x86_64.sh --skip-license --prefix=/usr/local && \
-    rm cmake-3.27.9-linux-x86_64.sh
-
-# Install clang 17
-RUN wget https://apt.llvm.org/llvm.sh && \
-    chmod u+x llvm.sh && \
-    ./llvm.sh 17 && \
-    apt install -y libc++-17-dev libc++abi-17-dev && \
-    ln -s /usr/bin/clang-17 /usr/bin/clang && \
-    ln -s /usr/bin/clang++-17 /usr/bin/clang++
-
-# Install clang-format
-RUN apt install -y clang-format-17 && \
-    ln -s /usr/bin/clang-format-17 /usr/bin/clang-format
+COPY .github/Dockerfile.ird.sh ./
+RUN ./Dockerfile.ird.sh
 
 # Remove gdb if we aren't on Ubuntu 24.04
 # 24.04 has gdb 15.1 by default, lets give that a chance before we decide we need to build something
@@ -61,8 +31,3 @@ RUN [ "$UBUNTU_VERSION" != "24.04" ] \
     && make -j$(nproc) \
     && make install \
     && rm -rf /tmp/gdb-build
-
-# Install tt-smi, tt-flash
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
-    && pip install --ignore-installed git+https://github.com/tenstorrent/tt-smi.git \
-    && pip install --ignore-installed git+https://github.com/tenstorrent/tt-flash.git
