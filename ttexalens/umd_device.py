@@ -39,7 +39,7 @@ class TimeoutDeviceRegisterError(Exception):
         )
 
 
-class UmdDeviceWrapper:
+class UmdDevice:
     def __init__(
         self,
         device: tt_umd.TTDevice,
@@ -92,7 +92,7 @@ class UmdDeviceWrapper:
         if (
             self.is_mmio_capable
             and not self.is_simulation
-            and elapsed_time > UmdDeviceWrapper.READ_TIMEOUT
+            and elapsed_time > UmdDevice.READ_TIMEOUT
             and result[-4:] == b"\xFF\xFF\xFF\xFF"
         ):
             translated_coord = self.soc_descriptor.translate_coord_to(
@@ -111,7 +111,7 @@ class UmdDeviceWrapper:
             self.is_mmio_capable
             and not self.is_simulation
             and len(data) == 4
-            and elapsed_time > UmdDeviceWrapper.WRITE_TIMEOUT
+            and elapsed_time > UmdDevice.WRITE_TIMEOUT
         ):
             translated_coord = self.soc_descriptor.translate_coord_to(
                 tt_umd.tt_xy_pair(coord_x, coord_y), tt_umd.CoordSystem.TRANSLATED, tt_umd.CoordSystem.LOGICAL
@@ -121,7 +121,7 @@ class UmdDeviceWrapper:
             )
             with self.__write_timeout_lock:
                 self.__write_timeout_events.append(event)
-                if len(self.__write_timeout_events) >= UmdDeviceWrapper.NUM_OF_CONSECUTIVE_TIMEOUTS:
+                if len(self.__write_timeout_events) >= UmdDevice.NUM_OF_CONSECUTIVE_TIMEOUTS:
                     raise self.__write_timeout_events[0]
         else:
             with self.__write_timeout_lock:
@@ -303,11 +303,11 @@ class UmdDeviceWrapper:
 
     def dma_buffer_read32(self, address: int, channel: int) -> int:
         """Reads 4 bytes from DMA buffer"""
-        raise NotImplementedError("dma_buffer_read32 is not implemented in UmdDeviceWrapper.")
+        raise NotImplementedError("dma_buffer_read32 is not implemented in UmdDevice.")
 
     def pci_read_tile(self, noc_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int) -> str:
         """Reads tile from address"""
-        raise NotImplementedError("pci_read_tile is not implemented in UmdDeviceWrapper.")
+        raise NotImplementedError("pci_read_tile is not implemented in UmdDevice.")
 
     def convert_from_noc0(self, noc_x: int, noc_y: int, core_type: str, coord_system: str) -> tuple[int, int]:
         """Convert noc0 coordinate into specified coordinate system"""

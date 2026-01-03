@@ -12,7 +12,7 @@ from typing import Sequence
 import tt_umd
 
 from ttexalens import util as util
-from ttexalens.umd_device_wrapper import UmdDeviceWrapper
+from ttexalens.umd_device import UmdDevice
 
 
 @Pyro5.api.expose
@@ -26,7 +26,7 @@ class TTExaLensUmdImplementation:
         self.temp_working_directory = tempfile.mkdtemp(prefix="ttexalens_server_XXXXXX")
         self.cluster_descriptor_path = os.path.join(self.temp_working_directory, "cluster_desc.yaml")
         self.device_soc_descriptors_yamls: dict[int, str] = {}
-        self.devices: dict[int, UmdDeviceWrapper] = {}
+        self.devices: dict[int, UmdDevice] = {}
         self.device_ids: list[int] = []
 
         if simulation_directory is not None:
@@ -39,7 +39,7 @@ class TTExaLensUmdImplementation:
                     core_noc0 = soc_descriptor.translate_coord_to(core, tt_umd.CoordSystem.NOC0)
                     tt_device.noc_write32(core_noc0.x, core_noc0.y, 0, 0x6F)
                     tt_device.send_tensix_risc_reset(tt_umd.tt_xy_pair(core.x, core.y), deassert=True)
-            self.devices[0] = UmdDeviceWrapper(tt_device, 0, 0, soc_descriptor=soc_descriptor, is_simulation=True)
+            self.devices[0] = UmdDevice(tt_device, 0, 0, soc_descriptor=soc_descriptor, is_simulation=True)
             self.device_ids.append(0)
             with open(self.cluster_descriptor_path, "w") as f:
                 f.write(f"arch: {{\n")
@@ -112,7 +112,7 @@ class TTExaLensUmdImplementation:
                 else:
                     active_eth_coords_on_mmio_chip = []
 
-                wrapped_device = UmdDeviceWrapper(device, chip_id, unique_id, active_eth_coords_on_mmio_chip)
+                wrapped_device = UmdDevice(device, chip_id, unique_id, active_eth_coords_on_mmio_chip)
                 assert wrapped_device.is_mmio_capable == self.cluster_descriptor.is_chip_mmio_capable(chip_id)
                 self.devices[chip_id] = wrapped_device
 
@@ -121,7 +121,7 @@ class TTExaLensUmdImplementation:
             wrapped_device.soc_descriptor.serialize_to_file(file_name)
             self.device_soc_descriptors_yamls[chip_id] = file_name
 
-    def __get_device(self, chip_id: int) -> UmdDeviceWrapper:
+    def __get_device(self, chip_id: int) -> UmdDevice:
         if chip_id not in self.devices:
             raise RuntimeError(f"Device with chip id {chip_id} not found.")
         return self.devices[chip_id]
