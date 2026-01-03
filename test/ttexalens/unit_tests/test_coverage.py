@@ -54,7 +54,7 @@ class TestCoverage(unittest.TestCase):
         elif arch.startswith("blackhole"):
             arch = "blackhole"
         else:
-            self.skipTest(f"Unsupported architecture: {self.context.arch}")
+            self.skipTest(f"Unsupported architecture: {arch}")
 
         self.elf_root = "build/riscv-src/" + arch + "/"
 
