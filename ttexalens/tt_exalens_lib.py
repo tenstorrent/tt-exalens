@@ -470,9 +470,9 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
     device = context.devices[device_id]
     arc = device.arc_block
 
-    if device._firmware_version < CUTOFF_FIRMWARE_VERSION:
+    if device.firmware_version < CUTOFF_FIRMWARE_VERSION:
         raise TTException(
-            f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {device._firmware_version}"
+            f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {device.firmware_version}"
         )
 
     if isinstance(telemetry_tag, str):

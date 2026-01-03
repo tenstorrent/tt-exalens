@@ -130,10 +130,12 @@ class Device(TTObject):
         self._has_jtag = self.cluster_descriptor.get_io_device_type() == tt_umd.IODeviceType.JTAG
         self._init_coordinate_systems()
         self.unique_id = umd_device.unique_id
+        print(self.firmware_version)
 
     @cached_property
-    def _firmware_version(self):
-        return util.FirmwareVersion(self._context.umd_api.get_firmware_version(self._id))
+    def firmware_version(self):
+        fw = self._umd_device.get_firmware_version()
+        return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __noc_to_die(self, noc_loc, noc_id=0):

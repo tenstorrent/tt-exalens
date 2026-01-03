@@ -159,9 +159,6 @@ class UmdApi:
     def read_arc_telemetry_entry(self, chip_id: int, telemetry_tag: int) -> int:
         return self.get_device(chip_id).read_arc_telemetry_entry(telemetry_tag)
 
-    def get_firmware_version(self, chip_id: int) -> tuple[int, int, int]:
-        return self.get_device(chip_id).get_firmware_version()
-
     def get_remote_transfer_eth_core(self, chip_id: int) -> tuple[int, int] | None:
         return self.get_device(chip_id).get_remote_transfer_eth_core()
 

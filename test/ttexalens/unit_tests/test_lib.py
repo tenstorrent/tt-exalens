@@ -804,8 +804,8 @@ class TestARC(unittest.TestCase):
         if not self.device.is_wormhole() and not self.device.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
-        if self.device._firmware_version < CUTOFF_FIRMWARE_VERSION:
-            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device._firmware_version}")
+        if self.device.firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device.firmware_version}")
 
         tag = "TIMER_HEARTBEAT"
 
@@ -832,8 +832,8 @@ class TestARC(unittest.TestCase):
         if not self.device.is_wormhole() and not self.device.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
-        if self.device._firmware_version < CUTOFF_FIRMWARE_VERSION:
-            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device._firmware_version}")
+        if self.device.firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device.firmware_version}")
 
         ret_from_name = lib.read_arc_telemetry_entry(self.device._id, tag_name)
         ret_from_id = lib.read_arc_telemetry_entry(self.device._id, tag_id)

@@ -405,10 +405,10 @@ class UmdDevice:
             self.__configure_working_active_eth()
             return do_read(telemetry_tag)
 
-    def get_firmware_version(self) -> tuple[int, int, int]:
+    def get_firmware_version(self) -> tt_umd.semver_t:
         """Returns firmware version"""
 
-        def do_read():
+        def do_read() -> tt_umd.semver_t:
             firmware_info_provider = self.__device.get_firmware_info_provider()
             return firmware_info_provider.get_firmware_version()
 
@@ -420,7 +420,7 @@ class UmdDevice:
             # TODO: We should retry only if it was remote read error
             self.__configure_working_active_eth()
             firmware_version = do_read()
-        return (firmware_version.major, firmware_version.minor, firmware_version.patch)
+        return firmware_version
 
     def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
         """Returns currently active Ethernet core in logical coordinates"""

@@ -731,8 +731,10 @@ from functools import total_ordering
 
 @total_ordering
 class FirmwareVersion:
-    def __init__(self, version: tuple[int, int, int]):
-        self.major, self.minor, self.patch = version
+    def __init__(self, major: int, minor: int, patch: int):
+        self.major = major
+        self.minor = minor
+        self.patch = patch
 
     def __repr__(self):
         return f"{self.major}.{self.minor}.{self.patch}"

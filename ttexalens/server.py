@@ -136,10 +136,15 @@ class TTExaLensServer:
 
 UMD_SERIALIZABLE_TYPES = {
     tt_umd.ARCH,
+    tt_umd.BoardType,
     tt_umd.IODeviceType,
     tt_umd.CoreType,
     tt_umd.CoordSystem,
+    tt_umd.tt_xy_pair,
     tt_umd.CoreCoord,
+    tt_umd.semver_t,
+    tt_umd.TelemetryTag,
+    tt_umd.DramTrainingStatus,
 }
 UMD_SERIALIZABLE_TYPES_NAMES: dict[str, type] = {f"{t.__module__}.{t.__name__}": t for t in UMD_SERIALIZABLE_TYPES}
 
@@ -155,6 +160,19 @@ def umd_type_to_dict(obj):
             "core_type": obj.core_type.name,
             "coord_system": obj.coord_system.name,
         }
+    if isinstance(obj, tt_umd.tt_xy_pair):
+        return {
+            "__class__": "tt_umd.tt_umd.tt_xy_pair",
+            "x": obj.x,
+            "y": obj.y,
+        }
+    if isinstance(obj, tt_umd.semver_t):
+        return {
+            "__class__": "tt_umd.tt_umd.semver_t",
+            "major": obj.major,
+            "minor": obj.minor,
+            "patch": obj.patch,
+        }
     raise TypeError(f"Cannot serialize type {type(obj)}")
 
 
@@ -169,6 +187,15 @@ def umd_type_from_dict(cls, data):
             x = data["x"]
             y = data["y"]
             return tt_umd.CoreCoord(x, y, core_type, coord_system)
+        if type == tt_umd.tt_xy_pair:
+            x = data["x"]
+            y = data["y"]
+            return tt_umd.tt_xy_pair(x, y)
+        if type == tt_umd.semver_t:
+            major = data["major"]
+            minor = data["minor"]
+            patch = data["patch"]
+            return tt_umd.semver_t(major, minor, patch)
     return data
 
 
