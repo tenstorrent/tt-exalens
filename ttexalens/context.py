@@ -25,14 +25,12 @@ class Context:
         self,
         umd_api: UmdApi,
         file_api: FileAccessApi,
-        cluster_desc: util.YamlFile,
         short_name: str = "default",
         use_noc1=False,
         use_4B_mode=True,
     ):
         self.umd_api = umd_api
         self.file_api = file_api
-        self._cluster_desc = cluster_desc
         self.short_name = short_name
         self.use_noc1 = use_noc1
         self.use_4B_mode: bool = use_4B_mode
@@ -57,15 +55,15 @@ class Context:
             devices[device_id] = Device.create(
                 self.arch,
                 device_id=device_id,
-                cluster_desc=self.cluster_desc.root,
+                cluster_descriptor=self.cluster_descriptor,
                 device_desc_path=device_desc_path,
                 context=self,
             )
         return devices
 
     @cached_property
-    def cluster_desc(self):
-        return self._cluster_desc
+    def cluster_descriptor(self):
+        return self.umd_api.get_cluster_description()
 
     @cached_property
     def device_ids(self) -> SortedSet[int]:

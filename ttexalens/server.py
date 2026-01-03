@@ -39,25 +39,71 @@ class TTExaLensServer:
         self.file_api = file_api
         self.daemon: Pyro5.api.Daemon | None = None
         self.thread: threading.Thread | None = None
+        self.umd_registered_objects: dict[int, tuple[object, object]] = {}
+        self.umd_registered_objects_lock = threading.Lock()
 
     def start(self):
         if self.daemon or self.thread:
             raise util.TTFatalException("Server already started")
         self.daemon = Pyro5.api.Daemon(port=self.port)
-        self.daemon.register(self.umd_api, objectId="umd_api")
+        umd_wrapper = self._wrap_object(self.umd_api)
+        self.umd_registered_objects[id(self.umd_api)] = (self.umd_api, None)
+        self.daemon.register(umd_wrapper, objectId="umd_api")
         self.daemon.register(self.file_api, objectId="file_api")
         self.thread = threading.Thread(target=self.daemon.requestLoop, daemon=True)
         self.thread.start()
 
     def stop(self):
         if self.daemon:
-            self.daemon.unregister(self.umd_api)
             self.daemon.unregister(self.file_api)
+            with self.umd_registered_objects_lock:
+                for obj in self.umd_registered_objects.values():
+                    self.daemon.unregister(obj[0])
+                self.umd_registered_objects.clear()
             self.daemon.shutdown()
         if self.thread:
             self.thread.join()
         self.daemon = None
         self.thread = None
+
+    def _wrap_object(self, obj: object):
+        @Pyro5.api.expose
+        class UmdApiWrapper:
+            def __init__(self, server: TTExaLensServer):
+                self.server = server
+
+            def _create_umd_method_wrapper(self, method):
+                def wrapper_method(*args, **kwargs):
+                    result = method(*args, **kwargs)
+                    result_type = type(result)
+                    # Check if result_type is simple type
+                    if result_type in (int, float, str, bool, type(None), list, dict, tuple, bytes):
+                        return result
+                    # For complex types, register them and return a proxy
+                    with self.server.umd_registered_objects_lock:
+                        object_id = id(result)
+                        if object_id not in self.server.umd_registered_objects:
+                            assert self.server.daemon is not None
+                            wrapped_result = self.server._wrap_object(result)
+                            self.server.daemon.register(wrapped_result, objectId=f"umd_obj_{object_id}")
+                            proxy = Pyro5.api.Proxy(f"PYRO:umd_obj_{object_id}@localhost:{self.server.port}")
+                            proxy._pyroSerializer = "marshal"
+                            self.server.umd_registered_objects[object_id] = (wrapped_result, proxy)
+                        return self.server.umd_registered_objects[object_id][1]
+
+                return wrapper_method
+
+        wrapper = UmdApiWrapper(self)
+        wrapper_type = type(wrapper)
+        for method_name in dir(obj):
+            if method_name.startswith("_"):
+                continue
+            method = getattr(obj, method_name)
+            if callable(method):
+                new_method = Pyro5.api.expose(wrapper._create_umd_method_wrapper(method))
+                setattr(wrapper, method_name, new_method)
+                setattr(wrapper_type, method_name, new_method)
+        return wrapper
 
 
 def start_server(port: int, context: Context):

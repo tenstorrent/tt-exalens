@@ -4,6 +4,7 @@
 
 from abc import abstractmethod
 from functools import cache, cached_property
+import tt_umd
 from typing import Iterable, Sequence
 
 from tabulate import tabulate
@@ -97,25 +98,37 @@ class Device(TTObject):
 
     # Class method to create a Device object given device architecture
     @staticmethod
-    def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
+    def create(arch, device_id, cluster_descriptor: tt_umd.ClusterDescriptor, device_desc_path: str, context: Context):
         if "wormhole" in arch.lower():
             from ttexalens.hw.tensix.wormhole import wormhole
 
             return wormhole.WormholeDevice(
-                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
+                id=device_id,
+                arch=arch,
+                cluster_descriptor=cluster_descriptor,
+                device_desc_path=device_desc_path,
+                context=context,
             )
         if "blackhole" in arch.lower():
             from ttexalens.hw.tensix.blackhole import blackhole
 
             return blackhole.BlackholeDevice(
-                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
+                id=device_id,
+                arch=arch,
+                cluster_descriptor=cluster_descriptor,
+                device_desc_path=device_desc_path,
+                context=context,
             )
 
         if "quasar" in arch.lower():
             from ttexalens.hw.tensix.quasar import quasar
 
             return quasar.QuasarDevice(
-                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
+                id=device_id,
+                arch=arch,
+                cluster_descriptor=cluster_descriptor,
+                device_desc_path=device_desc_path,
+                context=context,
             )
 
         raise RuntimeError(f"Architecture {arch} is not supported")
@@ -124,14 +137,16 @@ class Device(TTObject):
     def yaml_file(self):
         return util.YamlFile(self._context.file_api, self._device_desc_path)
 
-    def __init__(self, id: int, arch: str, cluster_desc, device_desc_path: str, context: Context):
+    def __init__(
+        self, id: int, arch: str, cluster_descriptor: tt_umd.ClusterDescriptor, device_desc_path: str, context: Context
+    ):
         self._id: int = id
         self._arch = arch
         self._device_desc_path = device_desc_path
         self._context = context
-        self._has_mmio = any(id in chip for chip in cluster_desc["chips_with_mmio"])
-        self._has_jtag = cluster_desc["io_device_type"] == "JTAG"
-        self.cluster_desc = cluster_desc
+        self._has_mmio = cluster_descriptor.is_chip_mmio_capable(id)
+        self._has_jtag = cluster_descriptor.get_io_device_type() == tt_umd.IODeviceType.JTAG
+        self.cluster_descriptor = cluster_descriptor
         self._init_coordinate_systems()
         self.unique_id = self._context.umd_api.get_device_unique_id(self._id)
 
@@ -233,12 +248,12 @@ class Device(TTObject):
 
     @cached_property
     def active_eth_block_locations(self) -> list[OnChipCoordinate]:
-        active_channels = []
-        for connection in self.cluster_desc["ethernet_connections"]:
-            for endpoint in connection:
-                if endpoint["chip"] == self._id:
-                    active_channels.append(endpoint["chan"])
-
+        active_channels: list[int] = []
+        for src_chip, channels in self.cluster_descriptor.get_ethernet_connections().items():
+            for src_chan, dest in channels.items():
+                dest_chip, dest_chan = dest
+                if dest_chip == self._id:
+                    active_channels.append(dest_chan)
         return [self.get_block_locations(block_type="eth")[chan] for chan in active_channels]
 
     @cached_property

@@ -12,6 +12,36 @@ from ttexalens import util as util
 from ttexalens.umd_device import UmdDevice
 
 
+def create_simulation_cluster_descriptor(arch: tt_umd.ARCH) -> str:
+    return f"""\
+arch: {{
+   0: {arch},
+}}
+
+chips: {{
+   0: [0,0,0,0],
+}}
+
+ethernet_connections: [
+]
+
+chips_with_mmio: [
+   0: 0,
+]
+
+# harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first tensix row; bit 1 = second tensix row etc...
+harvesting: {{
+   0: {{noc_translation: false, harvest_mask: 0}},
+}}
+
+# This value will be null if the boardtype is unknown, should never happen in practice but to be defensive it would be useful to throw an error on this case.
+boardtype: {{
+   0: {arch}Simulator,
+}}
+io_device_type: SIMULATION
+"""
+
+
 @Pyro5.api.expose
 class UmdApi:
     def __init__(
@@ -21,7 +51,6 @@ class UmdApi:
         simulation_directory: str | None = None,
     ):
         self.temp_working_directory = tempfile.mkdtemp(prefix="ttexalens_server_XXXXXX")
-        self.cluster_descriptor_path = os.path.join(self.temp_working_directory, "cluster_desc.yaml")
         self.device_soc_descriptors_yamls: dict[int, str] = {}
         self.devices: dict[int, UmdDevice] = {}
         self.device_ids: list[int] = []
@@ -38,31 +67,8 @@ class UmdApi:
                     tt_device.send_tensix_risc_reset(tt_umd.tt_xy_pair(core.x, core.y), deassert=True)
             self.devices[0] = UmdDevice(tt_device, 0, 0, soc_descriptor=soc_descriptor, is_simulation=True)
             self.device_ids.append(0)
-            with open(self.cluster_descriptor_path, "w") as f:
-                f.write(f"arch: {{\n")
-                f.write(f"   0: {self.devices[0].arch},\n")
-                f.write(f"}}\n\n")
-                f.write(f"chips: {{\n")
-                f.write(f"   0: [0,0,0,0],\n")
-                f.write(f"}}\n\n")
-                f.write(f"ethernet_connections: [\n")
-                f.write(f"]\n\n")
-                f.write(f"chips_with_mmio: [\n")
-                f.write(f"   0: 0,\n")
-                f.write(f"]\n\n")
-                f.write(
-                    f"# harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first tensix row; bit 1 = second tensix row etc...\n"
-                )
-                f.write(f"harvesting: {{\n")
-                f.write(f"   0: {{noc_translation: false, harvest_mask: 0}},\n")
-                f.write(f"}}\n\n")
-                f.write(
-                    f"# This value will be null if the boardtype is unknown, should never happen in practice but to be defensive it would be useful to throw an error on this case.\n"
-                )
-                f.write(f"boardtype: {{\n")
-                f.write(f"   0: {self.devices[0].arch}Simulator,\n")
-                f.write(f"}}\n")
-                f.write(f"io_device_type: SIMULATION\n")
+            cluster_descriptor_content = create_simulation_cluster_descriptor(self.devices[0].arch)
+            self.cluster_descriptor = tt_umd.ClusterDescriptor.create_from_yaml_content(cluster_descriptor_content)
             # TODO: In destructor we need to call close device so that emulation can stop reservation and simulation can stop waveform?!?
         else:
             # Respect UMD's existing env var first; default to ERROR otherwise.
@@ -81,7 +87,6 @@ class UmdApi:
 
             if len(self.cluster_descriptor.get_all_chips()) == 0:
                 raise RuntimeError("No Tenstorrent devices were detected on this system.")
-            self.cluster_descriptor.serialize_to_file(self.cluster_descriptor_path)
 
             # Setup used devices
             for i in self.cluster_descriptor.get_all_chips():
@@ -154,8 +159,7 @@ class UmdApi:
         return self.__get_device(chip_id).pci_read_tile(noc_id, noc_x, noc_y, address, size, data_format)
 
     def get_cluster_description(self):
-        value = self.cluster_descriptor_path
-        return value
+        return self.cluster_descriptor
 
     def get_device_ids(self):
         return self.device_ids

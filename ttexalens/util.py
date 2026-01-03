@@ -593,7 +593,7 @@ class YamlFile:
     # Cache
     file_cache: dict = {}
 
-    def __init__(self, file_ifc: FileAccessApi, filepath, post_process_yaml=None, content=None):
+    def __init__(self, file_ifc: FileAccessApi, filepath: str, post_process_yaml=None, content: str | None = None):
         self.filepath = filepath
         self.content = content
         self.file_ifc = file_ifc
