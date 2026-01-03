@@ -79,7 +79,7 @@ class TTExaLensServer:
                     result = method(*args, **kwargs)
                     result_type = type(result)
                     # Check if result_type is simple type
-                    if result_type in (int, float, str, bool, type(None), list, dict, tuple, bytes):
+                    if result_type in (int, float, str, bool, type(None), list, dict, set, tuple, bytes):
                         return result
                     # Check if result_type is in known serializable types
                     global UMD_SERIALIZABLE_TYPES

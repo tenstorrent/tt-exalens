@@ -4,7 +4,6 @@
 import datetime
 import os
 import Pyro5.api
-import tempfile
 from typing import Sequence
 import tt_umd
 
@@ -153,9 +152,6 @@ class UmdApi:
 
     def get_cluster_description(self):
         return self.cluster_descriptor
-
-    def get_device_ids(self):
-        return self.device_ids
 
     def get_device_arch(self, chip_id: int) -> str:
         return str(self.__get_device(chip_id).arch)

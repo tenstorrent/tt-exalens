@@ -69,7 +69,7 @@ class Context:
     def device_ids(self) -> SortedSet[int]:
         device_ids: Iterable[int]
         try:
-            device_ids = self.umd_api.get_device_ids()
+            device_ids = self.cluster_descriptor.get_all_chips()
         except:
             device_ids = []
         return SortedSet(d for d in device_ids)
