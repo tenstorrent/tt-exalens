@@ -142,9 +142,6 @@ class UmdApi:
     def get_device_soc_description(self, chip_id: int) -> tt_umd.SocDescriptor:
         return self.get_device(chip_id).soc_descriptor
 
-    def convert_from_noc0(self, chip_id: int, noc_x: int, noc_y: int, core_type: str, coord_system: str):
-        return self.get_device(chip_id).convert_from_noc0(noc_x, noc_y, core_type, coord_system)
-
     def arc_msg(
         self,
         noc_id: int,

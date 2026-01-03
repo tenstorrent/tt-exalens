@@ -331,44 +331,8 @@ class UmdDevice:
 
     def convert_from_noc0(self, noc_x: int, noc_y: int, core_type: str, coord_system: str) -> tuple[int, int]:
         """Convert noc0 coordinate into specified coordinate system"""
-        if core_type == "arc":
-            core_type_enum = tt_umd.CoreType.ARC
-        elif core_type == "dram":
-            core_type_enum = tt_umd.CoreType.DRAM
-        elif core_type == "active_eth":
-            core_type_enum = tt_umd.CoreType.ACTIVE_ETH
-        elif core_type == "idle_eth":
-            core_type_enum = tt_umd.CoreType.IDLE_ETH
-        elif core_type == "pcie":
-            core_type_enum = tt_umd.CoreType.PCIE
-        elif core_type == "tensix":
-            core_type_enum = tt_umd.CoreType.TENSIX
-        elif core_type == "router_only":
-            core_type_enum = tt_umd.CoreType.ROUTER_ONLY
-        elif core_type == "harvested":
-            core_type_enum = tt_umd.CoreType.HARVESTED
-        elif core_type == "eth":
-            core_type_enum = tt_umd.CoreType.ETH
-        elif core_type == "worker":
-            core_type_enum = tt_umd.CoreType.WORKER
-        elif core_type == "security":
-            core_type_enum = tt_umd.CoreType.SECURITY
-        elif core_type == "l2cpu":
-            core_type_enum = tt_umd.CoreType.L2CPU
-        else:
-            raise RuntimeError(f"Unknown core type: {core_type}")
-
-        if coord_system == "logical":
-            coord_system_enum = tt_umd.CoordSystem.LOGICAL
-        elif coord_system == "translated":
-            coord_system_enum = tt_umd.CoordSystem.TRANSLATED
-        elif coord_system == "noc0":
-            coord_system_enum = tt_umd.CoordSystem.NOC0
-        elif coord_system == "noc1":
-            coord_system_enum = tt_umd.CoordSystem.NOC1
-        else:
-            raise RuntimeError(f"Unknown coordinate system: {coord_system}")
-
+        core_type_enum = tt_umd.CoreType[core_type.upper()]
+        coord_system_enum = tt_umd.CoordSystem[coord_system.upper()]
         core_coord = tt_umd.CoreCoord(noc_x, noc_y, core_type_enum, tt_umd.CoordSystem.NOC0)
         output = self._soc_descriptor.translate_coord_to(core_coord, coord_system_enum)
         return (output.x, output.y)

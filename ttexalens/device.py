@@ -130,7 +130,6 @@ class Device(TTObject):
         self._has_jtag = self.cluster_descriptor.get_io_device_type() == tt_umd.IODeviceType.JTAG
         self._init_coordinate_systems()
         self.unique_id = umd_device.unique_id
-        print(self.firmware_version)
 
     @cached_property
     def firmware_version(self):
@@ -159,8 +158,8 @@ class Device(TTObject):
             core_type = self.block_types[block_type].core_type
             for coord_system in umd_supported_coordinates:
                 try:
-                    converted_location = self._context.umd_api.convert_from_noc0(
-                        self._id, noc0_location[0], noc0_location[1], core_type, coord_system
+                    converted_location = self._umd_device.convert_from_noc0(
+                        noc0_location[0], noc0_location[1], core_type, coord_system
                     )
                     self._from_noc0[(noc0_location, coord_system)] = (converted_location, core_type)
                     self._to_noc0[(converted_location, coord_system, core_type)] = noc0_location
@@ -191,8 +190,8 @@ class Device(TTObject):
         except:
             try:
                 # Try to recover using UMD API
-                converted_location = self._context.umd_api.convert_from_noc0(
-                    self._id, noc0_tuple[0], noc0_tuple[1], "router_only", coord_system
+                converted_location = self._umd_device.convert_from_noc0(
+                    noc0_tuple[0], noc0_tuple[1], "router_only", coord_system
                 )
                 return (converted_location, "router_only")
             except:
