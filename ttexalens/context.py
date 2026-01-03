@@ -12,7 +12,7 @@ from sortedcontainers import SortedSet
 
 from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.hardware.risc_debug import RiscLocation
-from ttexalens.tt_exalens_ifc import TTExaLensUmdImplementation
+from ttexalens.umd_api import UmdApi
 
 if TYPE_CHECKING:
     from ttexalens.device import Device
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 class Context:
     def __init__(
         self,
-        server_ifc: TTExaLensUmdImplementation,
+        server_ifc: UmdApi,
         cluster_desc: util.YamlFile,
         short_name: str = "default",
         use_noc1=False,

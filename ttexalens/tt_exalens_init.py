@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 
-from ttexalens import tt_exalens_ifc
+from ttexalens.umd_api import UmdApi, local_init, connect_to_server
 from ttexalens import util as util
 from ttexalens.context import Context
 
@@ -35,7 +35,7 @@ def init_ttexalens(
         Context: TTExaLens context object.
     """
 
-    lens_ifc = tt_exalens_ifc.local_init(init_jtag, use_noc1, simulation_directory)
+    lens_ifc = local_init(init_jtag, use_noc1, simulation_directory)
 
     return load_context(lens_ifc, use_noc1, use_4B_mode)
 
@@ -57,12 +57,12 @@ def init_ttexalens_remote(
             Context: TTExaLens context object.
     """
 
-    lens_ifc = tt_exalens_ifc.connect_to_server(ip_address, port)
+    lens_ifc = connect_to_server(ip_address, port)
 
     return load_context(lens_ifc, use_4B_mode=use_4B_mode)
 
 
-def get_cluster_desc_yaml(lens_ifc: tt_exalens_ifc.TTExaLensUmdImplementation) -> util.YamlFile:
+def get_cluster_desc_yaml(lens_ifc: UmdApi) -> util.YamlFile:
     """Get the runtime data and cluster description yamls through the TTExaLens interface."""
 
     try:
@@ -74,9 +74,7 @@ def get_cluster_desc_yaml(lens_ifc: tt_exalens_ifc.TTExaLensUmdImplementation) -
     return cluster_desc_yaml
 
 
-def load_context(
-    server_ifc: tt_exalens_ifc.TTExaLensUmdImplementation, use_noc1: bool = False, use_4B_mode: bool = True
-) -> Context:
+def load_context(server_ifc: UmdApi, use_noc1: bool = False, use_4B_mode: bool = True) -> Context:
     """Load the TTExaLens context object with specified parameters."""
     context = Context(server_ifc, get_cluster_desc_yaml(server_ifc), use_noc1=use_noc1, use_4B_mode=use_4B_mode)
 
@@ -98,18 +96,3 @@ def set_active_context(context: Context | None) -> None:
     """
     global GLOBAL_CONTEXT
     GLOBAL_CONTEXT = context
-
-
-def locate_most_recent_build_output_dir() -> str | None:
-    """Try to find a default output directory."""
-    most_recent_modification_time = None
-    try:
-        for tt_build_subfile in os.listdir("tt_build"):
-            subdir = f"tt_build/{tt_build_subfile}"
-            if os.path.isdir(subdir):
-                if most_recent_modification_time is None or os.path.getmtime(subdir) > most_recent_modification_time:
-                    most_recent_modification_time = os.path.getmtime(subdir)
-                    most_recent_subdir = subdir
-        return most_recent_subdir
-    except:
-        return None

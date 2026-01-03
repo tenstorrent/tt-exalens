@@ -58,7 +58,7 @@ except ModuleNotFoundError as e:
 
 
 from ttexalens import init_ttexalens, init_ttexalens_remote
-from ttexalens import tt_exalens_ifc
+from ttexalens import umd_api
 from ttexalens import server
 from ttexalens import util as util
 from ttexalens.context import Context
@@ -458,7 +458,7 @@ def main():
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         if args["--background"]:
-            communicator = tt_exalens_ifc.local_init(
+            communicator = umd_api.local_init(
                 init_jtag=args["--jtag"],
                 initialize_with_noc1=args["--use-noc1"],
                 simulation_directory=args["-s"],

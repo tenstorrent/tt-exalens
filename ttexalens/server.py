@@ -4,11 +4,11 @@
 import threading
 import Pyro5.api
 from ttexalens import util as util
-from ttexalens.tt_exalens_ifc import TTExaLensUmdImplementation
+from ttexalens.umd_api import UmdApi
 
 
 class TTExaLensServer:
-    def __init__(self, port: int, communicator: TTExaLensUmdImplementation):
+    def __init__(self, port: int, communicator: UmdApi):
         self.port = port
         self.communicator = communicator
         self.daemon: Pyro5.api.Daemon | None = None
@@ -32,7 +32,7 @@ class TTExaLensServer:
         self.thread = None
 
 
-def start_server(port: int, communicator: TTExaLensUmdImplementation):
+def start_server(port: int, communicator: UmdApi):
     try:
         server = TTExaLensServer(port, communicator)
         server.start()

@@ -16,7 +16,7 @@ from ttexalens.umd_device import UmdDevice
 
 
 @Pyro5.api.expose
-class TTExaLensUmdImplementation:
+class UmdApi:
     def __init__(
         self,
         init_jtag=False,
@@ -224,7 +224,7 @@ def local_init(init_jtag=False, initialize_with_noc1=False, simulation_directory
         elif util.Verbosity.get() == util.Verbosity.TRACE:
             os.environ["TT_LOGGER_LEVEL"] = "trace"
 
-    communicator = TTExaLensUmdImplementation(init_jtag, initialize_with_noc1, simulation_directory)
+    communicator = UmdApi(init_jtag, initialize_with_noc1, simulation_directory)
     util.VERBOSE("Device opened successfully.")
     return communicator
 
@@ -251,12 +251,12 @@ class TTExaLensClientWrapper:
         return io.BytesIO(binary_data)
 
 
-def connect_to_server(server_host="localhost", port=5555) -> TTExaLensUmdImplementation:
+def connect_to_server(server_host="localhost", port=5555) -> UmdApi:
     pyro_address = f"PYRO:communicator@{server_host}:{port}"
     util.VERBOSE(f"Connecting to ttexalens-server at {pyro_address}...")
 
     try:
-        # We are returning a wrapper around the Pyro5 proxy to provide TTExaLensUmdImplementation-like behavior.
+        # We are returning a wrapper around the Pyro5 proxy to provide UmdApi-like behavior.
         # Since this is not a direct instance of TTExaLensCommunicator, mypy will warn; hence the ignore.
         proxy = Pyro5.api.Proxy(pyro_address)
         proxy._pyroSerializer = "marshal"

@@ -13,7 +13,7 @@ from ttexalens import (
     read_word_from_device,
     write_to_device,
 )
-from ttexalens.tt_exalens_ifc import local_init
+from ttexalens.umd_api import local_init
 from ttexalens.server import start_server
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 
