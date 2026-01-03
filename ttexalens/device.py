@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from abc import abstractmethod
+from dataclasses import dataclass
 from functools import cache, cached_property
 import tt_umd
 from typing import Iterable, Sequence
@@ -98,7 +99,13 @@ class Device(TTObject):
 
     # Class method to create a Device object given device architecture
     @staticmethod
-    def create(arch, device_id, cluster_descriptor: tt_umd.ClusterDescriptor, device_desc_path: str, context: Context):
+    def create(
+        arch,
+        device_id,
+        cluster_descriptor: tt_umd.ClusterDescriptor,
+        soc_descriptor: tt_umd.SocDescriptor,
+        context: Context,
+    ):
         if "wormhole" in arch.lower():
             from ttexalens.hw.tensix.wormhole import wormhole
 
@@ -106,7 +113,7 @@ class Device(TTObject):
                 id=device_id,
                 arch=arch,
                 cluster_descriptor=cluster_descriptor,
-                device_desc_path=device_desc_path,
+                soc_descriptor=soc_descriptor,
                 context=context,
             )
         if "blackhole" in arch.lower():
@@ -116,7 +123,7 @@ class Device(TTObject):
                 id=device_id,
                 arch=arch,
                 cluster_descriptor=cluster_descriptor,
-                device_desc_path=device_desc_path,
+                soc_descriptor=soc_descriptor,
                 context=context,
             )
 
@@ -127,22 +134,23 @@ class Device(TTObject):
                 id=device_id,
                 arch=arch,
                 cluster_descriptor=cluster_descriptor,
-                device_desc_path=device_desc_path,
+                soc_descriptor=soc_descriptor,
                 context=context,
             )
 
         raise RuntimeError(f"Architecture {arch} is not supported")
 
-    @cached_property
-    def yaml_file(self):
-        return util.YamlFile(self._context.file_api, self._device_desc_path)
-
     def __init__(
-        self, id: int, arch: str, cluster_descriptor: tt_umd.ClusterDescriptor, device_desc_path: str, context: Context
+        self,
+        id: int,
+        arch: str,
+        cluster_descriptor: tt_umd.ClusterDescriptor,
+        soc_descriptor: tt_umd.SocDescriptor,
+        context: Context,
     ):
         self._id: int = id
         self._arch = arch
-        self._device_desc_path = device_desc_path
+        self._soc_descriptor = soc_descriptor
         self._context = context
         self._has_mmio = cluster_descriptor.is_chip_mmio_capable(id)
         self._has_jtag = cluster_descriptor.get_io_device_type() == tt_umd.IODeviceType.JTAG
@@ -173,7 +181,7 @@ class Device(TTObject):
         umd_supported_coordinates = ["noc1", "logical", "translated"]
         unique_coordinates = ["noc1", "translated"]
         for noc0_location, block_type in self._noc0_to_block_type.items():
-            core_type = self.block_types[block_type]["core_type"]
+            core_type = self.block_types[block_type].core_type
             for coord_system in umd_supported_coordinates:
                 try:
                     converted_location = self._context.umd_api.convert_from_noc0(
@@ -293,39 +301,54 @@ class Device(TTObject):
         Returns locations of all blocks as dictionary of tuples (unchanged coordinates from YAML)
         """
         result: dict[str, list[OnChipCoordinate]] = {}
-        for block_type in self.block_types:
+        for block_name, block_type in self.block_types.items():
             locs = []
-            dev = self.yaml_file.root
+            core_type = tt_umd.CoreType[block_type.core_type.upper()]
+            if block_type.core_harvesting:
+                core_coords = self._soc_descriptor.get_harvested_cores(core_type, tt_umd.CoordSystem.NOC0)
+            else:
+                core_coords = self._soc_descriptor.get_cores(core_type, tt_umd.CoordSystem.NOC0)
 
-            for loc_or_list in dev[block_type]:
-                if type(loc_or_list) != str and isinstance(loc_or_list, Sequence):
-                    for loc in loc_or_list:
-                        locs.append(OnChipCoordinate.create(loc, self, "noc0"))
-                else:
-                    locs.append(OnChipCoordinate.create(loc_or_list, self, "noc0"))
-            result[block_type] = locs
+            for core_coord in core_coords:
+                locs.append(OnChipCoordinate(core_coord.x, core_coord.y, "noc0", self, block_type.core_type))
+            result[block_name] = locs
         return result
 
+    @dataclass
+    class BlockType:
+        symbol: str
+        desc: str
+        core_type: str
+        core_harvesting: bool
+        color: str
+
     block_types = {
-        "functional_workers": {
-            "symbol": ".",
-            "desc": "Functional worker",
-            "core_type": "tensix",
-            "color": util.CLR_GREEN,
-        },
-        "eth": {"symbol": "E", "desc": "Ethernet", "core_type": "eth", "color": util.CLR_YELLOW},
-        "harvested_eth": {"symbol": "e", "desc": "Harvested Ethernet", "core_type": "eth", "color": util.CLR_RED},
-        "arc": {"symbol": "A", "desc": "ARC", "core_type": "arc", "color": util.CLR_GREY},
-        "dram": {"symbol": "D", "desc": "DRAM", "core_type": "dram", "color": util.CLR_TEAL},
-        "harvested_dram": {"symbol": "d", "desc": "Harvested DRAM", "core_type": "dram", "color": util.CLR_RED},
-        "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie", "color": util.CLR_GREY},
-        "router_only": {"symbol": " ", "desc": "Router only", "core_type": "router_only", "color": util.CLR_GREY},
-        "harvested_workers": {"symbol": "-", "desc": "Harvested", "core_type": "tensix", "color": util.CLR_RED},
-        "security": {"symbol": "S", "desc": "Security", "core_type": "security", "color": util.CLR_GREY},
-        "l2cpu": {"symbol": "C", "desc": "L2CPU", "core_type": "l2cpu", "color": util.CLR_GREY},
+        "functional_workers": BlockType(
+            symbol=".", desc="Functional worker", core_type="tensix", core_harvesting=False, color=util.CLR_GREEN
+        ),
+        "eth": BlockType(symbol="E", desc="Ethernet", core_type="eth", core_harvesting=False, color=util.CLR_YELLOW),
+        "harvested_eth": BlockType(
+            symbol="e", desc="Harvested Ethernet", core_type="eth", core_harvesting=True, color=util.CLR_RED
+        ),
+        "arc": BlockType(symbol="A", desc="ARC", core_type="arc", core_harvesting=False, color=util.CLR_GREY),
+        "dram": BlockType(symbol="D", desc="DRAM", core_type="dram", core_harvesting=False, color=util.CLR_TEAL),
+        "harvested_dram": BlockType(
+            symbol="d", desc="Harvested DRAM", core_type="dram", core_harvesting=True, color=util.CLR_RED
+        ),
+        "pcie": BlockType(symbol="P", desc="PCIE", core_type="pcie", core_harvesting=False, color=util.CLR_GREY),
+        "router_only": BlockType(
+            symbol=" ", desc="Router only", core_type="router_only", core_harvesting=False, color=util.CLR_GREY
+        ),
+        "harvested_workers": BlockType(
+            symbol="-", desc="Harvested", core_type="tensix", core_harvesting=True, color=util.CLR_RED
+        ),
+        "security": BlockType(
+            symbol="S", desc="Security", core_type="security", core_harvesting=False, color=util.CLR_GREY
+        ),
+        "l2cpu": BlockType(symbol="C", desc="L2CPU", core_type="l2cpu", core_harvesting=False, color=util.CLR_GREY),
     }
 
-    core_types = {v["core_type"] for v in block_types.values()}
+    core_types = {v.core_type for v in block_types.values()}
 
     def get_block_type(self, loc: OnChipCoordinate) -> str:
         """
@@ -337,7 +360,6 @@ class Device(TTObject):
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
     # See coordinate.py for valid values of axis_coordinates
     def render(self, axis_coordinate="die", cell_renderer=None, legend=None):
-        dev = self.yaml_file.root
         rows: list[list[str]] = []
 
         # Retrieve all block locations

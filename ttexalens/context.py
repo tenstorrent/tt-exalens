@@ -50,13 +50,13 @@ class Context:
         device_ids = self.device_ids
         devices: dict[int, Device] = dict()
         for device_id in device_ids:
-            device_desc_path = self.umd_api.get_device_soc_description(device_id)
-            util.DEBUG(f"Loading device {device_id} from {device_desc_path}")
+            util.DEBUG(f"Loading device {device_id}")
+            soc_descriptor = self.umd_api.get_device_soc_description(device_id)
             devices[device_id] = Device.create(
                 self.arch,
                 device_id=device_id,
                 cluster_descriptor=self.cluster_descriptor,
-                device_desc_path=device_desc_path,
+                soc_descriptor=soc_descriptor,
                 context=self,
             )
         return devices

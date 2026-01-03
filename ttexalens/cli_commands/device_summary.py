@@ -46,7 +46,7 @@ command_metadata = CommandMetadata(
 
 
 def color_block(text: str, block_type: str):
-    color = Device.block_types[block_type]["color"]
+    color = Device.block_types[block_type].color
     return f"{color}{text}{util.CLR_END}"
 
 

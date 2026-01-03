@@ -50,8 +50,6 @@ class UmdApi:
         initialize_with_noc1=False,
         simulation_directory: str | None = None,
     ):
-        self.temp_working_directory = tempfile.mkdtemp(prefix="ttexalens_server_XXXXXX")
-        self.device_soc_descriptors_yamls: dict[int, str] = {}
         self.devices: dict[int, UmdDevice] = {}
         self.device_ids: list[int] = []
 
@@ -118,11 +116,6 @@ class UmdApi:
                 assert wrapped_device.is_mmio_capable == self.cluster_descriptor.is_chip_mmio_capable(chip_id)
                 self.devices[chip_id] = wrapped_device
 
-        for chip_id, wrapped_device in self.devices.items():
-            file_name = os.path.join(self.temp_working_directory, f"device_desc_runtime_{chip_id}.yaml")
-            wrapped_device.soc_descriptor.serialize_to_file(file_name)
-            self.device_soc_descriptors_yamls[chip_id] = file_name
-
     def __get_device(self, chip_id: int) -> UmdDevice:
         if chip_id not in self.devices:
             raise RuntimeError(f"Device with chip id {chip_id} not found.")
@@ -167,8 +160,8 @@ class UmdApi:
     def get_device_arch(self, chip_id: int) -> str:
         return str(self.__get_device(chip_id).arch)
 
-    def get_device_soc_description(self, chip_id: int) -> str:
-        return self.device_soc_descriptors_yamls[chip_id]
+    def get_device_soc_description(self, chip_id: int) -> tt_umd.SocDescriptor:
+        return self.__get_device(chip_id).soc_descriptor
 
     def convert_from_noc0(self, chip_id: int, noc_x: int, noc_y: int, core_type: str, coord_system: str):
         return self.__get_device(chip_id).convert_from_noc0(noc_x, noc_y, core_type, coord_system)

@@ -4,10 +4,12 @@
 from __future__ import annotations
 import io
 import Pyro5.api
+import Pyro5.configure
 import serpent
 import threading
 from typing import TYPE_CHECKING
 from ttexalens import util as util
+import tt_umd
 
 if TYPE_CHECKING:
     from ttexalens.context import Context
@@ -79,6 +81,10 @@ class TTExaLensServer:
                     # Check if result_type is simple type
                     if result_type in (int, float, str, bool, type(None), list, dict, tuple, bytes):
                         return result
+                    # Check if result_type is in known serializable types
+                    global UMD_SERIALIZABLE_TYPES
+                    if result_type in UMD_SERIALIZABLE_TYPES:
+                        return result
                     # For complex types, register them and return a proxy
                     with self.server.umd_registered_objects_lock:
                         object_id = id(result)
@@ -87,7 +93,7 @@ class TTExaLensServer:
                             wrapped_result = self.server._wrap_object(result)
                             self.server.daemon.register(wrapped_result, objectId=f"umd_obj_{object_id}")
                             proxy = Pyro5.api.Proxy(f"PYRO:umd_obj_{object_id}@localhost:{self.server.port}")
-                            proxy._pyroSerializer = "marshal"
+                            proxy._pyroSerializer = "serpent"
                             self.server.umd_registered_objects[object_id] = (wrapped_result, proxy)
                         return self.server.umd_registered_objects[object_id][1]
 
@@ -104,6 +110,54 @@ class TTExaLensServer:
                 setattr(wrapper, method_name, new_method)
                 setattr(wrapper_type, method_name, new_method)
         return wrapper
+
+
+UMD_SERIALIZABLE_TYPES = {
+    tt_umd.IODeviceType,
+    tt_umd.CoreType,
+    tt_umd.CoordSystem,
+    tt_umd.CoreCoord,
+}
+
+
+def umd_type_to_dict(obj):
+    if isinstance(obj, tt_umd.IODeviceType):
+        return {"__class__": "tt_umd.IODeviceType", "value": obj.name}
+    if isinstance(obj, tt_umd.CoreType):
+        return {"__class__": "tt_umd.CoreType", "value": obj.name}
+    if isinstance(obj, tt_umd.CoordSystem):
+        return {"__class__": "tt_umd.CoordSystem", "value": obj.name}
+    if isinstance(obj, tt_umd.CoreCoord):
+        return {
+            "__class__": "tt_umd.CoreCoord",
+            "x": obj.x,
+            "y": obj.y,
+            "core_type": obj.core_type.name,
+            "coord_system": obj.coord_system.name,
+        }
+    raise TypeError(f"Cannot serialize type {type(obj)}")
+
+
+def umd_type_from_dict(cls, data):
+    if cls == "tt_umd.IODeviceType":
+        return tt_umd.IODeviceType[data["value"]]
+    if cls == "tt_umd.CoreType":
+        return tt_umd.CoreType[data["value"]]
+    if cls == "tt_umd.CoordSystem":
+        return tt_umd.CoordSystem[data["value"]]
+    if cls == "tt_umd.CoreCoord":
+        coord_system = tt_umd.CoordSystem[data["coord_system"]]
+        core_type = tt_umd.CoreType[data["core_type"]]
+        x = data["x"]
+        y = data["y"]
+        return tt_umd.CoreCoord(x, y, core_type, coord_system)
+    return data
+
+
+for tt_umd_type in UMD_SERIALIZABLE_TYPES:
+    Pyro5.api.register_class_to_dict(tt_umd_type, umd_type_to_dict)
+    Pyro5.api.register_dict_to_class(f"tt_umd.{tt_umd_type.__name__}", umd_type_from_dict)
+Pyro5.configure.global_config.SERPENT_BYTES_REPR = True
 
 
 def start_server(port: int, context: Context):
@@ -146,7 +200,7 @@ def connect_to_server(server_host="localhost", port=5555) -> tuple[UmdApi, FileA
         util.VERBOSE(f"Connecting UMD API to ttexalens-server at {pyro_umd_api_address}...")
         # We are returning a wrapper around the Pyro5 proxy to provide UmdApi-like behavior.
         proxy = Pyro5.api.Proxy(pyro_umd_api_address)
-        proxy._pyroSerializer = "marshal"
+        proxy._pyroSerializer = "serpent"
         umd_api: UmdApi = proxy  # type: ignore
 
         # Connect to FileAccessApi
@@ -156,7 +210,7 @@ def connect_to_server(server_host="localhost", port=5555) -> tuple[UmdApi, FileA
         # We are returning a wrapper around the Pyro5 proxy to provide FileAccessApi-like behavior.
         # Since this is not a direct instance of FileAccessApi, mypy will warn; hence the ignore.
         proxy = Pyro5.api.Proxy(pyro_file_api_address)
-        proxy._pyroSerializer = "marshal"
+        proxy._pyroSerializer = "serpent"
         file_api: FileAccessApi = FileAccessApiWrapper(proxy)  # type: ignore
 
         # Return connected APIs

@@ -37,14 +37,15 @@ class WormholeDevice(Device):
     NOC_0_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_0_X)
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
 
-    def __init__(self, id, arch, cluster_descriptor: tt_umd.ClusterDescriptor, device_desc_path: str, context: Context):
-        super().__init__(
-            id,
-            arch,
-            cluster_descriptor,
-            device_desc_path,
-            context,
-        )
+    def __init__(
+        self,
+        id,
+        arch,
+        cluster_descriptor: tt_umd.ClusterDescriptor,
+        soc_descriptor: tt_umd.SocDescriptor,
+        context: Context,
+    ):
+        super().__init__(id, arch, cluster_descriptor, soc_descriptor, context)
         self.instructions = WormholeInstructions()
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
