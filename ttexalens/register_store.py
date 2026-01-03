@@ -82,10 +82,10 @@ class RegisterDescription:
         return self.base_address.private_address + self.offset
 
     @property
-    def raw_address(self) -> int | None:
-        if self.base_address is None or self.base_address.raw_address is None:
+    def bar0_address(self) -> int | None:
+        if self.base_address is None or self.base_address.bar0_address is None:
             return None
-        return self.base_address.raw_address + self.offset
+        return self.base_address.bar0_address + self.offset
 
     @property
     def noc_id(self) -> int | None:
@@ -226,10 +226,10 @@ class RegisterStore:
         assert register.mask == 0xFFFFFFFF
         return register.private_address
 
-    def get_register_raw_address(self, register_name: str) -> int | None:
+    def get_register_bar0_address(self, register_name: str) -> int | None:
         register = self.get_register_description(register_name)
         assert register.mask == 0xFFFFFFFF
-        return register.raw_address
+        return register.bar0_address
 
     def parse_register_description(self, input_string: str) -> tuple[RegisterDescription, str]:
         # Check if the input string is a register name
@@ -297,8 +297,8 @@ class RegisterStore:
             value = read_word_from_device(
                 self.location, register.noc_address, self.device._id, self.context, register.noc_id
             )
-        elif register.raw_address is not None:
-            value = self.device.bar0_read32(register.raw_address)
+        elif register.bar0_address is not None:
+            value = self.device.bar0_read32(register.bar0_address)
         elif isinstance(register, ConfigurationRegisterDescription):
             write_words_to_device(
                 self.location,
@@ -349,11 +349,11 @@ class RegisterStore:
             write_words_to_device(
                 self.location, register.noc_address, value, self.device._id, self.context, register.noc_id
             )
-        elif register.raw_address is not None:
+        elif register.bar0_address is not None:
             if register.mask != 0xFFFFFFFF:
-                old_value = self.device.bar0_read32(register.raw_address)
+                old_value = self.device.bar0_read32(register.bar0_address)
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            self.device.bar0_write32(register.raw_address, value)
+            self.device.bar0_write32(register.bar0_address, value)
         else:
             # Write using RISC core debugging hardware.
             risc_debug = self.device.get_block(self.location).get_default_risc_debug()

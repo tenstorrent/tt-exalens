@@ -1786,7 +1786,7 @@ reg dbg(0x54) --write 18
 ```
 Output:
 ```
-Register DebugRegisterDescription(base_address=DeviceAddress(private_address=4289798144, noc_address=4289798144, raw_address=None,...
+Register DebugRegisterDescription(base_address=DeviceAddress(private_address=4289798144, noc_address=4289798144, bar0_address=None...
 ```
 Writes 0 to configuration register with index 1, mask 0x1E000000, shift 25
 ```
@@ -1794,7 +1794,7 @@ reg cfg(1,0x1E000000,25) --write 0x0
 ```
 Output:
 ```
-Register ConfigurationRegisterDescription(base_address=DeviceAddress(private_address=4293853184, noc_address=None, raw_address=Non...
+Register ConfigurationRegisterDescription(base_address=DeviceAddress(private_address=4293853184, noc_address=None, bar0_address=No...
 ```
 Prints debug register with address 0x54 for device 0 and core at location 0,0
 ```
