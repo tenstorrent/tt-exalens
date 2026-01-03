@@ -262,23 +262,19 @@ class UmdDevice:
                 self.__configure_working_active_eth()
                 self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode)
 
-    ##################################################################
-    ## OLD API METHODS FROM TTExaLensImplementation TO BE FORWARDED ##
-    ##################################################################
-
-    def read32(self, noc_id: int, noc0_x: int, noc0_y: int, address: int) -> int:
+    def noc_read32(self, noc_id: int, noc0_x: int, noc0_y: int, address: int) -> int:
         """Reads 4 bytes from address"""
         result = self.__read_from_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, 4, True)
         return int.from_bytes(result, byteorder="little")
 
-    def write32(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: int) -> int:
+    def noc_write32(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: int) -> int:
         """Writes 4 bytes to address"""
         self.__write_to_device_reg_unaligned(
             noc_id, noc0_x, noc0_y, address, data.to_bytes(4, byteorder="little"), True
         )
         return 4
 
-    def read(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool) -> bytes:
+    def noc_read(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool) -> bytes:
         """Reads data from address"""
         # TODO #124: Mitigation for UMD bug #77
         if not self._is_mmio_capable:
@@ -293,7 +289,7 @@ class UmdDevice:
             return bytes(result)
         return self.__read_from_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, size, use_4B_mode)
 
-    def write(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool) -> int:
+    def noc_write(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool) -> int:
         """Writes data to address"""
         size = len(data)
         # TODO #124: Mitigation for UMD bug #77
@@ -312,22 +308,18 @@ class UmdDevice:
         self.__write_to_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, data, use_4B_mode)
         return size
 
-    def pci_read32_raw(self, address: int) -> int:
+    def bar0_read32(self, address: int) -> int:
         """Reads 4 bytes from PCI address"""
         if self._is_mmio_capable:
             return self.__device.bar_read32(address)
         raise RuntimeError("Device is not mmio capable.")
 
-    def pci_write32_raw(self, address: int, data: int) -> int:
+    def bar0_write32(self, address: int, data: int) -> int:
         """Writes 4 bytes to PCI address"""
         if self._is_mmio_capable:
             self.__device.bar_write32(address, data)
             return 4
         raise RuntimeError("Device is not mmio capable.")
-
-    def dma_buffer_read32(self, address: int, channel: int) -> int:
-        """Reads 4 bytes from DMA buffer"""
-        raise NotImplementedError("dma_buffer_read32 is not implemented in UmdDevice.")
 
     def convert_from_noc0(self, noc_x: int, noc_y: int, core_type: str, coord_system: str) -> tuple[int, int]:
         """Convert noc0 coordinate into specified coordinate system"""

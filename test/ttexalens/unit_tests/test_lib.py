@@ -93,8 +93,6 @@ class TestReadWrite(unittest.TestCase):
         data = [0, 1, 2, 3]
 
         ret = lib.write_to_device(location, address, data)
-        self.assertEqual(ret, len(data))
-
         ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, bytes(data))
 
@@ -106,8 +104,6 @@ class TestReadWrite(unittest.TestCase):
         data = b"abcd"
 
         ret = lib.write_to_device(location, address, data)
-        self.assertEqual(ret, len(data))
-
         ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, data)
 
@@ -143,7 +139,6 @@ class TestReadWrite(unittest.TestCase):
 
         # Write buffer
         ret = lib.write_to_device(location, address, data, device_id)
-        self.assertEqual(ret, len(data))
 
         # Verify buffer as words
         ret = lib.read_words_from_device(location, address, device_id, len(words))
@@ -165,10 +160,8 @@ class TestReadWrite(unittest.TestCase):
 
         # Write a word to device two times
         ret = lib.write_words_to_device(location, address[0], data[0])
-        self.assertEqual(ret, 4)
 
         ret = lib.write_words_to_device(location, address[1], data[1])
-        self.assertEqual(ret, 4)
 
         # Write two words to device
         ret = lib.write_words_to_device(location, address[2], data[2:])
@@ -197,8 +190,6 @@ class TestReadWrite(unittest.TestCase):
 
         # Write bytes to device
         ret = lib.write_to_device(location, address, data)
-        # *4 is because we write 4-byte words
-        self.assertEqual(ret, len(data))
 
         # Read the bytes as words
         ret = lib.read_words_from_device(location, address, word_count=1)

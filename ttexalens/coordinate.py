@@ -46,7 +46,9 @@ from typing import TYPE_CHECKING
 from ttexalens.util import TTException
 
 if TYPE_CHECKING:
+    from ttexalens.context import Context
     from ttexalens.device import Device
+    from ttexalens.hardware.noc_block import NocBlock
 
 VALID_COORDINATE_TYPES = [
     "die",
@@ -120,19 +122,19 @@ class OnChipCoordinate:
             raise Exception("Unknown input coordinate system: " + input_type)
 
     @property
-    def context(self):
+    def context(self) -> Context:
         return self._device._context
 
     @property
-    def device(self):
+    def device(self) -> Device:
         return self._device
 
     @property
-    def device_id(self):
+    def device_id(self) -> int:
         return self._device._id
 
     @property
-    def noc_block(self):
+    def noc_block(self) -> NocBlock:
         return self.device.get_block(self)
 
     # This returns a tuple with the coordinates in the specified coordinate system.

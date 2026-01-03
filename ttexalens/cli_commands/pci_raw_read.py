@@ -29,6 +29,7 @@ command_metadata = CommandMetadata(
 def run(cmd_text, context, ui_state: UIState):
     args = tt_docopt(command_metadata, cmd_text).args
     addr = int(args["<addr>"], 0)
-    pci_read_result = context.umd_api.pci_read32_raw(ui_state.current_device_id, addr)
+    device = context.devices[ui_state.current_device_id]
+    pci_read_result = device.bar0_read32(addr)
     print(f"PCI RD [0x{addr:x}]: 0x{pci_read_result:x}")
     return None

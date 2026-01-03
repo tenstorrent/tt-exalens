@@ -111,31 +111,6 @@ class UmdApi:
             raise RuntimeError(f"Device with chip id {chip_id} not found.")
         return self.devices[chip_id]
 
-    def read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int) -> int:
-        return self.get_device(chip_id).read32(noc_id, noc_x, noc_y, address)
-
-    def write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int) -> int:
-        return self.get_device(chip_id).write32(noc_id, noc_x, noc_y, address, data)
-
-    def read(
-        self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, use_4B_mode: bool
-    ) -> bytes:
-        return self.get_device(chip_id).read(noc_id, noc_x, noc_y, address, size, use_4B_mode)
-
-    def write(
-        self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes, use_4B_mode: bool
-    ) -> int:
-        return self.get_device(chip_id).write(noc_id, noc_x, noc_y, address, data, use_4B_mode)
-
-    def pci_read32_raw(self, chip_id: int, address: int) -> int:
-        return self.get_device(chip_id).pci_read32_raw(address)
-
-    def pci_write32_raw(self, chip_id: int, address: int, data: int) -> int:
-        return self.get_device(chip_id).pci_write32_raw(address, data)
-
-    def dma_buffer_read32(self, chip_id: int, address: int, channel: int) -> int:
-        return self.get_device(chip_id).dma_buffer_read32(address, channel)
-
     def arc_msg(
         self,
         noc_id: int,

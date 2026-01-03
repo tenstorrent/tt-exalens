@@ -6,7 +6,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 from functools import cache, cached_property
 import tt_umd
-from typing import Iterable, Sequence
+from typing import Iterable
 
 from tabulate import tabulate
 from ttexalens.context import Context
@@ -135,6 +135,29 @@ class Device(TTObject):
     def firmware_version(self):
         fw = self._umd_device.get_firmware_version()
         return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
+
+    def noc_read(
+        self, noc_id: int, location: OnChipCoordinate, address: int, size_bytes: int, use_4B_mode: bool
+    ) -> bytes:
+        noc_x, noc_y = location._noc0_coord
+        return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode)
+
+    def noc_read32(self, noc_id: int, location: OnChipCoordinate, address: int) -> int:
+        result = self.noc_read(noc_id, location, address, 4, True)
+        return int.from_bytes(result, byteorder="little")
+
+    def noc_write(self, noc_id: int, location: OnChipCoordinate, address: int, data: bytes, use_4B_mode: bool):
+        noc_x, noc_y = location._noc0_coord
+        return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode)
+
+    def noc_write32(self, noc_id: int, location: OnChipCoordinate, address: int, data: int):
+        return self.noc_write(noc_id, location, address, data.to_bytes(4, byteorder="little"), True)
+
+    def bar0_read32(self, address: int) -> int:
+        return self._umd_device.bar0_read32(address)
+
+    def bar0_write32(self, address: int, data: int):
+        return self._umd_device.bar0_write32(address, data)
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __noc_to_die(self, noc_loc, noc_id=0):

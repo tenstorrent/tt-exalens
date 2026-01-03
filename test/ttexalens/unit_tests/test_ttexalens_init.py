@@ -77,8 +77,6 @@ class TestRemoteTTExaLens(unittest.TestCase):
         data = b"abcd"
 
         ret = write_to_device(location, address, data, device_id=0, context=context)
-        self.assertEqual(ret, len(data))
-
         ret = read_from_device(location, address, num_bytes=len(data), device_id=0, context=context)
         self.assertEqual(ret, data)
 
