@@ -56,6 +56,7 @@ class UmdDevice:
         self.__device = device
         self._arch = device.get_arch()
         self._is_mmio_capable = not device.is_remote()
+        self._is_jtag_capable = device.get_communication_device_type() == tt_umd.IODeviceType.JTAG
         self._soc_descriptor = soc_descriptor if soc_descriptor is not None else tt_umd.SocDescriptor(device)
         self._device_id = device_id
         self._unique_id = unique_id
@@ -85,6 +86,10 @@ class UmdDevice:
     @property
     def is_mmio_capable(self) -> bool:
         return self._is_mmio_capable
+
+    @property
+    def is_jtag_capable(self) -> bool:
+        return self._is_jtag_capable
 
     def __configure_working_active_eth(self):
         tensix_coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)

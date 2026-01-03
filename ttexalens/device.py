@@ -125,9 +125,8 @@ class Device(TTObject):
         self._context = context
         self._umd_device = umd_device
         self._soc_descriptor = umd_device.soc_descriptor
-        self.cluster_descriptor = context.cluster_descriptor
-        self._has_mmio = self.cluster_descriptor.is_chip_mmio_capable(id)
-        self._has_jtag = self.cluster_descriptor.get_io_device_type() == tt_umd.IODeviceType.JTAG
+        self._has_mmio = umd_device.is_mmio_capable
+        self._has_jtag = umd_device.is_jtag_capable
         self._init_coordinate_systems()
         self.unique_id = umd_device.unique_id
 
@@ -254,7 +253,7 @@ class Device(TTObject):
     @cached_property
     def active_eth_block_locations(self) -> list[OnChipCoordinate]:
         active_channels: list[int] = []
-        for src_chip, channels in self.cluster_descriptor.get_ethernet_connections().items():
+        for src_chip, channels in self._context.cluster_descriptor.get_ethernet_connections().items():
             for src_chan, dest in channels.items():
                 dest_chip, dest_chan = dest
                 if dest_chip == self._id:

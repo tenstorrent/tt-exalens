@@ -64,7 +64,6 @@ class UmdApi:
             self.devices[0] = UmdDevice(tt_device, 0, 0, soc_descriptor=soc_descriptor, is_simulation=True)
             cluster_descriptor_content = create_simulation_cluster_descriptor(self.devices[0].arch)
             self.cluster_descriptor = tt_umd.ClusterDescriptor.create_from_yaml_content(cluster_descriptor_content)
-            # TODO: In destructor we need to call close device so that emulation can stop reservation and simulation can stop waveform?!?
         else:
             # Respect UMD's existing env var first; default to ERROR otherwise.
             # If Python wants DEBUG, it can set TT_LOGGER_LEVEL=debug before calling into this function.
