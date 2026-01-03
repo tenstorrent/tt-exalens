@@ -1,12 +1,9 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from abc import abstractmethod
 import datetime
-import io
 import os
 import Pyro5.api
-import serpent
 import tempfile
 from typing import Sequence
 import tt_umd
@@ -201,21 +198,6 @@ class UmdApi:
     def get_device_unique_id(self, chip_id: int) -> int:
         return self.__get_device(chip_id).unique_id
 
-    def get_file(self, file_path: str) -> str:
-        with open(file_path, "r") as f:
-            return f.read()
-
-    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
-        return open(binary_path, "rb")
-
-    def get_binary_content(self, binary_path: str) -> bytes:
-        """
-        Returns binary file content as base64-encoded data for remote access.
-        This method is used by the server to serialize binary data properly.
-        """
-        with open(binary_path, "rb") as f:
-            return f.read()
-
 
 def local_init(init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None):
     if "TT_LOGGER_LEVEL" not in os.environ:
@@ -227,39 +209,3 @@ def local_init(init_jtag=False, initialize_with_noc1=False, simulation_directory
     communicator = UmdApi(init_jtag, initialize_with_noc1, simulation_directory)
     util.VERBOSE("Device opened successfully.")
     return communicator
-
-
-class TTExaLensClientWrapper:
-    """
-    A wrapper around the Pyro5 proxy to convert base64-encoded bytes back to bytes.
-    """
-
-    def __init__(self, proxy):
-        self.proxy = proxy
-
-    def __getattr__(self, name):
-        function = getattr(self.proxy, name)
-        return lambda *args, **kwargs: function(*args, **kwargs)
-
-    def get_binary(self, binary_path: str) -> io.BufferedIOBase:
-        """
-        Handle get_binary by calling get_binary_content and wrapping result in BytesIO.
-        """
-        # Try to call get_binary_content which returns serializable data
-        data = self.proxy.get_binary_content(binary_path)
-        binary_data = serpent.tobytes(data)
-        return io.BytesIO(binary_data)
-
-
-def connect_to_server(server_host="localhost", port=5555) -> UmdApi:
-    pyro_address = f"PYRO:communicator@{server_host}:{port}"
-    util.VERBOSE(f"Connecting to ttexalens-server at {pyro_address}...")
-
-    try:
-        # We are returning a wrapper around the Pyro5 proxy to provide UmdApi-like behavior.
-        # Since this is not a direct instance of TTExaLensCommunicator, mypy will warn; hence the ignore.
-        proxy = Pyro5.api.Proxy(pyro_address)
-        proxy._pyroSerializer = "marshal"
-        return TTExaLensClientWrapper(proxy)  # type: ignore
-    except:
-        raise util.TTFatalException("Failed to connect to TTExaLens server.")

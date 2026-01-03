@@ -12,23 +12,26 @@ from sortedcontainers import SortedSet
 
 from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.hardware.risc_debug import RiscLocation
-from ttexalens.umd_api import UmdApi
 
 if TYPE_CHECKING:
     from ttexalens.device import Device
     from ttexalens.command_parser import CommandMetadata
+    from ttexalens.server import FileAccessApi
+    from ttexalens.umd_api import UmdApi
 
 # All-encompassing structure representing a TTExaLens context
 class Context:
     def __init__(
         self,
-        server_ifc: UmdApi,
+        umd_api: UmdApi,
+        file_api: FileAccessApi,
         cluster_desc: util.YamlFile,
         short_name: str = "default",
         use_noc1=False,
         use_4B_mode=True,
     ):
-        self.server_ifc = server_ifc
+        self.umd_api = umd_api
+        self.file_api = file_api
         self._cluster_desc = cluster_desc
         self.short_name = short_name
         self.use_noc1 = use_noc1
@@ -49,7 +52,7 @@ class Context:
         device_ids = self.device_ids
         devices: dict[int, Device] = dict()
         for device_id in device_ids:
-            device_desc_path = self.server_ifc.get_device_soc_description(device_id)
+            device_desc_path = self.umd_api.get_device_soc_description(device_id)
             util.DEBUG(f"Loading device {device_id} from {device_desc_path}")
             devices[device_id] = Device.create(
                 self.arch,
@@ -68,7 +71,7 @@ class Context:
     def device_ids(self) -> SortedSet[int]:
         device_ids: Iterable[int]
         try:
-            device_ids = self.server_ifc.get_device_ids()
+            device_ids = self.umd_api.get_device_ids()
         except:
             device_ids = []
         return SortedSet(d for d in device_ids)
@@ -76,13 +79,13 @@ class Context:
     @cached_property
     def arch(self):
         try:
-            return self.server_ifc.get_device_arch(min(self.device_ids))
+            return self.umd_api.get_device_arch(min(self.device_ids))
         except:
             return None
 
     @cached_property
     def elf(self):
-        return ELF(self.server_ifc, {}, None)
+        return ELF(self.file_api, {}, None)
 
     def get_risc_elf_path(self, risc_location: RiscLocation) -> str | None:
         return self.loaded_elfs.get(risc_location)

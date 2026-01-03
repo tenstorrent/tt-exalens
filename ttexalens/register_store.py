@@ -298,7 +298,7 @@ class RegisterStore:
                 self.location, register.noc_address, self.device._id, self.context, register.noc_id
             )
         elif register.raw_address is not None:
-            value = self.context.server_ifc.pci_read32_raw(self.device._id, register.raw_address)
+            value = self.context.umd_api.pci_read32_raw(self.device._id, register.raw_address)
         elif isinstance(register, ConfigurationRegisterDescription):
             write_words_to_device(
                 self.location,
@@ -351,9 +351,9 @@ class RegisterStore:
             )
         elif register.raw_address is not None:
             if register.mask != 0xFFFFFFFF:
-                old_value = self.context.server_ifc.pci_read32_raw(self.device._id, register.raw_address)
+                old_value = self.context.umd_api.pci_read32_raw(self.device._id, register.raw_address)
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            self.context.server_ifc.pci_write32_raw(self.device._id, register.raw_address, value)
+            self.context.umd_api.pci_write32_raw(self.device._id, register.raw_address, value)
         else:
             # Write using RISC core debugging hardware.
             risc_debug = self.device.get_block(self.location).get_default_risc_debug()

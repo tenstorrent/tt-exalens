@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from __future__ import annotations
 from contextlib import nullcontext, AbstractContextManager, contextmanager
-from typing import Any, Iterator
+from typing import Any, Iterator, TYPE_CHECKING
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
@@ -11,6 +12,9 @@ import traceback, socket
 import ryml, yaml
 from fnmatch import fnmatch
 from enum import Enum
+
+if TYPE_CHECKING:
+    from ttexalens.server import FileAccessApi
 
 
 # Setting the verbosity of messages shown
@@ -78,6 +82,7 @@ def notify_exception(exc_type, exc_value, tb):
     indent = 0
     fn = "-"
     line_number = "-"
+    func_name = "-"
     for ss in ss_list:
         file_name, line_number, func_name, text = ss
         abs_filename = os.path.abspath(file_name)
@@ -122,10 +127,10 @@ sys.excepthook = notify_exception
 # Get path of this script. 'frozen' means packaged with pyinstaller.
 def application_path():
     if getattr(sys, "frozen", False):
-        application_path = os.path.dirname(sys.executable)
+        return os.path.dirname(sys.executable)
     elif __file__:
-        application_path = os.path.dirname(__file__)
-    return application_path
+        return os.path.dirname(__file__)
+    return None
 
 
 def to_hex_if_possible(val):
@@ -588,7 +593,7 @@ class YamlFile:
     # Cache
     file_cache: dict = {}
 
-    def __init__(self, file_ifc, filepath, post_process_yaml=None, content=None):
+    def __init__(self, file_ifc: FileAccessApi, filepath, post_process_yaml=None, content=None):
         self.filepath = filepath
         self.content = content
         self.file_ifc = file_ifc
@@ -1009,6 +1014,7 @@ def color_text_by_index(text, color_index):
 # Return a list of up to n elements from strings that match the given wildcard pattern.
 # Defaults to 10 elements, negative values of max or "all" mean all.
 def search(strings: list[str], pattern: str = "*", max: str | int = "all") -> list[str]:
+    n = 0
     try:
         if max != "all":
             n = int(max)

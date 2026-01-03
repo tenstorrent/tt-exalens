@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 
-from ttexalens.umd_api import UmdApi, local_init, connect_to_server
+from ttexalens.umd_api import UmdApi, local_init
+from ttexalens.server import FileAccessApi, connect_to_server
 from ttexalens import util as util
 from ttexalens.context import Context
 
@@ -35,9 +36,9 @@ def init_ttexalens(
         Context: TTExaLens context object.
     """
 
-    lens_ifc = local_init(init_jtag, use_noc1, simulation_directory)
+    umd_api = local_init(init_jtag, use_noc1, simulation_directory)
 
-    return load_context(lens_ifc, use_noc1, use_4B_mode)
+    return load_context(umd_api, FileAccessApi(), use_noc1, use_4B_mode)
 
 
 def init_ttexalens_remote(
@@ -57,26 +58,28 @@ def init_ttexalens_remote(
             Context: TTExaLens context object.
     """
 
-    lens_ifc = connect_to_server(ip_address, port)
+    umd_api, file_api = connect_to_server(ip_address, port)
 
-    return load_context(lens_ifc, use_4B_mode=use_4B_mode)
+    return load_context(umd_api, file_api, use_4B_mode=use_4B_mode)
 
 
-def get_cluster_desc_yaml(lens_ifc: UmdApi) -> util.YamlFile:
+def get_cluster_desc_yaml(umd_api: UmdApi, file_api: FileAccessApi) -> util.YamlFile:
     """Get the runtime data and cluster description yamls through the TTExaLens interface."""
 
     try:
-        cluster_desc_path = lens_ifc.get_cluster_description()
-        cluster_desc_yaml = util.YamlFile(lens_ifc, cluster_desc_path)
+        cluster_desc_path = umd_api.get_cluster_description()
+        cluster_desc_yaml = util.YamlFile(file_api, cluster_desc_path)
     except:
         raise util.TTFatalException("TTExaLens does not support cluster description. Cannot connect to device.")
 
     return cluster_desc_yaml
 
 
-def load_context(server_ifc: UmdApi, use_noc1: bool = False, use_4B_mode: bool = True) -> Context:
+def load_context(umd_api: UmdApi, file_api: FileAccessApi, use_noc1: bool = False, use_4B_mode: bool = True) -> Context:
     """Load the TTExaLens context object with specified parameters."""
-    context = Context(server_ifc, get_cluster_desc_yaml(server_ifc), use_noc1=use_noc1, use_4B_mode=use_4B_mode)
+    context = Context(
+        umd_api, file_api, get_cluster_desc_yaml(umd_api, file_api), use_noc1=use_noc1, use_4B_mode=use_4B_mode
+    )
 
     global GLOBAL_CONTEXT
     GLOBAL_CONTEXT = context

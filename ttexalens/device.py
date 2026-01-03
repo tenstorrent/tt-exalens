@@ -122,7 +122,7 @@ class Device(TTObject):
 
     @cached_property
     def yaml_file(self):
-        return util.YamlFile(self._context.server_ifc, self._device_desc_path)
+        return util.YamlFile(self._context.file_api, self._device_desc_path)
 
     def __init__(self, id: int, arch: str, cluster_desc, device_desc_path: str, context: Context):
         self._id: int = id
@@ -133,11 +133,11 @@ class Device(TTObject):
         self._has_jtag = cluster_desc["io_device_type"] == "JTAG"
         self.cluster_desc = cluster_desc
         self._init_coordinate_systems()
-        self.unique_id = self._context.server_ifc.get_device_unique_id(self._id)
+        self.unique_id = self._context.umd_api.get_device_unique_id(self._id)
 
     @cached_property
     def _firmware_version(self):
-        return util.FirmwareVersion(self._context.server_ifc.get_firmware_version(self._id))
+        return util.FirmwareVersion(self._context.umd_api.get_firmware_version(self._id))
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __noc_to_die(self, noc_loc, noc_id=0):
@@ -161,7 +161,7 @@ class Device(TTObject):
             core_type = self.block_types[block_type]["core_type"]
             for coord_system in umd_supported_coordinates:
                 try:
-                    converted_location = self._context.server_ifc.convert_from_noc0(
+                    converted_location = self._context.umd_api.convert_from_noc0(
                         self._id, noc0_location[0], noc0_location[1], core_type, coord_system
                     )
                     self._from_noc0[(noc0_location, coord_system)] = (converted_location, core_type)
@@ -193,7 +193,7 @@ class Device(TTObject):
         except:
             try:
                 # Try to recover using UMD API
-                converted_location = self._context.server_ifc.convert_from_noc0(
+                converted_location = self._context.umd_api.convert_from_noc0(
                     self._id, noc0_tuple[0], noc0_tuple[1], "router_only", coord_system
                 )
                 return (converted_location, "router_only")
@@ -405,7 +405,7 @@ class Device(TTObject):
 
     def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
         noc_id = 1 if self._context.use_noc1 else 0
-        return self._context.server_ifc.pci_read_tile(noc_id, self._id, x, y, reg_addr, msg_size, data_format)
+        return self._context.umd_api.pci_read_tile(noc_id, self._id, x, y, reg_addr, msg_size, data_format)
 
 
 # end of class Device

@@ -29,7 +29,7 @@ class TestLocalTTExaLensInit(unittest.TestCase):
 class TestRemoteTTExaLens(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.server = start_server(5555, local_init())
+        cls.server = start_server(5555, init_default_test_context())
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -55,11 +55,11 @@ class TestRemoteTTExaLens(unittest.TestCase):
                 f.write("Hello, TTExaLens!")
 
             # Read file remotely
-            content = context.server_ifc.get_file(file_path)
+            content = context.file_api.get_file(file_path)
             self.assertEqual(content, "Hello, TTExaLens!")
 
             # Read file through streaming interface
-            stream = context.server_ifc.get_binary(file_path)
+            stream = context.file_api.get_binary(file_path)
             size = stream.seek(0, os.SEEK_END)
             stream.seek(0)
             stream_content = stream.read(size).decode("utf-8")

@@ -68,9 +68,9 @@ def dump_coverage(
 
         # This points to the expected gcda file, which is in the same directory where the compiler placed the gcno,
         # so we just replace the extension and get the gcno path.
-        # We fetch it through context.server_ifc.get_binary in case this is a remote debugging session.
+        # We fetch it through context.file_api.get_binary in case this is a remote debugging session.
         gcno_path = filename[:-4] + "gcno"
-        with location.context.server_ifc.get_binary(gcno_path) as gcno_reader:
+        with location.context.file_api.get_binary(gcno_path) as gcno_reader:
             with open(gcno_copy_path, "wb") as f:
                 f.write(gcno_reader.read())
 

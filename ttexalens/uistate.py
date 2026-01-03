@@ -113,7 +113,7 @@ class UIState:
             self.ttexalens_server.stop()
         if port is None:
             port = 5555
-        self.ttexalens_server = start_server(port, self.context.server_ifc)
+        self.ttexalens_server = start_server(port, self.context)
 
     def stop_server(self):
         if self.ttexalens_server is not None:

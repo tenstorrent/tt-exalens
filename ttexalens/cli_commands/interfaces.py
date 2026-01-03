@@ -51,7 +51,7 @@ def read_axi_size(context: Context, device_id, address, size):
     arc_location: tuple[int, int] = context.devices[device_id]._block_locations["arc"][0].to("noc0")
 
     for i in range(0, size, 4):
-        data += context.server_ifc.read32(noc_id, device_id, arc_location[0], arc_location[1], address + i).to_bytes(
+        data += context.umd_api.read32(noc_id, device_id, arc_location[0], arc_location[1], address + i).to_bytes(
             4, byteorder="little"
         )
     return data[:size]
@@ -60,13 +60,13 @@ def read_axi_size(context: Context, device_id, address, size):
 def read_pci_raw_size(context: Context, device_id, address, size):
     data = b""
     for i in range(0, size, 4):
-        data += context.server_ifc.pci_read32_raw(device_id, address + i).to_bytes(4, byteorder="little")
+        data += context.umd_api.pci_read32_raw(device_id, address + i).to_bytes(4, byteorder="little")
     return data[:size]
 
 
 def read_noc_size(context: Context, device_id, nocx, nocy, address, size):
     noc_id = 1 if context.use_noc1 else 0
-    return context.server_ifc.read(noc_id, device_id, nocx, nocy, address, size, context.use_4B_mode)
+    return context.umd_api.read(noc_id, device_id, nocx, nocy, address, size, context.use_4B_mode)
 
 
 def run(cmd_text, context: Context, ui_state=None):

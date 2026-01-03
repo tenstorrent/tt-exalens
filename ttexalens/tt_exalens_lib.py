@@ -132,7 +132,7 @@ def read_word_from_device(
     noc_id = check_noc_id(noc_id, context)
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    word = context.server_ifc.read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr)
+    word = context.umd_api.read32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr)
     return word
 
 
@@ -171,7 +171,7 @@ def read_words_from_device(
         raise TTException("word_count must be greater than 0.")
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    bytes_data = context.server_ifc.read(
+    bytes_data = context.umd_api.read(
         noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, 4 * word_count, use_4B_mode
     )
     data = list(struct.unpack(f"<{word_count}I", bytes_data))
@@ -212,7 +212,7 @@ def read_from_device(
         raise TTException("num_bytes must be greater than 0.")
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    return context.server_ifc.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes, use_4B_mode)
+    return context.umd_api.read(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, num_bytes, use_4B_mode)
 
 
 @trace_api
@@ -249,10 +249,10 @@ def write_words_to_device(
 
     noc_loc = context.convert_loc_to_umd(coordinate)
     if isinstance(data, int):
-        return context.server_ifc.write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
+        return context.umd_api.write32(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data)
 
     byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data, use_4B_mode)
+    return context.umd_api.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, byte_data, use_4B_mode)
 
 
 @trace_api
@@ -294,7 +294,7 @@ def write_to_device(
         raise TTException("Data to write must not be empty.")
 
     noc_loc = context.convert_loc_to_umd(coordinate)
-    return context.server_ifc.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data, use_4B_mode)
+    return context.umd_api.write(noc_id, coordinate.device_id, noc_loc[0], noc_loc[1], addr, data, use_4B_mode)
 
 
 @trace_api
@@ -447,7 +447,7 @@ def arc_msg(
     if timeout < datetime.timedelta(0):
         raise TTException("Timeout must be greater than or equal to 0.")
 
-    return list(context.server_ifc.arc_msg(noc_id, device_id, msg_code, wait_for_done, args, timeout))
+    return list(context.umd_api.arc_msg(noc_id, device_id, msg_code, wait_for_done, args, timeout))
 
 
 @trace_api
@@ -486,7 +486,7 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
     else:
         raise TTException(f"Invalid telemetry_tag type. Must be an int or str, but got {type(telemetry_tag)}")
 
-    return context.server_ifc.read_arc_telemetry_entry(device_id, telemetry_tag_id)
+    return context.umd_api.read_arc_telemetry_entry(device_id, telemetry_tag_id)
 
 
 @trace_api
@@ -571,7 +571,7 @@ def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None
     """
     context = check_context(context)
-    return read_elf(context.server_ifc, elf_path)
+    return read_elf(context.file_api, elf_path)
 
 
 @trace_api

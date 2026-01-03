@@ -58,8 +58,7 @@ except ModuleNotFoundError as e:
 
 
 from ttexalens import init_ttexalens, init_ttexalens_remote
-from ttexalens import umd_api
-from ttexalens import server
+from ttexalens.server import start_server
 from ttexalens import util as util
 from ttexalens.context import Context
 from ttexalens.uistate import UIState
@@ -458,12 +457,13 @@ def main():
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         if args["--background"]:
-            communicator = umd_api.local_init(
+            context = init_ttexalens(
                 init_jtag=args["--jtag"],
-                initialize_with_noc1=args["--use-noc1"],
+                use_noc1=args["--use-noc1"],
+                use_4B_mode=False if args["--disable-4B-mode"] else True,
                 simulation_directory=args["-s"],
             )
-            ttexalens_server = server.start_server(port=int(args["--port"]), communicator=communicator)
+            ttexalens_server = start_server(port=int(args["--port"]), context=context)
 
             util.INFO("The debug server is running in the background.")
             util.INFO("To stop the server, use the command: touch exit.server")
