@@ -119,20 +119,15 @@ UMD_SERIALIZABLE_TYPES = {
     tt_umd.CoordSystem,
     tt_umd.CoreCoord,
 }
+UMD_SERIALIZABLE_TYPES_NAMES: dict[str, type] = {f"{t.__module__}.{t.__name__}": t for t in UMD_SERIALIZABLE_TYPES}
 
 
 def umd_type_to_dict(obj):
-    if isinstance(obj, tt_umd.ARCH):
-        return {"__class__": "tt_umd.ARCH", "value": obj.name}
-    if isinstance(obj, tt_umd.IODeviceType):
-        return {"__class__": "tt_umd.IODeviceType", "value": obj.name}
-    if isinstance(obj, tt_umd.CoreType):
-        return {"__class__": "tt_umd.CoreType", "value": obj.name}
-    if isinstance(obj, tt_umd.CoordSystem):
-        return {"__class__": "tt_umd.CoordSystem", "value": obj.name}
+    if isinstance(obj, enum.Enum):
+        return {"__class__": f"{obj.__class__.__module__}.{obj.__class__.__name__}", "value": obj.name}
     if isinstance(obj, tt_umd.CoreCoord):
         return {
-            "__class__": "tt_umd.CoreCoord",
+            "__class__": "tt_umd.tt_umd.CoreCoord",
             "x": obj.x,
             "y": obj.y,
             "core_type": obj.core_type.name,
@@ -142,20 +137,16 @@ def umd_type_to_dict(obj):
 
 
 def umd_type_from_dict(cls, data):
-    if cls == "tt_umd.ARCH":
-        return tt_umd.ARCH[data["value"]]
-    if cls == "tt_umd.IODeviceType":
-        return tt_umd.IODeviceType[data["value"]]
-    if cls == "tt_umd.CoreType":
-        return tt_umd.CoreType[data["value"]]
-    if cls == "tt_umd.CoordSystem":
-        return tt_umd.CoordSystem[data["value"]]
-    if cls == "tt_umd.CoreCoord":
-        coord_system = tt_umd.CoordSystem[data["coord_system"]]
-        core_type = tt_umd.CoreType[data["core_type"]]
-        x = data["x"]
-        y = data["y"]
-        return tt_umd.CoreCoord(x, y, core_type, coord_system)
+    type = UMD_SERIALIZABLE_TYPES_NAMES.get(cls, None)
+    if type is not None:
+        if issubclass(type, enum.Enum):
+            return type[data["value"]]
+        if type == tt_umd.CoreCoord:
+            coord_system = tt_umd.CoordSystem[data["coord_system"]]
+            core_type = tt_umd.CoreType[data["core_type"]]
+            x = data["x"]
+            y = data["y"]
+            return tt_umd.CoreCoord(x, y, core_type, coord_system)
     return data
 
 
@@ -164,7 +155,7 @@ import enum
 Pyro5.api.register_class_to_dict(enum.Enum, umd_type_to_dict)
 for tt_umd_type in UMD_SERIALIZABLE_TYPES:
     Pyro5.api.register_class_to_dict(tt_umd_type, umd_type_to_dict)
-    Pyro5.api.register_dict_to_class(f"tt_umd.{tt_umd_type.__name__}", umd_type_from_dict)
+    Pyro5.api.register_dict_to_class(f"{tt_umd_type.__module__}.{tt_umd_type.__name__}", umd_type_from_dict)
 Pyro5.configure.global_config.SERPENT_BYTES_REPR = True
 
 
