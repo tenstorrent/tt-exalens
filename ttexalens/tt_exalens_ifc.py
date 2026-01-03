@@ -19,7 +19,6 @@ from ttexalens.umd_device_wrapper import UmdDeviceWrapper
 class TTExaLensUmdImplementation:
     def __init__(
         self,
-        wanted_devices: list = [],
         init_jtag=False,
         initialize_with_noc1=False,
         simulation_directory: str | None = None,
@@ -96,13 +95,6 @@ class TTExaLensUmdImplementation:
             for device_id in self.device_ids:
                 if device_id in unique_ids:
                     device_id_to_unique_id[device_id] = unique_ids[device_id]
-
-            # If we specified which devices we want, check that they are available and then extract their ids
-            if len(wanted_devices) > 0:
-                for wanted_device in wanted_devices:
-                    if wanted_device not in self.device_ids:
-                        raise RuntimeError(f"Device {wanted_device} is not available.")
-                self.device_ids = wanted_devices
 
             for chip_id in self.device_ids:
                 device = devices[chip_id]
@@ -225,19 +217,14 @@ class TTExaLensUmdImplementation:
             return f.read()
 
 
-def init_pybind(
-    wanted_devices=None, init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None
-):
-    if not wanted_devices:
-        wanted_devices = []
-
+def init_pybind(init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None):
     if "TT_LOGGER_LEVEL" not in os.environ:
         if util.Verbosity.get() == util.Verbosity.DEBUG:
             os.environ["TT_LOGGER_LEVEL"] = "debug"
         elif util.Verbosity.get() == util.Verbosity.TRACE:
             os.environ["TT_LOGGER_LEVEL"] = "trace"
 
-    communicator = TTExaLensUmdImplementation(wanted_devices, init_jtag, initialize_with_noc1, simulation_directory)
+    communicator = TTExaLensUmdImplementation(init_jtag, initialize_with_noc1, simulation_directory)
     util.VERBOSE("Device opened successfully.")
     return communicator
 

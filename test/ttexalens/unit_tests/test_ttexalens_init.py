@@ -25,16 +25,6 @@ class TestLocalTTExaLensInit(unittest.TestCase):
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
 
-    def test_local_wanted_devices(self):
-        """Test local TTExaLens initialization with specification of wanted devices."""
-        context = init_ttexalens(
-            wanted_devices=[
-                0,
-            ]
-        )
-        self.assertIsNotNone(context)
-        self.assertIsInstance(context, Context)
-
 
 class TestRemoteTTExaLens(unittest.TestCase):
     @classmethod

@@ -18,7 +18,6 @@ GLOBAL_CONTEXT: Context | None = None
 
 
 def init_ttexalens(
-    wanted_devices: list[int] | None = None,
     init_jtag: bool = False,
     use_noc1: bool = False,
     use_4B_mode: bool = True,
@@ -28,7 +27,6 @@ def init_ttexalens(
     Interfacing device is local, through pybind.
 
     Args:
-        wanted_devices (list, optional): List of device IDs we want to connect to. If None, connect to all available devices.
         init_jtag (bool): Whether to initialize JTAG interface. Default is False.
         use_noc1 (bool): Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
         use_4B_mode (bool): Whether to use 4B mode for communication with the device. Default is True.
@@ -38,7 +36,7 @@ def init_ttexalens(
         Context: TTExaLens context object.
     """
 
-    lens_ifc = tt_exalens_ifc.init_pybind(wanted_devices, init_jtag, use_noc1, simulation_directory)
+    lens_ifc = tt_exalens_ifc.init_pybind(init_jtag, use_noc1, simulation_directory)
 
     return load_context(lens_ifc, use_noc1, use_4B_mode)
 
