@@ -10,14 +10,14 @@ from typing import Iterable, Sequence
 
 from tabulate import tabulate
 from ttexalens.context import Context
+from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
 from ttexalens.object import TTObject
+from ttexalens.umd_device import UmdDevice
 from ttexalens import util as util
-from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
-from abc import abstractmethod
 
 
 class TensixInstructions:
@@ -99,62 +99,34 @@ class Device(TTObject):
 
     # Class method to create a Device object given device architecture
     @staticmethod
-    def create(
-        arch: tt_umd.ARCH,
-        device_id: int,
-        cluster_descriptor: tt_umd.ClusterDescriptor,
-        soc_descriptor: tt_umd.SocDescriptor,
-        context: Context,
-    ):
+    def create(device_id: int, context: Context):
+        umd_device = context.umd_api.get_device(device_id)
+        arch = umd_device.arch
         if arch == tt_umd.ARCH.WORMHOLE_B0:
             from ttexalens.hw.tensix.wormhole import wormhole
 
-            return wormhole.WormholeDevice(
-                id=device_id,
-                arch=arch,
-                cluster_descriptor=cluster_descriptor,
-                soc_descriptor=soc_descriptor,
-                context=context,
-            )
+            return wormhole.WormholeDevice(device_id, umd_device, context)
+
         if arch == tt_umd.ARCH.BLACKHOLE:
             from ttexalens.hw.tensix.blackhole import blackhole
 
-            return blackhole.BlackholeDevice(
-                id=device_id,
-                arch=arch,
-                cluster_descriptor=cluster_descriptor,
-                soc_descriptor=soc_descriptor,
-                context=context,
-            )
+            return blackhole.BlackholeDevice(device_id, umd_device, context)
 
         if arch == tt_umd.ARCH.QUASAR:
             from ttexalens.hw.tensix.quasar import quasar
 
-            return quasar.QuasarDevice(
-                id=device_id,
-                arch=arch,
-                cluster_descriptor=cluster_descriptor,
-                soc_descriptor=soc_descriptor,
-                context=context,
-            )
+            return quasar.QuasarDevice(device_id, umd_device, context)
 
         raise RuntimeError(f"Architecture {arch} is not supported")
 
-    def __init__(
-        self,
-        id: int,
-        arch: tt_umd.ARCH,
-        cluster_descriptor: tt_umd.ClusterDescriptor,
-        soc_descriptor: tt_umd.SocDescriptor,
-        context: Context,
-    ):
+    def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         self._id: int = id
-        self._arch = arch
-        self._soc_descriptor = soc_descriptor
+        self._arch = umd_device.arch
+        self._soc_descriptor = umd_device.soc_descriptor
         self._context = context
-        self._has_mmio = cluster_descriptor.is_chip_mmio_capable(id)
-        self._has_jtag = cluster_descriptor.get_io_device_type() == tt_umd.IODeviceType.JTAG
-        self.cluster_descriptor = cluster_descriptor
+        self.cluster_descriptor = context.cluster_descriptor
+        self._has_mmio = self.cluster_descriptor.is_chip_mmio_capable(id)
+        self._has_jtag = self.cluster_descriptor.get_io_device_type() == tt_umd.IODeviceType.JTAG
         self._init_coordinate_systems()
         self.unique_id = self._context.umd_api.get_device_unique_id(self._id)
 

@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
+import inspect
 import io
 import Pyro5.api
 import Pyro5.configure
@@ -10,6 +11,8 @@ import threading
 from typing import TYPE_CHECKING
 from ttexalens import util as util
 import tt_umd
+
+from ttexalens.umd_device import UmdDevice
 
 if TYPE_CHECKING:
     from ttexalens.context import Context
@@ -71,12 +74,18 @@ class TTExaLensServer:
     def _wrap_object(self, obj: object):
         @Pyro5.api.expose
         class UmdApiWrapper:
-            def __init__(self, server: TTExaLensServer):
+            def __init__(self, obj, server: TTExaLensServer):
+                self.obj = obj
                 self.server = server
 
-            def _create_umd_method_wrapper(self, method):
+            def _create_umd_method_wrapper(self, method, fget=None, fset=None):
                 def wrapper_method(*args, **kwargs):
-                    result = method(*args, **kwargs)
+                    if fget is not None:
+                        result = fget(self.obj)
+                    elif fset is not None:
+                        result = fset(self.obj, *args[1:], **kwargs)
+                    else:
+                        result = method(*args, **kwargs)
                     result_type = type(result)
                     # Check if result_type is simple type
                     if result_type in (int, float, str, bool, type(None), list, dict, set, tuple, bytes):
@@ -99,9 +108,10 @@ class TTExaLensServer:
 
                 return wrapper_method
 
-        wrapper = UmdApiWrapper(self)
+        wrapper = UmdApiWrapper(obj, self)
         wrapper_type = type(wrapper)
-        for method_name in dir(obj):
+        obj_type = type(obj)
+        for method_name in obj_type.__dict__:
             if method_name.startswith("_"):
                 continue
             method = getattr(obj, method_name)
@@ -109,6 +119,18 @@ class TTExaLensServer:
                 new_method = Pyro5.api.expose(wrapper._create_umd_method_wrapper(method))
                 setattr(wrapper, method_name, new_method)
                 setattr(wrapper_type, method_name, new_method)
+            else:
+                method = getattr(obj_type, method_name)
+                if inspect.isdatadescriptor(method):
+                    getter = None
+                    setter = None
+                    if getattr(method, "fset", None):
+                        setter = Pyro5.api.expose(wrapper._create_umd_method_wrapper(None, fset=method.fset))  # type: ignore
+                    if getattr(method, "fget", None):
+                        getter = Pyro5.api.expose(wrapper._create_umd_method_wrapper(None, fget=method.fget))  # type: ignore
+                    new_property = property(getter, setter)
+                    setattr(wrapper, method_name, new_property)
+                    setattr(wrapper_type, method_name, new_property)
         return wrapper
 
 

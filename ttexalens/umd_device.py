@@ -49,23 +49,47 @@ class UmdDevice:
         soc_descriptor: tt_umd.SocDescriptor | None = None,
         is_simulation: bool = False,
     ):
+        # IMPORTANT:
+        # This class is a wrapper around tt_umd.TTDevice that allows us to use it over tt-exalens server.
+        # It cannot have public members (value attributes) because they won't be serialized by Pyro5.
+        # Instead, all public members must be properties with getter/setter methods.
         self.__device = device
-        self.arch = device.get_arch()
-        self.is_mmio_capable = not device.is_remote()
-        self.soc_descriptor = soc_descriptor if soc_descriptor is not None else tt_umd.SocDescriptor(device)
-        self.device_id = device_id
-        self.unique_id = unique_id
-        self.active_eth_coords_on_mmio_chip = active_eth_coords_on_mmio_chip  # in translated coords
-        self.is_simulation = is_simulation
+        self._arch = device.get_arch()
+        self._is_mmio_capable = not device.is_remote()
+        self._soc_descriptor = soc_descriptor if soc_descriptor is not None else tt_umd.SocDescriptor(device)
+        self._device_id = device_id
+        self._unique_id = unique_id
+        self._active_eth_coords_on_mmio_chip = active_eth_coords_on_mmio_chip  # in translated coords
+        self._is_simulation = is_simulation
 
         # TODO: Until UMD implements timeout exception, we measure time here
         self.__write_timeout_lock = threading.Lock()
         self.__write_timeout_events: list[TimeoutDeviceRegisterError] = []
 
+    @property
+    def device_id(self) -> int:
+        return self._device_id
+
+    @property
+    def unique_id(self) -> int:
+        return self._unique_id
+
+    @property
+    def arch(self) -> tt_umd.ARCH:
+        return self._arch
+
+    @property
+    def soc_descriptor(self) -> tt_umd.SocDescriptor:
+        return self._soc_descriptor
+
+    @property
+    def is_mmio_capable(self) -> bool:
+        return self._is_mmio_capable
+
     def __configure_working_active_eth(self):
         tensix_coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
-        tensix_translated_coord = self.soc_descriptor.translate_coord_to(tensix_coord, tt_umd.CoordSystem.TRANSLATED)
-        for translated_coord in self.active_eth_coords_on_mmio_chip:
+        tensix_translated_coord = self._soc_descriptor.translate_coord_to(tensix_coord, tt_umd.CoordSystem.TRANSLATED)
+        for translated_coord in self._active_eth_coords_on_mmio_chip:
             self.__device.get_remote_communication().set_remote_transfer_ethernet_cores([translated_coord])
             try:
                 self.__read_from_device_reg(tensix_translated_coord.x, tensix_translated_coord.y, 0, 4)
@@ -75,7 +99,7 @@ class UmdDevice:
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
     def __convert_noc0_to_device_coords(self, noc0_x: int, noc0_y: int):
-        return self.soc_descriptor.translate_coord_to(
+        return self._soc_descriptor.translate_coord_to(
             tt_umd.tt_xy_pair(noc0_x, noc0_y), tt_umd.CoordSystem.NOC0, tt_umd.CoordSystem.TRANSLATED
         )
 
@@ -90,12 +114,12 @@ class UmdDevice:
         end_time = time.time()
         elapsed_time = end_time - start_time  # seconds
         if (
-            self.is_mmio_capable
-            and not self.is_simulation
+            self._is_mmio_capable
+            and not self._is_simulation
             and elapsed_time > UmdDevice.READ_TIMEOUT
             and result[-4:] == b"\xFF\xFF\xFF\xFF"
         ):
-            translated_coord = self.soc_descriptor.translate_coord_to(
+            translated_coord = self._soc_descriptor.translate_coord_to(
                 tt_umd.tt_xy_pair(coord_x, coord_y), tt_umd.CoordSystem.TRANSLATED, tt_umd.CoordSystem.LOGICAL
             )
             raise TimeoutDeviceRegisterError(self.device_id, translated_coord, address, size, True, elapsed_time)
@@ -108,12 +132,12 @@ class UmdDevice:
         end_time = time.time()
         elapsed_time = end_time - start_time  # seconds
         if (
-            self.is_mmio_capable
-            and not self.is_simulation
+            self._is_mmio_capable
+            and not self._is_simulation
             and len(data) == 4
             and elapsed_time > UmdDevice.WRITE_TIMEOUT
         ):
-            translated_coord = self.soc_descriptor.translate_coord_to(
+            translated_coord = self._soc_descriptor.translate_coord_to(
                 tt_umd.tt_xy_pair(coord_x, coord_y), tt_umd.CoordSystem.TRANSLATED, tt_umd.CoordSystem.LOGICAL
             )
             event = TimeoutDeviceRegisterError(
@@ -147,7 +171,7 @@ class UmdDevice:
 
         # Read aligned bytes
         aligned_size = size - (size % 4)
-        block_size = 4 if use_4B_mode and not self.is_simulation else aligned_size
+        block_size = 4 if use_4B_mode and not self._is_simulation else aligned_size
         while aligned_size > 0:
             data.extend(self.__read_from_device_reg(coord.x, coord.y, address, block_size))
             aligned_size -= block_size
@@ -173,7 +197,7 @@ class UmdDevice:
             except TimeoutDeviceRegisterError as e:
                 raise
             except:
-                if self.is_simulation or self.is_mmio_capable:
+                if self._is_simulation or self._is_mmio_capable:
                     raise
                 self.__configure_working_active_eth()
                 return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode)
@@ -205,7 +229,7 @@ class UmdDevice:
 
         # Write aligned bytes
         aligned_size = size_in_bytes - (size_in_bytes % 4)
-        block_size = 4 if use_4B_mode and not self.is_simulation else aligned_size
+        block_size = 4 if use_4B_mode and not self._is_simulation else aligned_size
         offset = 0
         while aligned_size > 0:
             self.__write_to_device_reg(coord.x, coord.y, address, data[offset : offset + block_size])
@@ -233,7 +257,7 @@ class UmdDevice:
             except TimeoutDeviceRegisterError as e:
                 raise
             except:
-                if self.is_simulation or self.is_mmio_capable:
+                if self._is_simulation or self._is_mmio_capable:
                     raise
                 self.__configure_working_active_eth()
                 self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode)
@@ -257,7 +281,7 @@ class UmdDevice:
     def read(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool) -> bytes:
         """Reads data from address"""
         # TODO #124: Mitigation for UMD bug #77
-        if not self.is_mmio_capable:
+        if not self._is_mmio_capable:
             result = bytearray()
             for chunk_start in range(0, size, 1024):
                 chunk_size = min(1024, size - chunk_start)
@@ -273,7 +297,7 @@ class UmdDevice:
         """Writes data to address"""
         size = len(data)
         # TODO #124: Mitigation for UMD bug #77
-        if not self.is_mmio_capable:
+        if not self._is_mmio_capable:
             for chunk_start in range(0, size, 1024):
                 chunk_size = min(1024, size - chunk_start)
                 self.__write_to_device_reg_unaligned(
@@ -290,13 +314,13 @@ class UmdDevice:
 
     def pci_read32_raw(self, address: int) -> int:
         """Reads 4 bytes from PCI address"""
-        if self.is_mmio_capable:
+        if self._is_mmio_capable:
             return self.__device.bar_read32(address)
         raise RuntimeError("Device is not mmio capable.")
 
     def pci_write32_raw(self, address: int, data: int) -> int:
         """Writes 4 bytes to PCI address"""
-        if self.is_mmio_capable:
+        if self._is_mmio_capable:
             self.__device.bar_write32(address, data)
             return 4
         raise RuntimeError("Device is not mmio capable.")
@@ -350,7 +374,7 @@ class UmdDevice:
             raise RuntimeError(f"Unknown coordinate system: {coord_system}")
 
         core_coord = tt_umd.CoreCoord(noc_x, noc_y, core_type_enum, tt_umd.CoordSystem.NOC0)
-        output = self.soc_descriptor.translate_coord_to(core_coord, coord_system_enum)
+        output = self._soc_descriptor.translate_coord_to(core_coord, coord_system_enum)
         return (output.x, output.y)
 
     def arc_msg(
@@ -379,7 +403,7 @@ class UmdDevice:
         try:
             return do_read(telemetry_tag)
         except:
-            if not self.is_mmio_capable:
+            if not self._is_mmio_capable:
                 raise
             # TODO: We should retry only if it was remote read error
             self.__configure_working_active_eth()
@@ -395,7 +419,7 @@ class UmdDevice:
         try:
             firmware_version = do_read()
         except:
-            if not self.is_mmio_capable:
+            if not self._is_mmio_capable:
                 raise
             # TODO: We should retry only if it was remote read error
             self.__configure_working_active_eth()

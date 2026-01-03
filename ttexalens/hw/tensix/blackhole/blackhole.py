@@ -20,6 +20,7 @@ from ttexalens.hardware.blackhole.router_only_block import BlackholeRouterOnlyBl
 from ttexalens.hardware.blackhole.security_block import BlackholeSecurityBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
+from ttexalens.umd_device import UmdDevice
 import ttexalens.util as util
 from ttexalens.device import TensixInstructions, Device
 
@@ -41,15 +42,8 @@ class BlackholeDevice(Device):
     NOC_0_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_0_X)
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
 
-    def __init__(
-        self,
-        id: int,
-        arch: tt_umd.ARCH,
-        cluster_descriptor: tt_umd.ClusterDescriptor,
-        soc_descriptor: tt_umd.SocDescriptor,
-        context: Context,
-    ):
-        super().__init__(id, arch, cluster_descriptor, soc_descriptor, context)
+    def __init__(self, id: int, umd_device: UmdDevice, context: Context):
+        super().__init__(id, umd_device, context)
         self.instructions = BlackholeInstructions()
 
     def is_blackhole(self) -> bool:

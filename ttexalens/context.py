@@ -51,14 +51,7 @@ class Context:
         devices: dict[int, Device] = dict()
         for device_id in device_ids:
             util.DEBUG(f"Loading device {device_id}")
-            soc_descriptor = self.umd_api.get_device_soc_description(device_id)
-            devices[device_id] = Device.create(
-                self.umd_api.get_device_arch(device_id),
-                device_id=device_id,
-                cluster_descriptor=self.cluster_descriptor,
-                soc_descriptor=soc_descriptor,
-                context=self,
-            )
+            devices[device_id] = Device.create(device_id, self)
         return devices
 
     @cached_property

@@ -50,7 +50,6 @@ class UmdApi:
         simulation_directory: str | None = None,
     ):
         self.devices: dict[int, UmdDevice] = {}
-        self.device_ids: list[int] = []
 
         if simulation_directory is not None:
             tt_umd.logging.set_level(tt_umd.logging.Level.Debug)
@@ -63,7 +62,6 @@ class UmdApi:
                     tt_device.noc_write32(core_noc0.x, core_noc0.y, 0, 0x6F)
                     tt_device.send_tensix_risc_reset(tt_umd.tt_xy_pair(core.x, core.y), deassert=True)
             self.devices[0] = UmdDevice(tt_device, 0, 0, soc_descriptor=soc_descriptor, is_simulation=True)
-            self.device_ids.append(0)
             cluster_descriptor_content = create_simulation_cluster_descriptor(self.devices[0].arch)
             self.cluster_descriptor = tt_umd.ClusterDescriptor.create_from_yaml_content(cluster_descriptor_content)
             # TODO: In destructor we need to call close device so that emulation can stop reservation and simulation can stop waveform?!?
@@ -86,18 +84,10 @@ class UmdApi:
                 raise RuntimeError("No Tenstorrent devices were detected on this system.")
 
             # Setup used devices
-            for i in self.cluster_descriptor.get_all_chips():
-                self.device_ids.append(i)
-
-            device_id_to_unique_id = {}
             unique_ids = self.cluster_descriptor.get_chip_unique_ids()
-            for device_id in self.device_ids:
-                if device_id in unique_ids:
-                    device_id_to_unique_id[device_id] = unique_ids[device_id]
-
-            for chip_id in self.device_ids:
+            for chip_id in self.cluster_descriptor.get_all_chips():
                 device = devices[chip_id]
-                unique_id = device_id_to_unique_id.get(chip_id, None)
+                unique_id = unique_ids.get(chip_id, None)
                 assert unique_id is not None, f"Unique ID for device {chip_id} not found."
 
                 if not self.cluster_descriptor.is_chip_mmio_capable(chip_id):
@@ -114,50 +104,51 @@ class UmdApi:
                 wrapped_device = UmdDevice(device, chip_id, unique_id, active_eth_coords_on_mmio_chip)
                 assert wrapped_device.is_mmio_capable == self.cluster_descriptor.is_chip_mmio_capable(chip_id)
                 self.devices[chip_id] = wrapped_device
+                self.devices[unique_id] = wrapped_device
 
-    def __get_device(self, chip_id: int) -> UmdDevice:
+    def get_device(self, chip_id: int) -> UmdDevice:
         if chip_id not in self.devices:
             raise RuntimeError(f"Device with chip id {chip_id} not found.")
         return self.devices[chip_id]
 
     def read32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int) -> int:
-        return self.__get_device(chip_id).read32(noc_id, noc_x, noc_y, address)
+        return self.get_device(chip_id).read32(noc_id, noc_x, noc_y, address)
 
     def write32(self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: int) -> int:
-        return self.__get_device(chip_id).write32(noc_id, noc_x, noc_y, address, data)
+        return self.get_device(chip_id).write32(noc_id, noc_x, noc_y, address, data)
 
     def read(
         self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, use_4B_mode: bool
     ) -> bytes:
-        return self.__get_device(chip_id).read(noc_id, noc_x, noc_y, address, size, use_4B_mode)
+        return self.get_device(chip_id).read(noc_id, noc_x, noc_y, address, size, use_4B_mode)
 
     def write(
         self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, data: bytes, use_4B_mode: bool
     ) -> int:
-        return self.__get_device(chip_id).write(noc_id, noc_x, noc_y, address, data, use_4B_mode)
+        return self.get_device(chip_id).write(noc_id, noc_x, noc_y, address, data, use_4B_mode)
 
     def pci_read32_raw(self, chip_id: int, address: int) -> int:
-        return self.__get_device(chip_id).pci_read32_raw(address)
+        return self.get_device(chip_id).pci_read32_raw(address)
 
     def pci_write32_raw(self, chip_id: int, address: int, data: int) -> int:
-        return self.__get_device(chip_id).pci_write32_raw(address, data)
+        return self.get_device(chip_id).pci_write32_raw(address, data)
 
     def dma_buffer_read32(self, chip_id: int, address: int, channel: int) -> int:
-        return self.__get_device(chip_id).dma_buffer_read32(address, channel)
+        return self.get_device(chip_id).dma_buffer_read32(address, channel)
 
     def pci_read_tile(
         self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int
     ) -> str:
-        return self.__get_device(chip_id).pci_read_tile(noc_id, noc_x, noc_y, address, size, data_format)
+        return self.get_device(chip_id).pci_read_tile(noc_id, noc_x, noc_y, address, size, data_format)
 
     def get_device_arch(self, chip_id: int) -> tt_umd.ARCH:
-        return self.__get_device(chip_id).arch
+        return self.get_device(chip_id).arch
 
     def get_device_soc_description(self, chip_id: int) -> tt_umd.SocDescriptor:
-        return self.__get_device(chip_id).soc_descriptor
+        return self.get_device(chip_id).soc_descriptor
 
     def convert_from_noc0(self, chip_id: int, noc_x: int, noc_y: int, core_type: str, coord_system: str):
-        return self.__get_device(chip_id).convert_from_noc0(noc_x, noc_y, core_type, coord_system)
+        return self.get_device(chip_id).convert_from_noc0(noc_x, noc_y, core_type, coord_system)
 
     def arc_msg(
         self,
@@ -168,19 +159,19 @@ class UmdApi:
         args: Sequence[int],
         timeout: datetime.timedelta | float,
     ):
-        return self.__get_device(chip_id).arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
+        return self.get_device(chip_id).arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
 
     def read_arc_telemetry_entry(self, chip_id: int, telemetry_tag: int) -> int:
-        return self.__get_device(chip_id).read_arc_telemetry_entry(telemetry_tag)
+        return self.get_device(chip_id).read_arc_telemetry_entry(telemetry_tag)
 
     def get_firmware_version(self, chip_id: int) -> tuple[int, int, int]:
-        return self.__get_device(chip_id).get_firmware_version()
+        return self.get_device(chip_id).get_firmware_version()
 
     def get_remote_transfer_eth_core(self, chip_id: int) -> tuple[int, int] | None:
-        return self.__get_device(chip_id).get_remote_transfer_eth_core()
+        return self.get_device(chip_id).get_remote_transfer_eth_core()
 
     def get_device_unique_id(self, chip_id: int) -> int:
-        return self.__get_device(chip_id).unique_id
+        return self.get_device(chip_id).unique_id
 
     def get_cluster_description(self):
         return self.cluster_descriptor

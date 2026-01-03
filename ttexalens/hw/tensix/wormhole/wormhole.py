@@ -16,6 +16,7 @@ from ttexalens.hardware.wormhole.functional_worker_block import WormholeFunction
 from ttexalens.hardware.wormhole.harvested_worker_block import WormholeHarvestedWorkerBlock
 from ttexalens.hardware.wormhole.pcie_block import WormholePcieBlock
 from ttexalens.hardware.wormhole.router_only_block import WormholeRouterOnlyBlock
+from ttexalens.umd_device import UmdDevice
 import ttexalens.util as util
 from ttexalens.device import TensixInstructions, Device
 
@@ -37,15 +38,8 @@ class WormholeDevice(Device):
     NOC_0_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_0_X)
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
 
-    def __init__(
-        self,
-        id: int,
-        arch: tt_umd.ARCH,
-        cluster_descriptor: tt_umd.ClusterDescriptor,
-        soc_descriptor: tt_umd.SocDescriptor,
-        context: Context,
-    ):
-        super().__init__(id, arch, cluster_descriptor, soc_descriptor, context)
+    def __init__(self, id: int, umd_device: UmdDevice, context: Context):
+        super().__init__(id, umd_device, context)
         self.instructions = WormholeInstructions()
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
