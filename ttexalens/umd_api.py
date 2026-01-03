@@ -136,11 +136,6 @@ class UmdApi:
     def dma_buffer_read32(self, chip_id: int, address: int, channel: int) -> int:
         return self.get_device(chip_id).dma_buffer_read32(address, channel)
 
-    def pci_read_tile(
-        self, noc_id: int, chip_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int
-    ) -> str:
-        return self.get_device(chip_id).pci_read_tile(noc_id, noc_x, noc_y, address, size, data_format)
-
     def get_device_arch(self, chip_id: int) -> tt_umd.ARCH:
         return self.get_device(chip_id).arch
 

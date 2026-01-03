@@ -329,10 +329,6 @@ class UmdDevice:
         """Reads 4 bytes from DMA buffer"""
         raise NotImplementedError("dma_buffer_read32 is not implemented in UmdDevice.")
 
-    def pci_read_tile(self, noc_id: int, noc_x: int, noc_y: int, address: int, size: int, data_format: int) -> str:
-        """Reads tile from address"""
-        raise NotImplementedError("pci_read_tile is not implemented in UmdDevice.")
-
     def convert_from_noc0(self, noc_x: int, noc_y: int, core_type: str, coord_system: str) -> tuple[int, int]:
         """Convert noc0 coordinate into specified coordinate system"""
         if core_type == "arc":

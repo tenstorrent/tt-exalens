@@ -412,9 +412,5 @@ class Device(TTObject):
     def __repr__(self):
         return f"ID: {self.id()}, Arch: {self._arch}"
 
-    def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
-        noc_id = 1 if self._context.use_noc1 else 0
-        return self._context.umd_api.pci_read_tile(noc_id, self._id, x, y, reg_addr, msg_size, data_format)
-
 
 # end of class Device
