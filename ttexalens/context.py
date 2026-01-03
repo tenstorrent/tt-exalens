@@ -68,13 +68,6 @@ class Context:
         return SortedSet(d for d in device_ids)
 
     @cached_property
-    def arch(self):
-        try:
-            return self.umd_api.get_device_arch(min(self.device_ids))
-        except:
-            return None
-
-    @cached_property
     def elf(self):
         return ELF(self.file_api, {}, None)
 

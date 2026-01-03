@@ -46,9 +46,9 @@ class TestCoverage(unittest.TestCase):
 
     def setUp(self):
         # Arch is needed to know the ELF path
-        if not self.context.arch:
+        if not self.device._arch:
             self.skipTest(f"Undefined architecture")
-        arch = str(self.context.arch).lower()
+        arch = str(self.device._arch).lower()
         if arch.startswith("wormhole"):
             arch = "wormhole"
         elif arch.startswith("blackhole"):

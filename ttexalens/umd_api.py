@@ -136,12 +136,6 @@ class UmdApi:
     def dma_buffer_read32(self, chip_id: int, address: int, channel: int) -> int:
         return self.get_device(chip_id).dma_buffer_read32(address, channel)
 
-    def get_device_arch(self, chip_id: int) -> tt_umd.ARCH:
-        return self.get_device(chip_id).arch
-
-    def get_device_soc_description(self, chip_id: int) -> tt_umd.SocDescriptor:
-        return self.get_device(chip_id).soc_descriptor
-
     def arc_msg(
         self,
         noc_id: int,
