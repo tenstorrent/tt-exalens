@@ -28,8 +28,8 @@ class QuasarDevice(Device):
 
     def __init__(
         self,
-        id,
-        arch,
+        id: int,
+        arch: tt_umd.ARCH,
         cluster_descriptor: tt_umd.ClusterDescriptor,
         soc_descriptor: tt_umd.SocDescriptor,
         context: Context,

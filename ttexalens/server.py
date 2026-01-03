@@ -113,6 +113,7 @@ class TTExaLensServer:
 
 
 UMD_SERIALIZABLE_TYPES = {
+    tt_umd.ARCH,
     tt_umd.IODeviceType,
     tt_umd.CoreType,
     tt_umd.CoordSystem,
@@ -121,6 +122,8 @@ UMD_SERIALIZABLE_TYPES = {
 
 
 def umd_type_to_dict(obj):
+    if isinstance(obj, tt_umd.ARCH):
+        return {"__class__": "tt_umd.ARCH", "value": obj.name}
     if isinstance(obj, tt_umd.IODeviceType):
         return {"__class__": "tt_umd.IODeviceType", "value": obj.name}
     if isinstance(obj, tt_umd.CoreType):
@@ -139,6 +142,8 @@ def umd_type_to_dict(obj):
 
 
 def umd_type_from_dict(cls, data):
+    if cls == "tt_umd.ARCH":
+        return tt_umd.ARCH[data["value"]]
     if cls == "tt_umd.IODeviceType":
         return tt_umd.IODeviceType[data["value"]]
     if cls == "tt_umd.CoreType":
@@ -154,6 +159,9 @@ def umd_type_from_dict(cls, data):
     return data
 
 
+import enum
+
+Pyro5.api.register_class_to_dict(enum.Enum, umd_type_to_dict)
 for tt_umd_type in UMD_SERIALIZABLE_TYPES:
     Pyro5.api.register_class_to_dict(tt_umd_type, umd_type_to_dict)
     Pyro5.api.register_dict_to_class(f"tt_umd.{tt_umd_type.__name__}", umd_type_from_dict)

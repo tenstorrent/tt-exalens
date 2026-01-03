@@ -150,11 +150,8 @@ class UmdApi:
     ) -> str:
         return self.__get_device(chip_id).pci_read_tile(noc_id, noc_x, noc_y, address, size, data_format)
 
-    def get_cluster_description(self):
-        return self.cluster_descriptor
-
-    def get_device_arch(self, chip_id: int) -> str:
-        return str(self.__get_device(chip_id).arch)
+    def get_device_arch(self, chip_id: int) -> tt_umd.ARCH:
+        return self.__get_device(chip_id).arch
 
     def get_device_soc_description(self, chip_id: int) -> tt_umd.SocDescriptor:
         return self.__get_device(chip_id).soc_descriptor
@@ -179,17 +176,20 @@ class UmdApi:
     def get_firmware_version(self, chip_id: int) -> tuple[int, int, int]:
         return self.__get_device(chip_id).get_firmware_version()
 
-    def warm_reset(self, is_galaxy_configuration: bool = False) -> None:
-        if is_galaxy_configuration:
-            tt_umd.WarmReset.ubb_warm_reset()
-        else:
-            tt_umd.WarmReset.warm_reset()
-
     def get_remote_transfer_eth_core(self, chip_id: int) -> tuple[int, int] | None:
         return self.__get_device(chip_id).get_remote_transfer_eth_core()
 
     def get_device_unique_id(self, chip_id: int) -> int:
         return self.__get_device(chip_id).unique_id
+
+    def get_cluster_description(self):
+        return self.cluster_descriptor
+
+    def warm_reset(self, is_galaxy_configuration: bool = False) -> None:
+        if is_galaxy_configuration:
+            tt_umd.WarmReset.ubb_warm_reset()
+        else:
+            tt_umd.WarmReset.warm_reset()
 
 
 def local_init(init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None):

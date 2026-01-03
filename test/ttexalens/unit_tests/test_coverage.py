@@ -48,9 +48,10 @@ class TestCoverage(unittest.TestCase):
         # Arch is needed to know the ELF path
         if not self.context.arch:
             self.skipTest(f"Undefined architecture")
-        if self.context.arch.startswith("wormhole"):
+        arch = str(self.context.arch).lower()
+        if arch.startswith("wormhole"):
             arch = "wormhole"
-        elif self.context.arch.startswith("blackhole"):
+        elif arch.startswith("blackhole"):
             arch = "blackhole"
         else:
             self.skipTest(f"Unsupported architecture: {self.context.arch}")

@@ -100,13 +100,13 @@ class Device(TTObject):
     # Class method to create a Device object given device architecture
     @staticmethod
     def create(
-        arch,
-        device_id,
+        arch: tt_umd.ARCH,
+        device_id: int,
         cluster_descriptor: tt_umd.ClusterDescriptor,
         soc_descriptor: tt_umd.SocDescriptor,
         context: Context,
     ):
-        if "wormhole" in arch.lower():
+        if arch == tt_umd.ARCH.WORMHOLE_B0:
             from ttexalens.hw.tensix.wormhole import wormhole
 
             return wormhole.WormholeDevice(
@@ -116,7 +116,7 @@ class Device(TTObject):
                 soc_descriptor=soc_descriptor,
                 context=context,
             )
-        if "blackhole" in arch.lower():
+        if arch == tt_umd.ARCH.BLACKHOLE:
             from ttexalens.hw.tensix.blackhole import blackhole
 
             return blackhole.BlackholeDevice(
@@ -127,7 +127,7 @@ class Device(TTObject):
                 context=context,
             )
 
-        if "quasar" in arch.lower():
+        if arch == tt_umd.ARCH.QUASAR:
             from ttexalens.hw.tensix.quasar import quasar
 
             return quasar.QuasarDevice(
@@ -143,7 +143,7 @@ class Device(TTObject):
     def __init__(
         self,
         id: int,
-        arch: str,
+        arch: tt_umd.ARCH,
         cluster_descriptor: tt_umd.ClusterDescriptor,
         soc_descriptor: tt_umd.SocDescriptor,
         context: Context,

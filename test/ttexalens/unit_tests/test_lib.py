@@ -348,8 +348,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_write_read_tensix_register(self, location, register, value):
         """Test writing and reading tensix registers"""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         # Storing the original value of the register
         original_value = lib.read_register(location, register)
@@ -382,8 +380,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_write_read_tensix_register_with_name(self, location, register_description, register_name):
         "Test writing and reading tensix registers with name"
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         # Reading original values of registers
         original_val_desc = lib.read_register(location, register_description)
@@ -433,8 +429,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_write_read_tensix_register(self, location, register, value, device_id):
         """Test invalid inputs for tensix register read and write functions."""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
             with self.assertRaises((util.TTException, ValueError)):
@@ -451,8 +445,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_read_write_cfg_register(self, location):
         """Test reading and writing configuration registers using lib functions."""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
 
@@ -481,8 +473,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_read_write_dbg_register(self, location):
         """Test reading and writing debug registers using lib functions."""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
 
@@ -582,7 +572,7 @@ class TestRunElf(unittest.TestCase):
 
     def get_elf_path(self, app_name: str, risc_name: str):
         """Get the path to the ELF file."""
-        arch = self.device._arch.lower()
+        arch = str(self.device._arch).lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
         risc = risc_name.lower()
@@ -944,7 +934,7 @@ class TestCallStack(unittest.TestCase):
 
     def get_elf_path(self, app_name):
         """Get the path to the ELF file."""
-        arch = self.device._arch.lower()
+        arch = str(self.device._arch).lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
         return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
