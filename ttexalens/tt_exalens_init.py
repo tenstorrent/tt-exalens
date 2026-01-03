@@ -36,7 +36,7 @@ def init_ttexalens(
         Context: TTExaLens context object.
     """
 
-    lens_ifc = tt_exalens_ifc.init_pybind(init_jtag, use_noc1, simulation_directory)
+    lens_ifc = tt_exalens_ifc.local_init(init_jtag, use_noc1, simulation_directory)
 
     return load_context(lens_ifc, use_noc1, use_4B_mode)
 

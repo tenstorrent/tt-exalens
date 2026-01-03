@@ -458,7 +458,7 @@ def main():
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         if args["--background"]:
-            communicator = tt_exalens_ifc.init_pybind(
+            communicator = tt_exalens_ifc.local_init(
                 init_jtag=args["--jtag"],
                 initialize_with_noc1=args["--use-noc1"],
                 simulation_directory=args["-s"],

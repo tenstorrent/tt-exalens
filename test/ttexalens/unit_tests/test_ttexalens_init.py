@@ -13,7 +13,7 @@ from ttexalens import (
     read_word_from_device,
     write_to_device,
 )
-from ttexalens.tt_exalens_ifc import init_pybind
+from ttexalens.tt_exalens_ifc import local_init
 from ttexalens.server import start_server
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 
@@ -29,7 +29,7 @@ class TestLocalTTExaLensInit(unittest.TestCase):
 class TestRemoteTTExaLens(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.server = start_server(5555, init_pybind())
+        cls.server = start_server(5555, local_init())
 
     @classmethod
     def tearDownClass(cls) -> None:

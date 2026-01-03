@@ -217,7 +217,7 @@ class TTExaLensUmdImplementation:
             return f.read()
 
 
-def init_pybind(init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None):
+def local_init(init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None):
     if "TT_LOGGER_LEVEL" not in os.environ:
         if util.Verbosity.get() == util.Verbosity.DEBUG:
             os.environ["TT_LOGGER_LEVEL"] = "debug"
