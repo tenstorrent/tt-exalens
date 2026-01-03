@@ -165,9 +165,6 @@ class UmdApi:
     def get_remote_transfer_eth_core(self, chip_id: int) -> tuple[int, int] | None:
         return self.get_device(chip_id).get_remote_transfer_eth_core()
 
-    def get_device_unique_id(self, chip_id: int) -> int:
-        return self.get_device(chip_id).unique_id
-
     def get_cluster_description(self):
         return self.cluster_descriptor
 

@@ -122,13 +122,14 @@ class Device(TTObject):
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         self._id: int = id
         self._arch = umd_device.arch
-        self._soc_descriptor = umd_device.soc_descriptor
         self._context = context
+        self._umd_device = umd_device
+        self._soc_descriptor = umd_device.soc_descriptor
         self.cluster_descriptor = context.cluster_descriptor
         self._has_mmio = self.cluster_descriptor.is_chip_mmio_capable(id)
         self._has_jtag = self.cluster_descriptor.get_io_device_type() == tt_umd.IODeviceType.JTAG
         self._init_coordinate_systems()
-        self.unique_id = self._context.umd_api.get_device_unique_id(self._id)
+        self.unique_id = umd_device.unique_id
 
     @cached_property
     def _firmware_version(self):
