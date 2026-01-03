@@ -5,8 +5,7 @@ import os
 
 from ttexalens import tt_exalens_ifc
 from ttexalens import util as util
-
-from ttexalens.context import Context, LimitedContext
+from ttexalens.context import Context
 
 """
 GLOBAL_CONTEXT is a convenience variable to store fallback TTExaLens context object.
@@ -79,7 +78,7 @@ def load_context(
     server_ifc: tt_exalens_ifc.TTExaLensUmdImplementation, use_noc1: bool = False, use_4B_mode: bool = True
 ) -> Context:
     """Load the TTExaLens context object with specified parameters."""
-    context = LimitedContext(server_ifc, get_cluster_desc_yaml(server_ifc), use_noc1, use_4B_mode)
+    context = Context(server_ifc, get_cluster_desc_yaml(server_ifc), use_noc1=use_noc1, use_4B_mode=use_4B_mode)
 
     global GLOBAL_CONTEXT
     GLOBAL_CONTEXT = context

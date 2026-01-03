@@ -24,7 +24,7 @@ class Context:
         self,
         server_ifc: TTExaLensUmdImplementation,
         cluster_desc: util.YamlFile,
-        short_name: str,
+        short_name: str = "default",
         use_noc1=False,
         use_4B_mode=True,
     ):
@@ -34,6 +34,7 @@ class Context:
         self.use_noc1 = use_noc1
         self.use_4B_mode: bool = use_4B_mode
         self.commands: list[CommandMetadata] = []
+        self.loaded_elfs: dict[RiscLocation, str] = {}
 
     def assign_commands(self, commands: list[CommandMetadata]):
         self.commands = []
@@ -80,28 +81,8 @@ class Context:
             return None
 
     @cached_property
-    @abstractmethod
     def elf(self):
-        raise util.TTException(f"We are running with limited functionality, elf files are not available.")
-
-    @abstractmethod
-    def get_risc_elf_path(self, risc_location: RiscLocation) -> str | None:
-        pass
-
-    def elf_loaded(self, risc_location: RiscLocation, elf_path: str):
-        pass
-
-    def convert_loc_to_umd(self, location: OnChipCoordinate) -> tuple[int, int]:
-        return location._noc0_coord
-
-    def __repr__(self):
-        return f"context"
-
-
-class LimitedContext(Context):
-    def __init__(self, server_ifc: TTExaLensUmdImplementation, cluster_desc_yaml, use_noc1=False, use_4B_mode=True):
-        super().__init__(server_ifc, cluster_desc_yaml, "limited", use_noc1, use_4B_mode)
-        self.loaded_elfs: dict[RiscLocation, str] = {}
+        return ELF(self.server_ifc, {}, None)
 
     def get_risc_elf_path(self, risc_location: RiscLocation) -> str | None:
         return self.loaded_elfs.get(risc_location)
@@ -109,18 +90,5 @@ class LimitedContext(Context):
     def elf_loaded(self, risc_location: RiscLocation, elf_path: str):
         self.loaded_elfs[risc_location] = elf_path
 
-    @cached_property
-    def elf(self):
-        return ELF(self.server_ifc, {}, None)
-
-    def __repr__(self):
-        return f"LimitedContext"
-
-
-# TODO: We should implement support for Metal
-class MetalContext(Context):
-    def __init__(self, server_ifc, cluster_desc_yaml):
-        super().__init__(server_ifc, cluster_desc_yaml, "metal")
-
-    def __repr__(self):
-        return f"MetalContext"
+    def convert_loc_to_umd(self, location: OnChipCoordinate) -> tuple[int, int]:
+        return location._noc0_coord
