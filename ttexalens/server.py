@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
+from dataclasses import dataclass
 import inspect
 import io
 import Pyro5.api
@@ -38,13 +39,19 @@ class FileAccessApi:
 
 
 class TTExaLensServer:
+    @dataclass
+    class UmdRegisteredObject:
+        pyro5_id: str
+        wrapped_object: object
+        proxy: object | None = None
+
     def __init__(self, port: int, umd_api: UmdApi, file_api: FileAccessApi):
         self.port = port
         self.umd_api = umd_api
         self.file_api = file_api
         self.daemon: Pyro5.api.Daemon | None = None
         self.thread: threading.Thread | None = None
-        self.umd_registered_objects: dict[int, tuple[object, object]] = {}
+        self.umd_registered_objects: dict[int, TTExaLensServer.UmdRegisteredObject] = {}
         self.umd_registered_objects_lock = threading.Lock()
 
     def start(self):
@@ -52,7 +59,7 @@ class TTExaLensServer:
             raise util.TTFatalException("Server already started")
         self.daemon = Pyro5.api.Daemon(port=self.port)
         umd_wrapper = self._wrap_object(self.umd_api)
-        self.umd_registered_objects[id(self.umd_api)] = (self.umd_api, None)
+        self.umd_registered_objects[id(self.umd_api)] = TTExaLensServer.UmdRegisteredObject("umd_api", self.umd_api)
         self.daemon.register(umd_wrapper, objectId="umd_api")
         self.daemon.register(self.file_api, objectId="file_api")
         self.thread = threading.Thread(target=self.daemon.requestLoop, daemon=True)
@@ -63,7 +70,7 @@ class TTExaLensServer:
             self.daemon.unregister(self.file_api)
             with self.umd_registered_objects_lock:
                 for obj in self.umd_registered_objects.values():
-                    self.daemon.unregister(obj[0])
+                    self.daemon.unregister(obj.pyro5_id)
                 self.umd_registered_objects.clear()
             self.daemon.shutdown()
         if self.thread:
@@ -100,11 +107,14 @@ class TTExaLensServer:
                         if object_id not in self.server.umd_registered_objects:
                             assert self.server.daemon is not None
                             wrapped_result = self.server._wrap_object(result)
-                            self.server.daemon.register(wrapped_result, objectId=f"umd_obj_{object_id}")
-                            proxy = Pyro5.api.Proxy(f"PYRO:umd_obj_{object_id}@localhost:{self.server.port}")
+                            pyro5_id = f"umd_obj_{object_id}"
+                            self.server.daemon.register(wrapped_result, objectId=pyro5_id)
+                            proxy = Pyro5.api.Proxy(f"PYRO:{pyro5_id}@localhost:{self.server.port}")
                             proxy._pyroSerializer = "serpent"
-                            self.server.umd_registered_objects[object_id] = (wrapped_result, proxy)
-                        return self.server.umd_registered_objects[object_id][1]
+                            self.server.umd_registered_objects[object_id] = TTExaLensServer.UmdRegisteredObject(
+                                pyro5_id, wrapped_result, proxy
+                            )
+                        return self.server.umd_registered_objects[object_id].proxy
 
                 return wrapper_method
 
