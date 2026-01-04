@@ -33,7 +33,6 @@ Examples:
 from ttexalens import util as util
 from ttexalens.device import Device
 from ttexalens.coordinate import VALID_COORDINATE_TYPES, OnChipCoordinate
-from ttexalens.context import LimitedContext
 from ttexalens.uistate import UIState
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
@@ -47,7 +46,7 @@ command_metadata = CommandMetadata(
 
 
 def color_block(text: str, block_type: str):
-    color = Device.block_types[block_type]["color"]
+    color = Device.block_types[block_type].color
     return f"{color}{text}{util.CLR_END}"
 
 
@@ -88,10 +87,8 @@ def run(cmd_text, context, ui_state: UIState):
     cell_contents = ""
     if dopt.args["<cell-contents>"]:
         cell_contents = dopt.args["<cell-contents>"]
-    elif isinstance(context, LimitedContext):
-        cell_contents = "riscv"
     else:
-        raise util.TTException(f"Invalid cell contents")
+        cell_contents = "riscv"
 
     # Create a legend
     if not dont_print_legend:

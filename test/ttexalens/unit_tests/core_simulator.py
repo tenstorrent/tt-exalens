@@ -194,7 +194,7 @@ class RiscvCoreSimulator:
 
     def get_elf_path(self, app_name):
         """Get the path to the ELF file."""
-        arch = self.device._arch.lower()
+        arch = str(self.device._arch).lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
         if self.risc_name.lower().startswith("erisc"):

@@ -24,50 +24,6 @@ command_metadata = CommandMetadata(
     description=__doc__,
 )
 
-TEST_ID_SIZE = 48
-
-
-def decode_test_id(test_id_data):
-    data = test_id_data.decode("UTF-8")
-    wafer_info = {
-        "lot_id": (data[0:10]).replace("\x00", ""),
-        "wafer_id": (data[10:23]).replace("\x00", ""),
-        "wafer_alias": (data[24:26]).replace("\x00", ""),
-        "x_coord": (data[26:29]).replace("\x00", ""),
-        "y_coord": (data[29:32]).replace("\x00", ""),
-        "binning": (data[33:40]).replace("\x00", ""),
-        "test_program_rev": data[41:47].replace("\x00", ""),
-    }
-    return wafer_info
-
-
-# There are 3 ways to read the test id from the device
-# raw pci read, jtag axi read, and arc noc read
-
-
-def read_axi_size(context: Context, device_id, address, size):
-    data = b""
-    noc_id = 0
-    arc_location: tuple[int, int] = context.devices[device_id]._block_locations["arc"][0].to("noc0")
-
-    for i in range(0, size, 4):
-        data += context.server_ifc.read32(noc_id, device_id, arc_location[0], arc_location[1], address + i).to_bytes(
-            4, byteorder="little"
-        )
-    return data[:size]
-
-
-def read_pci_raw_size(context: Context, device_id, address, size):
-    data = b""
-    for i in range(0, size, 4):
-        data += context.server_ifc.pci_read32_raw(device_id, address + i).to_bytes(4, byteorder="little")
-    return data[:size]
-
-
-def read_noc_size(context: Context, device_id, nocx, nocy, address, size):
-    noc_id = 1 if context.use_noc1 else 0
-    return context.server_ifc.read(noc_id, device_id, nocx, nocy, address, size, context.use_4B_mode)
-
 
 def run(cmd_text, context: Context, ui_state=None):
     args = tt_docopt(command_metadata, cmd_text).args

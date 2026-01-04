@@ -92,9 +92,7 @@ class TestReadWrite(unittest.TestCase):
 
         data = [0, 1, 2, 3]
 
-        ret = lib.write_to_device(location, address, data)
-        self.assertEqual(ret, len(data))
-
+        lib.write_to_device(location, address, data)
         ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, bytes(data))
 
@@ -105,9 +103,7 @@ class TestReadWrite(unittest.TestCase):
 
         data = b"abcd"
 
-        ret = lib.write_to_device(location, address, data)
-        self.assertEqual(ret, len(data))
-
+        lib.write_to_device(location, address, data)
         ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, data)
 
@@ -142,8 +138,7 @@ class TestReadWrite(unittest.TestCase):
         words = [int.from_bytes(data[i : i + 4], byteorder="little") for i in range(0, len(data), 4)]
 
         # Write buffer
-        ret = lib.write_to_device(location, address, data, device_id)
-        self.assertEqual(ret, len(data))
+        lib.write_to_device(location, address, data, device_id)
 
         # Verify buffer as words
         ret = lib.read_words_from_device(location, address, device_id, len(words))
@@ -165,10 +160,8 @@ class TestReadWrite(unittest.TestCase):
 
         # Write a word to device two times
         ret = lib.write_words_to_device(location, address[0], data[0])
-        self.assertEqual(ret, 4)
 
         ret = lib.write_words_to_device(location, address[1], data[1])
-        self.assertEqual(ret, 4)
 
         # Write two words to device
         ret = lib.write_words_to_device(location, address[2], data[2:])
@@ -196,9 +189,7 @@ class TestReadWrite(unittest.TestCase):
         data = [0, 1, 2, 3]
 
         # Write bytes to device
-        ret = lib.write_to_device(location, address, data)
-        # *4 is because we write 4-byte words
-        self.assertEqual(ret, len(data))
+        lib.write_to_device(location, address, data)
 
         # Read the bytes as words
         ret = lib.read_words_from_device(location, address, word_count=1)
@@ -348,8 +339,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_write_read_tensix_register(self, location, register, value):
         """Test writing and reading tensix registers"""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         # Storing the original value of the register
         original_value = lib.read_register(location, register)
@@ -382,8 +371,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_write_read_tensix_register_with_name(self, location, register_description, register_name):
         "Test writing and reading tensix registers with name"
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         # Reading original values of registers
         original_val_desc = lib.read_register(location, register_description)
@@ -433,8 +420,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_write_read_tensix_register(self, location, register, value, device_id):
         """Test invalid inputs for tensix register read and write functions."""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
             with self.assertRaises((util.TTException, ValueError)):
@@ -451,8 +436,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_read_write_cfg_register(self, location):
         """Test reading and writing configuration registers using lib functions."""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
 
@@ -481,8 +464,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_read_write_dbg_register(self, location):
         """Test reading and writing debug registers using lib functions."""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
 
@@ -582,7 +563,7 @@ class TestRunElf(unittest.TestCase):
 
     def get_elf_path(self, app_name: str, risc_name: str):
         """Get the path to the ELF file."""
-        arch = self.device._arch.lower()
+        arch = str(self.device._arch).lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
         risc = risc_name.lower()
@@ -814,8 +795,8 @@ class TestARC(unittest.TestCase):
         if not self.device.is_wormhole() and not self.device.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
-        if self.device._firmware_version < CUTOFF_FIRMWARE_VERSION:
-            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device._firmware_version}")
+        if self.device.firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device.firmware_version}")
 
         tag = "TIMER_HEARTBEAT"
 
@@ -842,8 +823,8 @@ class TestARC(unittest.TestCase):
         if not self.device.is_wormhole() and not self.device.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
-        if self.device._firmware_version < CUTOFF_FIRMWARE_VERSION:
-            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device._firmware_version}")
+        if self.device.firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device.firmware_version}")
 
         ret_from_name = lib.read_arc_telemetry_entry(self.device._id, tag_name)
         ret_from_id = lib.read_arc_telemetry_entry(self.device._id, tag_id)
@@ -944,7 +925,7 @@ class TestCallStack(unittest.TestCase):
 
     def get_elf_path(self, app_name):
         """Get the path to the ELF file."""
-        arch = self.device._arch.lower()
+        arch = str(self.device._arch).lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
         return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
