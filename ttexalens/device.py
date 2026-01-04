@@ -102,22 +102,24 @@ class Device(TTObject):
     def create(device_id: int, context: Context):
         umd_device = context.umd_api.get_device(device_id)
         arch = umd_device.arch
-        if arch == tt_umd.ARCH.WORMHOLE_B0:
-            from ttexalens.hw.tensix.wormhole import wormhole
+        match arch:
+            case tt_umd.ARCH.WORMHOLE_B0:
+                from ttexalens.hw.tensix.wormhole import wormhole
 
-            return wormhole.WormholeDevice(device_id, umd_device, context)
+                return wormhole.WormholeDevice(device_id, umd_device, context)
 
-        if arch == tt_umd.ARCH.BLACKHOLE:
-            from ttexalens.hw.tensix.blackhole import blackhole
+            case tt_umd.ARCH.BLACKHOLE:
+                from ttexalens.hw.tensix.blackhole import blackhole
 
-            return blackhole.BlackholeDevice(device_id, umd_device, context)
+                return blackhole.BlackholeDevice(device_id, umd_device, context)
 
-        if arch == tt_umd.ARCH.QUASAR:
-            from ttexalens.hw.tensix.quasar import quasar
+            case tt_umd.ARCH.QUASAR:
+                from ttexalens.hw.tensix.quasar import quasar
 
-            return quasar.QuasarDevice(device_id, umd_device, context)
+                return quasar.QuasarDevice(device_id, umd_device, context)
 
-        raise RuntimeError(f"Architecture {arch} is not supported")
+            case _:
+                raise RuntimeError(f"Architecture {arch} is not supported")
 
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         self._id: int = id

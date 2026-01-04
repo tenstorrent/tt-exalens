@@ -92,7 +92,7 @@ class TestReadWrite(unittest.TestCase):
 
         data = [0, 1, 2, 3]
 
-        ret = lib.write_to_device(location, address, data)
+        lib.write_to_device(location, address, data)
         ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, bytes(data))
 
@@ -103,7 +103,7 @@ class TestReadWrite(unittest.TestCase):
 
         data = b"abcd"
 
-        ret = lib.write_to_device(location, address, data)
+        lib.write_to_device(location, address, data)
         ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, data)
 
@@ -138,7 +138,7 @@ class TestReadWrite(unittest.TestCase):
         words = [int.from_bytes(data[i : i + 4], byteorder="little") for i in range(0, len(data), 4)]
 
         # Write buffer
-        ret = lib.write_to_device(location, address, data, device_id)
+        lib.write_to_device(location, address, data, device_id)
 
         # Verify buffer as words
         ret = lib.read_words_from_device(location, address, device_id, len(words))
@@ -189,7 +189,7 @@ class TestReadWrite(unittest.TestCase):
         data = [0, 1, 2, 3]
 
         # Write bytes to device
-        ret = lib.write_to_device(location, address, data)
+        lib.write_to_device(location, address, data)
 
         # Read the bytes as words
         ret = lib.read_words_from_device(location, address, word_count=1)
