@@ -46,14 +46,15 @@ class TestCoverage(unittest.TestCase):
 
     def setUp(self):
         # Arch is needed to know the ELF path
-        if not self.context.arch:
+        if not self.device._arch:
             self.skipTest(f"Undefined architecture")
-        if self.context.arch.startswith("wormhole"):
+        arch = str(self.device._arch).lower()
+        if arch.startswith("wormhole"):
             arch = "wormhole"
-        elif self.context.arch.startswith("blackhole"):
+        elif arch.startswith("blackhole"):
             arch = "blackhole"
         else:
-            self.skipTest(f"Unsupported architecture: {self.context.arch}")
+            self.skipTest(f"Unsupported architecture: {arch}")
 
         self.elf_root = "build/riscv-src/" + arch + "/"
 

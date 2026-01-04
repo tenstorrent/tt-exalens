@@ -46,7 +46,9 @@ from typing import TYPE_CHECKING
 from ttexalens.util import TTException
 
 if TYPE_CHECKING:
+    from ttexalens.context import Context
     from ttexalens.device import Device
+    from ttexalens.hardware.noc_block import NocBlock
 
 VALID_COORDINATE_TYPES = [
     "die",
@@ -120,19 +122,19 @@ class OnChipCoordinate:
             raise Exception("Unknown input coordinate system: " + input_type)
 
     @property
-    def context(self):
+    def context(self) -> Context:
         return self._device._context
 
     @property
-    def device(self):
+    def device(self) -> Device:
         return self._device
 
     @property
-    def device_id(self):
+    def device_id(self) -> int:
         return self._device._id
 
     @property
-    def noc_block(self):
+    def noc_block(self) -> NocBlock:
         return self.device.get_block(self)
 
     # This returns a tuple with the coordinates in the specified coordinate system.
@@ -321,3 +323,17 @@ class OnChipCoordinate:
         else:
             raise TTException("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
         return OnChipCoordinate(x, y, coord_type, device, core_type)
+
+    def noc_read(
+        self, address: int, size_bytes: int, noc_id: int | None = None, use_4B_mode: bool | None = None
+    ) -> bytes:
+        return self.device.noc_read(self, address, size_bytes, noc_id, use_4B_mode)
+
+    def noc_read32(self, address: int, noc_id: int | None = None) -> int:
+        return self.device.noc_read32(self, address, noc_id)
+
+    def noc_write(self, address: int, data: bytes, noc_id: int | None = None, use_4B_mode: bool | None = None):
+        return self.device.noc_write(self, address, data, noc_id, use_4B_mode)
+
+    def noc_write32(self, address: int, data: int, noc_id: int | None = None):
+        return self.device.noc_write32(self, address, data, noc_id)

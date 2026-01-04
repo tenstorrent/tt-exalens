@@ -121,17 +121,11 @@ class L1MemoryAccess(MemoryAccess):
 
     def read(self, address: int, size_bytes: int) -> bytes:
         self.validate_access(address, size_bytes)
-
-        from ttexalens.tt_exalens_lib import read_from_device
-
-        return read_from_device(location=self._location, addr=address, num_bytes=size_bytes)
+        return self._location.noc_read(address, size_bytes)
 
     def write(self, address: int, data: bytes) -> None:
         self.validate_access(address, len(data))
-
-        from ttexalens.tt_exalens_lib import write_to_device
-
-        write_to_device(location=self._location, addr=address, data=data)
+        self._location.noc_write(address, data)
 
     def validate_access(self, address: int, size_bytes: int) -> None:
         if address < self.base_address or address + size_bytes > self.base_address + self.size:

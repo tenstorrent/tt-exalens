@@ -3,7 +3,7 @@
 ## init_ttexalens
 
 ```
-init_ttexalens(wanted_devices: list[int] | None = None, init_jtag: bool = False, use_noc1: bool = False, use_4B_mode: bool = True, simulation_directory: str | None = None) -> Context
+init_ttexalens(init_jtag: bool = False, use_noc1: bool = False, use_4B_mode: bool = True, simulation_directory: str | None = None) -> Context
 ```
 
 
@@ -15,7 +15,6 @@ Interfacing device is local, through pybind.
 
 ### Args
 
-- `wanted_devices` *(list, optional)*: List of device IDs we want to connect to. If None, connect to all available devices.
 - `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
 - `use_noc1` *(bool)*: Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
 - `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.

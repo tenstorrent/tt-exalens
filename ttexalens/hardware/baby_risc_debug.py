@@ -14,7 +14,7 @@ from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation, RiscDebugStatus, RiscDebugWatchpointState
 from ttexalens.register_store import RegisterDescription, RegisterStore
-from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
+from ttexalens.hardware.noc_block import NocBlock
 
 # Register address
 REG_STATUS = 0
@@ -220,18 +220,15 @@ class BabyRiscDebugHardware:
 
         self.CONTROL0_WRITE = 0x80010000 + (self.risc_info.risc_id << 17)
         self.CONTROL0_READ = 0x80000000 + (self.risc_info.risc_id << 17)
-        self.RISC_DBG_CNTL0 = register_store.get_register_noc_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_0")
-        self.RISC_DBG_CNTL1 = register_store.get_register_noc_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_1")
-        self.RISC_DBG_STATUS0 = register_store.get_register_noc_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_0")
-        self.RISC_DBG_STATUS1 = register_store.get_register_noc_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_1")
+        self.RISC_DBG_CNTL0 = self.__read_register_noc_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_0")
+        self.RISC_DBG_CNTL1 = self.__read_register_noc_address("RISCV_DEBUG_REG_RISC_DBG_CNTL_1")
+        self.RISC_DBG_STATUS0 = self.__read_register_noc_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_0")
+        self.RISC_DBG_STATUS1 = self.__read_register_noc_address("RISCV_DEBUG_REG_RISC_DBG_STATUS_1")
 
-    @property
-    def device(self) -> Device:
-        return self.risc_info.noc_block.device
-
-    @property
-    def context(self) -> Context:
-        return self.device._context
+    def __read_register_noc_address(self, register_name: str) -> int:
+        address = self.register_store.get_register_noc_address(register_name)
+        assert address is not None, f"Register {register_name} does not have a NOC address"
+        return address
 
     def _get_reg_name_for_address(self, address: int):
         if address == self.RISC_DBG_CNTL0:
@@ -245,13 +242,13 @@ class BabyRiscDebugHardware:
         else:
             return f"Unknown register {address}"
 
-    def __write(self, addr, data):
-        util.TRACE(f"{self._get_reg_name_for_address(addr)} <- WR   0x{data:08x}")
-        write_words_to_device(self.risc_info.noc_block.location, addr, data, self.device._id, self.context)
+    def __write(self, address: int, data: int):
+        util.TRACE(f"{self._get_reg_name_for_address(address)} <- WR   0x{data:08x}")
+        self.risc_info.noc_block.location.noc_write32(address, data)
 
-    def __read(self, addr) -> int:
-        data = read_word_from_device(self.risc_info.noc_block.location, addr, self.device._id, self.context)
-        util.TRACE(f"{self._get_reg_name_for_address(addr)} -> RD == 0x{data:08x}")
+    def __read(self, address: int) -> int:
+        data = self.risc_info.noc_block.location.noc_read32(address)
+        util.TRACE(f"{self._get_reg_name_for_address(address)} -> RD == 0x{data:08x}")
         return data
 
     def __trigger_write(self, reg_addr):
@@ -477,12 +474,12 @@ class BabyRiscDebug(RiscDebug):
         self.RISC_DBG_SOFT_RESET0 = register_store.get_register_noc_address("RISCV_DEBUG_REG_SOFT_RESET_0")
 
     @property
-    def noc_block(self):
+    def noc_block(self) -> NocBlock:
         return self.risc_info.noc_block
 
     @property
     def location(self) -> OnChipCoordinate:
-        return self.noc_block.location  # type: ignore
+        return self.noc_block.location
 
     @property
     def device(self) -> Device:
@@ -493,10 +490,10 @@ class BabyRiscDebug(RiscDebug):
         return self.device._context
 
     def __write(self, addr, data):
-        write_words_to_device(self.location, addr, data, self.device._id, self.context)
+        self.location.noc_write32(addr, data)
 
     def __read(self, addr):
-        return read_word_from_device(self.location, addr, self.device._id, self.context)
+        return self.location.noc_read32(addr)
 
     def is_in_reset(self):
         reset_reg = self.__read(self.RISC_DBG_SOFT_RESET0)
@@ -682,8 +679,8 @@ class BabyRiscDebug(RiscDebug):
     def read_memory(self, address: int) -> int:
         return int.from_bytes(self.read_memory_bytes(address, 4), byteorder="little")
 
-    def write_memory(self, address: int, value: int) -> None:
-        self.write_memory_bytes(address, value.to_bytes(4, byteorder="little"))
+    def write_memory(self, address: int, data: int) -> None:
+        self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"))
 
     def read_memory_bytes(self, address: int, size_bytes: int) -> bytes:
         if self.enable_asserts:

@@ -36,28 +36,28 @@ def get_register_base_address_callable(noc_id: int, has_mmio: bool) -> Callable[
     def get_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
         if isinstance(register_description, ArcResetRegisterDescription):
             if has_mmio:
-                return DeviceAddress(raw_address=0x1FF30000)
+                return DeviceAddress(bar0_address=0x1FF30000)
             else:
                 return DeviceAddress(noc_address=0x880030000)
         elif isinstance(register_description, ArcCsmRegisterDescription):
             if has_mmio:
-                return DeviceAddress(raw_address=0x1FE80000)
+                return DeviceAddress(bar0_address=0x1FE80000)
             else:
                 return DeviceAddress(noc_address=0x810000000)
         elif isinstance(register_description, ArcRomRegisterDescription):
             if has_mmio:
-                return DeviceAddress(raw_address=0x1FF00000)
+                return DeviceAddress(bar0_address=0x1FF00000)
             else:
                 return DeviceAddress(noc_address=0x880000000)
         elif noc_id == 0:
-            return get_niu_register_base_address_callable(DeviceAddress(noc_address=0xFFFB20000, noc_id=0))(
-                register_description
-            )
+            return get_niu_register_base_address_callable(
+                DeviceAddress(noc_address=0xFFFB20000, bar0_address=0x1FF50000 if has_mmio else None, noc_id=0)
+            )(register_description)
         else:
             assert noc_id == 1
-            return get_niu_register_base_address_callable(DeviceAddress(noc_address=0xFFFB20000, noc_id=1))(
-                register_description
-            )
+            return get_niu_register_base_address_callable(
+                DeviceAddress(noc_address=0xFFFB20000, bar0_address=0x1FF58000 if has_mmio else None, noc_id=1)
+            )(register_description)
 
     return get_register_base_address
 

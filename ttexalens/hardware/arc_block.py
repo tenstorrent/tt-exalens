@@ -11,7 +11,7 @@ from ttexalens.util import FirmwareVersion, TTException
 # For new firmware version (18.4 or higher) we have same telemetry tags for both wormhole and blackhole
 # We no longer support ARC telemetry for firmware versions 18.3 and lower
 
-CUTOFF_FIRMWARE_VERSION = FirmwareVersion((18, 4, 0))
+CUTOFF_FIRMWARE_VERSION = FirmwareVersion(18, 4, 0)
 
 telemetry_tags_map: dict[str, int] = {
     "BOARD_ID_HIGH": 1,
@@ -64,7 +64,7 @@ class ArcBlock(NocBlock):
 
     @cached_property
     def telemetry_tags(self) -> dict[str, int] | None:
-        return telemetry_tags_map if self.location.device._firmware_version >= CUTOFF_FIRMWARE_VERSION else None
+        return telemetry_tags_map if self.location.device.firmware_version >= CUTOFF_FIRMWARE_VERSION else None
 
     @cached_property
     def telemetry_tag_ids(self) -> set[int] | None:
@@ -74,7 +74,7 @@ class ArcBlock(NocBlock):
         """Returns the keys of the ARC telemetry tags map."""
         if self.telemetry_tag_ids is None:
             raise TTException(
-                f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {self.location.device._firmware_version}"
+                f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {self.location.device.firmware_version}"
             )
         return tag_id in self.telemetry_tag_ids
 
@@ -82,7 +82,7 @@ class ArcBlock(NocBlock):
         """Returns the telemetry tag ID for a given tag name."""
         if self.telemetry_tags is None:
             raise TTException(
-                f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {self.location.device._firmware_version}"
+                f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {self.location.device.firmware_version}"
             )
         if tag_name in self.telemetry_tags:
             return self.telemetry_tags[tag_name]

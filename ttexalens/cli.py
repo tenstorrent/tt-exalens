@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [--devices=<devices>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--disable-4B-mode]
-  tt-exalens --server [--port=<port>] [--devices=<devices>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
+  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--disable-4B-mode]
+  tt-exalens --server [--port=<port>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--disable-4B-mode]
   tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help
@@ -21,7 +21,6 @@ Options:
   --commands=<cmds>               Execute a list of semicolon-separated commands.
   --start-gdb=<gdb_port>          Start a gdb server on the specified port.
   --start-server=<server_port>    Start a tt-exalens server on the specified port.
-  --devices=<devices>             Comma-separated list of devices to load. If not supplied, all devices will be loaded.
   --background                    Start the server in the background detached from console (doesn't require ENTER button for exit, but exit.server file to be created).
   -s=<simulation_directory>       Specifies build output directory of the simulator.
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
@@ -59,8 +58,7 @@ except ModuleNotFoundError as e:
 
 
 from ttexalens import init_ttexalens, init_ttexalens_remote
-from ttexalens import tt_exalens_ifc
-from ttexalens import server
+from ttexalens.server import start_server
 from ttexalens import util as util
 from ttexalens.context import Context
 from ttexalens.uistate import UIState
@@ -456,20 +454,16 @@ def main():
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 
-    wanted_devices: list[int] | None = None
-    if args["--devices"]:
-        wanted_devices = [int(d) for d in args["--devices"].split(",")]
-
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         if args["--background"]:
-            communicator = tt_exalens_ifc.init_pybind(
-                wanted_devices=wanted_devices,
+            context = init_ttexalens(
                 init_jtag=args["--jtag"],
-                initialize_with_noc1=args["--use-noc1"],
+                use_noc1=args["--use-noc1"],
+                use_4B_mode=False if args["--disable-4B-mode"] else True,
                 simulation_directory=args["-s"],
             )
-            ttexalens_server = server.start_server(port=int(args["--port"]), communicator=communicator)
+            ttexalens_server = start_server(port=int(args["--port"]), context=context)
 
             util.INFO("The debug server is running in the background.")
             util.INFO("To stop the server, use the command: touch exit.server")
@@ -499,7 +493,6 @@ def main():
         context = init_ttexalens_remote(server_ip, int(server_port), use_4B_mode)
     else:
         context = init_ttexalens(
-            wanted_devices=wanted_devices,
             init_jtag=args["--jtag"],
             use_noc1=args["--use-noc1"],
             use_4B_mode=False if args["--disable-4B-mode"] else True,

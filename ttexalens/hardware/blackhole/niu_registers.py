@@ -181,7 +181,7 @@ def get_niu_register_base_address_callable(
                 if base_address.private_address is not None
                 else None,
                 noc_address=base_address.noc_address + 0x100 if base_address.noc_address is not None else None,
-                raw_address=base_address.raw_address + 0x100 if base_address.raw_address is not None else None,
+                bar0_address=base_address.bar0_address + 0x100 if base_address.bar0_address is not None else None,
                 noc_id=base_address.noc_id,
             )
         elif isinstance(register_description, NocStatusRegisterDescription):
@@ -190,7 +190,7 @@ def get_niu_register_base_address_callable(
                 if base_address.private_address is not None
                 else None,
                 noc_address=base_address.noc_address + 0x200 if base_address.noc_address is not None else None,
-                raw_address=base_address.raw_address + 0x200 if base_address.raw_address is not None else None,
+                bar0_address=base_address.bar0_address + 0x200 if base_address.bar0_address is not None else None,
                 noc_id=base_address.noc_id,
             )
         else:
