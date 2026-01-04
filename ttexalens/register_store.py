@@ -10,7 +10,6 @@ import re
 from typing import TYPE_CHECKING, Callable
 
 from ttexalens.context import Context
-from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 from ttexalens.pack_unpack_regfile import TensixDataFormat
 
 if TYPE_CHECKING:
@@ -294,20 +293,12 @@ class RegisterStore:
                 register = register.clone(self._get_register_base_address(register))
 
         if register.noc_address is not None:
-            value = read_word_from_device(
-                self.location, register.noc_address, self.device._id, self.context, register.noc_id
-            )
+            value = self.location.noc_read32(register.noc_address)
         elif register.bar0_address is not None:
             value = self.device.bar0_read32(register.bar0_address)
         elif isinstance(register, ConfigurationRegisterDescription):
-            write_words_to_device(
-                self.location,
-                self._control_register_address,
-                register.index,
-                self.device._id,
-                self.context,
-            )
-            value = read_word_from_device(self.location, self._data_register_address, self.device._id, self.context)
+            self.location.noc_write32(self._control_register_address, register.index)
+            value = self.location.noc_read32(self._data_register_address)
         else:
             # Read using RISC core debugging hardware.
             risc_debug = self.device.get_block(self.location).get_default_risc_debug()
@@ -342,13 +333,9 @@ class RegisterStore:
 
         if register.noc_address is not None:
             if register.mask != 0xFFFFFFFF:
-                old_value = read_word_from_device(
-                    self.location, register.noc_address, self.device._id, self.context, register.noc_id
-                )
+                old_value = self.location.noc_read32(register.noc_address)
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            write_words_to_device(
-                self.location, register.noc_address, value, self.device._id, self.context, register.noc_id
-            )
+            self.location.noc_write32(register.noc_address, value)
         elif register.bar0_address is not None:
             if register.mask != 0xFFFFFFFF:
                 old_value = self.device.bar0_read32(register.bar0_address)

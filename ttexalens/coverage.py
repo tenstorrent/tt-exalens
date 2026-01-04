@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.tt_exalens_lib import read_from_device
 from ttexalens.tt_exalens_lib import TTException
 from ttexalens.elf import ParsedElfFile
 from ttexalens.memory_access import MemoryAccess
@@ -64,7 +63,7 @@ def dump_coverage(
         filename_len = coverage_header.filename_length.read_value()
         assert isinstance(filename_len, int)
         filename_addr = coverage_header.filename.dereference().get_address()
-        filename: str = read_from_device(location, filename_addr, num_bytes=filename_len).decode("ascii")
+        filename: str = location.noc_read(filename_addr, filename_len).decode("ascii")
 
         # This points to the expected gcda file, which is in the same directory where the compiler placed the gcno,
         # so we just replace the extension and get the gcno path.
@@ -74,6 +73,6 @@ def dump_coverage(
             with open(gcno_copy_path, "wb") as f:
                 f.write(gcno_reader.read())
 
-    data = read_from_device(location, coverage_start + header_size, num_bytes=length - header_size)
+    data = location.noc_read(coverage_start + header_size, length - header_size)
     with open(gcda_path, "wb") as f:
         f.write(data)

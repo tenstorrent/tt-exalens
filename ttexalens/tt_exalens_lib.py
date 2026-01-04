@@ -129,7 +129,7 @@ def read_word_from_device(
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, coordinate.context)
-    return coordinate.device.noc_read32(noc_id, coordinate, addr)
+    return coordinate.device.noc_read32(coordinate, addr, noc_id)
 
 
 @trace_api
@@ -164,7 +164,7 @@ def read_words_from_device(
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
-    bytes_data = coordinate.device.noc_read(noc_id, coordinate, addr, 4 * word_count, use_4B_mode)
+    bytes_data = coordinate.device.noc_read(coordinate, addr, 4 * word_count, noc_id, use_4B_mode)
     data = list(struct.unpack(f"<{word_count}I", bytes_data))
     return data
 
@@ -200,7 +200,7 @@ def read_from_device(
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
-    return coordinate.device.noc_read(noc_id, coordinate, addr, num_bytes, use_4B_mode)
+    return coordinate.device.noc_read(coordinate, addr, num_bytes, noc_id, use_4B_mode)
 
 
 @trace_api
@@ -231,10 +231,10 @@ def write_words_to_device(
     use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
 
     if isinstance(data, int):
-        coordinate.device.noc_write32(noc_id, coordinate, addr, data)
+        coordinate.device.noc_write32(coordinate, addr, data, noc_id)
     else:
         byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-        coordinate.device.noc_write(noc_id, coordinate, addr, byte_data, use_4B_mode)
+        coordinate.device.noc_write(coordinate, addr, byte_data, noc_id, use_4B_mode)
 
 
 @trace_api
@@ -270,7 +270,7 @@ def write_to_device(
     if len(data) == 0:
         raise TTException("Data to write must not be empty.")
 
-    coordinate.device.noc_write(noc_id, coordinate, addr, data, use_4B_mode)
+    coordinate.device.noc_write(coordinate, addr, data, noc_id, use_4B_mode)
 
 
 @trace_api

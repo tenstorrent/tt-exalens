@@ -10,7 +10,6 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.tt_exalens_lib import read_from_device, write_to_device
 from ttexalens.memory_access import MemoryAccess
 
 
@@ -45,7 +44,7 @@ class ElfLoader:
     SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".gcov_info"]
 
     @staticmethod
-    def get_jump_to_offset_instruction(offset, rd=0):
+    def get_jump_to_offset_instruction(offset: int, rd: int = 0) -> int:
         """
         Generate a JAL instruction code based on the given offset.
 
@@ -120,7 +119,7 @@ class ElfLoader:
             # Use debug interface
             self.write_block_through_debug(address, data)
         else:
-            write_to_device(self.location, address, data, self.device._id, self.context)
+            self.location.noc_write(address, data)
 
     def read_block(self, address, byte_count):
         """
@@ -141,7 +140,7 @@ class ElfLoader:
             # Use debug interface
             return self.read_block_through_debug(address, byte_count)
         else:
-            return read_from_device(self.location, address, self.device._id, byte_count, self.context)
+            return self.location.noc_read(address, byte_count)
 
     def remap_address(self, address: int, loader_data: int | None, loader_code: int | None):
         data_private_memory = self.risc_debug.get_data_private_memory()

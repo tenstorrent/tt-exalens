@@ -136,21 +136,41 @@ class Device(TTObject):
         return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
 
     def noc_read(
-        self, noc_id: int, location: OnChipCoordinate, address: int, size_bytes: int, use_4B_mode: bool
+        self,
+        location: OnChipCoordinate,
+        address: int,
+        size_bytes: int,
+        noc_id: int | None = None,
+        use_4B_mode: bool | None = None,
     ) -> bytes:
         noc_x, noc_y = location._noc0_coord
+        if noc_id is None:
+            noc_id = 1 if self._context.use_noc1 else 0
+        if use_4B_mode is None:
+            use_4B_mode = self._context.use_4B_mode
         return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode)
 
-    def noc_read32(self, noc_id: int, location: OnChipCoordinate, address: int) -> int:
-        result = self.noc_read(noc_id, location, address, 4, True)
+    def noc_read32(self, location: OnChipCoordinate, address: int, noc_id: int | None = None) -> int:
+        result = self.noc_read(location, address, 4, noc_id, True)
         return int.from_bytes(result, byteorder="little")
 
-    def noc_write(self, noc_id: int, location: OnChipCoordinate, address: int, data: bytes, use_4B_mode: bool):
+    def noc_write(
+        self,
+        location: OnChipCoordinate,
+        address: int,
+        data: bytes,
+        noc_id: int | None = None,
+        use_4B_mode: bool | None = None,
+    ):
         noc_x, noc_y = location._noc0_coord
+        if noc_id is None:
+            noc_id = 1 if self._context.use_noc1 else 0
+        if use_4B_mode is None:
+            use_4B_mode = self._context.use_4B_mode
         return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode)
 
-    def noc_write32(self, noc_id: int, location: OnChipCoordinate, address: int, data: int):
-        return self.noc_write(noc_id, location, address, data.to_bytes(4, byteorder="little"), True)
+    def noc_write32(self, location: OnChipCoordinate, address: int, data: int, noc_id: int | None = None):
+        return self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True)
 
     def bar0_read32(self, address: int) -> int:
         return self._umd_device.bar0_read32(address)
