@@ -292,10 +292,10 @@ class RegisterStore:
             if register.base_address is None:
                 register = register.clone(self._get_register_base_address(register))
 
-        if register.noc_address is not None:
-            value = self.location.noc_read32(register.noc_address)
-        elif register.bar0_address is not None:
+        if register.bar0_address is not None:
             value = self.device.bar0_read32(register.bar0_address)
+        elif register.noc_address is not None:
+            value = self.location.noc_read32(register.noc_address, register.noc_id)
         elif isinstance(register, ConfigurationRegisterDescription):
             self.location.noc_write32(self._control_register_address, register.index)
             value = self.location.noc_read32(self._data_register_address)
@@ -331,16 +331,16 @@ class RegisterStore:
                 f"Value must be greater than 0 and inside the mask 0x{register.mask:x}, but got {value} (0x{value:x})"
             )
 
-        if register.noc_address is not None:
-            if register.mask != 0xFFFFFFFF:
-                old_value = self.location.noc_read32(register.noc_address)
-                value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            self.location.noc_write32(register.noc_address, value)
-        elif register.bar0_address is not None:
+        if register.bar0_address is not None:
             if register.mask != 0xFFFFFFFF:
                 old_value = self.device.bar0_read32(register.bar0_address)
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
             self.device.bar0_write32(register.bar0_address, value)
+        elif register.noc_address is not None:
+            if register.mask != 0xFFFFFFFF:
+                old_value = self.location.noc_read32(register.noc_address, register.noc_id)
+                value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
+            self.location.noc_write32(register.noc_address, value, register.noc_id)
         else:
             # Write using RISC core debugging hardware.
             risc_debug = self.device.get_block(self.location).get_default_risc_debug()
