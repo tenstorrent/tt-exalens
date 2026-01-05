@@ -11,7 +11,7 @@ class TestRemoteCommunication(unittest.TestCase):
     context: Context  # TTExaLens context
     local_devices: Device  # Local (PCIE) devices
     remote_device_id: int | None
-    tensix_core: "0,0"
+    tensix_core: str
 
     @classmethod
     def setUpClass(cls):
