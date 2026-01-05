@@ -11,7 +11,7 @@ class TestRemoteCommunication(unittest.TestCase):
     context: Context  # TTExaLens context
     local_devices: Device  # Local (PCIE) devices
     remote_device_id: int | None
-    tensix_core: OnChipCoordinate
+    tensix_core: str
 
     @classmethod
     def setUpClass(cls):
@@ -24,7 +24,7 @@ class TestRemoteCommunication(unittest.TestCase):
         cls.local_device = cls.context.devices[0]
         assert cls.local_device._has_mmio, "Could not find local device"
         cls.remote_device_id = cls.context.devices[1]._id if len(cls.context.devices) > 1 else None
-        cls.tensix_core = OnChipCoordinate.create("0,0", cls.local_device)
+        cls.tensix_loc = "0,0"
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -39,19 +39,23 @@ class TestRemoteCommunication(unittest.TestCase):
             self.skipTest("There are no remote devices to test")
 
         # Initial testing of writing to/reading from remote device
-        write_words_to_device(self.tensix_core, address, data, self.remote_device_id)
-        ret = read_word_from_device(self.tensix_core, address, self.remote_device_id)
+        write_words_to_device(self.tensix_loc, address, data, self.remote_device_id)
+        ret = read_word_from_device(self.tensix_loc, address, self.remote_device_id)
         self.assertEqual(ret, data)
         # Find eth core used for remote communication and halt it
         eth_core = self.context.umd_api.get_remote_transfer_eth_core(self.remote_device_id)
-        assert eth_core is not None, "Could not find ETH core used for remote communication"
+        self.assertIsNotNone(eth_core, "Could not find ETH core used for remote communication")
         coord_str = f"e{eth_core[0]},{eth_core[1]}"
         loc = OnChipCoordinate.create(coord_str, self.local_device)
         noc_block = self.local_device.get_block(loc)
         risc_debug = noc_block.get_default_risc_debug()
         risc_debug.halt()
 
+        self.assertTrue(risc_debug.is_halted(), "RISC debug is not halted")
+
         # Test writing to/reading from remote device again (after halting default eth core)
-        write_words_to_device(self.tensix_core, address, data, self.remote_device_id)
-        ret = read_word_from_device(self.tensix_core, address, self.remote_device_id)
+        write_words_to_device(self.tensix_loc, address, data, self.remote_device_id)
+        ret = read_word_from_device(self.tensix_loc, address, self.remote_device_id)
+        eth_core_after = self.context.umd_api.get_remote_transfer_eth_core(self.remote_device_id)
+        self.assertNotEqual(eth_core, eth_core_after, "ETH core used for remote communication has not changed")
         self.assertEqual(ret, data)
