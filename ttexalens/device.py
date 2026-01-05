@@ -4,9 +4,10 @@
 
 from abc import abstractmethod
 from dataclasses import dataclass
+import datetime
 from functools import cache, cached_property
 import tt_umd
-from typing import Iterable
+from typing import Iterable, Sequence
 
 from tabulate import tabulate
 from ttexalens.context import Context
@@ -134,7 +135,8 @@ class Device(TTObject):
 
     @cached_property
     def firmware_version(self):
-        fw = self._umd_device.get_firmware_version()
+        noc_id = 1 if self._context.use_noc1 else 0
+        fw = self._umd_device.get_firmware_version(noc_id)
         return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
 
     def noc_read(
@@ -179,6 +181,24 @@ class Device(TTObject):
 
     def bar0_write32(self, address: int, data: int):
         return self._umd_device.bar0_write32(address, data)
+
+    def arc_msg(
+        self,
+        noc_id: int,
+        msg_code: int,
+        wait_for_done: bool,
+        args: Sequence[int],
+        timeout: datetime.timedelta | float,
+    ):
+        return self._umd_device.arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
+
+    def read_arc_telemetry_entry(self, noc_id: int | None, telemetry_tag: int) -> int:
+        if noc_id is None:
+            noc_id = 1 if self._context.use_noc1 else 0
+        return self._umd_device.read_arc_telemetry_entry(noc_id, telemetry_tag)
+
+    def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
+        return self._umd_device.get_remote_transfer_eth_core()
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __noc_to_die(self, noc_loc, noc_id=0):
