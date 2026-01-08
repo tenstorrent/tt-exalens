@@ -19,7 +19,7 @@ class TestRemoteCommunication(unittest.TestCase):
 
         cls.local_device = cls.context.devices[0]
         assert cls.local_device._has_mmio, "Could not find local device"
-        cls.remote_device_id = cls.context.devices[1]._id if len(cls.context.devices) > 1 else None
+        cls.remote_device_id = cls.context.devices[1].id if len(cls.context.devices) > 1 else None
         cls.tensix_loc = "0,0"
 
     @classmethod

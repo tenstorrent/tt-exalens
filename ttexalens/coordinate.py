@@ -131,7 +131,7 @@ class OnChipCoordinate:
 
     @property
     def device_id(self) -> int:
-        return self._device._id
+        return self._device.id
 
     @property
     def noc_block(self) -> NocBlock:
@@ -245,7 +245,7 @@ class OnChipCoordinate:
         return self.to_str("logical")
 
     def __hash__(self):
-        return hash((self._noc0_coord, self._device._id))
+        return hash((self._noc0_coord, self._device.id))
 
     # The debug string representation also has the translated coordinate.
     def __repr__(self) -> str:
@@ -260,10 +260,10 @@ class OnChipCoordinate:
         return (self._noc0_coord == other._noc0_coord) and (self._device == other._device)
 
     def __lt__(self, other):
-        if self._device.id() == other._device.id():
+        if self._device.id == other._device.id:
             return self._noc0_coord < other._noc0_coord
         else:
-            return self._device.id() < other._device.id()
+            return self._device.id < other._device.id
 
     @staticmethod
     def create(coord_str, device, coord_type=None) -> OnChipCoordinate:

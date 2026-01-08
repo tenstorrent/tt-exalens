@@ -938,7 +938,7 @@ class TestARC(unittest.TestCase):
         timeout = timedelta(milliseconds=1000)
 
         # Ask for reply, check for reasonable TEST value
-        ret, return_3, _ = lib.arc_msg(self.device._id, msg_code, wait_for_done, args, timeout, context=self.context)
+        ret, return_3, _ = lib.arc_msg(self.device.id, msg_code, wait_for_done, args, timeout, context=self.context)
 
         print(f"ARC message result={ret}, test={return_3}")
         self.assertEqual(ret, 0)
@@ -961,9 +961,9 @@ class TestARC(unittest.TestCase):
         # Check if heartbeat is increasing
         import time
 
-        heartbeat1 = lib.read_arc_telemetry_entry(self.device._id, tag)
+        heartbeat1 = lib.read_arc_telemetry_entry(self.device.id, tag)
         time.sleep(0.2)
-        heartbeat2 = lib.read_arc_telemetry_entry(self.device._id, tag)
+        heartbeat2 = lib.read_arc_telemetry_entry(self.device.id, tag)
         self.assertGreater(heartbeat2, heartbeat1)
 
     @parameterized.expand(
@@ -984,8 +984,8 @@ class TestARC(unittest.TestCase):
         if self.device.firmware_version < CUTOFF_FIRMWARE_VERSION:
             self.skipTest(f"ARC telemetry is not supported for firmware version {self.device.firmware_version}")
 
-        ret_from_name = lib.read_arc_telemetry_entry(self.device._id, tag_name)
-        ret_from_id = lib.read_arc_telemetry_entry(self.device._id, tag_id)
+        ret_from_name = lib.read_arc_telemetry_entry(self.device.id, tag_name)
+        ret_from_id = lib.read_arc_telemetry_entry(self.device.id, tag_id)
         self.assertEqual(ret_from_name, ret_from_id)
 
     def test_load_arc_fw(self):

@@ -150,19 +150,19 @@ def run(cmd_text, context, ui_state: UIState):
         tensix_reg_desc = device.get_tensix_registers_description()
         tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            INFO(f"Tensix registers for location {loc} on device {device.id()}")
+            INFO(f"Tensix registers for location {loc} on device {device.id}")
 
             noc_block = device.get_block(loc)
             if not noc_block:
-                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a NOC block.")
+                util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have a NOC block.")
                 continue
             if noc_block.block_type != "functional_workers":
-                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} is not a functional worker block.")
+                util.ERROR(f"Device {device.id} at location {loc.to_user_str()} is not a functional worker block.")
                 continue
             register_store = noc_block.get_register_store()
             debug_bus = noc_block.debug_bus
             if debug_bus is None:
-                util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
+                util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have a debug bus.")
                 continue
 
             if group == "alu" or group == "all":

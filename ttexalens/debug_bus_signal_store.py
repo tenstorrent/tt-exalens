@@ -204,11 +204,11 @@ class DebugBusSignalStore:
             return self.signals[signal_name]
         elif self.neo_id is None:
             raise ValueError(
-                f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device._id}."
+                f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device.id}."
             )
         else:
             raise ValueError(
-                f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device._id}."
+                f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device.id}."
             )
 
     def _validate_signal_parameters(self, signal: DebugBusSignalDescription) -> None:

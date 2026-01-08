@@ -16,7 +16,6 @@ from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
-from ttexalens.object import TTObject
 from ttexalens.umd_device import UmdDevice
 from ttexalens import util as util
 
@@ -67,7 +66,7 @@ class TensixInstructions:
 # device classes (e.g. WormholeDevice, BlackholeDevice). The create class method is used to create
 # a specific device.
 #
-class Device(TTObject):
+class Device:
     instructions: TensixInstructions
     DIE_X_TO_NOC_0_X: list[int] = []
     DIE_Y_TO_NOC_0_Y: list[int] = []
@@ -123,7 +122,8 @@ class Device(TTObject):
                 raise RuntimeError(f"Architecture {arch} is not supported")
 
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
-        self._id: int = id
+        self.id: int = id
+        self.unique_id = umd_device.unique_id
         self._arch = umd_device.arch
         self._context = context
         self._umd_device = umd_device
@@ -131,7 +131,6 @@ class Device(TTObject):
         self._has_mmio = umd_device.is_mmio_capable
         self._has_jtag = umd_device.is_jtag_capable
         self._init_coordinate_systems()
-        self.unique_id = umd_device.unique_id
 
     @cached_property
     def firmware_version(self):
@@ -298,7 +297,7 @@ class Device(TTObject):
         for src_chip, channels in self._context.cluster_descriptor.get_ethernet_connections().items():
             for src_chan, dest in channels.items():
                 dest_chip, dest_chan = dest
-                if dest_chip == self._id:
+                if dest_chip == self.id:
                     active_channels.append(dest_chan)
         return [self.get_block_locations(block_type="eth")[chan] for chan in active_channels]
 
@@ -476,7 +475,7 @@ class Device(TTObject):
 
     # Detailed string representation of the device
     def __repr__(self):
-        return f"ID: {self.id()}, Arch: {self._arch}"
+        return f"ID: {self.id}, Arch: {self._arch}"
 
 
 # end of class Device

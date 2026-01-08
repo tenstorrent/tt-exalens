@@ -178,12 +178,12 @@ def _get_debug_bus_signal_store(device: Device, loc: OnChipCoordinate) -> DebugB
     """Return debug bus signal store for given device and location, or None if unavailable."""
     noc_block = device.get_block(loc)
     if not noc_block:
-        util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a NOC block.")
+        util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have a NOC block.")
         return None
 
     debug_bus_signal_store = noc_block.debug_bus
     if debug_bus_signal_store is None:
-        util.ERROR(f"Device {device._id} at location {loc.to_user_str()} does not have a debug bus.")
+        util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have a debug bus.")
         return None
 
     return debug_bus_signal_store
@@ -222,7 +222,7 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
     signal_data.sort(key=lambda x: (x[0], x[1]))
 
     # Display results
-    formatter.print_header(f"=== Device {device._id} - location {loc.to_str('logical')})", style="bold")
+    formatter.print_header(f"=== Device {device.id} - location {loc.to_str('logical')})", style="bold")
     formatter.display_grouped_data(
         {"Signals": signal_data},
         [("Group", ""), ("Name", ""), ("Value", "")],
@@ -251,14 +251,14 @@ def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: di
     # Handle case of no groups
     if len(names) == 0:
         formatter.print_header(
-            f"=== Device {device._id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold"
+            f"=== Device {device.id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold"
         )
         print("No signal groups available.")
         return
 
     # Display results
     formatter.print_header(
-        f"=== Device {device._id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold"
+        f"=== Device {device.id} - location {loc.to_str('logical')} - Signal Groups ===", style="bold"
     )
     formatter.display_grouped_data(
         {"Groups": [(name,) for name in names]},
@@ -318,7 +318,7 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
         formatted_data.append((signal_name, formatted_value))
 
     # Display results
-    header = f"=== Device {device._id} - location {loc.to_str('logical')} - Group: {group_name} ==="
+    header = f"=== Device {device.id} - location {loc.to_str('logical')} - Group: {group_name} ==="
     formatter.print_header(header, style="bold")
     formatter.display_grouped_data(
         {group_name: formatted_data},
@@ -334,7 +334,7 @@ def handle_signal_reading_command(device: Device, loc: OnChipCoordinate, params:
     if debug_bus_signal_store is None:
         return
 
-    where = f"device:{device._id} loc:{loc.to_user_str()} "
+    where = f"device:{device.id} loc:{loc.to_user_str()} "
     for signal in params["signals"]:
         try:
             if isinstance(signal, str) and debug_bus_signal_store.is_combined_signal(signal):

@@ -113,18 +113,18 @@ def run(cmd_text, context, ui_state: UIState):
                 except:
                     raise ValueError(f"Invalid value for max-regs. Expected an integer, but got {max_regs}")
 
-                INFO(f"Register names that match pattern on device {device.id()}")
+                INFO(f"Register names that match pattern on device {device.id}")
                 print_matches(register_pattern, register_names, max_regs)
             else:
                 register, reg_name = register_store.parse_register_description(dopt.args["<register>"])
                 if value != None:
                     register_store.write_register(register, value)
                     INFO(
-                        f"Register {reg_name} on device {device.id()} and location {loc} written with value {value_str}."
+                        f"Register {reg_name} on device {device.id} and location {loc} written with value {value_str}."
                     )
                 else:
                     reg_value = register_store.read_register(register)
                     reg_data_type = register.data_type if data_type is None else data_type
 
-                    INFO(f"Value of register {reg_name} on device {device.id()} and location {loc}:")
+                    INFO(f"Value of register {reg_name} on device {device.id} and location {loc}:")
                     print(format_register_value(reg_value, reg_data_type, register.mask.bit_count()))

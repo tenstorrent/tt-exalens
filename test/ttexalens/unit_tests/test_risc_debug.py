@@ -115,7 +115,7 @@ class TestDebugging(unittest.TestCase):
         assert l1_start is not None, "L1 address should not be None."
         word_bytes = 0x00100073.to_bytes(4, byteorder="little")
         bytes = word_bytes * (risc_info.l1.size // 4)
-        write_to_device(self.core_sim.location, l1_start, bytes, self.device._id, self.core_sim.context)
+        write_to_device(self.core_sim.location, l1_start, bytes, self.device.id, self.core_sim.context)
 
         # Take risc out of reset
         if risc_info.can_change_code_start_address:

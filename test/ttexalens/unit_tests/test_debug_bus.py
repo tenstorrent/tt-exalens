@@ -176,7 +176,7 @@ class TestDebugBus(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             self.debug_bus.get_signal_description(signal_name)
         self.assertIn(
-            f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device._id}.",
+            f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device.id}.",
             str(cm.exception),
         )
 
