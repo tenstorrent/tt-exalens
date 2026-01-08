@@ -61,7 +61,7 @@ jobs:
       os: ubuntu-${{ inputs.ubuntu-version }}
 
   set-latest:
-    # Set the latest tag on the IRD image
+    # Set the latest tag on the docker image
     runs-on: ubuntu-latest
     needs: build-image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -79,9 +79,6 @@ jobs:
           CI_IMAGE_NAME=ghcr.io/${{ github.repository }}/tt-exalens-ci-ubuntu-${{ inputs.ubuntu-version }}
           echo "Setting latest tag on the image $CI_IMAGE_NAME:$DOCKER_TAG"
           skopeo copy "docker://$CI_IMAGE_NAME:$DOCKER_TAG" "docker://$CI_IMAGE_NAME:latest"
-          IRD_IMAGE_NAME=ghcr.io/${{ github.repository }}/tt-exalens-ird-ubuntu-${{ inputs.ubuntu-version }}
-          echo "Setting latest tag on the image $IRD_IMAGE_NAME:$DOCKER_TAG"
-          skopeo copy "docker://$IRD_IMAGE_NAME:$DOCKER_TAG" "docker://$IRD_IMAGE_NAME:latest"
 
   run-tests:
     needs:
