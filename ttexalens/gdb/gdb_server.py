@@ -21,6 +21,7 @@ from ttexalens.gdb.gdb_file_server import GdbFileServer
 from ttexalens.context import Context
 from ttexalens import util as util
 from ttexalens.hardware.risc_debug import RiscLocation
+from ttexalens.memory_access import RestrictedMemoryAccessError
 
 # Helper class returns currently debugging list of threads to gdb client in paged manner
 class GdbThreadListPaged:
@@ -371,8 +372,13 @@ class GdbServer(threading.Thread):
                 writer.append(b"E01")
             else:
                 # Read memory bytes
-                buffer = self.current_process.risc_debug.read_memory_bytes(address, length)
-                writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
+                try:
+                    buffer = self.current_process.mem_access.read(address, length)
+                    writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
+                except RestrictedMemoryAccessError as e:
+                    util.ERROR(str(e))
+                    self.send_console_message(writer.socket, f"TTExaLens: {str(e)}")
+                    writer.append(b"E04")  # restricted memory access
         elif parser.parse(b"M"):  # Write length addressable memory units starting at address addr.
             # ‘M addr,length:XX…’
             address = parser.parse_hex()
@@ -397,7 +403,12 @@ class GdbServer(threading.Thread):
                     data.append(digit)
 
                 # Write memory bytes
-                self.current_process.risc_debug.write_memory_bytes(address, bytes(data))
+                try:
+                    self.current_process.mem_access.write(address, bytes(data))
+                except RestrictedMemoryAccessError as e:
+                    util.ERROR(str(e))
+                    self.send_console_message(writer.socket, f"TTExaLens: {str(e)}")
+                    writer.append(b"E04")  # restricted memory access
                 writer.append(b"OK")
         elif parser.parse(b"p"):  # Read the value of register n; n is in hex.
             # ‘p n’
@@ -924,11 +935,15 @@ class GdbServer(threading.Thread):
             elif address is None or length is None or length <= 0:
                 writer.append(b"E01")
             else:
-                # Reply with data should start with 'b'
-                writer.append(b"b")
                 # Read memory bytes
-                buffer = self.current_process.risc_debug.read_memory_bytes(address, length)
-                writer.append(buffer)
+                try:
+                    buffer = self.current_process.mem_access.read(address, length)
+                    writer.append(b"b")
+                    writer.append(buffer)  # Reply with data should start with 'b'
+                except RestrictedMemoryAccessError as e:
+                    util.ERROR(str(e))
+                    self.send_console_message(writer.socket, f"TTExaLens: {str(e)}")
+                    writer.append(b"E04")  # restricted memory access
         elif parser.parse(b"X"):  # Write data to memory, where the data is transmitted in binary.
             # ‘X addr,length:XX…’
             try:
@@ -945,9 +960,14 @@ class GdbServer(threading.Thread):
                 elif self.current_process is None:
                     writer.append(b"E02")
                 else:
-                    # Write memory bytes
-                    self.current_process.risc_debug.write_memory_bytes(address, data[:length])
-                    writer.append(b"OK")
+                    try:
+                        # Write memory bytes
+                        self.current_process.risc_debug.write_memory_bytes(address, data[:length])
+                        writer.append(b"OK")
+                    except RestrictedMemoryAccessError as e:
+                        util.ERROR(str(e))
+                        self.send_console_message(writer.socket, f"TTExaLens: {str(e)}")
+                        writer.append(b"E04")  # restricted memory access
             except:
                 writer.append(b"E03")
         elif parser.parse(b"z0,"):  # Remove a software breakpoint at address of type kind.
@@ -1167,6 +1187,15 @@ class GdbServer(threading.Thread):
         else:
             writer.append(b"m")
             writer.append_string(message[offset : offset + length])
+
+    def send_console_message(self, client: ClientSocket, message: str) -> None:
+        try:
+            writer = GdbMessageWriter(client)
+            writer.append(b"O")
+            writer.append_string_as_hex(message)
+            writer.send()
+        except Exception as e:
+            util.WARN(f"Failed to send console message to GDB: {e}")
 
     def create_osdata_types_response(self):
         # Currently we only support processes
