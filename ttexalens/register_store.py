@@ -208,11 +208,11 @@ class RegisterStore:
             return self.registers[register_name]
         elif self.neo_id is None:
             raise ValueError(
-                f"Unknown register name '{register_name}' on {self.location.to_user_str()} for device {self.device._id}."
+                f"Unknown register name '{register_name}' on {self.location.to_user_str()} for device {self.device.id}."
             )
         else:
             raise ValueError(
-                f"Unknown register name '{register_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device._id}."
+                f"Unknown register name '{register_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device.id}."
             )
 
     def get_register_noc_address(self, register_name: str) -> int | None:

@@ -64,7 +64,7 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
     """
     Given a command trough args, run the corresponding RISC-V command
     """
-    where = f"{risc_name} {loc.to_str('logical')} [{device._id}]"
+    where = f"{risc_name} {loc.to_str('logical')} [{device.id}]"
 
     noc_block = device.get_block(loc)
     risc = noc_block.get_risc_debug(risc_name)

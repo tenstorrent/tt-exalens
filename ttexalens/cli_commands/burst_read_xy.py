@@ -34,7 +34,6 @@ from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_words_from_device, read_word_from_device
-from ttexalens.object import DataArray
 from ttexalens import util as util
 from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
 
@@ -102,11 +101,11 @@ def print_a_read(header, addr, val, comment=""):
 
 
 def print_memory_block(header: str, start_addr: int, data: list[int], bytes_per_entry: int, is_hex: bool):
-    da = DataArray(f"{header} : 0x{start_addr:08x} ({len(data) * 4} bytes)", 4)
+    da = util.DataArray(f"{header} : 0x{start_addr:08x} ({len(data) * 4} bytes)", 4)
     da.data = data
     if bytes_per_entry != 4:
         da.to_bytes_per_entry(bytes_per_entry)
-    print(f"{da._id}\n{util.dump_memory(start_addr, da.data, bytes_per_entry, 16, is_hex)}")
+    print(f"{da.id}\n{util.dump_memory(start_addr, da.data, bytes_per_entry, 16, is_hex)}")
 
 
 def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_format="hex32", context=None):

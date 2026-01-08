@@ -106,6 +106,9 @@ from rich.rule import Rule
 
 from typing import Any
 
+from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.device import Device
+
 # Shared console instance that commands can use
 console = Console()
 
@@ -289,17 +292,19 @@ class RichFormatter:
     # Header and Section Formatting
     #
 
-    def print_device_header(self, device, location, location_format: str = "noc0", style: str = "bold green") -> None:
+    def print_device_header(
+        self, device: Device, location: OnChipCoordinate, location_format: str = "noc0", style: str = "bold green"
+    ) -> None:
         """
         Print a standardized device and location header.
 
         Args:
-            device: Device object with id() method
-            location: Location object with to_str() method
+            device: Device object
+            location: OnChipCoordinate object
             location_format: Format string for location.to_str()
             style: Rich style string for the header
         """
-        console.print(f"[{style}]==== Device {device.id()} - Location: {location.to_str(location_format)}[/{style}]")
+        console.print(f"[{style}]==== Device {device.id} - Location: {location.to_str(location_format)}[/{style}]")
 
     def print_section_header(
         self, title: str, style: str = "bold blue", line_style: str = "dim", line_char: str = "="

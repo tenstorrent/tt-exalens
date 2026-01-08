@@ -69,4 +69,4 @@ def run(cmd_text, context, ui_state: UIState):
                     return
             else:
                 risc_name = risc
-            run_elf(dopt.args["<elf-file>"], loc, risc_name, None, device.id(), context)
+            run_elf(dopt.args["<elf-file>"], loc, risc_name, None, device.id, context)
