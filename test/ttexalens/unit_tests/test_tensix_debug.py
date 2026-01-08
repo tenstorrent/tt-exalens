@@ -5,7 +5,6 @@ import math
 import unittest
 from parameterized import parameterized_class, parameterized
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
-from ttexalens import tt_exalens_init
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context

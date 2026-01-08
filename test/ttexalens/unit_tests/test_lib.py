@@ -10,7 +10,7 @@ from datetime import timedelta
 
 from parameterized import parameterized, parameterized_class
 
-from test.ttexalens.unit_tests.test_base import init_cached_test_context
+from test.ttexalens.unit_tests.test_base import get_parsed_elf_file, init_cached_test_context
 import ttexalens as lib
 from ttexalens import util
 
@@ -590,7 +590,8 @@ class TestRunElf(unittest.TestCase):
 
         # Run an ELF that writes to the addr and check if it executed correctly
         elf_path = self.get_elf_path(elf_name, risc_name)
-        lib.run_elf(elf_path, location, risc_name, context=self.context)
+        elf = get_parsed_elf_file(elf_path)
+        lib.run_elf(elf, location, risc_name, context=self.context)
         ret = lib.read_words_from_device(location, addr, context=self.context)
         self.assertEqual(ret[0], 0x12345678)
 
@@ -628,8 +629,8 @@ class TestRunElf(unittest.TestCase):
         """ Running old elf test, formerly done with -t option. """
         location = "0,0"
         elf_path = self.get_elf_path("sample.debug", risc_name)
-
-        lib.run_elf(elf_path, location, risc_name, context=self.context)
+        elf = get_parsed_elf_file(elf_path)
+        lib.run_elf(elf, location, risc_name, context=self.context)
 
         # Testing
         loc = OnChipCoordinate.create(location, device=self.device)
@@ -952,11 +953,11 @@ class TestCallStack(unittest.TestCase):
     RECURSION_COUNT = [1, 10, 40]
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
-    def test_callstack_with_parsing(self, elf_name, recursion_count):
+    def test_callstack_with_parsing(self, elf_name: str, recursion_count: int):
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
-        self.loader.run_elf(elf_path)
-        parsed_elf = lib.parse_elf(elf_path, self.context)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
             self.location, parsed_elf, None, self.risc_name, None, 100, True
         )
@@ -971,11 +972,14 @@ class TestCallStack(unittest.TestCase):
         )
         self.compare_callstacks(callstack, gdb_callstack)
 
-    @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
-    def test_callstack(self, elf_name: str, recursion_count: int):
+    def test_callstack(self):
+        # No need to test multiple versions here, they are tested in test_callstack_with_parsing. Here we just test that callstack works with elf path.
+        elf_name = "callstack.release"
+        recursion_count = 1
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
-        self.loader.run_elf(elf_path)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -992,8 +996,11 @@ class TestCallStack(unittest.TestCase):
     def test_callstack_namespace(self, elf_name):
         lib.write_words_to_device(self.location, 0x64000, 0)
         elf_path = self.get_elf_path(elf_name)
-        self.loader.run_elf(elf_path)
-        callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
         self.assertEqual(len(callstack), 3)
         self.assertEqual(callstack[0].function_name, "halt")
         self.assertEqual(callstack[1].function_name, "ns::foo")
@@ -1007,19 +1014,21 @@ class TestCallStack(unittest.TestCase):
     def test_top_callstack_with_parsing(self, recursion_count: int):
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.debug")
-        self.loader.run_elf(elf_path)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
-        parsed_elf = lib.parse_elf(elf_path, self.context)
         callstack: list[CallstackEntry] = lib.top_callstack(pc, parsed_elf, None, self.context)
         self.assertEqual(len(callstack), 1)
         self.assertEqual(callstack[0].function_name, "halt")
 
-    @parameterized.expand(RECURSION_COUNT)
-    def test_top_callstack(self, recursion_count: int):
+    def test_top_callstack(self):
+        # No need to test multiple versions here, they are tested in test_top_callstack_with_parsing. Here we just test that top_callstack works with elf path.
+        recursion_count = 1
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.debug")
-        self.loader.run_elf(elf_path)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
         callstack: list[CallstackEntry] = lib.top_callstack(pc, elf_path, None, self.context)
@@ -1030,10 +1039,11 @@ class TestCallStack(unittest.TestCase):
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.release")
-        self.loader.run_elf(elf_path)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
-        callstack: list[CallstackEntry] = lib.top_callstack(pc, elf_path, None, self.context)
+        callstack: list[CallstackEntry] = lib.top_callstack(pc, parsed_elf, None, self.context)
 
         self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
         for i in range(0, expected_f1_on_callstack_count):

@@ -8,6 +8,7 @@ from ttexalens import util
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.elf.parsed import ParsedElfFile
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.memory_access import MemoryAccess
@@ -161,21 +162,22 @@ class ElfLoader:
             return address
         return address
 
-    def load_elf_sections(self, elf_path, loader_data: str | int, loader_code: str | int):
+    def load_elf_sections(self, elf_path: str | ParsedElfFile, loader_data: str | int, loader_code: str | int):
         """
         Given an ELF file, this function loads the sections specified in SECTIONS_TO_LOAD to the
         memory of the RISC-V core. It also loads (into location 0) the jump instruction to the
         address of the .init section.
         """
-        if not os.path.exists(elf_path):
-            raise FileNotFoundError(f"File {elf_path} not found")
-
         # Remember the .init section address to jump to after loading
         init_section_address = None
 
         try:
-            elf_file_io = self.context.file_api.get_binary(elf_path)
-            elf_file = ELFFile(elf_file_io)
+            if isinstance(elf_path, ParsedElfFile):
+                elf_file = elf_path.elf
+                elf_path = elf_path.elf_file_path
+            else:
+                elf_file_io = self.context.file_api.get_binary(elf_path)
+                elf_file = ELFFile(elf_file_io)
             address: int
             loader_data_address = loader_data if isinstance(loader_data, int) else None
             loader_code_address = loader_code if isinstance(loader_code, int) else None
@@ -233,7 +235,7 @@ class ElfLoader:
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
 
-    def load_elf(self, elf_path: str, return_start_address: bool = False) -> int | None:
+    def load_elf(self, elf_path: str | ParsedElfFile, return_start_address: bool = False) -> int | None:
         # Risc must be in reset
         assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.risc_location} is not in reset."
 
@@ -249,7 +251,7 @@ class ElfLoader:
             self.risc_debug.set_code_start_address(init_section_address)
             return None
 
-    def run_elf(self, elf_path: str):
+    def run_elf(self, elf_path: str | ParsedElfFile):
         # Make sure risc is in reset
         if not self.risc_debug.is_in_reset():
             self.risc_debug.set_reset_signal(True)
