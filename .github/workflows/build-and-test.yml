@@ -41,7 +41,7 @@ jobs:
           # Output the image name
           set pipefail
           .github/build-docker-images.sh ${{ inputs.ubuntu-version }} | tee docker.log
-          PUBLIC_DOCKER_CI_IMAGE=$(tail -n 2 docker.log | head -n 1)
+          PUBLIC_DOCKER_CI_IMAGE=$(tail -n 1 docker.log | head -n 1)
 
           # Replace use harbor.ci.tenstorrent.net if running on shared runner (tt-ubuntu-2204-large-stable)
           DOCKER_CI_IMAGE="harbor.ci.tenstorrent.net/$PUBLIC_DOCKER_CI_IMAGE"
