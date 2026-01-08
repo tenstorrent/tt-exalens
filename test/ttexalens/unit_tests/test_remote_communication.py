@@ -18,7 +18,7 @@ class TestRemoteCommunication(unittest.TestCase):
         cls.context = init_default_test_context()
 
         # We need to reset the board until #691 is fixed
-        cls.context.umd_api.warm_reset()
+        cls.context.umd_api.warm_reset(0)
         cls.context = init_default_test_context()
 
         cls.local_device = cls.context.devices[0]
@@ -28,7 +28,7 @@ class TestRemoteCommunication(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls.context.umd_api.warm_reset()
+        cls.context.umd_api.warm_reset(0)
         cls.context = init_default_test_context()
 
     def test_remote_communication(self):
