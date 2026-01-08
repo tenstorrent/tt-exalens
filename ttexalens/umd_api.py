@@ -122,7 +122,7 @@ class UmdApi:
             raise RuntimeError(f"Device with chip id {chip_id} not found.")
         return self.devices[chip_id]
 
-    def get_cluster_description(self):
+    def get_cluster_descriptor(self) -> tt_umd.ClusterDescriptor:
         return self.cluster_descriptor
 
     def warm_reset(self, noc_id: int, is_galaxy_configuration: bool = False) -> None:
