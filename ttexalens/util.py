@@ -1055,10 +1055,7 @@ class DataArray:
         self.id = id
         self.data = []
         self.bytes_per_entry = bytes_per_entry
-        if not cell_formatter:
-            self.cell_formatter = CELLFMT.hex(self.bytes_per_entry)
-        else:
-            self.cell_formatter = cell_formatter
+        self.cell_formatter = CELLFMT.hex(self.bytes_per_entry) if not cell_formatter else cell_formatter
 
     def to_bytes_per_entry(self, bytes_per_entry):
         dest = bytes()
