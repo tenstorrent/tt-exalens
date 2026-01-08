@@ -15,6 +15,7 @@ Options:
 Examples:
     go -m 1 -n 1 -d 0 -l 0,0
 """
+from ttexalens.device import Device
 import ttexalens.util as util
 from ttexalens.uistate import UIState
 from ttexalens.context import Context
@@ -44,8 +45,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             util.ERROR("4B mode must be 0 or 1")
             return
         ui_state.context.use_4B_mode = True if use_4B_mode == 1 else False
+    device: Device
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
-        ui_state.current_device_id = device.id()
+        ui_state.current_device_id = device.id
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             ui_state.current_location = loc
             break

@@ -137,6 +137,8 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
 
 def run(cmd_text, context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
+    device: Device
+    loc: OnChipCoordinate
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             riscs_to_include = list(
@@ -144,7 +146,7 @@ def run(cmd_text, context, ui_state: UIState):
             )
             table = get_register_data(device, context, loc, dopt.args, riscs_to_include)
             if table:
-                util.INFO(f"RISC-V registers for location {loc} on device {device.id()}")
+                util.INFO(f"RISC-V registers for location {loc} on device {device.id}")
                 print(table)
             else:
-                print(f"No data available for location {loc} on device {device.id()}")
+                print(f"No data available for location {loc} on device {device.id}")
