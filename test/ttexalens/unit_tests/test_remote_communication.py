@@ -17,10 +17,6 @@ class TestRemoteCommunication(unittest.TestCase):
     def setUpClass(cls):
         cls.context = init_default_test_context()
 
-        # We need to reset the board until #691 is fixed
-        cls.context.umd_api.warm_reset(0)
-        cls.context = init_default_test_context()
-
         cls.local_device = cls.context.devices[0]
         assert cls.local_device._has_mmio, "Could not find local device"
         cls.remote_device_id = cls.context.devices[1]._id if len(cls.context.devices) > 1 else None
@@ -28,8 +24,10 @@ class TestRemoteCommunication(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls.context.umd_api.warm_reset(0)
-        cls.context = init_default_test_context()
+        # If remote device was used, reset UMD to clean up state
+        if cls.remote_device_id is not None:
+            cls.context.umd_api.warm_reset(0)
+            cls.context = init_default_test_context()
 
     def test_remote_communication(self):
         data = 0x12345678
