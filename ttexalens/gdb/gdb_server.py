@@ -394,22 +394,27 @@ class GdbServer(threading.Thread):
                 writer.append(b"E02")
             else:
                 # Parse all the hex data into bytes
-                data = bytearray()
-                for _ in range(length):
-                    digit = parser.read_hex(2)
-                    if digit is None:
+                # data is already bytes from read_rest(), convert hex string to bytes
+                parsed_data = bytearray()
+                for i in range(0, len(data), 2):
+                    if i + 1 >= len(data):
                         writer.append(b"E03")
                         return True
-                    data.append(digit)
+                    try:
+                        byte_val = int(data[i : i + 2], 16)
+                        parsed_data.append(byte_val)
+                    except ValueError:
+                        writer.append(b"E03")
+                        return True
 
                 # Write memory bytes
                 try:
-                    self.current_process.mem_access.write(address, bytes(data))
+                    self.current_process.mem_access.write(address, bytes(parsed_data))
+                    writer.append(b"OK")
                 except RestrictedMemoryAccessError as e:
                     util.ERROR(str(e))
                     self.send_console_message(writer.socket, f"TTExaLens: {str(e)}")
                     writer.append(b"E04")  # restricted memory access
-                writer.append(b"OK")
         elif parser.parse(b"p"):  # Read the value of register n; n is in hex.
             # ‘p n’
             register = parser.parse_hex()
@@ -962,7 +967,7 @@ class GdbServer(threading.Thread):
                 else:
                     try:
                         # Write memory bytes
-                        self.current_process.risc_debug.write_memory_bytes(address, data[:length])
+                        self.current_process.mem_access.write(address, data[:length])
                         writer.append(b"OK")
                     except RestrictedMemoryAccessError as e:
                         util.ERROR(str(e))
@@ -1189,6 +1194,9 @@ class GdbServer(threading.Thread):
             writer.append_string(message[offset : offset + length])
 
     def send_console_message(self, client: ClientSocket, message: str) -> None:
+        # Only send console messages in non-stop mode to avoid breaking the protocol
+        if not self.is_non_stop:
+            return
         try:
             writer = GdbMessageWriter(client)
             writer.append(b"O")
