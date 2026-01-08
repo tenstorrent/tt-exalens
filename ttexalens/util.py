@@ -1082,7 +1082,6 @@ class DataArray:
         """
         return b"".join(int.to_bytes(v, length=self.bytes_per_entry, byteorder="little") for v in self.data)
 
-
     # subsript operator
     def __getitem__(self, key):
         return self.data[key]
