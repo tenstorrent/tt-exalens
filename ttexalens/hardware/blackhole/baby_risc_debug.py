@@ -30,7 +30,7 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
 
         noc_address = self.risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
-            return self.risc_info.noc_block.location.noc_read(noc_address, size_bytes)
+            return self.risc_info.noc_block.location.noc_read(noc_address, size_bytes, use_4B_mode=True)
         else:
             self.assert_trisc2_address(address)
             return super().read_memory_bytes(address, size_bytes)
@@ -41,7 +41,7 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
 
         noc_address = self.risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
-            self.risc_info.noc_block.location.noc_write(noc_address, data)
+            self.risc_info.noc_block.location.noc_write(noc_address, data, use_4B_mode=True)
         else:
             self.assert_trisc2_address(address)
             super().write_memory_bytes(address, data)
