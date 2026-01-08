@@ -377,7 +377,6 @@ class GdbServer(threading.Thread):
                     writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
                 except RestrictedMemoryAccessError as e:
                     util.ERROR(str(e))
-                    self.send_console_message(writer.socket, f"TTExaLens: {str(e)}")
                     writer.append(b"E04")  # restricted memory access
         elif parser.parse(b"M"):  # Write length addressable memory units starting at address addr.
             # ‘M addr,length:XX…’
@@ -413,7 +412,6 @@ class GdbServer(threading.Thread):
                     writer.append(b"OK")
                 except RestrictedMemoryAccessError as e:
                     util.ERROR(str(e))
-                    self.send_console_message(writer.socket, f"TTExaLens: {str(e)}")
                     writer.append(b"E04")  # restricted memory access
         elif parser.parse(b"p"):  # Read the value of register n; n is in hex.
             # ‘p n’
@@ -947,7 +945,6 @@ class GdbServer(threading.Thread):
                     writer.append(buffer)  # Reply with data should start with 'b'
                 except RestrictedMemoryAccessError as e:
                     util.ERROR(str(e))
-                    self.send_console_message(writer.socket, f"TTExaLens: {str(e)}")
                     writer.append(b"E04")  # restricted memory access
         elif parser.parse(b"X"):  # Write data to memory, where the data is transmitted in binary.
             # ‘X addr,length:XX…’
@@ -971,7 +968,6 @@ class GdbServer(threading.Thread):
                         writer.append(b"OK")
                     except RestrictedMemoryAccessError as e:
                         util.ERROR(str(e))
-                        self.send_console_message(writer.socket, f"TTExaLens: {str(e)}")
                         writer.append(b"E04")  # restricted memory access
             except:
                 writer.append(b"E03")
@@ -1192,18 +1188,6 @@ class GdbServer(threading.Thread):
         else:
             writer.append(b"m")
             writer.append_string(message[offset : offset + length])
-
-    def send_console_message(self, client: ClientSocket, message: str) -> None:
-        # Only send console messages in non-stop mode to avoid breaking the protocol
-        if not self.is_non_stop:
-            return
-        try:
-            writer = GdbMessageWriter(client)
-            writer.append(b"O")
-            writer.append_string_as_hex(message)
-            writer.send()
-        except Exception as e:
-            util.WARN(f"Failed to send console message to GDB: {e}")
 
     def create_osdata_types_response(self):
         # Currently we only support processes
