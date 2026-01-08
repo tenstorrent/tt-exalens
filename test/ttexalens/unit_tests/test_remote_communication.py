@@ -56,6 +56,6 @@ class TestRemoteCommunication(unittest.TestCase):
         # Test writing to/reading from remote device again (after halting default eth core)
         write_words_to_device(self.tensix_loc, address, data, self.remote_device_id)
         ret = read_word_from_device(self.tensix_loc, address, self.remote_device_id)
-        eth_core_after = self.context.umd_api.get_remote_transfer_eth_core(self.remote_device_id)
+        eth_core_after = self.context.umd_api.get_device(self.remote_device_id).get_remote_transfer_eth_core()
         self.assertNotEqual(eth_core, eth_core_after, "ETH core used for remote communication has not changed")
         self.assertEqual(ret, data)
