@@ -354,7 +354,7 @@ class TensixDebug:
         self.register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", df_to_write.value)
         self.direct_dest_write(data, df)
 
-    def write_regfile(self, regfile: int | str | REGFILE, data: list[int | float], df: TensixDataFormat) -> None:
+    def write_regfile(self, regfile: int | str | REGFILE, data: list[int] | list[float], df: TensixDataFormat) -> None:
         """
         Writes data to the register file.
         Writing is only supported for dest register and only for formats using 32 bit mode (Float32, Int32, UInt32, Int8, UInt8)

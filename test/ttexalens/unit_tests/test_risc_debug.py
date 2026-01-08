@@ -8,6 +8,7 @@ from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from ttexalens import Context, write_to_device
+from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebugWatchpointState, get_register_index
 from ttexalens.elf_loader import ElfLoader
 
@@ -50,6 +51,7 @@ class TestDebugging(unittest.TestCase):
     context: Context  # TTExaLens context
     core_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
     core_sim: RiscvCoreSimulator  # RISC-V core simulator instance
+    device: Device
 
     @classmethod
     def setUpClass(cls):

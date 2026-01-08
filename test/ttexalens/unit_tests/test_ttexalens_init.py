@@ -14,7 +14,7 @@ from ttexalens import (
     write_to_device,
 )
 from ttexalens.umd_api import local_init
-from ttexalens.server import start_server
+from ttexalens.server import TTExaLensServer, start_server
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 
 
@@ -27,6 +27,8 @@ class TestLocalTTExaLensInit(unittest.TestCase):
 
 
 class TestRemoteTTExaLens(unittest.TestCase):
+    server: TTExaLensServer
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.server = start_server(5555, init_default_test_context())

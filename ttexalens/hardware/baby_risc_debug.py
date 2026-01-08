@@ -167,15 +167,17 @@ RISCV_REGISTER_INDEX_BY_NAME = {
 }
 
 
-def get_register_index(reg_index_or_name):
+def get_register_index(reg_index_or_name: int | str) -> int:
     if reg_index_or_name in RISCV_REGISTER_NAMES_BY_INDEX:
+        assert isinstance(reg_index_or_name, int)
         return reg_index_or_name
     if reg_index_or_name in RISCV_REGISTER_INDEX_BY_NAME:
+        assert isinstance(reg_index_or_name, str)
         return RISCV_REGISTER_INDEX_BY_NAME[reg_index_or_name]
     raise ValueError(f"Unknown register {reg_index_or_name}")
 
 
-def get_register_name(reg_index_or_name):
+def get_register_name(reg_index_or_name: int | str) -> str:
     index = get_register_index(reg_index_or_name)
     return RISCV_REGISTER_NAMES_BY_INDEX[index]
 
@@ -492,10 +494,10 @@ class BabyRiscDebug(RiscDebug):
     def __write(self, addr, data):
         self.location.noc_write32(addr, data)
 
-    def __read(self, addr):
+    def __read(self, addr) -> int:
         return self.location.noc_read32(addr)
 
-    def is_in_reset(self):
+    def is_in_reset(self) -> bool:
         reset_reg = self.__read(self.RISC_DBG_SOFT_RESET0)
         return ((reset_reg >> self.risc_info.reset_flag_shift) & 1) != 0
 

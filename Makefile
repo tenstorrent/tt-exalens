@@ -28,7 +28,7 @@ test:
 .PHONY: mypy
 mypy:
 	@echo "Running mypy"
-	python3 -m mypy -p ttexalens
+	python3 -m mypy
 
 .PHONY: wheel
 wheel:
