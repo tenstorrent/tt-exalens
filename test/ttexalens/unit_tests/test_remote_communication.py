@@ -9,9 +9,9 @@ from ttexalens import Context, OnChipCoordinate, Device, read_word_from_device, 
 
 class TestRemoteCommunication(unittest.TestCase):
     context: Context  # TTExaLens context
-    local_devices: Device  # Local (PCIE) devices
+    local_device: Device  # Local (PCIE) device
     remote_device_id: int | None
-    tensix_core: str
+    tensix_loc: str
 
     @classmethod
     def setUpClass(cls):
@@ -45,6 +45,7 @@ class TestRemoteCommunication(unittest.TestCase):
         # Find eth core used for remote communication and halt it
         eth_core = self.context.umd_api.get_device(self.remote_device_id).get_remote_transfer_eth_core()
         self.assertIsNotNone(eth_core, "Could not find ETH core used for remote communication")
+        assert eth_core is not None
         coord_str = f"e{eth_core[0]},{eth_core[1]}"
         loc = OnChipCoordinate.create(coord_str, self.local_device)
         noc_block = self.local_device.get_block(loc)

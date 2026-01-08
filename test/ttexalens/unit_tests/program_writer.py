@@ -11,7 +11,7 @@ class RiscvProgramWriter:
     def __init__(self, core_simulator: RiscvCoreSimulator):
         self.core_simulator = core_simulator
         self.start_address = core_simulator.program_base_address
-        self.instructions = []
+        self.instructions: list[int] = []
 
     @property
     def current_address(self) -> int:

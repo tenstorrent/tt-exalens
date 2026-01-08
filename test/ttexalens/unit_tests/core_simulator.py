@@ -13,7 +13,12 @@ from ttexalens import (
 )
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.elf_loader import ElfLoader
-from ttexalens.hardware.baby_risc_debug import BabyRiscDebug, BabyRiscDebugHardware, get_register_index
+from ttexalens.hardware.baby_risc_debug import (
+    BabyRiscDebug,
+    BabyRiscDebugHardware,
+    BabyRiscDebugStatus,
+    get_register_index,
+)
 
 
 class RiscvCoreSimulator:
@@ -189,7 +194,7 @@ class RiscvCoreSimulator:
         """
         return get_register_index(reg_name)
 
-    def read_status(self):
+    def read_status(self) -> BabyRiscDebugStatus:
         return self.debug_hardware.read_status()
 
     def get_elf_path(self, app_name):

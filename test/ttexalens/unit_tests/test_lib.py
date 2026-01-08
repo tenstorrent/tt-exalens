@@ -77,6 +77,8 @@ class TestAutoContext(unittest.TestCase):
 
 
 class TestReadWrite(unittest.TestCase):
+    context: Context
+
     @classmethod
     def setUpClass(cls):
         cls.context = init_cached_test_context()
@@ -141,15 +143,15 @@ class TestReadWrite(unittest.TestCase):
         lib.write_to_device(location, address, data, device_id)
 
         # Verify buffer as words
-        ret = lib.read_words_from_device(location, address, device_id, len(words))
-        self.assertEqual(ret, words)
+        read_words = lib.read_words_from_device(location, address, device_id, len(words))
+        self.assertEqual(read_words, words)
 
         # Write words
         lib.write_words_to_device(location, address, words, device_id)
 
         # Read buffer
-        ret = lib.read_from_device(location, address, device_id, num_bytes=len(data))
-        self.assertEqual(ret, data)
+        read_bytes = lib.read_from_device(location, address, device_id, num_bytes=len(data))
+        self.assertEqual(read_bytes, data)
 
     def test_write_read_words(self):
         """Test write words -- read words."""
@@ -556,6 +558,9 @@ class TestReadWrite(unittest.TestCase):
 
 
 class TestRunElf(unittest.TestCase):
+    context: Context
+    device: Device
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.context = init_cached_test_context()
@@ -699,7 +704,7 @@ class TestRunElf(unittest.TestCase):
         rdbg.debug_hardware.set_watchpoint_on_memory_write(4, testbyteaccess.get_address() + 4)
         rdbg.debug_hardware.set_watchpoint_on_memory_write(5, testbyteaccess.get_address() + 5)
 
-        mbox_val = 1
+        mbox_val: int = 1
         timeout_retries = 20
         while mbox_val >= 0 and mbox_val < 0xFF000000 and timeout_retries > 0:
             if rdbg.is_halted():
@@ -714,7 +719,7 @@ class TestRunElf(unittest.TestCase):
                     pass
                 else:
                     raise e
-            mbox_val = mailbox.read_value()
+            mbox_val = mailbox.read_value()  # type: ignore
             # Step 5b: Continue RISC
             timeout_retries -= 1
 
@@ -763,6 +768,9 @@ class TestRunElf(unittest.TestCase):
 
 
 class TestARC(unittest.TestCase):
+    context: Context
+    device: Device
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.context = init_cached_test_context()

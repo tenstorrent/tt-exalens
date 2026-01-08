@@ -24,6 +24,7 @@ class TestTensixDebug(unittest.TestCase):
     context: Context
     location: OnChipCoordinate
     tensix_debug: TensixDebug
+    location_str: str
 
     @classmethod
     def setUpClass(cls):
@@ -66,9 +67,9 @@ class TestTensixDebug(unittest.TestCase):
         ret = self.tensix_debug.read_regfile(regfile, num_tiles)
         if value is None:
             assert len(ret) == len(data)
-            assert all(abs(a - b) < error_threshold for a, b in zip(ret, data))
+            assert all(abs(a - b) < error_threshold for a, b in zip(ret, data) if isinstance(a, float))
         elif math.isnan(value):
-            assert all(math.isnan(a) for a in ret)
+            assert all(math.isnan(a) for a in ret if isinstance(a, float))
         else:
             assert ret == data
 

@@ -224,5 +224,5 @@ def pack_value_direct_access(value: int | float, df: TensixDataFormat) -> int:
         raise ValueError(f"Unsupported data format {df} for packing.")
 
 
-def pack_data_direct_access(data: list[int | float], df: TensixDataFormat) -> list[int]:
+def pack_data_direct_access(data: list[int] | list[float], df: TensixDataFormat) -> list[int]:
     return [pack_value_direct_access(value, df) for value in data]
