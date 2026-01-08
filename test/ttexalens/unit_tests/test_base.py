@@ -28,15 +28,15 @@ def init_default_test_context():
     if os.getenv("TTEXALENS_TESTS_REMOTE"):
         ip_address = os.getenv("TTEXALENS_TESTS_REMOTE_ADDRESS", "localhost")
         port = int(os.getenv("TTEXALENS_TESTS_REMOTE_PORT", "5555"))
-        _cached_test_context = init_ttexalens_remote(ip_address, port)
+        _cached_test_context = init_ttexalens_remote(ip_address, port, use_4B_mode=False)
     elif os.getenv("TTEXALENS_SIMULATOR"):
         # Reuse cached simulator context to prevent multiple simulator processes
         if _cached_simulator_context is None:
             simulation_directory = os.getenv("TTEXALENS_SIMULATOR")
-            _cached_simulator_context = init_ttexalens(simulation_directory=simulation_directory)
+            _cached_simulator_context = init_ttexalens(simulation_directory=simulation_directory, use_4B_mode=False)
         return _cached_simulator_context
     else:
-        _cached_test_context = init_ttexalens()
+        _cached_test_context = init_ttexalens(use_4B_mode=False)
     return _cached_test_context
 
 
@@ -50,7 +50,7 @@ def init_cached_test_context():
 def init_test_context(use_noc1: bool = False):
     if use_noc1:
         assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing for NOC1 not supported"
-        return init_ttexalens(use_noc1=True)
+        return init_ttexalens(use_noc1=True, use_4B_mode=False)
     else:
         return init_default_test_context()
 
