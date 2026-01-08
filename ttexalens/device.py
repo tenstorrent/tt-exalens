@@ -133,6 +133,10 @@ class Device(TTObject):
         self._init_coordinate_systems()
         self.unique_id = umd_device.unique_id
 
+    @property
+    def board_type(self) -> tt_umd.BoardType:
+        return self._context.cluster_descriptor.get_board_type(self._id)
+
     @cached_property
     def firmware_version(self):
         noc_id = 1 if self._context.use_noc1 else 0

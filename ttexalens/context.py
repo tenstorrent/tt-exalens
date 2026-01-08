@@ -2,20 +2,20 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
-from abc import abstractmethod
 from functools import cached_property
+from sortedcontainers import SortedSet
 from typing import Iterable, TYPE_CHECKING
+import tt_umd
+
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
 from ttexalens.firmware import ELF
-from sortedcontainers import SortedSet
 
-from ttexalens.hardware.risc_debug import RiscLocation
-from ttexalens.hardware.risc_debug import RiscLocation
 
 if TYPE_CHECKING:
-    from ttexalens.device import Device
     from ttexalens.command_parser import CommandMetadata
+    from ttexalens.device import Device
+    from ttexalens.hardware.risc_debug import RiscLocation
     from ttexalens.server import FileAccessApi
     from ttexalens.umd_api import UmdApi
 
@@ -55,8 +55,8 @@ class Context:
         return devices
 
     @cached_property
-    def cluster_descriptor(self):
-        return self.umd_api.get_cluster_description()
+    def cluster_descriptor(self) -> tt_umd.ClusterDescriptor:
+        return self.umd_api.get_cluster_descriptor()
 
     @cached_property
     def device_ids(self) -> SortedSet[int]:
