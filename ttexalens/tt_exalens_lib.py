@@ -277,7 +277,7 @@ def write_to_device(
 
 @trace_api
 def load_elf(
-    elf_file: str,
+    elf_file: str | ParsedElfFile,
     location: str | OnChipCoordinate | list[str | OnChipCoordinate],
     risc_name: str,
     neo_id: int | None = None,
@@ -289,7 +289,7 @@ def load_elf(
     Loads the given ELF file into the specified RISC core. RISC core must be in reset before loading the ELF.
 
     Args:
-        elf_file (str): Path to the ELF file to run.
+        elf_file (str | ParsedElfFile): ELF file to be loaded.
         location (str | OnChipCoordinate | list[str | OnChipCoordinate]): One of the following:
             1. "all" to run the ELF on all cores;
             2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -320,7 +320,7 @@ def load_elf(
     else:
         locations = [convert_coordinate(location, device_id, context)]
 
-    if not os.path.exists(elf_file):
+    if isinstance(elf_file, str) and not os.path.exists(elf_file):
         raise TTException(f"ELF file {elf_file} does not exist.")
 
     assert locations, "No valid core locations provided."
@@ -340,7 +340,7 @@ def load_elf(
 
 @trace_api
 def run_elf(
-    elf_file: str,
+    elf_file: str | ParsedElfFile,
     location: str | OnChipCoordinate | list[str | OnChipCoordinate],
     risc_name: str,
     neo_id: int | None = None,
@@ -351,7 +351,7 @@ def run_elf(
     Loads the given ELF file into the specified RISC core and executes it. Similar to load_elf, but RISC core is taken out of reset after load.
 
     Args:
-        elf_file (str): Path to the ELF file to run.
+        elf_file (str | ParsedElfFile): ELF file to be run.
         location (str | OnChipCoordinate | list[str | OnChipCoordinate]): One of the following:
             1. "all" to run the ELF on all cores;
             2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -381,7 +381,7 @@ def run_elf(
     else:
         locations = [convert_coordinate(location, device_id, context)]
 
-    if not os.path.exists(elf_file):
+    if isinstance(elf_file, str) and not os.path.exists(elf_file):
         raise TTException(f"ELF file {elf_file} does not exist.")
 
     assert locations, "No valid core locations provided."

@@ -2,15 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cached_property
-from test.ttexalens.unit_tests.test_base import get_core_location
-from ttexalens import (
-    Context,
-    write_to_device,
-    write_words_to_device,
-    read_from_device,
-    read_word_from_device,
-    parse_elf,
-)
+from test.ttexalens.unit_tests.test_base import get_core_location, get_parsed_elf_file
+from ttexalens import Context, write_to_device, write_words_to_device, read_from_device, read_word_from_device
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.baby_risc_debug import (
@@ -209,9 +202,8 @@ class RiscvCoreSimulator:
             return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
 
     def load_elf(self, app_name: str):
-        elf_path = self.get_elf_path(app_name)
-        self.loader.run_elf(elf_path)
+        self.loader.run_elf(self.parse_elf(app_name))
 
     def parse_elf(self, app_name: str):
         elf_path = self.get_elf_path(app_name)
-        return parse_elf(elf_path, self.context)
+        return get_parsed_elf_file(elf_path)
