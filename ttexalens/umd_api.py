@@ -43,6 +43,20 @@ io_device_type: SIMULATION
 
 @Pyro5.api.expose
 class UmdApi:
+    @staticmethod
+    def select_noc_id(noc_id: int, arch: tt_umd.ARCH | None = None):
+        """
+        Selects the NOC ID to be used for communication with the device by the current thread.
+        This method should be called before any UMD API calls are made.
+        """
+        if noc_id == 0:
+            tt_umd.set_thread_noc_id(tt_umd.NocId.NOC0)
+        else:
+            if arch == tt_umd.ARCH.QUASAR:
+                tt_umd.set_thread_noc_id(tt_umd.NocId.SYSTEM_NOC)
+            else:
+                tt_umd.set_thread_noc_id(tt_umd.NocId.NOC1)
+
     def __init__(
         self,
         init_jtag=False,
@@ -51,6 +65,7 @@ class UmdApi:
     ):
         self.devices: dict[int, UmdDevice] = {}
 
+        UmdApi.select_noc_id(1 if initialize_with_noc1 else 0)
         if simulation_directory is not None:
             tt_umd.logging.set_level(tt_umd.logging.Level.Debug)
             tt_device = tt_umd.RtlSimulationTTDevice.create(simulation_directory)
@@ -69,9 +84,6 @@ class UmdApi:
             # If Python wants DEBUG, it can set TT_LOGGER_LEVEL=debug before calling into this function.
             if "TT_LOGGER_LEVEL" not in os.environ:
                 tt_umd.logging.set_level(tt_umd.logging.Level.Error)
-
-            # TODO: Hack on UMD on how to use/initialize with noc1. This should be removed once we have a proper way to use noc1
-            tt_umd.TTDevice.use_noc1(initialize_with_noc1)
 
             discovery_options = tt_umd.TopologyDiscoveryOptions()
             discovery_options.io_device_type = tt_umd.IODeviceType.PCIe if not init_jtag else tt_umd.IODeviceType.JTAG
@@ -110,27 +122,11 @@ class UmdApi:
             raise RuntimeError(f"Device with chip id {chip_id} not found.")
         return self.devices[chip_id]
 
-    def arc_msg(
-        self,
-        noc_id: int,
-        chip_id: int,
-        msg_code: int,
-        wait_for_done: bool,
-        args: Sequence[int],
-        timeout: datetime.timedelta | float,
-    ):
-        return self.get_device(chip_id).arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
-
-    def read_arc_telemetry_entry(self, chip_id: int, telemetry_tag: int) -> int:
-        return self.get_device(chip_id).read_arc_telemetry_entry(telemetry_tag)
-
-    def get_remote_transfer_eth_core(self, chip_id: int) -> tuple[int, int] | None:
-        return self.get_device(chip_id).get_remote_transfer_eth_core()
-
     def get_cluster_description(self):
         return self.cluster_descriptor
 
-    def warm_reset(self, is_galaxy_configuration: bool = False) -> None:
+    def warm_reset(self, noc_id: int, is_galaxy_configuration: bool = False) -> None:
+        UmdApi.select_noc_id(noc_id)
         if is_galaxy_configuration:
             tt_umd.WarmReset.ubb_warm_reset()
         else:

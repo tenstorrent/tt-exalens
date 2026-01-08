@@ -8,6 +8,7 @@ import os
 import struct
 from typing import TypeVar, Callable, Any, cast
 
+from ttexalens.device import Device
 from ttexalens.tt_exalens_init import init_ttexalens
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
@@ -77,9 +78,10 @@ def validate_addr(addr: int) -> None:
         raise TTException("addr must be greater than or equal to 0.")
 
 
-def validate_device_id(device_id: int, context: Context) -> None:
+def validate_device_id(device_id: int, context: Context) -> Device:
     if device_id not in context.device_ids:
         raise TTException(f"Invalid device_id {device_id}.")
+    return context.devices[device_id]
 
 
 def convert_coordinate(
@@ -99,8 +101,8 @@ def convert_coordinate(
     """
     if not isinstance(location, OnChipCoordinate):
         context = check_context(context)
-        validate_device_id(device_id, context)
-        return OnChipCoordinate.create(location, device=context.devices[device_id])
+        device = validate_device_id(device_id, context)
+        return OnChipCoordinate.create(location, device)
     return location
 
 
@@ -129,7 +131,7 @@ def read_word_from_device(
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, coordinate.context)
-    return coordinate.device.noc_read32(coordinate, addr, noc_id)
+    return coordinate.noc_read32(addr, noc_id)
 
 
 @trace_api
@@ -164,7 +166,7 @@ def read_words_from_device(
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
-    bytes_data = coordinate.device.noc_read(coordinate, addr, 4 * word_count, noc_id, use_4B_mode)
+    bytes_data = coordinate.noc_read(addr, 4 * word_count, noc_id, use_4B_mode)
     data = list(struct.unpack(f"<{word_count}I", bytes_data))
     return data
 
@@ -200,7 +202,7 @@ def read_from_device(
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
-    return coordinate.device.noc_read(coordinate, addr, num_bytes, noc_id, use_4B_mode)
+    return coordinate.noc_read(addr, num_bytes, noc_id, use_4B_mode)
 
 
 @trace_api
@@ -231,10 +233,10 @@ def write_words_to_device(
     use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
 
     if isinstance(data, int):
-        coordinate.device.noc_write32(coordinate, addr, data, noc_id)
+        coordinate.noc_write32(addr, data, noc_id)
     else:
         byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-        coordinate.device.noc_write(coordinate, addr, byte_data, noc_id, use_4B_mode)
+        coordinate.noc_write(addr, byte_data, noc_id, use_4B_mode)
 
 
 @trace_api
@@ -270,7 +272,7 @@ def write_to_device(
     if len(data) == 0:
         raise TTException("Data to write must not be empty.")
 
-    coordinate.device.noc_write(coordinate, addr, data, noc_id, use_4B_mode)
+    coordinate.noc_write(addr, data, noc_id, use_4B_mode)
 
 
 @trace_api
@@ -312,8 +314,7 @@ def load_elf(
                 locations.append(convert_coordinate(loc, device_id, context))
     elif location == "all":
         context = check_context(context)
-        validate_device_id(device_id, context)
-        device = context.devices[device_id]
+        device = validate_device_id(device_id, context)
         for block_loc in device.get_block_locations(block_type="functional_workers"):
             locations.append(block_loc)
     else:
@@ -374,8 +375,7 @@ def run_elf(
                 locations.append(convert_coordinate(loc, device_id, context))
     elif location == "all":
         context = check_context(context)
-        validate_device_id(device_id, context)
-        device = context.devices[device_id]
+        device = validate_device_id(device_id, context)
         for block_loc in device.get_block_locations(block_type="functional_workers"):
             locations.append(block_loc)
     else:
@@ -418,16 +418,17 @@ def arc_msg(
     """
     context = check_context(context)
     noc_id = check_noc_id(noc_id, context)
-
-    validate_device_id(device_id, context)
+    device = validate_device_id(device_id, context)
     if timeout < datetime.timedelta(0):
         raise TTException("Timeout must be greater than or equal to 0.")
 
-    return list(context.umd_api.arc_msg(noc_id, device_id, msg_code, wait_for_done, args, timeout))
+    return list(device.arc_msg(noc_id, msg_code, wait_for_done, args, timeout))
 
 
 @trace_api
-def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None) -> int:
+def read_arc_telemetry_entry(
+    device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: int | None = None
+) -> int:
     """
     Reads an ARC telemetry entry from the device.
 
@@ -442,8 +443,7 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
     from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
 
     context = check_context(context)
-    validate_device_id(device_id, context)
-    device = context.devices[device_id]
+    device = validate_device_id(device_id, context)
     arc = device.arc_block
 
     if device.firmware_version < CUTOFF_FIRMWARE_VERSION:
@@ -462,7 +462,7 @@ def read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: 
     else:
         raise TTException(f"Invalid telemetry_tag type. Must be an int or str, but got {type(telemetry_tag)}")
 
-    return context.umd_api.read_arc_telemetry_entry(device_id, telemetry_tag_id)
+    return device.read_arc_telemetry_entry(noc_id, telemetry_tag_id)
 
 
 @trace_api
