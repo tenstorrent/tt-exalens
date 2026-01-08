@@ -134,7 +134,7 @@ class Device:
 
     @property
     def board_type(self) -> tt_umd.BoardType:
-        return self._context.cluster_descriptor.get_board_type(self._id)
+        return self._context.cluster_descriptor.get_board_type(self.id)
 
     @cached_property
     def firmware_version(self):
