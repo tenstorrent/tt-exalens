@@ -18,7 +18,7 @@ class TestRemoteCommunication(unittest.TestCase):
         cls.context = init_default_test_context()
 
         # We need to reset the board until #691 is fixed
-        cls.context.umd_api.warm_reset()
+        cls.context.umd_api.warm_reset(0)
         cls.context = init_default_test_context()
 
         cls.local_device = cls.context.devices[0]
@@ -28,7 +28,7 @@ class TestRemoteCommunication(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls.context.umd_api.warm_reset()
+        cls.context.umd_api.warm_reset(0)
         cls.context = init_default_test_context()
 
     def test_remote_communication(self):
@@ -43,7 +43,7 @@ class TestRemoteCommunication(unittest.TestCase):
         ret = read_word_from_device(self.tensix_loc, address, self.remote_device_id)
         self.assertEqual(ret, data)
         # Find eth core used for remote communication and halt it
-        eth_core = self.context.umd_api.get_remote_transfer_eth_core(self.remote_device_id)
+        eth_core = self.context.umd_api.get_device(self.remote_device_id).get_remote_transfer_eth_core()
         self.assertIsNotNone(eth_core, "Could not find ETH core used for remote communication")
         coord_str = f"e{eth_core[0]},{eth_core[1]}"
         loc = OnChipCoordinate.create(coord_str, self.local_device)
@@ -56,6 +56,6 @@ class TestRemoteCommunication(unittest.TestCase):
         # Test writing to/reading from remote device again (after halting default eth core)
         write_words_to_device(self.tensix_loc, address, data, self.remote_device_id)
         ret = read_word_from_device(self.tensix_loc, address, self.remote_device_id)
-        eth_core_after = self.context.umd_api.get_remote_transfer_eth_core(self.remote_device_id)
+        eth_core_after = self.context.umd_api.get_device(self.remote_device_id).get_remote_transfer_eth_core()
         self.assertNotEqual(eth_core, eth_core_after, "ETH core used for remote communication has not changed")
         self.assertEqual(ret, data)

@@ -9,15 +9,6 @@ import time
 from typing import Sequence
 import tt_umd
 
-umd_noc_lock = threading.Lock()
-
-
-@contextmanager
-def switch_umd_noc(noc_id: int):
-    with umd_noc_lock:
-        tt_umd.TTDevice.use_noc1(noc_id == 1)
-        yield
-
 
 class TimeoutDeviceRegisterError(Exception):
     def __init__(
@@ -90,6 +81,11 @@ class UmdDevice:
     @property
     def is_jtag_capable(self) -> bool:
         return self._is_jtag_capable
+
+    def __select_noc_id(self, noc_id: int):
+        from ttexalens.umd_api import UmdApi
+
+        UmdApi.select_noc_id(noc_id, self._arch)
 
     def __configure_working_active_eth(self):
         tensix_coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
@@ -192,20 +188,18 @@ class UmdDevice:
         return bytes(data)
 
     def __read_from_device_reg_unaligned(
-        self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool
+        self, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool
     ) -> bytes:
-        # TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
-        with switch_umd_noc(noc_id):
-            coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
-            try:
-                return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode)
-            except TimeoutDeviceRegisterError as e:
+        coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        try:
+            return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode)
+        except TimeoutDeviceRegisterError as e:
+            raise
+        except:
+            if self._is_simulation or self._is_mmio_capable:
                 raise
-            except:
-                if self._is_simulation or self._is_mmio_capable:
-                    raise
-                self.__configure_working_active_eth()
-                return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode)
+            self.__configure_working_active_eth()
+            return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode)
 
     def __write_to_device_reg_unaligned_helper(
         self, coord: tt_umd.CoreCoord, address: int, data: bytes, use_4B_mode: bool
@@ -251,36 +245,33 @@ class UmdDevice:
             temp = data[0:last_unaligned_size] + temp[last_unaligned_size:4]
             self.__write_to_device_reg(coord.x, coord.y, address, temp)
 
-    def __write_to_device_reg_unaligned(
-        self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool
-    ):
-        # TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
-        with switch_umd_noc(noc_id):
-            coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
-            try:
-                self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode)
-            except TimeoutDeviceRegisterError as e:
+    def __write_to_device_reg_unaligned(self, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool):
+        coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        try:
+            self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode)
+        except TimeoutDeviceRegisterError as e:
+            raise
+        except:
+            if self._is_simulation or self._is_mmio_capable:
                 raise
-            except:
-                if self._is_simulation or self._is_mmio_capable:
-                    raise
-                self.__configure_working_active_eth()
-                self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode)
+            self.__configure_working_active_eth()
+            self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode)
 
     def noc_read32(self, noc_id: int, noc0_x: int, noc0_y: int, address: int) -> int:
         """Reads 4 bytes from address"""
-        result = self.__read_from_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, 4, True)
+        self.__select_noc_id(noc_id)
+        result = self.__read_from_device_reg_unaligned(noc0_x, noc0_y, address, 4, True)
         return int.from_bytes(result, byteorder="little")
 
-    def noc_write32(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: int) -> int:
+    def noc_write32(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: int):
         """Writes 4 bytes to address"""
-        self.__write_to_device_reg_unaligned(
-            noc_id, noc0_x, noc0_y, address, data.to_bytes(4, byteorder="little"), True
-        )
-        return 4
+        self.__select_noc_id(noc_id)
+        self.__write_to_device_reg_unaligned(noc0_x, noc0_y, address, data.to_bytes(4, byteorder="little"), True)
 
     def noc_read(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool) -> bytes:
         """Reads data from address"""
+        self.__select_noc_id(noc_id)
+
         # TODO #124: Mitigation for UMD bug #77
         if not self._is_mmio_capable:
             result = bytearray()
@@ -288,21 +279,22 @@ class UmdDevice:
                 chunk_size = min(1024, size - chunk_start)
                 result.extend(
                     self.__read_from_device_reg_unaligned(
-                        noc_id, noc0_x, noc0_y, address + chunk_start, chunk_size, use_4B_mode
+                        noc0_x, noc0_y, address + chunk_start, chunk_size, use_4B_mode
                     )
                 )
             return bytes(result)
-        return self.__read_from_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, size, use_4B_mode)
+        return self.__read_from_device_reg_unaligned(noc0_x, noc0_y, address, size, use_4B_mode)
 
     def noc_write(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool) -> int:
         """Writes data to address"""
+        self.__select_noc_id(noc_id)
         size = len(data)
+
         # TODO #124: Mitigation for UMD bug #77
         if not self._is_mmio_capable:
             for chunk_start in range(0, size, 1024):
                 chunk_size = min(1024, size - chunk_start)
                 self.__write_to_device_reg_unaligned(
-                    noc_id,
                     noc0_x,
                     noc0_y,
                     address + chunk_start,
@@ -310,21 +302,20 @@ class UmdDevice:
                     use_4B_mode,
                 )
             return size
-        self.__write_to_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, data, use_4B_mode)
+        self.__write_to_device_reg_unaligned(noc0_x, noc0_y, address, data, use_4B_mode)
         return size
 
     def bar0_read32(self, address: int) -> int:
         """Reads 4 bytes from PCI address"""
-        if self._is_mmio_capable:
-            return self.__device.bar_read32(address)
-        raise RuntimeError("Device is not mmio capable.")
+        if not self._is_mmio_capable:
+            raise RuntimeError("Device is not mmio capable.")
+        return self.__device.bar_read32(address)
 
-    def bar0_write32(self, address: int, data: int) -> int:
+    def bar0_write32(self, address: int, data: int):
         """Writes 4 bytes to PCI address"""
-        if self._is_mmio_capable:
-            self.__device.bar_write32(address, data)
-            return 4
-        raise RuntimeError("Device is not mmio capable.")
+        if not self._is_mmio_capable:
+            raise RuntimeError("Device is not mmio capable.")
+        self.__device.bar_write32(address, data)
 
     def convert_from_noc0(self, noc_x: int, noc_y: int, core_type: str, coord_system: str) -> tuple[int, int]:
         """Convert noc0 coordinate into specified coordinate system"""
@@ -343,13 +334,13 @@ class UmdDevice:
         timeout: datetime.timedelta | float,
     ) -> tuple[int, int, int]:
         """Send ARC message"""
-        # TODO: Hack on UMD on how to use noc1. This should be removed once we have a proper way to use noc1.
-        with switch_umd_noc(noc_id):
-            timeout_ms = timeout.total_seconds() * 1000 if isinstance(timeout, datetime.timedelta) else timeout * 1000
-            return self.__device.arc_msg(msg_code, wait_for_done, args, int(timeout_ms))
+        self.__select_noc_id(noc_id)
+        timeout_ms = timeout.total_seconds() * 1000 if isinstance(timeout, datetime.timedelta) else timeout * 1000
+        return self.__device.arc_msg(msg_code, wait_for_done, args, int(timeout_ms))
 
-    def read_arc_telemetry_entry(self, telemetry_tag: int) -> int:
+    def read_arc_telemetry_entry(self, noc_id: int, telemetry_tag: int) -> int:
         """Read ARC telemetry entry"""
+        self.__select_noc_id(noc_id)
 
         def do_read(telemetry_tag: int) -> int:
             arc_telemetry_reader = self.__device.get_arc_telemetry_reader()
@@ -366,8 +357,9 @@ class UmdDevice:
             self.__configure_working_active_eth()
             return do_read(telemetry_tag)
 
-    def get_firmware_version(self) -> tt_umd.semver_t:
+    def get_firmware_version(self, noc_id: int) -> tt_umd.semver_t:
         """Returns firmware version"""
+        self.__select_noc_id(noc_id)
 
         def do_read() -> tt_umd.semver_t:
             firmware_info_provider = self.__device.get_firmware_info_provider()
