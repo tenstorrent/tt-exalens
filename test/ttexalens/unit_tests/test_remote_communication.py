@@ -43,7 +43,7 @@ class TestRemoteCommunication(unittest.TestCase):
         ret = read_word_from_device(self.tensix_core, address, self.remote_device_id)
         self.assertEqual(ret, data)
         # Find eth core used for remote communication and halt it
-        eth_core = self.context.umd_api.get_remote_transfer_eth_core(self.remote_device_id)
+        eth_core = self.context.umd_api.get_device(self.remote_device_id).get_remote_transfer_eth_core()
         assert eth_core is not None, "Could not find ETH core used for remote communication"
         coord_str = f"e{eth_core[0]},{eth_core[1]}"
         loc = OnChipCoordinate.create(coord_str, self.local_device)
