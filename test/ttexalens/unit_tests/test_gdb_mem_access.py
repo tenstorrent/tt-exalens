@@ -5,7 +5,7 @@ import socket
 import unittest
 from contextlib import contextmanager
 
-from test.ttexalens.unit_tests.test_base import init_cached_test_context  # type: ignore
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 
 from ttexalens.gdb.gdb_server import GdbServer
 from ttexalens.gdb.gdb_communication import (
@@ -15,14 +15,32 @@ from ttexalens.gdb.gdb_communication import (
 )
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.gdb.gdb_data import GdbProcess
+from ttexalens.context import Context
+from ttexalens.device import Device
+from ttexalens.coordinate import OnChipCoordinate
 
 
 class TestGdbServerMemAccess(unittest.TestCase):
+    # Class attributes set in setUpClass
+    context: Context
+    device: Device
+    risc_debug: RiscDebug
+    location: OnChipCoordinate
+    server_socket: ServerSocket
+    gdb_server: GdbServer
+    process: GdbProcess
+    l1_start: int
+    l1_end: int
+    data_private_start: int
+    data_private_end: int
+    memory_regions: list[tuple[str, int, int]]
+    pid: int
+
     @classmethod
     def setUpClass(cls):
         cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
-        cls.risc_debug: RiscDebug = cls.device.debuggable_cores[0]
+        cls.risc_debug = cls.device.debuggable_cores[0]
         cls.location = cls.risc_debug.risc_location.location
         cls.server_socket = ServerSocket(port=None)
         cls.server_socket.start()
@@ -94,7 +112,7 @@ class TestGdbServerMemAccess(unittest.TestCase):
         reply = self._send_packet(s, attach_cmd)
         # Should get a stop reply packet (T05 or similar)
         self.assertTrue(
-            reply.startswith(b"T") or reply.startswith(b"S"), f"Expected stop reply after vAttach, got: {reply}"
+            reply.startswith(b"T") or reply.startswith(b"S"), f"Expected stop reply after vAttach, got: {reply!r}"
         )
 
         return s
@@ -188,7 +206,9 @@ class TestGdbServerMemAccess(unittest.TestCase):
                     with self.subTest(memory_region=region_name, scenario=name, addr=hex(addr), length=length):
                         payload = f"x{addr:x},{length:x}".encode()
                         reply = self._send_packet(sock, payload)
-                        self.assertEqual(reply, b"E04", f"Expected E04 for {region_name} {name} scenario, got {reply}")
+                        self.assertEqual(
+                            reply, b"E04", f"Expected E04 for {region_name} {name} scenario, got {reply!r}"
+                        )
 
     def test_m_read_inside_allowed_memory_ok(self):
         """Test m (hex read) command with address fully inside allowed memory regions."""
