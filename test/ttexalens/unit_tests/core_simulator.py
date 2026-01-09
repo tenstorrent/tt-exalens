@@ -66,7 +66,9 @@ class RiscvCoreSimulator:
 
     def write_program(self, addr: int, data: int | list[int]):
         """Write program code data at specified address offset."""
-        self.write_data_checked(self.program_base_address + addr, data)
+        program_base_address_on_noc = self.risc_debug.baby_risc_info.l1.translate_to_noc_address(self.program_base_address)
+        assert program_base_address_on_noc is not None
+        self.write_data_checked(program_base_address_on_noc + addr, data)
 
     def write_data_checked(self, addr: int, data: int | list[int]):
         """Write data to memory and verify it was written correctly."""
