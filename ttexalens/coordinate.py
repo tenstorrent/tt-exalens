@@ -270,7 +270,7 @@ class OnChipCoordinate:
         """
         Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
 
-        Parameters:
+        Args:
             coord_str (str): The string representation of the coordinate.
             device (Device): The device object representing the chip.
             coord_type (str, optional): The type of coordinate system used in the string.
@@ -288,7 +288,7 @@ class OnChipCoordinate:
             - DRAM channel format: The coordinate starts with "CH" followed by the channel number.
               Example: "CH1"
 
-        Note:
+        Notes:
             - If the coordinate format is X-Y or R,C, the coordinates will be converted to integers.
             - If the coordinate format is DRAM channel, the corresponding NOC0 coordinates will be used.
         """

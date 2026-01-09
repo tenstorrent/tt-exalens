@@ -18,6 +18,7 @@ Examples:
   gdb stop
 """
 
+from ttexalens.context import Context
 from ttexalens.uistate import UIState
 from ttexalens import util as util
 from ttexalens.command_parser import CommandMetadata, tt_docopt
@@ -29,7 +30,7 @@ command_metadata = CommandMetadata(
 )
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     if dopt.args["start"]:
         if dopt.args["<port>"] is None:

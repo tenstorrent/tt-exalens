@@ -27,6 +27,7 @@ Examples:
   dr 0,0 dstacc -d 1
 """
 
+from ttexalens.context import Context
 from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_tensix import TensixDebug
@@ -54,16 +55,16 @@ def print_regfile(data: list[int | float] | list[str]) -> None:
             print()
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     args = tt_docopt(command_metadata, cmd_text).args
 
-    core_loc_str = args["<core-loc>"]
-    regfile = args["<regfile>"]
-    num_tiles = int(args["-t"]) if args["-t"] else None
+    core_loc_str: str = args["<core-loc>"]
+    regfile: str = args["<regfile>"]
+    num_tiles: int | None = int(args["-t"]) if args["-t"] else None
 
     current_device_id = ui_state.current_device_id
     device_ids = args["-d"] if args["-d"] else [f"{current_device_id}"]
-    device_array = []
+    device_array: list[int] = []
     for device_id in device_ids:
         device_array.append(int(device_id, 0))
 

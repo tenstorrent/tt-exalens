@@ -31,6 +31,7 @@ Examples:
 """  # Note: Limit the above comment to 120 characters in width
 
 from ttexalens import util as util
+from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.coordinate import VALID_COORDINATE_TYPES, OnChipCoordinate
 from ttexalens.uistate import UIState
@@ -72,7 +73,7 @@ def get_riscv_run_status(device: Device, loc: OnChipCoordinate) -> str:
     return device.get_block_type(loc)
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     dont_print_legend = dopt.args["--no-legend"]
     axis_coordinate = dopt.args["<axis-coordinate>"] or "logical-tensix"
@@ -127,7 +128,7 @@ def run(cmd_text, context, ui_state: UIState):
         # What to render in each cell
         cell_contents_array = [s.strip() for s in cell_contents.split(",")]
 
-        def cell_render_function(loc):
+        def cell_render_function(loc: OnChipCoordinate) -> str:
             # One string for each of cell_contents_array elements
             cell_contents_str = []
 

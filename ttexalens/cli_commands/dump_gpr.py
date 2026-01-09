@@ -135,7 +135,7 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
     return None
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     device: Device
     loc: OnChipCoordinate

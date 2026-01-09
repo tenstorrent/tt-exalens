@@ -12,7 +12,7 @@ class WormholeBabyRiscDebug(BabyRiscDebug):
 
     def cont(self):
         # If this is functional worker core, we need to disable branch prediction as a hardware workaround
-        if self.risc_info.branch_prediction_register is not None:
+        if self.baby_risc_info.branch_prediction_register is not None:
             self.set_branch_prediction(False)
             super().cont()
         else:
@@ -25,7 +25,7 @@ class WormholeBabyRiscDebug(BabyRiscDebug):
 
     def step(self):
         # We need to disable branch prediction as a hardware workaround, if there is an option to do so
-        if self.risc_info.branch_prediction_register is not None:
+        if self.baby_risc_info.branch_prediction_register is not None:
             self.set_branch_prediction(False)
         return super().step()
 

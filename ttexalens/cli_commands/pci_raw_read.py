@@ -15,6 +15,7 @@ Examples:
   pcir 0x0
 """
 
+from ttexalens.context import Context
 from ttexalens.uistate import UIState
 from ttexalens.command_parser import CommandMetadata, tt_docopt
 
@@ -26,7 +27,7 @@ command_metadata = CommandMetadata(
 )
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     args = tt_docopt(command_metadata, cmd_text).args
     addr = int(args["<addr>"], 0)
     device = context.devices[ui_state.current_device_id]

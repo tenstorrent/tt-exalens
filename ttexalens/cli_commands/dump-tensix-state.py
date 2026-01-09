@@ -34,6 +34,8 @@ Examples:
 import tabulate
 
 from ttexalens import util
+from ttexalens.context import Context
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore, SignalGroupSample
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
@@ -66,11 +68,11 @@ def create_column_names(num_of_columns):
 
 # Converts list of configuration registers to table
 def config_regs_to_table(config_regs: list[dict[str, str]], table_name: str, register_store: RegisterStore):
-    config_reg_values: list[dict[str, int]] = []
+    config_reg_values: list[dict[str, int | str]] = []
     keys = list(config_regs[0].keys())
 
     for config in config_regs:
-        config_reg_value: dict[str, int] = {}
+        config_reg_value: dict[str, int | str] = {}
         for key in keys:
             if key in config:
                 if key.endswith("_hi"):
@@ -137,10 +139,10 @@ def print_3_tables_side_by_side(tables: list[str]):
             break
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
-    group = dopt.args["<group>"] if dopt.args["<group>"] else "all"
-    l1_address = int(dopt.args["-a"], 0) if dopt.args["-a"] else None
+    group: str = dopt.args["<group>"] if dopt.args["<group>"] else "all"
+    l1_address: int | None = int(dopt.args["-a"], 0) if dopt.args["-a"] else None
 
     if group not in possible_groups:
         raise ValueError(f"Invalid tensix group name: {group}. Possible values: {possible_groups}")
@@ -149,6 +151,7 @@ def run(cmd_text, context, ui_state: UIState):
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         tensix_reg_desc = device.get_tensix_registers_description()
         tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
+        loc: OnChipCoordinate
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             INFO(f"Tensix registers for location {loc} on device {device.id}")
 
@@ -209,7 +212,7 @@ def run(cmd_text, context, ui_state: UIState):
                 for thread_id in thread_ids:
                     gpr_mapping = tensix_reg_desc.general_purpose_registers[thread_id]
                     rows: list[list[str]] = []
-                    merged_registers: dict[str, int] = {}
+                    merged_registers: dict[str, int | str] = {}
                     for register_name in gpr_mapping:
                         if verbose or not register_name.startswith("ID"):
                             reg_desc = register_store.registers[gpr_mapping[register_name]]
@@ -225,7 +228,7 @@ def run(cmd_text, context, ui_state: UIState):
                             rows.append(
                                 [
                                     register_name,
-                                    format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count()),
+                                    str(format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count())),
                                 ]
                             )
                     # Adding merged registers to the end of the table

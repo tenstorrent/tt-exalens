@@ -28,3 +28,15 @@ class MemoryBlock:
         if not self.contains_private_address(address):
             return None
         return self.address.noc_address + (address - self.address.private_address)
+
+    def just_noc_address(self):
+        return MemoryBlock(
+            size=self.size,
+            address=DeviceAddress(noc_address=self.address.noc_address),
+        )
+
+    def just_private_address(self):
+        return MemoryBlock(
+            size=self.size,
+            address=DeviceAddress(private_address=self.address.private_address),
+        )

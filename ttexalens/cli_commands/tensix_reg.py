@@ -38,6 +38,8 @@ Examples:
 """
 
 from fnmatch import fnmatch
+from ttexalens.context import Context
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.register_store import REGISTER_DATA_TYPE, format_register_value, parse_register_value
 from ttexalens.uistate import UIState
@@ -70,13 +72,13 @@ def print_matches(pattern: str, strings: list[str], max_prints: int) -> None:
             max_prints -= 1
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
 
     value: int | None = None
     value_str: str | None = None
     data_type: REGISTER_DATA_TYPE | None = None
-    register_pattern = dopt.args["<register_pattern>"] if dopt.args["--search"] else None
+    register_pattern: str | None = dopt.args["<register_pattern>"] if dopt.args["--search"] else None
     noc_id: int = dopt.args["-n"] if dopt.args["-n"] else 0
 
     # Do this only if search is disabled
@@ -92,6 +94,7 @@ def run(cmd_text, context, ui_state: UIState):
         value = parse_register_value(value_str) if value_str else None
 
     device: Device
+    loc: OnChipCoordinate
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             noc_block = device.get_block(loc)

@@ -29,6 +29,7 @@ Examples:
 import time
 from docopt import docopt
 
+from ttexalens.context import Context
 from ttexalens.memory_map import MemoryMap
 from ttexalens.uistate import UIState
 
@@ -46,7 +47,7 @@ command_metadata = CommandMetadata(
 )
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     args = dopt.args
 
@@ -65,7 +66,7 @@ def run(cmd_text, context, ui_state: UIState):
     except ValueError:
         pass
 
-    def process_device(device_id):
+    def process_device(device_id: int):
         location = OnChipCoordinate.create(location_str, device=context.devices[device_id])
 
         addr, size_bytes = addr_arg, size_bytes_arg
@@ -108,13 +109,21 @@ def print_memory_block(header: str, start_addr: int, data: list[int], bytes_per_
     print(f"{da.id}\n{util.dump_memory(start_addr, da.data, bytes_per_entry, 16, is_hex)}")
 
 
-def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_format="hex32", context=None):
+def print_a_burst_read(
+    device_id: int,
+    location: OnChipCoordinate,
+    addr: int,
+    word_count: int,
+    sample: float,
+    print_format: str,
+    context: Context,
+):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
 
     device = context.devices[device_id]
     noc_block = device.get_block(location)
-    memory_map: MemoryMap = noc_block.get_noc_memory_map()
+    memory_map: MemoryMap = noc_block.noc_memory_map
 
     if sample == 0:  # No sampling, just a single read
         # Read all data at once for efficiency
@@ -126,15 +135,14 @@ def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_
         i = 0
         while i < word_count:
             word_addr = addr + i * 4
-            memory_block_name = memory_map.get_block_name_by_noc_address(word_addr)
-
-            if memory_block_name is not None:
+            memory_block_info = memory_map.find_by_noc_address(word_addr)
+            if memory_block_info is not None:
                 # Get block info and calculate how many words fit in this known region
-                memory_block = memory_map.get_block_by_name(memory_block_name)
-                assert memory_block is not None, f"Memory block '{memory_block_name}' not found in map but expected"
+                memory_block_name = memory_block_info.name
+                memory_block = memory_block_info.memory_block
                 assert (
                     memory_block.address.noc_address is not None
-                ), f"Memory block '{memory_block_name}' has no NOC address"
+                ), f"Memory block '{memory_block_info.name}' has no NOC address"
                 memory_block_start = memory_block.address.noc_address
                 memory_block_end = memory_block_start + memory_block.size
                 remaining_words_in_block = max(
@@ -148,7 +156,7 @@ def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_
                 words_to_read = remaining_words_in_block
                 for offset in range(remaining_words_in_block):
                     check_addr = word_addr + offset * 4
-                    if memory_map.get_block_name_by_noc_address(check_addr) is not None:
+                    if memory_map.find_by_noc_address(check_addr) is not None:
                         words_to_read = offset if offset > 0 else 1
                         break
 
@@ -166,10 +174,8 @@ def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_
         for i in range(word_count):
             word_addr = addr + 4 * i
 
-            block_name = memory_map.get_block_name_by_noc_address(word_addr)
-            if block_name is None:
-                block_name = "?"
-
+            block_info = memory_map.find_by_noc_address(word_addr)
+            block_name = block_info.name if block_info is not None else "?"
             block_header = f"{location.to_user_str()} ({block_name})"
 
             values = {}

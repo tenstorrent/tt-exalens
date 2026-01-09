@@ -21,6 +21,7 @@ Examples:
   wxy 0,0 0x0 0x1234 --repeat 10
 """
 
+from ttexalens.context import Context
 from ttexalens.uistate import UIState
 import ttexalens.util as util
 
@@ -37,12 +38,12 @@ command_metadata = CommandMetadata(
 
 
 # A helper to print the result of a single PCI read
-def print_a_write(core_loc_str, addr, val, comment=""):
+def print_a_write(core_loc_str: str, addr: int, val: int):
     core_loc_str = f"{core_loc_str} (L1) :" if not core_loc_str.startswith("ch") else f"{core_loc_str} (DRAM): "
     print(f"{core_loc_str} 0x{addr:08x} ({addr}) <= 0x{val:08x} ({val:d})")
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     args = tt_docopt(command_metadata, cmd_text).args
 
     core_loc_str = args["<core-loc>"]

@@ -211,7 +211,7 @@ Reads num_bytes of data starting from address 'addr' at specified location using
 ## write_words_to_device
 
 ```
-write_words_to_device(location: str | OnChipCoordinate, addr: int, data: int | list[int], device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None) -> int
+write_words_to_device(location: str | OnChipCoordinate, addr: int, data: int | list[int], device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None)
 ```
 
 
@@ -231,16 +231,12 @@ Writes data word to address 'addr' at specified location using specified noc.
 - `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
 
-### Returns
-
- *(int)*: If the execution is successful, return value should be 4 (number of bytes written).
-
 
 
 ## write_to_device
 
 ```
-write_to_device(location: str | OnChipCoordinate, addr: int, data: list[int] | bytes, device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None) -> int
+write_to_device(location: str | OnChipCoordinate, addr: int, data: list[int] | bytes, device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None)
 ```
 
 
@@ -260,16 +256,12 @@ Writes data to address 'addr' at specified location using specified noc.
 - `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
 
-### Returns
-
- *(int)*: If the execution is successful, return value should be number of bytes written.
-
 
 
 ## load_elf
 
 ```
-load_elf(elf_file: str, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, return_start_address: bool = False) -> None | int | list[int]
+load_elf(elf_file: str | ParsedElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, return_start_address: bool = False) -> None | int | list[int]
 ```
 
 
@@ -280,7 +272,7 @@ Loads the given ELF file into the specified RISC core. RISC core must be in rese
 
 ### Args
 
-- `elf_file` *(str)*: Path to the ELF file to run.
+- `elf_file` *(str | ParsedElfFile)*: ELF file to be loaded.
 - `location` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
 1. "all" to run the ELF on all cores;
 2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -297,7 +289,7 @@ Loads the given ELF file into the specified RISC core. RISC core must be in rese
 ## run_elf
 
 ```
-run_elf(elf_file: str, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> None
+run_elf(elf_file: str | ParsedElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> None
 ```
 
 
@@ -308,7 +300,7 @@ Loads the given ELF file into the specified RISC core and executes it. Similar t
 
 ### Args
 
-- `elf_file` *(str)*: Path to the ELF file to run.
+- `elf_file` *(str | ParsedElfFile)*: ELF file to be run.
 - `location` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
 1. "all" to run the ELF on all cores;
 2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -354,7 +346,7 @@ Sends an ARC message to the device.
 ## read_arc_telemetry_entry
 
 ```
-read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None) -> int
+read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: int | None = None) -> int
 ```
 
 
@@ -640,7 +632,13 @@ Returns coordinates for the specified device.
 create(coord_str, device, coord_type = None) -> OnChipCoordinate
 ```
 Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
- *(OnChipCoordinate)*: The created coordinate object.
+- `coord_str` *(str)*: The string representation of the coordinate.
+- `device` *(Device)*: The device object representing the chip.
+- `coord_type` *(str, optional)*: The type of coordinate system used in the string.
+If not specified, it will be determined based on the separators used in the string.
+ *(OnChipCoordinate)*: The created coordinate object.- If the coordinate format is X-Y or R,C, the coordinates will be converted to integers.
+- If the coordinate format is DRAM channel, the corresponding NOC0 coordinates will be used.
+
 
 # context
 
