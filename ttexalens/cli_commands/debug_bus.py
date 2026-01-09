@@ -400,6 +400,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         "simple": dopt.args.get("--simple"),
     }
 
+    device: Device
+    loc: OnChipCoordinate
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             command_handler(device, loc, params)

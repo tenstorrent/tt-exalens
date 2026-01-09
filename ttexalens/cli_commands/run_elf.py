@@ -16,6 +16,8 @@ Examples:
 """
 
 from ttexalens import util as util
+from ttexalens.context import Context
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.tt_exalens_lib import run_elf
 from ttexalens.uistate import UIState
@@ -53,10 +55,11 @@ def print_PC_and_source(PC, elf):
 # - Run on all riscs
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
-    risc = dopt.args["-r"]
+    risc: str = dopt.args["-r"]
     device: Device
+    loc: OnChipCoordinate
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             if not risc or risc == "first risc":

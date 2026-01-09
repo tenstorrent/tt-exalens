@@ -16,6 +16,7 @@ Examples:
 
 from ttexalens.context import Context
 from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.uistate import UIState
 
 command_metadata = CommandMetadata(
     short_name="if",
@@ -25,7 +26,7 @@ command_metadata = CommandMetadata(
 )
 
 
-def run(cmd_text, context: Context, ui_state=None):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     args = tt_docopt(command_metadata, cmd_text).args
     device = context.devices[0]
 

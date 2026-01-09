@@ -21,6 +21,8 @@ Examples:
 """
 
 import os
+from ttexalens.context import Context
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
 
@@ -36,7 +38,7 @@ command_metadata = CommandMetadata(
 )
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
 
     limit = int(dopt.args["-m"])
@@ -59,6 +61,8 @@ def run(cmd_text, context, ui_state: UIState):
     elfs = [lib.parse_elf(elf_path, context) for elf_path in elf_paths]
 
     device: Device
+    loc: OnChipCoordinate
+    risc_name: str
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             for risc_name in dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc):

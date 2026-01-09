@@ -15,6 +15,7 @@ Options:
 Examples:
     go -m 1 -n 1 -d 0 -l 0,0
 """
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 import ttexalens.util as util
 from ttexalens.uistate import UIState
@@ -48,6 +49,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     device: Device
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         ui_state.current_device_id = device.id
+        loc: OnChipCoordinate
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             ui_state.current_location = loc
             break

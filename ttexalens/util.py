@@ -306,7 +306,7 @@ def dict_to_table(dct):
 
 # Converts list of dictionaries with same keys to a table where every column is one dictionary.
 def dict_list_to_table(
-    dicts: list[dict[str, int]] | list[dict[str, str]], table_name: str, column_names: list[str]
+    dicts: list[dict[str, int | str]] | list[dict[str, str]], table_name: str, column_names: list[str]
 ) -> str:
     keys = dicts[0].keys()
     data = []

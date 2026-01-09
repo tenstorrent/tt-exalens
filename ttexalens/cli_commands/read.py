@@ -24,6 +24,7 @@ Examples:
   read 0xFFB0000 -r brisc 16          # Read 16 words from brisc private data memory
 """
 
+from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
 
@@ -39,7 +40,7 @@ command_metadata = CommandMetadata(
 )
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     args = dopt.args
 
