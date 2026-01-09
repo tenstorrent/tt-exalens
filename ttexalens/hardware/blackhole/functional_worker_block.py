@@ -413,7 +413,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             ]
         )
 
-        self.noc_memory_map.add_blocks(
+        self.trisc2.memory_map.add_blocks(
             [
                 MemoryMapBlockInfo("l1", self.l1),
                 MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
