@@ -114,7 +114,7 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
         # Small delay to ensure the server is listening
         time.sleep(0.2)
 
-        cls.gdb_bin: str = get_gdb_client_path()
+        cls.gdb_bin = get_gdb_client_path()
 
     @classmethod
     def tearDownClass(cls) -> None:
