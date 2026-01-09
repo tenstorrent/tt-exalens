@@ -376,7 +376,7 @@ class GdbServer(threading.Thread):
                     buffer = self.current_process.mem_access.read(address, length)
                     writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
                 except RestrictedMemoryAccessError as e:
-                    util.ERROR(str(e))
+                    util.ERROR(str(e), file=self.error_stream)
                     writer.append(b"E04")  # restricted memory access
         elif parser.parse(b"M"):  # Write length addressable memory units starting at address addr.
             # ‘M addr,length:XX…’
@@ -411,7 +411,7 @@ class GdbServer(threading.Thread):
                     self.current_process.mem_access.write(address, bytes(parsed_data))
                     writer.append(b"OK")
                 except RestrictedMemoryAccessError as e:
-                    util.ERROR(str(e))
+                    util.ERROR(str(e), file=self.error_stream)
                     writer.append(b"E04")  # restricted memory access
         elif parser.parse(b"p"):  # Read the value of register n; n is in hex.
             # ‘p n’
@@ -944,7 +944,7 @@ class GdbServer(threading.Thread):
                     writer.append(b"b")
                     writer.append(buffer)  # Reply with data should start with 'b'
                 except RestrictedMemoryAccessError as e:
-                    util.ERROR(str(e))
+                    util.ERROR(str(e), file=self.error_stream)
                     writer.append(b"E04")  # restricted memory access
         elif parser.parse(b"X"):  # Write data to memory, where the data is transmitted in binary.
             # ‘X addr,length:XX…’
@@ -967,7 +967,7 @@ class GdbServer(threading.Thread):
                         self.current_process.mem_access.write(address, data[:length])
                         writer.append(b"OK")
                     except RestrictedMemoryAccessError as e:
-                        util.ERROR(str(e))
+                        util.ERROR(str(e), file=self.error_stream)
                         writer.append(b"E04")  # restricted memory access
             except:
                 writer.append(b"E03")
