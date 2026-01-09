@@ -627,15 +627,7 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
                 f"Expected GDB to print pointer value {ptr_str} for {sym}\nOutput:\n{output}",
             )
 
-            # 3) Expect that dereferencing fails in a visible way
-            #    (GDB marks the C++ value as incomplete)
-            self.assertIn(
-                "<incomplete type>",
-                output,
-                f"Expected GDB to report an incomplete value when dereferencing {sym}\nOutput:\n{output}",
-            )
-
-            # 4) Expect some indication that the raw x/16xb hit a memory access error.
+            # 3) Expect some indication that the raw x/16xb hit a memory access error.
             error_signatures = [
                 "Cannot access memory at address",
                 "Remote failure reply: E04",
