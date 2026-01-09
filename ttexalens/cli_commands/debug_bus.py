@@ -30,7 +30,6 @@ Description:
         <l1-address>:      Byte address in L1 memory for L1 sampling mode (must be 16-byte aligned).
                                 Enables L1 sampling: signal(s) are captured as 128-bit words to L1 memory at the given address
                                 instead of direct 32-bit register read. Each sample uses 16 bytes. All samples must fit in the first 1 MiB (0x0 - 0xFFFFF).
-
     - [<signals>]:   List of signals described by signal name or signal description.
         <signal-description>: {DaisyId,RDSel,SigSel,Mask}
             - DaisyId   - daisy chain identifier
