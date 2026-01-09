@@ -69,6 +69,8 @@ class TestDebugging(unittest.TestCase):
                 self.skipTest(f"Core {self.core_desc}:{self.risc_name} not available on this platform: {e}")
             else:
                 raise e
+        except NotImplementedError as e:
+            self.skipTest(f"RISC debugging not implemented for core {self.risc_name} on this platform: {e}")
         except AssertionError as e:
             if self.neo_id is not None and "NEO ID" in e.__str__():
                 self.skipTest(f"Test requires NEO ID, but is not supported on this platform: {e}")
