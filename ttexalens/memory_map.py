@@ -66,11 +66,20 @@ class MemoryMap:
     def find_by_noc_address(self, noc_address: int) -> MemoryMapBlockInfo | None:
         return MemoryMap._find_by_address(noc_address, self._noc_addresses)
 
+    def find_next_by_noc_address(self, noc_address: int) -> MemoryMapBlockInfo | None:
+        return MemoryMap._find_next_block(noc_address, self._noc_addresses)
+
     def find_by_private_address(self, private_address: int) -> MemoryMapBlockInfo | None:
         return MemoryMap._find_by_address(private_address, self._private_addresses)
 
+    def find_next_by_private_address(self, private_address: int) -> MemoryMapBlockInfo | None:
+        return MemoryMap._find_next_block(private_address, self._private_addresses)
+
     def find_by_bar0_address(self, bar0_address: int) -> MemoryMapBlockInfo | None:
         return MemoryMap._find_by_address(bar0_address, self._bar0_addresses)
+
+    def find_next_by_bar0_address(self, bar0_address: int) -> MemoryMapBlockInfo | None:
+        return MemoryMap._find_next_block(bar0_address, self._bar0_addresses)
 
     def find_by_name(self, name: str) -> MemoryMapBlockInfo | None:
         return self._blocks_info.get(name, None)
@@ -84,3 +93,12 @@ class MemoryMap:
         assert len(intervals) == 1, "MemoryMap cannot have overlapping memory blocks"
         result: MemoryMapBlockInfo = next(iter(intervals)).data
         return result
+
+    @staticmethod
+    def _find_next_block(address: int, tree: IntervalTree) -> MemoryMapBlockInfo | None:
+        next: MemoryMapBlockInfo | None = None
+        for interval in tree:
+            if interval.begin > address:
+                if next is None or interval.begin < next.begin:  # type: ignore
+                    next = interval
+        return next
