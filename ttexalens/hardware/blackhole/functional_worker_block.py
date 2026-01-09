@@ -66,9 +66,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         self.l1 = MemoryBlock(
             size=1536 * 1024, address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000)
         )
-        self.tdma_regs = MemoryBlock(
-            size=0x1000, address=DeviceAddress(private_address=0xFFB11000, noc_address=0xFFB11000)
-        )
+        self.tdma_regs = MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFB11000))
         self.debug_regs = MemoryBlock(
             size=0x1000, address=DeviceAddress(private_address=0xFFB12000, noc_address=0xFFB12000)
         )
@@ -237,7 +235,6 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         self.noc_memory_map.add_blocks(
             [
                 MemoryMapBlockInfo("l1", self.l1),
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
