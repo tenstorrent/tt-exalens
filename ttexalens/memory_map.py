@@ -96,9 +96,9 @@ class MemoryMap:
 
     @staticmethod
     def _find_next_block(address: int, tree: IntervalTree) -> MemoryMapBlockInfo | None:
-        next: MemoryMapBlockInfo | None = None
+        next: Interval | None = None
         for interval in tree:
             if interval.begin > address:
                 if next is None or interval.begin < next.begin:  # type: ignore
                     next = interval
-        return next
+        return next.data if next is not None else None
