@@ -99,6 +99,6 @@ class MemoryMap:
         next: Interval | None = None
         for interval in tree:
             if interval.begin > address:
-                if next is None or interval.begin < next.begin:  # type: ignore
+                if next is None or interval.begin < next.begin:
                     next = interval
         return next.data if next is not None else None
