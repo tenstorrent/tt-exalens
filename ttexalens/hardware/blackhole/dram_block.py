@@ -12,7 +12,7 @@ from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_add
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.memory_map import MemoryMap
+from ttexalens.memory_map import MemoryMapBlockInfo
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     DebugRegisterDescription,
@@ -153,14 +153,15 @@ class BlackholeDramBlock(BlackholeNocBlock):
         )
 
         self.dram_bank = MemoryBlock(
-            # TODO #432: Check if this size is correct
-            size=2 * 1024 * 1024 * 1024 - 4 * 1024,
-            address=DeviceAddress(private_address=0x00001000, noc_address=0x00001000),
+            size=4 * 1024 * 1024 * 1024,
+            address=DeviceAddress(noc_address=0x00000000),
         )
 
         self.l1 = MemoryBlock(
-            size=4 * 1024,  # TODO #432: Check if this size is correct
-            address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000),
+            size=64 * 1024,  # TODO #432: Check if this size is correct
+            address=DeviceAddress(
+                private_address=0x00000000, noc_address=0x00000000
+            ),  # TODO #432: Check if noc address is correct
         )
 
         self.drisc = BabyRiscInfo(
@@ -186,11 +187,12 @@ class BlackholeDramBlock(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-        self.memory_map.map_blocks(
-            {
-                "l1": self.l1,
-                "dram_bank": self.dram_bank,
-            }
+        # TODO #432: Fill in memory map
+        self.noc_memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("dram_bank", self.dram_bank),
+                MemoryMapBlockInfo("l1", self.l1),
+            ]
         )
 
     @cached_property

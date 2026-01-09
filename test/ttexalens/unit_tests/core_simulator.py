@@ -42,7 +42,9 @@ class RiscvCoreSimulator:
         debug_bus = self.noc_block.get_debug_bus(self.neo_id)
         assert debug_bus is not None
         self.debug_bus_store: DebugBusSignalStore = debug_bus
-        self.program_base_address = self.risc_debug.risc_info.get_code_start_address(self.risc_debug.register_store)
+        self.program_base_address = self.risc_debug.baby_risc_info.get_code_start_address(
+            self.risc_debug.register_store
+        )
         self.loader = ElfLoader(self.risc_debug)
 
         # Initialize core in reset state

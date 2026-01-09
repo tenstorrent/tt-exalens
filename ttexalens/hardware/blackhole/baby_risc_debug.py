@@ -28,7 +28,7 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         if self.enable_asserts:
             self.assert_not_in_reset()
 
-        noc_address = self.risc_info.translate_to_noc_address(address)
+        noc_address = self.baby_risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
             return self.risc_info.noc_block.location.noc_read(noc_address, size_bytes, use_4B_mode=True)
         else:
@@ -39,7 +39,7 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         if self.enable_asserts:
             self.assert_not_in_reset()
 
-        noc_address = self.risc_info.translate_to_noc_address(address)
+        noc_address = self.baby_risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
             self.risc_info.noc_block.location.noc_write(noc_address, data, use_4B_mode=True)
         else:

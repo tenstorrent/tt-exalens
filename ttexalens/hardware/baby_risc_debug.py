@@ -462,9 +462,9 @@ class BabyRiscDebugHardware:
 
 class BabyRiscDebug(RiscDebug):
     def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool = True):
-        super().__init__(RiscLocation(risc_info.noc_block.location, risc_info.neo_id, risc_info.risc_name))
+        super().__init__(RiscLocation(risc_info.noc_block.location, risc_info.neo_id, risc_info.risc_name), risc_info)
         register_store = risc_info.noc_block.get_register_store(neo_id=risc_info.neo_id)
-        self.risc_info = risc_info
+        self.baby_risc_info = risc_info
         self.register_store = register_store
         self.debug_hardware = (
             BabyRiscDebugHardware(register_store, risc_info, enable_asserts)
@@ -499,7 +499,7 @@ class BabyRiscDebug(RiscDebug):
 
     def is_in_reset(self) -> bool:
         reset_reg = self.__read(self.RISC_DBG_SOFT_RESET0)
-        return ((reset_reg >> self.risc_info.reset_flag_shift) & 1) != 0
+        return ((reset_reg >> self.baby_risc_info.reset_flag_shift) & 1) != 0
 
     def set_reset_signal(self, value: bool):
         """
@@ -507,7 +507,9 @@ class BabyRiscDebug(RiscDebug):
         """
         assert value in [0, 1]
         reset_reg = self.__read(self.RISC_DBG_SOFT_RESET0)
-        reset_reg = (reset_reg & ~(1 << self.risc_info.reset_flag_shift)) | (value << self.risc_info.reset_flag_shift)
+        reset_reg = (reset_reg & ~(1 << self.baby_risc_info.reset_flag_shift)) | (
+            value << self.baby_risc_info.reset_flag_shift
+        )
         self.__write(self.RISC_DBG_SOFT_RESET0, reset_reg)
 
     def assert_not_in_reset(self, message=""):
@@ -567,7 +569,7 @@ class BabyRiscDebug(RiscDebug):
             with self.debug_hardware.ensure_halted():
                 yield
         else:
-            start_address = self.risc_info.get_code_start_address(self.register_store)
+            start_address = self.baby_risc_info.get_code_start_address(self.register_store)
 
             # Save 4 bytes from the start address (we need to return it to previous state)
             saved_bytes = self.__read(start_address)
@@ -592,10 +594,11 @@ class BabyRiscDebug(RiscDebug):
         assert enable in [0, 1]
         value = 0 if enable else 1
         assert (
-            self.risc_info.branch_prediction_register is not None and self.risc_info.branch_prediction_mask is not None
+            self.baby_risc_info.branch_prediction_register is not None
+            and self.baby_risc_info.branch_prediction_mask is not None
         )
-        register_name = self.risc_info.branch_prediction_register
-        bp_mask = self.risc_info.branch_prediction_mask
+        register_name = self.baby_risc_info.branch_prediction_register
+        bp_mask = self.baby_risc_info.branch_prediction_mask
         previous_value = self.register_store.read_register(register_name)
         new_value = (previous_value & ~bp_mask) | (value * bp_mask)
         self.register_store.write_register(register_name, new_value)
@@ -777,16 +780,16 @@ class BabyRiscDebug(RiscDebug):
         self.debug_hardware.set_watchpoint_on_memory_access(watchpoint_index, address)
 
     def can_debug(self) -> bool:
-        return self.risc_info.debug_hardware_present
+        return self.baby_risc_info.debug_hardware_present
 
     def get_l1(self) -> MemoryBlock:
         return self.risc_info.l1
 
     def get_data_private_memory(self) -> MemoryBlock | None:
-        return self.risc_info.data_private_memory
+        return self.baby_risc_info.data_private_memory
 
     def get_code_private_memory(self) -> MemoryBlock | None:
-        return self.risc_info.code_private_memory
+        return self.baby_risc_info.code_private_memory
 
     def set_code_start_address(self, address: int | None) -> None:
-        self.risc_info.set_code_start_address(self.register_store, address)
+        self.baby_risc_info.set_code_start_address(self.register_store, address)

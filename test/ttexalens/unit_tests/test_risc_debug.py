@@ -104,7 +104,7 @@ class TestDebugging(unittest.TestCase):
         if self.device.is_quasar():
             self.skipTest("Skipping Quasar test since it lasts for 1 hour on simulator.")
 
-        risc_info = self.core_sim.risc_debug.risc_info
+        risc_info = self.core_sim.risc_debug.baby_risc_info
         if risc_info.default_code_start_address is None:
             self.skipTest(
                 "Default code start address doesn't exist for this RISC. Start address is always controlled by register."
@@ -854,7 +854,7 @@ class TestDebugging(unittest.TestCase):
     def test_watchpoint_on_pc_address(self):
         """Test running 36 bytes of generated code that just write data on memory and does watchpoint on pc address. All that is done on brisc."""
 
-        if self.core_sim.risc_debug.risc_info.max_watchpoints == 0:
+        if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
 
         if self.core_sim.is_eth_block() and self.device.is_wormhole():
@@ -930,7 +930,7 @@ class TestDebugging(unittest.TestCase):
     def test_watchpoint_address(self):
         """Test setting and reading watchpoint address (both memory and PC)."""
 
-        if self.core_sim.risc_debug.risc_info.max_watchpoints == 0:
+        if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
 
         # Write code for brisc core at address 0
@@ -952,11 +952,13 @@ class TestDebugging(unittest.TestCase):
         addresses_to_set = [12, 32, 0x1234, 0x8654, 0x87654321, 0x12345678, 0, 0xFFFFFFFF]
         watchpoint_types = ["pc", "pc", "access", "access", "read", "read", "write", "write"]
 
-        iterations = len(watchpoint_types) // self.core_sim.risc_debug.risc_info.max_watchpoints + 1
-        watchpoints_per_iteration = self.core_sim.risc_debug.risc_info.max_watchpoints
+        iterations = len(watchpoint_types) // self.core_sim.risc_debug.baby_risc_info.max_watchpoints + 1
+        watchpoints_per_iteration = self.core_sim.risc_debug.baby_risc_info.max_watchpoints
         for k in range(iterations):
             if k == iterations - 1:
-                watchpoints_per_iteration = len(watchpoint_types) % self.core_sim.risc_debug.risc_info.max_watchpoints
+                watchpoints_per_iteration = (
+                    len(watchpoint_types) % self.core_sim.risc_debug.baby_risc_info.max_watchpoints
+                )
 
             # Set PC watchpoints
             for i in range(watchpoints_per_iteration):
@@ -1020,7 +1022,7 @@ class TestDebugging(unittest.TestCase):
     def test_watchpoint_state(self):
         """Test setting and disabling watchpoint state (both memory and PC)."""
 
-        if self.core_sim.risc_debug.risc_info.max_watchpoints == 0:
+        if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
 
         # Write code for brisc core at address 0
@@ -1067,11 +1069,13 @@ class TestDebugging(unittest.TestCase):
         addresses_to_set = [12, 32, 0x1234, 0x8654, 0x87654321, 0x12345678, 0, 0xFFFFFFFF]
         watchpoint_types = ["pc", "pc", "access", "access", "read", "read", "write", "write"]
 
-        iterations = len(watchpoint_types) // self.core_sim.risc_debug.risc_info.max_watchpoints + 1
-        watchpoints_per_iteration = self.core_sim.risc_debug.risc_info.max_watchpoints
+        iterations = len(watchpoint_types) // self.core_sim.risc_debug.baby_risc_info.max_watchpoints + 1
+        watchpoints_per_iteration = self.core_sim.risc_debug.baby_risc_info.max_watchpoints
         for k in range(iterations):
             if k == iterations - 1:
-                watchpoints_per_iteration = len(watchpoint_types) % self.core_sim.risc_debug.risc_info.max_watchpoints
+                watchpoints_per_iteration = (
+                    len(watchpoint_types) % self.core_sim.risc_debug.baby_risc_info.max_watchpoints
+                )
 
             # Set watchpoints
             for i in range(watchpoints_per_iteration):
@@ -1104,7 +1108,7 @@ class TestDebugging(unittest.TestCase):
     def test_memory_watchpoint(self):
         """Test running 64 bytes of generated code that just write data on memory and tests memory watchpoints. All that is done on brisc."""
 
-        if self.core_sim.risc_debug.risc_info.max_watchpoints == 0:
+        if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
 
         addresses = [0x10000, 0x20000, 0x30000, 0x40000]
@@ -1155,11 +1159,13 @@ class TestDebugging(unittest.TestCase):
 
         watchpoint_types = ["write", "read", "access", "access"]
 
-        iterations = len(watchpoint_types) // self.core_sim.risc_debug.risc_info.max_watchpoints + 1
-        watchpoints_per_iteration = self.core_sim.risc_debug.risc_info.max_watchpoints
+        iterations = len(watchpoint_types) // self.core_sim.risc_debug.baby_risc_info.max_watchpoints + 1
+        watchpoints_per_iteration = self.core_sim.risc_debug.baby_risc_info.max_watchpoints
         for k in range(iterations):
             if k == iterations - 1:
-                watchpoints_per_iteration = len(watchpoint_types) % self.core_sim.risc_debug.risc_info.max_watchpoints
+                watchpoints_per_iteration = (
+                    len(watchpoint_types) % self.core_sim.risc_debug.baby_risc_info.max_watchpoints
+                )
 
             # Set watchpoints
             for i in range(watchpoints_per_iteration):

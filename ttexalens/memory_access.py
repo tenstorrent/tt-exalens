@@ -110,14 +110,14 @@ class L1MemoryAccess(MemoryAccess):
 
     def __init__(self, location: OnChipCoordinate):
         self._location = location
-        l1 = location.noc_block.get_noc_memory_map().get_block_by_name("l1")
+        l1 = location.noc_block.noc_memory_map.find_by_name("l1")
         if l1 is None:
             raise Exception(f"Could not find L1 memory block at location {location}")
-        if l1.address.noc_address is None:
+        if l1.memory_block.address.noc_address is None:
             raise Exception(f"Found L1 memory block without NOC address at location {location}")
 
-        self.base_address = l1.address.noc_address
-        self.size = l1.size
+        self.base_address = l1.memory_block.address.noc_address
+        self.size = l1.memory_block.size
 
     def read(self, address: int, size_bytes: int) -> bytes:
         self.validate_access(address, size_bytes)

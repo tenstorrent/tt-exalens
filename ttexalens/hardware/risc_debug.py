@@ -10,6 +10,7 @@ from ttexalens import util
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.elf import ParsedElfFile, ParsedElfFileWithOffset, ElfVariable, ElfDie, FrameInspection
+from ttexalens.hardware.risc_info import RiscInfo
 
 
 @dataclass
@@ -86,8 +87,9 @@ class RiscDebug:
     This class defines the interface for interacting with a RISC core for debugging purposes.
     """
 
-    def __init__(self, risc_location: RiscLocation):
+    def __init__(self, risc_location: RiscLocation, risc_info: RiscInfo):
         self.risc_location = risc_location
+        self.risc_info = risc_info
 
     @staticmethod
     def get_instance(risc_location: RiscLocation) -> "RiscDebug":

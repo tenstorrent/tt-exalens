@@ -126,15 +126,14 @@ def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_
         i = 0
         while i < word_count:
             word_addr = addr + i * 4
-            memory_block_name = memory_map.get_block_name_by_noc_address(word_addr)
-
-            if memory_block_name is not None:
+            memory_block_info = memory_map.find_by_noc_address(word_addr)
+            if memory_block_info is not None:
                 # Get block info and calculate how many words fit in this known region
-                memory_block = memory_map.get_block_by_name(memory_block_name)
-                assert memory_block is not None, f"Memory block '{memory_block_name}' not found in map but expected"
+                memory_block_name = memory_block_info.name
+                memory_block = memory_block_info.memory_block
                 assert (
                     memory_block.address.noc_address is not None
-                ), f"Memory block '{memory_block_name}' has no NOC address"
+                ), f"Memory block '{memory_block_info.name}' has no NOC address"
                 memory_block_start = memory_block.address.noc_address
                 memory_block_end = memory_block_start + memory_block.size
                 remaining_words_in_block = max(
@@ -148,7 +147,7 @@ def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_
                 words_to_read = remaining_words_in_block
                 for offset in range(remaining_words_in_block):
                     check_addr = word_addr + offset * 4
-                    if memory_map.get_block_name_by_noc_address(check_addr) is not None:
+                    if memory_map.find_by_noc_address(check_addr) is not None:
                         words_to_read = offset if offset > 0 else 1
                         break
 
@@ -166,10 +165,8 @@ def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_
         for i in range(word_count):
             word_addr = addr + 4 * i
 
-            block_name = memory_map.get_block_name_by_noc_address(word_addr)
-            if block_name is None:
-                block_name = "?"
-
+            block_info = memory_map.find_by_noc_address(word_addr)
+            block_name = block_info.name if block_info is not None else "?"
             block_header = f"{location.to_user_str()} ({block_name})"
 
             values = {}
