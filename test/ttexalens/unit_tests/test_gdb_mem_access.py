@@ -10,9 +10,11 @@ import textwrap
 import time
 import unittest
 from contextlib import contextmanager
+from typing import Iterator
+
 from parameterized import parameterized
 
-from test.ttexalens.unit_tests.test_base import (  # type: ignore
+from test.ttexalens.unit_tests.test_base import (
     init_cached_test_context,
     get_core_location,
 )
@@ -40,8 +42,8 @@ class TestGdbServerMemAccess(unittest.TestCase):
       - Start a real GdbServer on a free port.
       - Attach via the GDB remote protocol (vAttach).
       - Send raw x/m/M/X packets and verify:
-          * full reads/writes inside L1 + data private,
-          * E04 for any access that leaves allowed regions.
+        * full reads/writes inside L1 + data private,
+        * E04 for any access that leaves allowed regions.
     """
 
     # Class attributes set in setUpClass
@@ -96,7 +98,7 @@ class TestGdbServerMemAccess(unittest.TestCase):
             cls.data_private_end = None
 
         # List of allowed regions ([start, end) ranges)
-        cls.memory_regions: list[tuple[str, int, int]] = [
+        cls.memory_regions = [
             ("l1", cls.l1_start, cls.l1_end),
         ]
         if cls.data_private_start is not None and cls.data_private_end is not None:
@@ -108,12 +110,12 @@ class TestGdbServerMemAccess(unittest.TestCase):
         cls.server_socket.close()
 
     @contextmanager
-    def _gdb_client(self) -> socket.socket:
+    def _gdb_client(self) -> Iterator[socket.socket]:
         """
         Context manager that connects to GdbServer, attaches to the process via
         vAttach, and ensures socket cleanup.
         """
-        sock = self._connect_client_and_attach()
+        sock: socket.socket = self._connect_client_and_attach()
         try:
             yield sock
         finally:
@@ -188,6 +190,7 @@ class TestGdbServerMemAccess(unittest.TestCase):
 
     def test_x_read_inside_allowed_memory_ok(self) -> None:
         """x: full-length binary read inside allowed regions must succeed."""
+        sock: socket.socket
         with self._gdb_client() as sock:
             for region_name, start, end in self.memory_regions:
                 with self.subTest(memory_region=region_name):
@@ -210,6 +213,7 @@ class TestGdbServerMemAccess(unittest.TestCase):
 
     def test_x_read_restricted_memory_e04(self) -> None:
         """x: any read that leaves allowed regions must return E04."""
+        sock: socket.socket
         with self._gdb_client() as sock:
             for region_name, start, end in self.memory_regions:
                 test_cases: list[tuple[str, int, int]] = [
@@ -237,6 +241,7 @@ class TestGdbServerMemAccess(unittest.TestCase):
 
     def test_m_read_inside_allowed_memory_ok(self) -> None:
         """m: full-length hex read inside allowed regions must succeed."""
+        sock: socket.socket
         with self._gdb_client() as sock:
             for region_name, start, end in self.memory_regions:
                 with self.subTest(memory_region=region_name):
@@ -257,6 +262,7 @@ class TestGdbServerMemAccess(unittest.TestCase):
 
     def test_m_read_restricted_memory_e04(self) -> None:
         """m: any hex read that leaves allowed regions must return E04."""
+        sock: socket.socket
         with self._gdb_client() as sock:
             for region_name, start, end in self.memory_regions:
                 test_cases: list[tuple[str, int, int]] = [
@@ -283,6 +289,7 @@ class TestGdbServerMemAccess(unittest.TestCase):
 
     def test_M_write_inside_allowed_memory_ok(self) -> None:
         """M: hex write fully inside allowed regions must succeed with OK."""
+        sock: socket.socket
         with self._gdb_client() as sock:
             for region_name, start, end in self.memory_regions:
                 with self.subTest(memory_region=region_name):
@@ -299,6 +306,7 @@ class TestGdbServerMemAccess(unittest.TestCase):
 
     def test_M_write_restricted_memory_e04(self) -> None:
         """M: any hex write that leaves allowed regions must return E04."""
+        sock: socket.socket
         with self._gdb_client() as sock:
             for region_name, start, end in self.memory_regions:
                 test_cases: list[tuple[str, int, int, str]] = [
@@ -325,6 +333,7 @@ class TestGdbServerMemAccess(unittest.TestCase):
 
     def test_X_write_inside_allowed_memory_ok(self) -> None:
         """X: binary write fully inside allowed regions must succeed with OK."""
+        sock: socket.socket
         with self._gdb_client() as sock:
             for region_name, start, end in self.memory_regions:
                 with self.subTest(memory_region=region_name):
@@ -340,6 +349,7 @@ class TestGdbServerMemAccess(unittest.TestCase):
 
     def test_X_write_restricted_memory_e04(self) -> None:
         """X: any binary write that leaves allowed regions must return E04."""
+        sock: socket.socket
         with self._gdb_client() as sock:
             for region_name, start, end in self.memory_regions:
                 test_cases: list[tuple[str, int, bytes]] = [
@@ -394,7 +404,7 @@ def _find_riscv_gdb() -> str | None:
     return None
 
 
-_MAINTENANCE_CASES = [
+_MAINTENANCE_CASES: list[tuple[str, str, int, bool]] = [
     # Wormhole L1: [0x00000000, 0x0016E000)
     ("wormhole_inside", "wormhole", 0x00010000, False),
     ("wormhole_partial", "wormhole", 0x0016DFF8, True),
@@ -415,6 +425,19 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
     Integration tests: run a real GDB client against GdbServer and verify that
     L1/private restriction (E04) behaves sanely from the GDB user's perspective.
     """
+
+    # Class attributes set in setUpClass
+    context: Context
+    device: Device
+    arch: str
+    location: OnChipCoordinate
+    location_str: str
+    elf_path: str
+    gdb_edge_symbol: str
+    edge_addr: int
+    server_socket: ServerSocket
+    gdb_server: GdbServer
+    gdb_bin: str
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -540,10 +563,10 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
     def test_gdb_x_sees_l1_and_reports_error_past_l1(self) -> None:
         """
         Use 'print sym' / 'print *sym' and 'x/16xb sym' on the edge pointer and verify:
-        - the pointer value (edge_addr) is printed correctly
-        - dereferencing yields an error-like result (<incomplete type>)
-        - x/16xb triggers a visible memory access error (E04/Can't access)
-        - GDB exits cleanly
+          - the pointer value (edge_addr) is printed correctly
+          - dereferencing yields an error-like result (<incomplete type>)
+          - x/16xb triggers a visible memory access error (E04/Can't access)
+          - GDB exits cleanly
         """
         port = self.server_socket.port
         assert port is not None
@@ -612,15 +635,14 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
             )
 
             # 4) Expect some indication that the raw x/16xb hit a memory access error.
-            #    Depending on GDB version, this can be a user-level message or just the
-            #    remote failure text.
             error_signatures = [
                 "Cannot access memory at address",
                 "Remote failure reply: E04",
             ]
             self.assertTrue(
                 any(sig in output for sig in error_signatures),
-                f"Expected GDB/x to report restricted memory (E04) in a user-visible or remote-log way.\nOutput:\n{output}",
+                f"Expected GDB/x to report restricted memory (E04) in a user-visible "
+                f"or remote-log way.\nOutput:\n{output}",
             )
 
     @parameterized.expand(_MAINTENANCE_CASES)
@@ -632,10 +654,10 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
         expect_e04: bool,
     ) -> None:
         """
-        For a given (arch, addr, size, expect_e04) case:
+        For a given (arch, addr, expect_e04) case:
 
           - if arch != current device arch, skip.
-          - send maintenance packet m/M/X for that addr/size.
+          - send maintenance packet m/M/x/X for that addr/size.
           - assert that replies either all succeed or all E04.
         """
         if arch != self.arch:
@@ -667,11 +689,11 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
                 # M: hex write
                 maintenance packet M{addr_hex},{length_hex}:00112233445566778899AABBCCDDEEFF
 
-                # X: binary read
+                # x: binary read
                 maintenance packet x{addr_hex},{length_hex}
 
                 # X: binary write
-                maintenance packet X{addr_hex},{length_hex}:0011223344556677
+                maintenance packet X{addr_hex},{length_hex}:ABCDEFGHIJKLMNOP
 
                 quit
                 """
@@ -690,7 +712,7 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
                 f"GDB exited with non-zero code {rc}\nOutput:\n{output}",
             )
 
-            # For this addr, all three packets (m/M/x/X) should either all succeed or all E04.
+            # For this addr, all four packets (m/M/x/X) should either all succeed or all E04.
             self._assert_packet_result(output, "m", addr_hex, length_hex, expect_e04)
             self._assert_packet_result(output, "M", addr_hex, length_hex, expect_e04)
             self._assert_packet_result(output, "x", addr_hex, length_hex, expect_e04)
