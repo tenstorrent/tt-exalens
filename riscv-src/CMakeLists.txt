@@ -32,7 +32,7 @@ set(RISCV_OBJECT "${CMAKE_SOURCE_DIR}/build/riscv-src/obj")
 # Define architectures, applications, and cores
 set(RISCV_ARCHITECTURES "wormhole" "blackhole")
 set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc" "erisc0" "erisc1")
-set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test")
+set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "edge_mem_test")
 
 # Create the object file output directory
 file(MAKE_DIRECTORY ${RISCV_OBJECT})
