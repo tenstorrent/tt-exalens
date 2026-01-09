@@ -188,7 +188,9 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.core_sim.risc_debug.read_memory(addr), 0x12345678, "Memory value should be 0x12345678.")
         self.core_sim.risc_debug.write_memory(addr, 0x87654321)
         self.assertEqual(self.core_sim.risc_debug.read_memory(addr), 0x87654321, "Memory value should be 0x87654321.")
-        self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654321, "Memory value read over NOC should be 0x87654321.")
+        self.assertEqual(
+            self.core_sim.read_data(noc_addr), 0x87654321, "Memory value read over NOC should be 0x87654321."
+        )
 
     def test_read_write_private_memory(self):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
@@ -280,6 +282,7 @@ class TestDebugging(unittest.TestCase):
 
         # Verify third word is unchanged
         self.assertEqual(self.core_sim.read_data(noc_addr + 8), 0x99AABBCC, "Third word should be unchanged")
+
     @parameterized.expand(
         [
             # (offset, size, expected_read, write_data)
@@ -1137,7 +1140,9 @@ class TestDebugging(unittest.TestCase):
             self.skipTest("Watchpoints are disabled for this RISC.")
 
         addresses = [0x10000, 0x11000, 0x12000, 0x13000]
-        noc_addresses = [self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr) for addr in addresses]
+        noc_addresses = [
+            self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr) for addr in addresses
+        ]
         assert noc_addresses[0] is not None, "Translated NOC address should not be None."
         assert noc_addresses[1] is not None, "Translated NOC address should not be None."
         assert noc_addresses[2] is not None, "Translated NOC address should not be None."
