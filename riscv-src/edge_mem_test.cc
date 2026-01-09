@@ -10,6 +10,12 @@ volatile std::array<std::uint8_t, 16>* g_p_wormhole =
 volatile std::array<std::uint8_t, 16>* g_p_blackhole =
     reinterpret_cast<volatile std::array<std::uint8_t, 16>*>(0x0017FFF8);  // 8 bytes in L1, 8 bytes past L1
 
+volatile std::array<std::uint8_t, 16>* g_in_l1_wormhole =
+    reinterpret_cast<volatile std::array<std::uint8_t, 16>*>(0x00010000);  // entirely in L1
+
+volatile std::array<std::uint8_t, 16>* g_in_l1_blackhole =
+    reinterpret_cast<volatile std::array<std::uint8_t, 16>*>(0x00010000);  // entirely in L1
+
 int main() {
     while (true) {
         asm volatile("nop");

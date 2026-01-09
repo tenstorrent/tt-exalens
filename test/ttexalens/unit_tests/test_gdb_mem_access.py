@@ -10,6 +10,7 @@ import textwrap
 import time
 import unittest
 from contextlib import contextmanager
+from parameterized import parameterized
 
 from test.ttexalens.unit_tests.test_base import (  # type: ignore
     init_cached_test_context,
@@ -393,20 +394,26 @@ def _find_riscv_gdb() -> str | None:
     return None
 
 
+_MAINTENANCE_CASES = [
+    # Wormhole L1: [0x00000000, 0x0016E000)
+    ("wormhole_inside", "wormhole", 0x00010000, False),
+    ("wormhole_partial", "wormhole", 0x0016DFF8, True),
+    ("wormhole_outside", "wormhole", 0x0016E000, True),
+    # Blackhole L1: [0x00000000, 0x00180000)
+    ("blackhole_inside", "blackhole", 0x00010000, False),
+    ("blackhole_partial", "blackhole", 0x0017FFF8, True),
+    ("blackhole_outside", "blackhole", 0x00180000, True),
+]
+
+
 @unittest.skipUnless(
     _find_riscv_gdb() is not None,
     "RISC-V GDB not found (set TTEXALENS_RISCV_GDB or build/sfpi/compiler/bin/riscv-tt-elf-gdb)",
 )
-class TestGdbMemAccessIntegration(unittest.TestCase):
+class TestGdbMemAccessFromClient(unittest.TestCase):
     """
-    Integration test: run a real GDB client against GdbServer and verify that
+    Integration tests: run a real GDB client against GdbServer and verify that
     L1/private restriction (E04) behaves sanely from the GDB user's perspective.
-
-    We use edge_mem_test.*.brisc.elf, which defines:
-      - g_p_wormhole  -> 0x0016DFF8  (8B in Wormhole L1, 8B past)
-      - g_p_blackhole -> 0x0017FFF8  (8B in Blackhole L1, 8B past)
-
-    This test chooses which symbol to use based on the device arch.
     """
 
     @classmethod
@@ -427,7 +434,7 @@ class TestGdbMemAccessIntegration(unittest.TestCase):
         cls.location = get_core_location("FW0", cls.device)
         cls.location_str = cls.location.to_str()
 
-        # Edge ELF that defines g_p_wormhole / g_p_blackhole
+        # Edge ELF that defines g_p_* and g_in_l1_* symbols
         cls.elf_path = os.path.join(
             "build",
             "riscv-src",
@@ -437,12 +444,12 @@ class TestGdbMemAccessIntegration(unittest.TestCase):
         if not os.path.exists(cls.elf_path):
             raise unittest.SkipTest(f"{cls.elf_path} does not exist; build edge_mem_test first.")
 
-        # Arch-specific pointer symbol and expected edge address
+        # Arch-specific pointer symbol and edge address for the x/16xb test
         if cls.arch == "wormhole":
-            cls.gdb_symbol = "g_p_wormhole"
+            cls.gdb_edge_symbol = "g_p_wormhole"
             cls.edge_addr = 0x0016DFF8
         else:  # blackhole
-            cls.gdb_symbol = "g_p_blackhole"
+            cls.gdb_edge_symbol = "g_p_blackhole"
             cls.edge_addr = 0x0017FFF8
 
         # Run the ELF on BRISC so there is a live process to attach to
@@ -467,30 +474,85 @@ class TestGdbMemAccessIntegration(unittest.TestCase):
         finally:
             cls.server_socket.close()
 
+    def _run_gdb_script(self, script_path: str) -> tuple[int, str]:
+        """
+        Run GDB in batch mode with the given script and return (returncode, decoded_output).
+        We capture raw bytes and decode with errors='replace' so that binary
+        remote protocol logs don't break the test.
+        """
+        proc = subprocess.run(
+            [self.gdb_bin, "-q", "-x", script_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=False,  # capture raw bytes
+            timeout=60,
+        )
+        output = proc.stdout.decode("utf-8", errors="replace")
+        return proc.returncode, output
+
+    def _assert_packet_result(
+        self,
+        output: str,
+        cmd_prefix: str,
+        addr_hex: str,
+        length_hex: str,
+        expect_e04: bool,
+    ) -> None:
+        """
+        Assert that a maintenance packet with the given cmd/addr/len
+        produced (or did not produce) E04 in the immediate reply.
+        """
+        send_marker = f"Sending packet: ${cmd_prefix}{addr_hex},{length_hex}"
+        self.assertIn(
+            send_marker,
+            output,
+            f"Expected to see '{send_marker}' in GDB remote log.\nOutput:\n{output}",
+        )
+
+        idx = output.find(send_marker)
+        self.assertNotEqual(idx, -1)
+        sub = output[idx:]
+
+        recv_prefix = "Packet received: "
+        recv_idx = sub.find(recv_prefix)
+        self.assertNotEqual(
+            recv_idx,
+            -1,
+            f"Expected a 'Packet received' after '{send_marker}'.\nSub-output:\n{sub}",
+        )
+
+        recv_line = sub[recv_idx + len(recv_prefix) :].splitlines()[0]
+        recv_val = recv_line.strip()
+
+        if expect_e04:
+            self.assertEqual(
+                recv_val,
+                "E04",
+                f"Expected E04 for packet '{send_marker}', got '{recv_val}'\nSub-output:\n{sub}",
+            )
+        else:
+            self.assertNotEqual(
+                recv_val,
+                "E04",
+                f"Did not expect E04 for packet '{send_marker}', but got it.\nSub-output:\n{sub}",
+            )
+
     def test_gdb_x_sees_l1_and_reports_error_past_l1(self) -> None:
         """
-        Scenario:
-
-          - GdbServer has restricted m/x/M/X to L1 + private, returning E04 outside.
-          - We run edge_mem_test on BRISC; g_p_wormhole / g_p_blackhole point near L1 end.
-          - We run a real RISC-V GDB and execute: x/16xb <arch-specific pointer>
-
-        Expectations:
-
-          - GDB prints bytes at EDGE_ADDR (L1 part).
-          - When it reaches out-of-L1 region, it shows a clear error:
-              - e.g. 'Cannot access memory at address ...'
-                or 'Remote failure reply: E04'
-          - No crash/hang; GDB exits cleanly.
+        Use 'print sym' / 'print *sym' and 'x/16xb sym' on the edge pointer and verify:
+        - the pointer value (edge_addr) is printed correctly
+        - dereferencing yields an error-like result (<incomplete type>)
+        - x/16xb triggers a visible memory access error (E04/Can't access)
+        - GDB exits cleanly
         """
         port = self.server_socket.port
         assert port is not None
 
         with tempfile.TemporaryDirectory(prefix="gdb_mem_access_") as tmpdir:
-            script_path = os.path.join(tmpdir, "commands.gdb")
+            script_path = os.path.join(tmpdir, "commands_x.gdb")
 
-            sym = self.gdb_symbol
-            expected_prefix = f"0x{self.edge_addr:x}:"
+            sym = self.gdb_edge_symbol
+            ptr_str = f"0x{self.edge_addr:x}"
 
             gdb_commands = textwrap.dedent(
                 f"""
@@ -508,8 +570,13 @@ class TestGdbMemAccessIntegration(unittest.TestCase):
                 # Load symbols for our edge_mem_test
                 add-symbol-file {self.elf_path}
 
-                # Inspect pointer and then dump 16 bytes from it
+                # 1) Inspect pointer value
                 print {sym}
+
+                # 2) Try to dereference the array at the edge of L1
+                print *{sym}
+
+                # 3) Also do a raw memory dump across the edge
                 x/16xb {sym}
 
                 quit
@@ -519,40 +586,112 @@ class TestGdbMemAccessIntegration(unittest.TestCase):
             with open(script_path, "w", encoding="utf-8") as f:
                 f.write(gdb_commands + "\n")
 
-            # Capture raw bytes from GDB, then decode with a tolerant codec so
-            # binary remote debug output doesn't break the test.
-            proc = subprocess.run(
-                [self.gdb_bin, "-q", "-x", script_path],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=False,  # <-- raw bytes
-                timeout=60,
-            )
-
-            output = proc.stdout.decode("utf-8", errors="replace")
-            util.INFO("GDB integration test output:\n" + output)
+            rc, output = self._run_gdb_script(script_path)
+            util.INFO("GDB integration test output (print/x on edge pointer):\n" + output)
 
             # 1) GDB should exit cleanly
             self.assertEqual(
-                proc.returncode,
+                rc,
                 0,
-                f"GDB exited with non-zero code {proc.returncode}\nOutput:\n{output}",
+                f"GDB exited with non-zero code {rc}\nOutput:\n{output}",
             )
 
-            # 2) Expect bytes at EDGE_ADDR (L1 part for the arch-specific pointer)
+            # 2) Expect the pointer value (edge_addr) to be printed
             self.assertIn(
-                expected_prefix,
+                ptr_str,
                 output,
-                f"Expected GDB to print bytes at {expected_prefix} from {sym}\nOutput:\n{output}",
+                f"Expected GDB to print pointer value {ptr_str} for {sym}\nOutput:\n{output}",
             )
 
-            # 3) Expect some indication that a memory access past L1 failed.
-            #    Exact wording depends on GDB version; accept a couple of variants.
+            # 3) Expect that dereferencing fails in a visible way
+            #    (GDB marks the C++ value as incomplete)
+            self.assertIn(
+                "<incomplete type>",
+                output,
+                f"Expected GDB to report an incomplete value when dereferencing {sym}\nOutput:\n{output}",
+            )
+
+            # 4) Expect some indication that the raw x/16xb hit a memory access error.
+            #    Depending on GDB version, this can be a user-level message or just the
+            #    remote failure text.
             error_signatures = [
                 "Cannot access memory at address",
                 "Remote failure reply: E04",
             ]
             self.assertTrue(
                 any(sig in output for sig in error_signatures),
-                f"Expected GDB to report restricted memory (E04) in a user-visible way.\nOutput:\n{output}",
+                f"Expected GDB/x to report restricted memory (E04) in a user-visible or remote-log way.\nOutput:\n{output}",
             )
+
+    @parameterized.expand(_MAINTENANCE_CASES)
+    def test_gdb_maintenance_m_M_x_X(
+        self,
+        _label: str,
+        arch: str,
+        addr: int,
+        expect_e04: bool,
+    ) -> None:
+        """
+        For a given (arch, addr, size, expect_e04) case:
+
+          - if arch != current device arch, skip.
+          - send maintenance packet m/M/X for that addr/size.
+          - assert that replies either all succeed or all E04.
+        """
+        if arch != self.arch:
+            self.skipTest(f"Case for arch={arch}, current arch={self.arch}")
+
+        port = self.server_socket.port
+        assert port is not None
+
+        addr_hex = f"{addr:x}"
+        length_hex = "10"  # 16 bytes
+
+        with tempfile.TemporaryDirectory(prefix="gdb_mem_access_") as tmpdir:
+            script_path = os.path.join(tmpdir, f"commands_packets_{arch}_{addr_hex}.gdb")
+
+            gdb_commands = textwrap.dedent(
+                f"""
+                set pagination off
+                set confirm off
+                set verbose off
+                set debug remote 1
+
+                target extended-remote localhost:{port}
+                attach 1
+                add-symbol-file {self.elf_path}
+
+                # m: hex read
+                maintenance packet m{addr_hex},{length_hex}
+
+                # M: hex write
+                maintenance packet M{addr_hex},{length_hex}:00112233445566778899AABBCCDDEEFF
+
+                # X: binary read
+                maintenance packet x{addr_hex},{length_hex}
+
+                # X: binary write
+                maintenance packet X{addr_hex},{length_hex}:0011223344556677
+
+                quit
+                """
+            ).strip()
+
+            with open(script_path, "w", encoding="utf-8") as f:
+                f.write(gdb_commands + "\n")
+
+            rc, output = self._run_gdb_script(script_path)
+            util.INFO(f"GDB integration test output (maintenance {arch} addr=0x{addr:x}):\n" + output)
+
+            # 1) GDB should exit cleanly
+            self.assertEqual(
+                rc,
+                0,
+                f"GDB exited with non-zero code {rc}\nOutput:\n{output}",
+            )
+
+            # For this addr, all three packets (m/M/x/X) should either all succeed or all E04.
+            self._assert_packet_result(output, "m", addr_hex, length_hex, expect_e04)
+            self._assert_packet_result(output, "M", addr_hex, length_hex, expect_e04)
+            self._assert_packet_result(output, "x", addr_hex, length_hex, expect_e04)
+            self._assert_packet_result(output, "X", addr_hex, length_hex, expect_e04)
