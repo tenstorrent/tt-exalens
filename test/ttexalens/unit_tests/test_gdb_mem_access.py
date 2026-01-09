@@ -487,8 +487,9 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
         # Small delay to ensure the server is listening
         time.sleep(0.2)
 
-        cls.gdb_bin = _find_riscv_gdb()
-        assert cls.gdb_bin is not None
+        gdb_bin: str | None = _find_riscv_gdb()
+        assert gdb_bin is not None
+        cls.gdb_bin = gdb_bin
 
     @classmethod
     def tearDownClass(cls) -> None:
