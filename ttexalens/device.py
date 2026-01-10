@@ -128,9 +128,19 @@ class Device:
         self._context = context
         self._umd_device = umd_device
         self._soc_descriptor = umd_device.soc_descriptor
-        self._has_mmio = umd_device.is_mmio_capable
         self._has_jtag = umd_device.is_jtag_capable
+        self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
+
+    @property
+    def local_device(self) -> "Device":
+        if self.is_local:
+            return self
+        local_tt_device = self._umd_device.get_local_tt_device()
+        for device in self._context.devices.values():
+            if device.is_local and device._umd_device.get_local_tt_device() == local_tt_device:
+                return device
+        raise RuntimeError("Local device not found in context devices")
 
     @property
     def board_type(self) -> tt_umd.BoardType:
