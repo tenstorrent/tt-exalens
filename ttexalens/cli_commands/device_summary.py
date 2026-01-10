@@ -121,9 +121,13 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
         device_id_str = f"{device.id}"
+        device_unique_id_str = ""
         if device.unique_id is not None:
-            device_id_str += f" [0x{device.unique_id:x}]"
-        util.INFO(f"==== Device {jtag_prompt}{device_id_str}")
+            device_unique_id_str += f"0x{device.unique_id:x}"
+        local_remote = "local" if device.is_local else f"remote({device.local_device.id})"
+        util.INFO(
+            f"==== Device {jtag_prompt}{device_id_str} [{device.board_type} / {local_remote}] (Unique ID: {device_unique_id_str})"
+        )
 
         # What to render in each cell
         cell_contents_array = [s.strip() for s in cell_contents.split(",")]

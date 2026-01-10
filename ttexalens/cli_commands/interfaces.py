@@ -38,7 +38,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     for device_id in devices_list:
         # mmio chips
-        if context.devices[device_id]._has_mmio:
+        if context.devices[device_id].is_local:
             device = context.devices[device_id]
             unique_id_str = f"0x{device.unique_id:x}" if device.unique_id is not None else "{}"
             if device._has_jtag:

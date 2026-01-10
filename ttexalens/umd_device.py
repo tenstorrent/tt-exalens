@@ -389,3 +389,9 @@ class UmdDevice:
             tt_umd.CoordSystem.LOGICAL,
         )
         return (logical_coord.x, logical_coord.y)
+
+    def get_local_tt_device(self) -> tt_umd.TTDevice:
+        if self._is_mmio_capable:
+            return self.__device
+        remote_communication = self.__device.get_remote_communication()
+        return remote_communication.get_local_device()
