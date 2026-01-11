@@ -132,8 +132,8 @@ class TestReadWrite(unittest.TestCase):
     def test_write_read_bytes_buffer(self, location: str, size: int, address: int, device_id: int):
         """Test write bytes -- read bytes but with bigger buffer."""
 
-        if device_id >= len(self.context.devices):
-            self.skipTest("Device ID out of range.")
+        if device_id not in self.context.devices:
+            self.skipTest("Device ID not available.")
 
         # Create buffer
         data = bytes([i % 256 for i in range(size)])

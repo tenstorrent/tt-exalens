@@ -69,8 +69,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         device_array.append(int(device_id, 0))
 
     for device_id in device_array:
-        current_device = context.devices[device_id]
-        core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
+        device = context.find_device_by_id(device_id)
+        core_loc = OnChipCoordinate.create(core_loc_str, device)
 
         debug_tensix = TensixDebug(core_loc, device_id, context)
         data = debug_tensix.read_regfile(regfile, num_tiles)

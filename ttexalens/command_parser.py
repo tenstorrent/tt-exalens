@@ -76,33 +76,18 @@ class tt_docopt:
     """
 
     @staticmethod
-    def find_device_by_id(context: Context, device_id: int) -> Device:
-        # Check if user is using device id that represents index (UMD device id)
-        if device_id not in context.devices:
-            # Check if user wants to use device unique id
-            for device in context.devices.values():
-                if device.unique_id == device_id:
-                    return device
-
-            # We did not find device with that id
-            raise ValueError(f"Invalid device ID: {device_id}")
-        return context.devices[device_id]
-
-    @staticmethod
     def device_id_for_each(device_id: int | str | None, context: Context, ui_state: UIState):
         if not device_id:
-            device_id = ui_state.current_device_id
-            device = context.devices[device_id]
-            yield device
+            yield ui_state.current_device
         elif device_id == "all":
-            for device in context.devices.values():
-                yield device
+            for device_id in context.device_ids:
+                yield context.find_device_by_id(device_id)
         elif type(device_id) == int:
-            yield tt_docopt.find_device_by_id(context, device_id)
+            yield context.find_device_by_id(device_id)
         else:
             assert type(device_id) == str
             device_id = int(device_id, 0)
-            yield tt_docopt.find_device_by_id(context, device_id)
+            yield context.find_device_by_id(device_id)
 
     @staticmethod
     def loc_for_each(loc_str, context: Context, ui_state: UIState, device: Device):

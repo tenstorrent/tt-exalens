@@ -67,7 +67,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         pass
 
     def process_device(device_id: int):
-        location = OnChipCoordinate.create(location_str, device=context.devices[device_id])
+        location = OnChipCoordinate.create(location_str, device=context.find_device_by_id(device_id))
 
         addr, size_bytes = addr_arg, size_bytes_arg
 
@@ -77,7 +77,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             addr += offset
 
         print_a_burst_read(
-            device_id,
             location,
             addr,
             word_count=word_count if word_count > 0 else size_words,
@@ -110,7 +109,6 @@ def print_memory_block(header: str, start_addr: int, data: list[int], bytes_per_
 
 
 def print_a_burst_read(
-    device_id: int,
     location: OnChipCoordinate,
     addr: int,
     word_count: int,
@@ -121,13 +119,11 @@ def print_a_burst_read(
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
 
-    device = context.devices[device_id]
-    noc_block = device.get_block(location)
-    memory_map: MemoryMap = noc_block.noc_memory_map
+    memory_map: MemoryMap = location.noc_block.noc_memory_map
 
     if sample == 0:  # No sampling, just a single read
         # Read all data at once for efficiency
-        data = read_words_from_device(location, addr, device_id, word_count, context)
+        data = read_words_from_device(location, addr, word_count=word_count)
 
         # Print overall header
         print(f"{location.to_user_str()} : 0x{addr:08x} ({word_count * 4} total bytes)")
@@ -182,7 +178,7 @@ def print_a_burst_read(
             print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
             t_end = time.time() + sample / word_count
             while time.time() < t_end:
-                val = read_word_from_device(location, word_addr, device_id, context=context)
+                val = read_word_from_device(location, word_addr)
                 if val not in values:
                     values[val] = 0
                 values[val] += 1

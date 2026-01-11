@@ -4,6 +4,7 @@
 import math
 import unittest
 from parameterized import parameterized_class, parameterized
+import tt_umd
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -34,7 +35,7 @@ class TestTensixDebug(unittest.TestCase):
         self.tensix_debug = TensixDebug(self.location, 0, self.context)
 
     def is_blackhole(self) -> bool:
-        return self.context.devices[0]._arch == "blackhole"
+        return self.location.device._arch == tt_umd.ARCH.BLACKHOLE
 
     @parameterized.expand(
         [
