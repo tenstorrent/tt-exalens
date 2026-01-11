@@ -79,9 +79,7 @@ def validate_addr(addr: int) -> None:
 
 
 def validate_device_id(device_id: int, context: Context) -> Device:
-    if device_id not in context.device_ids:
-        raise TTException(f"Invalid device_id {device_id}.")
-    return context.devices[device_id]
+    return context.find_device_by_id(device_id)
 
 
 def convert_coordinate(

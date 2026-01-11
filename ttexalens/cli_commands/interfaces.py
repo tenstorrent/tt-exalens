@@ -28,18 +28,16 @@ command_metadata = CommandMetadata(
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
     args = tt_docopt(command_metadata, cmd_text).args
-    device = context.devices[0]
 
-    devices_list = list(context.devices.keys())
-    for device_id in devices_list:
+    for device_id in context.device_ids:
         device = context.devices[device_id]
         unique_id_str = f"0x{device.unique_id:x}" if device.unique_id is not None else "{}"
         print(f"NOC Device {device_id}: {unique_id_str}")
 
-    for device_id in devices_list:
+    for device_id in context.device_ids:
         # mmio chips
-        if context.devices[device_id]._has_mmio:
-            device = context.devices[device_id]
+        device = context.devices[device_id]
+        if device._has_mmio:
             unique_id_str = f"0x{device.unique_id:x}" if device.unique_id is not None else "{}"
             if device._has_jtag:
                 print(f"JTAG Device {device_id}: {unique_id_str}")
