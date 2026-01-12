@@ -75,25 +75,25 @@ brxy 0,0 0x0 32 --format i8 --sample 5
 Output:
 ```
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 22002 times
+1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 21803 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 22429 times
+1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 21814 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 22606 times
+1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 22006 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 22192 times
+1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 21904 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 22222 times
+1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 22126 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 22513 times
+1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 22077 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 22370 times
+1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 22092 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 22599 times
+1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 21679 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 22301 times
+1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 21889 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000024 (36) => 0x00001234 (4660) - 22680 times
+1-1 (0,0) (l1) 0x00000024 (36) => 0x00001234 (4660) - 21995 times
 ...
 ```
 Read 16 words from dram channel 0
@@ -342,14 +342,14 @@ Output:
 │ Name                   │ Value                                │
 ├────────────────────────┼──────────────────────────────────────┤
 │ brisc_dbg_obs_cmt_pc   │ [0x160, 0x160, 0x160, 0x160]         │
-│ brisc_dbg_obs_cmt_vld  │ [False, False, True, False]          │
+│ brisc_dbg_obs_cmt_vld  │ [True, False, False, True]           │
 │ brisc_dbg_obs_mem_addr │ [0x10000, 0x10000, 0x10000, 0x10000] │
 │ brisc_dbg_obs_mem_rden │ [False, False, False, False]         │
-│ brisc_i_instrn         │ [0x6f, 0x0, 0x0, 0x6f]               │
+│ brisc_i_instrn         │ [0x0, 0x6f, 0x0, 0x0]                │
 │ brisc_i_instrn_req_rtr │ [True, True, True, True]             │
-│ brisc_i_instrn_vld     │ [True, False, False, True]           │
-│ brisc_o_instrn_addr    │ [0x164, 0x164, 0x160, 0x164]         │
-│ brisc_o_instrn_req     │ [False, True, True, False]           │
+│ brisc_i_instrn_vld     │ [False, True, False, False]          │
+│ brisc_o_instrn_addr    │ [0x160, 0x164, 0x164, 0x160]         │
+│ brisc_o_instrn_req     │ [True, False, True, True]            │
 │ brisc_pc               │ [0x160, 0x160, 0x160, 0x160]         │
 ╰────────────────────────┴──────────────────────────────────────╯
 
@@ -1265,6 +1265,88 @@ go -m 1 -n 1 -d 0 -l 0,0
 
 
 
+## help / h
+
+### Usage
+
+```
+help [--all] [-v] [<command>]
+```
+
+
+### Description
+
+Prints documentation summary. Use -v for details. If a command name is specified, it prints documentation for that command only.
+
+
+### Options
+
+- `-v`: If specified, prints verbose documentation.
+- `--all`: If specified, prints all commands.
+
+
+### Examples
+
+Command:
+```
+help exit
+```
+Output:
+```
+Full Name      Short    Description
+-------------  -------  -----------------------------------------------------------------------------------
+exit           x
+                        Description:
+                          Exits the program. The optional argument represents the exit code. Defaults to 0.
+-------------  -------  -----------------------------------------------------------------------------------
+```
+Command:
+```
+help -v exit
+```
+Output:
+```
+Full Name      Short    Description
+-------------  -------  -----------------------------------------------------------------------------------
+exit           x
+                        Description:
+                          Exits the program. The optional argument represents the exit code. Defaults to 0.
+-------------  -------  -----------------------------------------------------------------------------------
+```
+Command:
+```
+help --all
+```
+Output:
+```
+Full Name          Short    Description
+-----------------  -------  ------------------------------------------------------------------------------------------------------...
+exit               x        Exits the program. The optional argument represents the exit code. Defaults to 0.
+reload             rl       Reloads files in cli_commands directory. Useful for development of commands.
+help               h        Prints documentation summary. Use -v for details. If a command name is specified, it prints documentat...
+burst-read-xy      brxy     Reads and prints a block of data from address 'addr' at core <core-loc>.
+callstack          bt       Prints callstack using provided elf for a given RiscV core.
+debug-bus          dbus     Commands for RISC-V debugging:
+dump-tensix-state  tensix   Prints the tensix state group of the given name, at the specified location and device.
+dump-gpr           gpr      Prints all RISC-V registers for BRISC, TRISC0, TRISC1, and TRISC2 on the current core.
+read               r        Reads and prints a block of data from address 'address'.
+riscv              rv       Commands for RISC-V debugging:
+tensix-reg         reg      Prints/writes to the specified register, at the specified location and device.
+write-xy           wxy      Writes data word to address 'addr' at noc0 location x-y of the current chip.
+device             d        Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
+dump-coverage      cov      Get coverage data for a given ELF. Extract the gcda from the given core
+gdb                gdb      Starts or stops gdb server.
+go                 go       Sets the current device/location/noc/4B mode.
+noc                nc       Displays NOC (Network on Chip) registers.
+run-elf            re       Loads an elf file into a brisc and runs it.
+...
+```
+
+
+
+
+
+
 ## noc / nc
 
 ### Usage
@@ -1312,13 +1394,13 @@ NOC0 Status Registers
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ├────────────────────────────┼────────────┼────────────┤ ├────────────────────────────────┼────────────┼────────────┤
-│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x00195591 │
-│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x002205ec │
-│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x002205eb │
-│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x002205eb │
-│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x00195591 │
+│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x001a96c5 │
+│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x00387443 │
+│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x00387442 │
+│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x00387442 │
+│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x001a96c5 │
 │ posted write words sent    │ 0xffb20224 │ 0x00000000 │ │ posted write words received    │ 0xffb202e4 │ 0x00000000 │
-│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x00195591 │
+│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x001a96c5 │
 │ posted write reqs sent     │ 0xffb2022c │ 0x00000000 │ │ posted write reqs received     │ 0xffb202ec │ 0x00000000 │
 ╰────────────────────────────┴────────────┴────────────╯ ╰────────────────────────────────┴────────────┴────────────╯
 
@@ -1350,10 +1432,10 @@ NOC0 Status Registers
 
               Transaction Counters (Received)
 
-  write acks sent                  0xffb202c4   0x00195591
-  read resps sent                  0xffb202c8   0x0022060c
-  read words sent                  0xffb202cc   0x0022060b
-  read reqs received               0xffb202d4   0x0022060b
+  write acks sent                  0xffb202c4   0x001a96c5
+  read resps sent                  0xffb202c8   0x00387463
+  read words sent                  0xffb202cc   0x00387462
+  read reqs received               0xffb202d4   0x00387462
 ...
 ```
 Prints a specific register value
@@ -1417,9 +1499,9 @@ Output:
 │ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00000000 │
 │ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000000 │
 │ NIU_MST_RD_REQ_STARTED        │ 0xffb20238 │ 0x00000000 │
-│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00220629 │
-│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x00220627 │
-│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00220629 │
+│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00387480 │
+│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x0038747e │
+│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00387480 │
 ╰───────────────────────────────┴────────────┴────────────╯
 
                       NOC1 Registers
