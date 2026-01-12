@@ -47,7 +47,11 @@ class UmdDevice:
         self.__device = device
         self._arch = device.get_arch()
         self._is_mmio_capable = not device.is_remote()
-        self._is_jtag_capable = device.get_communication_device_type() == tt_umd.IODeviceType.JTAG
+        try:
+            # TODO #833: It can happen that device doesn't have device type info initialized correctly, so we catch any exception here
+            self._is_jtag_capable = device.get_communication_device_type() == tt_umd.IODeviceType.JTAG
+        except:
+            self._is_jtag_capable = False
         self._soc_descriptor = soc_descriptor if soc_descriptor is not None else tt_umd.SocDescriptor(device)
         self._device_id = device_id
         self._unique_id = unique_id
