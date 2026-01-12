@@ -104,9 +104,8 @@ class DocstringParser:
     def parse_description(self, help: str) -> dict:
         # Remove leading/trailing whitespaces
         lines = [line.strip() for line in help.split("\n")]
-        lines = "\n".join(lines)
 
-        return {"text": lines}
+        return {"text": "\n".join(lines)}
 
     def parse_args(self, help: str) -> dict:
         result = {}
@@ -114,11 +113,11 @@ class DocstringParser:
 
         for line in lines:
             # Arguments are separated from their descriptions by a colon (:)
-            line = line.split(":", 1)
+            sline = line.split(":", 1)
 
-            if len(line) > 1:
+            if len(sline) > 1:
                 # We have both argument name and description
-                arg = line[0]
+                arg = sline[0]
                 # Argument name is before the first opening parenthesis
                 name = arg.split("(")[0].strip()
                 # Argument types are inside the parentheses
@@ -130,24 +129,22 @@ class DocstringParser:
                 else:
                     types = types_match[0].split(", ")
 
-                description = line[1]
+                description = sline[1]
                 # Remove leading/trailing whitespaces
-                description = [desc.strip() for desc in description.split("\n")]
-                description = "\n".join(description)
+                description_lines = [desc.strip() for desc in description.split("\n")]
+                description = "\n".join(description_lines)
 
                 result[name] = {"type": types, "description": description}
             else:
                 # This is a continuation of the previous argument's description
-                result[name]["description"] += f"\n{line[0].strip()}"
+                result[name]["description"] += f"\n{line.strip()}"  # type: ignore
 
         return result
 
     def parse_returns(self, help: str) -> dict:
         [name, desc] = help.split(":", 1)
 
-        desc = [line.strip() for line in desc.split("\n")]
-        desc = "\n".join(desc)
-
+        desc = "\n".join([line.strip() for line in desc.split("\n")])
         return {"type": name.strip(), "description": desc}
 
     def parse_notes(self, help: str) -> dict:
@@ -194,7 +191,7 @@ class FileParser:
 
         # We keep track of the functions and variables we find in the file
         # At some point we might want to add support for classes
-        result = {"functions": [], "variables": [], "classes": []}
+        result: dict = {"functions": [], "variables": [], "classes": []}
 
         for id, node in enumerate(tree.body):
             if type(node) == ast.FunctionDef:
@@ -207,11 +204,12 @@ class FileParser:
                 result["functions"].append(parsed)
 
             elif type(node) == ast.AnnAssign:
-                if not type(tree.body[id - 1]) == ast.Expr:
-                    WARNING(f"No docstring found for variable {node.target.id} in file {file}. Skippning...")
+                expr = tree.body[id - 1]
+                if not isinstance(expr, ast.Expr):
+                    WARNING(f"No docstring found for variable {node.target.id} in file {file}. Skipping...")  # type: ignore
                     # Variables without docstrings are not added to the documentation
                     continue
-                parsed = self.parse_variable(node, tree.body[id - 1])
+                parsed = self.parse_variable(node, expr)
                 parsed["docs"] = self.docstring_parser.parse(parsed["docstring"])
                 result["variables"].append(parsed)
 
@@ -260,18 +258,19 @@ class FileParser:
 
         return result
 
-    def parse_variable(self, node: ast.AnnAssign, docstring_node: ast.Expr = None):
+    def parse_variable(self, node: ast.AnnAssign, docstring_node: ast.Expr | None = None):
         """Parses a variable declaration and its docstring."""
-        name = node.target.id
+        name = node.target.id  # type: ignore
         docstring = None
+        annotation: str | None = None
         if hasattr(node.annotation, "op"):
             annotation = self._resolve_node_returns(node.annotation)
         else:
             annotation = getattr(node.annotation, "id", None)
-        value = node.value.value if node.value.value else "None"
+        value = node.value.value if node.value.value else "None"  # type: ignore
 
         if docstring_node:
-            docstring = docstring_node.value.value
+            docstring = docstring_node.value.value  # type: ignore
 
         return {"name": name, "docstring": docstring, "annotation": annotation, "value": value}
 
@@ -279,7 +278,7 @@ class FileParser:
         if type(node_returns) == ast.Name:
             return node_returns.id
         elif type(node_returns) == ast.Constant:
-            return node_returns.value
+            return str(node_returns.value)
         elif type(node_returns) == ast.Subscript:
             slice_obj = node_returns.slice
             if isinstance(slice_obj, ast.Tuple):
@@ -432,11 +431,11 @@ def get_all_files(path: os.PathLike) -> list:
     return [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and f.endswith(".py")]
 
 
-def get_imported_modules_from_init(init_path: os.PathLike) -> list:
+def get_imported_modules_from_init(init_path: str) -> list:
     """Extracts all module names imported from __init__.py.
 
     Args:
-        init_path (os.PathLike): Path to the __init__.py file.
+        init_path (str): Path to the __init__.py file.
 
     Returns:
         list: List of module names (without .py extension) imported in __init__.py.
@@ -451,15 +450,16 @@ def get_imported_modules_from_init(init_path: os.PathLike) -> list:
             # Handle: from .module import ...
             if node.module and node.level == 1:  # relative import from same package
                 if node.module not in modules:
+                    modules.add(node.module)
                     ordered_modules.append(node.module)
     return ordered_modules
 
 
-def get_all_from_init(init_path: os.PathLike) -> set:
+def get_all_from_init(init_path: str) -> set | None:
     """Extracts __all__ list from __init__.py by parsing AST.
 
     Args:
-        init_path (os.PathLike): Path to the __init__.py file.
+        init_path (str): Path to the __init__.py file.
 
     Returns:
         set: Set of exported item names from __all__, or None if not found.
