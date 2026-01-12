@@ -7,7 +7,6 @@ import struct
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
-from ttexalens.tt_exalens_lib import check_context, validate_device_id
 from ttexalens.util import WARN, TTException
 from ttexalens.device import Device
 from ttexalens.pack_unpack_regfile import (
@@ -56,27 +55,14 @@ def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
 
 
 class TensixDebug:
-    core_loc: OnChipCoordinate
-    device_id: int
-    context: Context
-    device: Device
-
     def __init__(
         self,
-        core_loc: str | OnChipCoordinate,
-        device_id: int,
-        context: Context | None = None,
+        location: OnChipCoordinate,
     ) -> None:
-        self.context = check_context(context)
-        validate_device_id(device_id, self.context)
-        self.device_id = device_id
-        self.device = self.context.find_device_by_id(device_id)
-        self.noc_block = self.device.get_block(core_loc)
+        self.location = location
+        self.device = location.device
+        self.noc_block = location.noc_block
         self.register_store = self.noc_block.get_register_store()
-        if not isinstance(core_loc, OnChipCoordinate):
-            self.core_loc = OnChipCoordinate.create(core_loc, device=self.device)
-        else:
-            self.core_loc = core_loc
 
         # Using TRISC0 debug hardware to read/write memory
         # Use restricted_access=False because the Tensix dest is outside L1/data_private, but we still need to read/write it via TRISC0 debug hardware.
