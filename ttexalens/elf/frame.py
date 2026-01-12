@@ -28,6 +28,19 @@ class FrameDescription:
             self.current_fde_entry = entry
 
     def try_read_register(self, register_index: int, cfa: int | None) -> int | None:
+        """Try to read a register value based on DWARF frame information rules.
+
+        This method attempts to read a saved register value from the stack or another
+        register using DWARF call frame information rules. Unlike `read_register`, this
+        method does NOT fall back to reading the current register value if no rule is found.
+
+        Args:
+            register_index: The register index to read
+            cfa: The Canonical Frame Address (can be None for top frame)
+
+        Returns:
+            The register value if it can be determined from frame rules, None otherwise
+        """
         if self.current_fde_entry is not None and register_index in self.current_fde_entry:
             register_rule = self.current_fde_entry[register_index]
 
@@ -71,6 +84,19 @@ class FrameDescription:
         return None
 
     def read_register(self, register_index: int, cfa: int) -> int | None:
+        """Read a register value, with fallback to current register state.
+
+        This method reads a saved register value from the stack if a DWARF OFFSET rule
+        exists, otherwise falls back to reading the current register value from risc_debug.
+        This is useful for scenarios where you want to guarantee a register value.
+
+        Args:
+            register_index: The register index to read
+            cfa: The Canonical Frame Address
+
+        Returns:
+            The register value
+        """
         if self.current_fde_entry is not None and register_index in self.current_fde_entry:
             register_rule = self.current_fde_entry[register_index]
             if register_rule.type == "OFFSET":
