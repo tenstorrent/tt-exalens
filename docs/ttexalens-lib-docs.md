@@ -56,7 +56,7 @@ Interfacing device is done remotely through TTExaLens client.
 ## set_active_context
 
 ```
-set_active_context(context: Context | None) -> None
+set_active_context(context: Context | None)
 ```
 
 
@@ -289,7 +289,7 @@ Loads the given ELF file into the specified RISC core. RISC core must be in rese
 ## run_elf
 
 ```
-run_elf(elf_file: str | ParsedElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> None
+run_elf(elf_file: str | ParsedElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -400,7 +400,7 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 ## write_register
 
 ```
-write_register(location: str | OnChipCoordinate, register, value: int, noc_id: int = 0, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> None
+write_register(location: str | OnChipCoordinate, register, value: int, noc_id: int = 0, neo_id: int | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -501,7 +501,7 @@ Retrieves the callstack of the specified RISC core for a given ELF.
 ## coverage
 
 ```
-coverage(location: str | OnChipCoordinate, elf: str | ParsedElfFile, gcda_path: str, gcno_copy_path: str | None = None, device_id: int = 0, context: Context | None = None) -> None
+coverage(location: str | OnChipCoordinate, elf: str | ParsedElfFile, gcda_path: str, gcno_copy_path: str | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -553,7 +553,7 @@ Reads a 32-bit word from the specified RISC-V core's private memory.
 ## write_riscv_memory
 
 ```
-write_riscv_memory(location: str | OnChipCoordinate, addr: int, value: int, risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> None
+write_riscv_memory(location: str | OnChipCoordinate, addr: int, value: int, risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -699,7 +699,7 @@ Returns the type of block at the given location
 
 
 ```
-set(verbosity: int | Verbosity) -> None
+set(verbosity: int | Verbosity)
 ```
 Set the verbosity level of messages shown.
 - `verbosity` *(int)*: Verbosity level.
