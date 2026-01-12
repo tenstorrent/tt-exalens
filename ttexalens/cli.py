@@ -66,74 +66,6 @@ from ttexalens.command_parser import tt_docopt, CommandMetadata, find_command, C
 from ttexalens.gdb.gdb_client import get_gdb_client_path
 
 
-# Creates rows for tabulate for all commands of a given type
-def format_commands(commands: list[CommandMetadata], type, specific_cmd=None, verbose=False):
-    rows = []
-    for c in commands:
-        if c.type == type and (specific_cmd is None or c.long_name == specific_cmd or c.short_name == specific_cmd):
-            if verbose:
-                row = [f"{util.CLR_INFO}{c.long_name}{util.CLR_END}", f"{c.short_name}", ""]
-                rows.append(row)
-                row2 = [f"", f"", f"{c.description}"]
-                rows.append(row2)
-                rows.append(["<--MIDRULE-->", "", ""])
-            else:
-                descriptions = c.description.split("\n") if c.description is not None else []
-                # Iterate to find the line containing "Description:". Then take the following line.
-                # If there is no such line, take the first line.
-                found_description = False
-                description = ""
-                for line in descriptions:
-                    if found_description:
-                        description = line
-                        break
-                    if "Description:" in line:
-                        found_description = True
-                if not found_description:
-                    description = descriptions[0]
-                description = description.strip()
-                row = [
-                    f"{util.CLR_INFO}{c.long_name}{util.CLR_END}",
-                    f"{c.short_name}",
-                    f"{description}",
-                ]
-                rows.append(row)
-    return rows
-
-
-# Print all commands (help)
-def print_help(commands: list[CommandMetadata], cmd):
-    help_command = find_command(commands, "help")
-    assert help_command is not None and help_command.description is not None
-    args = tt_docopt(help_command, " ".join(cmd)).args
-
-    specific_cmd = args["<command>"] if "<command>" in args else None
-    verbose = ("-v" in args and args["-v"]) or specific_cmd is not None
-
-    rows = []
-    rows += format_commands(commands, "housekeeping", specific_cmd, verbose)
-    rows += format_commands(commands, "low-level", specific_cmd, verbose)
-    rows += format_commands(commands, "high-level", specific_cmd, verbose)
-    if args["--all"]:
-        rows += format_commands(commands, "dev", specific_cmd, verbose)
-
-    if not rows:
-        util.WARN(f"Command '{specific_cmd}' not found")
-        return
-
-    # Replace each line starting with <--MIDRULE-->, with a ruler line to separate the commands visually
-    table_str = tabulate(rows, headers=["Full Name", "Short", "Description"], disable_numparse=True)
-    lines = table_str.split("\n")
-    midrule = lines[1]
-    for i in range(len(lines)):
-        if lines[i].startswith("<--MIDRULE-->"):
-            lines[i] = midrule
-    new_table_str = "\n".join(lines)
-    print(new_table_str)
-    if not verbose:
-        print("Use '-v' for more details.")
-
-
 # Certain commands give suggestions for next step. This function formats and prints those suggestions.
 def print_navigation_suggestions(navigation_suggestions):
     if navigation_suggestions:
@@ -160,15 +92,6 @@ def import_commands(reload: bool = False) -> list[CommandMetadata]:
             short_name="x",
             type="housekeeping",
             description="Description:\n  Exits the program. The optional argument represents the exit code. Defaults to 0.",
-            context=["util"],
-        ),
-        CommandMetadata(
-            long_name="help",
-            short_name="h",
-            type="housekeeping",
-            description="Usage:\n  help [-v] [--all] [<command>]\n\n"
-            + "Description:\n  Prints documentation summary. Use -v for details. If a command name is specified, it prints documentation for that command only.\n\n"
-            + "Options:\n  -v      If specified, prints verbose documentation.\n  --all   If specified, prints all commands.\n",
             context=["util"],
         ),
         CommandMetadata(
@@ -363,15 +286,21 @@ def main_loop(args, context: Context):
                                 break
 
                         if found_command == None:
-                            # Print help on invalid commands
-                            print_help(context.commands, cmd)
-                            raise util.TTException(f"Invalid command '{cmd_string}'")
+                            if cmd_string is not None and isinstance(cmd_string, str):
+                                from difflib import get_close_matches
+
+                                short_names = [c.short_name for c in context.commands if c.short_name is not None]
+                                long_names = [c.long_name for c in context.commands if c.long_name is not None]
+                                all_command_names = short_names + long_names
+                                best_match = get_close_matches(cmd_string, all_command_names)
+                                if best_match is not None and len(best_match) > 0:
+                                    suggestion = best_match[0]
+                                    util.WARN(f"Did you mean '{suggestion}'?")
+                            util.ERROR(f"Command '{cmd_string}' not found, use 'help' to list all commands.")
                         else:
                             if found_command.long_name == "exit":
                                 exit_code = int(cmd[1]) if len(cmd) > 1 else 0
                                 return exit_code
-                            elif found_command.long_name == "help":
-                                print_help(context.commands, cmd)
                             elif found_command.long_name == "reload":
                                 import_commands(reload=True)
                             elif found_command.long_name == "eval":
