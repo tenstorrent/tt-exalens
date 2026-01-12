@@ -30,7 +30,44 @@ class FrameDescription:
     def try_read_register(self, register_index: int, cfa: int | None) -> int | None:
         if self.current_fde_entry is not None and register_index in self.current_fde_entry:
             register_rule = self.current_fde_entry[register_index]
-            # TODO #761: Figure out how to handle all types of rules (CFARule, RegisterRule)
+
+            # Handle UNDEFINED rule - register value is undefined
+            if register_rule.type == "UNDEFINED":
+                return None
+
+            # Handle SAME_VALUE rule - register value is unchanged from previous frame
+            elif register_rule.type == "SAME_VALUE":
+                return self.risc_debug.read_gpr(register_index)
+
+            # Handle OFFSET rule - register value is stored at address CFA + offset
+            elif register_rule.type == "OFFSET":
+                if cfa is None:
+                    return None
+                address = cfa + register_rule.arg
+                try:
+                    return self.mem_access.read_word(address)
+                except RestrictedMemoryAccessError:
+                    # If access was restricted (outside L1/data_private_memory), return None
+                    return None
+
+            # Handle REGISTER rule - register value is in another register
+            elif register_rule.type == "REGISTER":
+                other_register_index = register_rule.arg
+                return self.risc_debug.read_gpr(other_register_index)
+
+            # Handle VAL_OFFSET rule - register value is CFA + offset (not at that address)
+            elif register_rule.type == "VAL_OFFSET":
+                if cfa is None:
+                    return None
+                return cfa + register_rule.arg
+
+            # Handle EXPRESSION and VAL_EXPRESSION rules - not yet implemented
+            # These would require evaluating DWARF expressions, which is complex
+            # and may not be needed for the current use case
+            elif register_rule.type in ("EXPRESSION", "VAL_EXPRESSION"):
+                return None
+
+        # If no rule found or rule type not handled, return None
         return None
 
     def read_register(self, register_index: int, cfa: int) -> int | None:
