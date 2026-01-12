@@ -98,7 +98,8 @@ class GdbServer(threading.Thread):
             int, GdbProcess
         ] = {}  # Dictionary of available processes that can be debugged (key: pid)
         last_available_processes: dict[RiscLocation, GdbProcess] = {}
-        for device in self.context.devices.values():
+        for device_id in self.context.device_ids:
+            device = self.context.find_device_by_id(device_id)
             for risc_debug in device.debuggable_cores:
                 if not risc_debug.is_in_reset():
                     try:
