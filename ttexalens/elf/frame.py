@@ -86,8 +86,9 @@ class FrameDescription:
     def read_register(self, register_index: int, cfa: int) -> int | None:
         """Read a register value, with fallback to current register state.
 
-        This method reads a saved register value from the stack if a DWARF OFFSET rule
-        exists, otherwise falls back to reading the current register value from risc_debug.
+        This method attempts to read a saved register value using DWARF frame rules,
+        and falls back to reading the current register value from risc_debug if no
+        rule is available or the rule evaluation returns None.
         This is useful for scenarios where you want to guarantee a register value.
 
         Args:
@@ -97,18 +98,11 @@ class FrameDescription:
         Returns:
             The register value
         """
-        if self.current_fde_entry is not None and register_index in self.current_fde_entry:
-            register_rule = self.current_fde_entry[register_index]
-            if register_rule.type == "OFFSET":
-                address = cfa + register_rule.arg
-            else:
-                address = None
-            if address is not None:
-                try:
-                    return self.mem_access.read_word(address)
-                except RestrictedMemoryAccessError:
-                    # If access was restricted (outside L1/data_private_memory), return None
-                    return None
+        # Try to read using frame rules first
+        value = self.try_read_register(register_index, cfa)
+        if value is not None:
+            return value
+        # Fall back to reading current register value
         return self.risc_debug.read_gpr(register_index)
 
     def read_previous_cfa(self, current_cfa: int | None = None) -> int | None:
