@@ -57,11 +57,11 @@ def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
 class TensixDebug:
     def __init__(
         self,
-        core_loc: OnChipCoordinate,
+        location: OnChipCoordinate,
     ) -> None:
-        self.core_loc = core_loc
-        self.device = core_loc.device
-        self.noc_block = core_loc.noc_block
+        self.location = location
+        self.device = location.device
+        self.noc_block = location.noc_block
         self.register_store = self.noc_block.get_register_store()
 
         # Using TRISC0 debug hardware to read/write memory
