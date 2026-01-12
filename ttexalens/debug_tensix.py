@@ -55,16 +55,12 @@ def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
 
 
 class TensixDebug:
-    core_loc: OnChipCoordinate
-    device_id: int
-    context: Context
-    device: Device
-
     def __init__(
         self,
         core_loc: OnChipCoordinate,
     ) -> None:
         self.core_loc = core_loc
+        self.device = core_loc.device
         self.noc_block = core_loc.noc_block
         self.register_store = self.noc_block.get_register_store()
 
