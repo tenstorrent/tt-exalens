@@ -27,7 +27,7 @@ class TestDevice(unittest.TestCase):
         cls.context = init_cached_test_context()
 
     def setUp(self):
-        if self.device_id >= len(self.context.device_ids):
+        if self.device_id not in self.context.device_ids:
             self.skipTest(f"Device {self.device_id} not found!")
 
         self.device = self.context.devices[self.device_id]

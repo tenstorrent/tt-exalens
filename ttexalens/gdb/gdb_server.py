@@ -21,6 +21,7 @@ from ttexalens.gdb.gdb_file_server import GdbFileServer
 from ttexalens.context import Context
 from ttexalens import util as util
 from ttexalens.hardware.risc_debug import RiscLocation
+from ttexalens.memory_access import RestrictedMemoryAccessError
 
 # Helper class returns currently debugging list of threads to gdb client in paged manner
 class GdbThreadListPaged:
@@ -97,7 +98,8 @@ class GdbServer(threading.Thread):
             int, GdbProcess
         ] = {}  # Dictionary of available processes that can be debugged (key: pid)
         last_available_processes: dict[RiscLocation, GdbProcess] = {}
-        for device in self.context.devices.values():
+        for device_id in self.context.device_ids:
+            device = self.context.find_device_by_id(device_id)
             for risc_debug in device.debuggable_cores:
                 if not risc_debug.is_in_reset():
                     try:
@@ -371,8 +373,12 @@ class GdbServer(threading.Thread):
                 writer.append(b"E01")
             else:
                 # Read memory bytes
-                buffer = self.current_process.risc_debug.read_memory_bytes(address, length)
-                writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
+                try:
+                    buffer = self.current_process.mem_access.read(address, length)
+                    writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
+                except RestrictedMemoryAccessError as e:
+                    util.ERROR(str(e), file=self.error_stream)
+                    writer.append(b"E04")  # restricted memory access
         elif parser.parse(b"M"):  # Write length addressable memory units starting at address addr.
             # ‘M addr,length:XX…’
             address = parser.parse_hex()
@@ -388,17 +394,26 @@ class GdbServer(threading.Thread):
                 writer.append(b"E02")
             else:
                 # Parse all the hex data into bytes
-                data = bytearray()
-                for _ in range(length):
-                    digit = parser.read_hex(2)
-                    if digit is None:
+                # data is already bytes from read_rest(), convert hex string to bytes
+                parsed_data = bytearray()
+                for i in range(0, len(data), 2):
+                    if i + 1 >= len(data):
                         writer.append(b"E03")
                         return True
-                    data.append(digit)
+                    try:
+                        byte_val = int(data[i : i + 2], 16)
+                        parsed_data.append(byte_val)
+                    except ValueError:
+                        writer.append(b"E03")
+                        return True
 
                 # Write memory bytes
-                self.current_process.risc_debug.write_memory_bytes(address, bytes(data))
-                writer.append(b"OK")
+                try:
+                    self.current_process.mem_access.write(address, bytes(parsed_data))
+                    writer.append(b"OK")
+                except RestrictedMemoryAccessError as e:
+                    util.ERROR(str(e), file=self.error_stream)
+                    writer.append(b"E04")  # restricted memory access
         elif parser.parse(b"p"):  # Read the value of register n; n is in hex.
             # ‘p n’
             register = parser.parse_hex()
@@ -924,11 +939,14 @@ class GdbServer(threading.Thread):
             elif address is None or length is None or length <= 0:
                 writer.append(b"E01")
             else:
-                # Reply with data should start with 'b'
-                writer.append(b"b")
                 # Read memory bytes
-                buffer = self.current_process.risc_debug.read_memory_bytes(address, length)
-                writer.append(buffer)
+                try:
+                    buffer = self.current_process.mem_access.read(address, length)
+                    writer.append(b"b")
+                    writer.append(buffer)  # Reply with data should start with 'b'
+                except RestrictedMemoryAccessError as e:
+                    util.ERROR(str(e), file=self.error_stream)
+                    writer.append(b"E04")  # restricted memory access
         elif parser.parse(b"X"):  # Write data to memory, where the data is transmitted in binary.
             # ‘X addr,length:XX…’
             try:
@@ -945,9 +963,13 @@ class GdbServer(threading.Thread):
                 elif self.current_process is None:
                     writer.append(b"E02")
                 else:
-                    # Write memory bytes
-                    self.current_process.risc_debug.write_memory_bytes(address, data[:length])
-                    writer.append(b"OK")
+                    try:
+                        # Write memory bytes
+                        self.current_process.mem_access.write(address, data[:length])
+                        writer.append(b"OK")
+                    except RestrictedMemoryAccessError as e:
+                        util.ERROR(str(e), file=self.error_stream)
+                        writer.append(b"E04")  # restricted memory access
             except:
                 writer.append(b"E03")
         elif parser.parse(b"z0,"):  # Remove a software breakpoint at address of type kind.

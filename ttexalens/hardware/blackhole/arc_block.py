@@ -81,7 +81,7 @@ class BlackholeArcBlock(ArcBlock):
     def __init__(self, location: OnChipCoordinate):
         super().__init__(location, block_type="arc")
 
-        if self.device._has_mmio:
+        if self.device.is_local:
             self.register_store_noc0 = RegisterStore(register_store_noc0_initialization_local, self.location)
             self.register_store_noc1 = RegisterStore(register_store_noc1_initialization_local, self.location)
         else:

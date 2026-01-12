@@ -70,7 +70,7 @@ class TensixDebug:
         self.context = check_context(context)
         validate_device_id(device_id, self.context)
         self.device_id = device_id
-        self.device = self.context.devices[self.device_id]
+        self.device = self.context.find_device_by_id(device_id)
         self.noc_block = self.device.get_block(core_loc)
         self.register_store = self.noc_block.get_register_store()
         if not isinstance(core_loc, OnChipCoordinate):
