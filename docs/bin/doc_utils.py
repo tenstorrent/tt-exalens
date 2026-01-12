@@ -45,7 +45,12 @@ class ElementPPrinter:
         return result
 
     def print_arg(
-        self, argname: str = None, argdesc: str = None, argtype: str = None, optarg: str = None, optshort: str = None
+        self,
+        argname: str | None = None,
+        argdesc: str | None = None,
+        argtype: str | None = None,
+        optarg: str | None = None,
+        optshort: str | None = None,
     ) -> str:
         """
         This function can be used for printing arrguments, options, and returns.

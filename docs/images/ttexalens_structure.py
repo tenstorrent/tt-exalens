@@ -13,13 +13,13 @@ from diagrams.programming.flowchart import Action
 from diagrams.generic import Node
 
 
-graph_attr = {
+graph_attr: dict = {
     "layout": "dot",
     "compound": "true",
     "splines": "spline",
 }
 
-node_attr = {
+node_attr: dict = {
     "shape": "box",
     "labelloc": "c",
     "height": "0.8",
@@ -45,11 +45,11 @@ with Diagram(name="TTExaLens's communication flow", filename="ttexalens-structur
 
     device = Node("Device", **node_attr)
 
-    contexts[1] >> Edge(ltail="cluster_0", lhead="cluster_1", color="black", arrowsize="0.5") << ifcs[0]
+    contexts[1] >> Edge(ltail="cluster_0", lhead="cluster_1", color="black", arrowsize="0.5") << ifcs[0]  # type: ignore [arg-type]
     (
         ifcs[0]
-        >> Edge(color="black", arrowsize="0.5")
+        >> Edge(color="black", arrowsize="0.5")  # type: ignore [arg-type]
         << [ifcs[1], ifcs[2]]
-        >> Edge(color="black", arrowsize="0.5")
+        >> Edge(color="black", arrowsize="0.5")  # type: ignore [arg-type]
         << device
     )

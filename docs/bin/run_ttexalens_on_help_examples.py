@@ -80,6 +80,4 @@ def execute_ttexalens_command(command):
     else:
         if len(filtered_output) > MAX_OUTPUT_LINES:
             filtered_output = filtered_output[:MAX_OUTPUT_LINES] + ["..."]
-        filtered_output = "\n".join(filtered_output)
-
-    return filtered_output
+        return "\n".join(filtered_output)
