@@ -214,15 +214,8 @@ class ElfLoader:
                         util.VERBOSE(f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
                         self.write_block(address, data)
 
-            # Check that what we have written is correct
-            if verify_write:
-                for section in elf_file.iter_sections():
-                    if section.data() and hasattr(section.header, "sh_addr"):
-                        name = section.name
-                        if name in self.SECTIONS_TO_LOAD:
-                            address = section.header.sh_addr
-                            data = section.data()
-                            address = self.remap_address(address, loader_data_address, loader_code_address)
+                        # Check that what we have written is correct
+                        if verify_write:
                             read_data = self.read_block(address, len(data))
                             if read_data != data:
                                 util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
