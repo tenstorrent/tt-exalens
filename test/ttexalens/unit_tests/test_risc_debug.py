@@ -1142,20 +1142,16 @@ class TestDebugging(unittest.TestCase):
             self.skipTest("Watchpoints are disabled for this RISC.")
 
         addresses = [0x10000, 0x11000, 0x12000, 0x13000]
-        noc_addresses = [
-            self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr) for addr in addresses
-        ]
-        assert noc_addresses[0] is not None, "Translated NOC address should not be None."
-        assert noc_addresses[1] is not None, "Translated NOC address should not be None."
-        assert noc_addresses[2] is not None, "Translated NOC address should not be None."
-        assert noc_addresses[3] is not None, "Translated NOC address should not be None."
+        noc_addresses: list[int] = []
+        for addr in addresses:
+            noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+            assert noc_addr is not None, "Translated NOC address should not be None."
+            noc_addresses.append(noc_addr)
 
         value = 0x12345678
         # Write our data to memory
-        self.core_sim.write_data_checked(noc_addresses[0], value)
-        self.core_sim.write_data_checked(noc_addresses[1], value)
-        self.core_sim.write_data_checked(noc_addresses[2], value)
-        self.core_sim.write_data_checked(noc_addresses[3], value)
+        for noc_address in noc_addresses:
+            self.core_sim.write_data_checked(noc_address, value)
 
         # Write code for brisc core at address 0
         # C++:
