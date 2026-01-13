@@ -505,22 +505,33 @@ class RiscDebug:
 
                 # Prepare for next iteration
                 cfa = frame_pointer
-                return_address = frame_description.read_register(1, cfa)
-                frame_pointer = frame_description.read_previous_cfa(cfa)
+                return_address = frame_description.read_register(1, cfa, frame_inspection)
                 if return_address is None:
                     break
                 pc = return_address
+
+                # Get frame description for the return address BEFORE calculating next CFA
+                # This is critical: we need the NEXT frame's FDE to calculate the NEXT frame's CFA
+                next_frame_description = elf.frame_info.get_frame_description(pc, self)
+
+                # If we do not get frame description from current elf check in others
+                if next_frame_description is None:
+                    new_elf, next_frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, self)
+                    if next_frame_description is not None and new_elf is not None:
+                        elf = new_elf
+
+                # Now calculate the next CFA using the NEXT frame's FDE
+                # If we can't get the next frame's FDE, fall back to current frame's FDE
+                if next_frame_description is not None:
+                    frame_pointer = next_frame_description.read_previous_cfa(cfa, frame_inspection)
+                else:
+                    frame_pointer = frame_description.read_previous_cfa(cfa, frame_inspection)
+
                 # Create new frame with reference to previous frame for SAME_VALUE and REGISTER rules
                 previous_frame_inspection = frame_inspection
                 frame_inspection = FrameInspection(
                     self, elf.loaded_offset, frame_description, cfa, previous_frame_inspection
                 )
-                frame_description = elf.frame_info.get_frame_description(pc, self)
-
-                # If we do not get frame description from current elf check in others
-                if frame_description is None:
-                    new_elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, self)
-                    if frame_description is not None and new_elf is not None:
-                        elf = new_elf
+                frame_description = next_frame_description
 
         return callstack

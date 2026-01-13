@@ -5,19 +5,17 @@
 """
 Integration tests for DWARF frame unwinding with real compiled RISC-V code.
 
-These tests use 3 focused test programs to validate frame unwinding:
+These tests use 2 test programs to validate frame unwinding:
 
 1. frame_unwinding_test.cc - Basic multi-frame unwinding
-   - Tests: OFFSET (debug), SAME_VALUE (release)
+   - Tests: OFFSET rules (both debug and release)
    - 3-frame callstack: main → caller → callee
+   - Compiler-generated CFI (only OFFSET rules)
 
-2. frame_unwinding_test_aliasing.cc - Register aliasing
-   - Tests: REGISTER rules (release)
-   - Focus on register-to-register value transfers
-
-3. frame_unwinding_test_deep.cc - Deep callstack
-   - Tests: Recursive frame state caching
-   - 5-frame deep callstack stress test
+2. frame_unwinding_test_cfi_directives.S - Explicit CFI directives
+   - Tests: SAME_VALUE and REGISTER rules
+   - Hand-written assembly with explicit .cfi_same_value and .cfi_register
+   - Only way to test these rules (compilers don't generate them automatically)
 """
 
 import unittest
@@ -31,7 +29,7 @@ class TestFrameUnwindingBasic(unittest.TestCase):
 
     Tests fundamental multi-frame unwinding with:
     - Debug builds (-O0): OFFSET rules (variables saved to stack)
-    - Release builds (-O3): SAME_VALUE rules (variables kept in registers)
+    - Release builds (-O3): OFFSET rules (compiler always generates OFFSET for saved registers)
     """
 
     context: Context
@@ -93,7 +91,7 @@ class TestFrameUnwindingBasic(unittest.TestCase):
     def test_release_build(self):
         """Test basic frame unwinding with release build (-O3).
 
-        This validates SAME_VALUE rules where variables stay in registers.
+        Note: Compiler still generates OFFSET rules even in release mode.
         """
         # Load release ELF
         self.core_sim.load_elf("frame_unwinding_test.release")
@@ -134,11 +132,11 @@ class TestFrameUnwindingBasic(unittest.TestCase):
         self.core_sim.set_reset(True)
 
 
-class TestFrameUnwindingAliasing(unittest.TestCase):
-    """Register aliasing test - validates REGISTER rules in optimized builds.
+class TestFrameUnwindingCFIDirectives(unittest.TestCase):
+    """CFI directives test - validates SAME_VALUE and REGISTER rules.
 
-    In release builds, the compiler may move register values around (REGISTER rule).
-    This test focuses on scenarios that create register aliasing.
+    This test uses hand-written assembly with explicit CFI directives to test
+    SAME_VALUE and REGISTER DWARF rules, which compilers don't generate automatically.
     """
 
     context: Context
@@ -159,104 +157,19 @@ class TestFrameUnwindingAliasing(unittest.TestCase):
     def tearDownClass(cls):
         cls.core_sim.set_reset(True)
 
-    def test_release_register_aliasing(self):
-        """Test REGISTER rules with release build."""
-        # Load release ELF
-        self.core_sim.load_elf("frame_unwinding_test_aliasing.release")
-        parsed_elf = self.core_sim.parse_elf("frame_unwinding_test_aliasing.release")
+    def test_cfi_directives_present(self):
+        """Test that CFI directives work correctly for SAME_VALUE and REGISTER rules.
 
-        # Take core out of reset - runs until ebreak
-        self.core_sim.set_reset(False)
-
-        # Verify halted at ebreak
-        self.assertTrue(self.core_sim.is_halted(), "Core should be halted at ebreak")
-
-        # Get callstack
-        callstack = self.core_sim.risc_debug.get_callstack([parsed_elf])
-
-        # Verify we have frames
-        self.assertGreaterEqual(len(callstack), 1, "Should have at least 1 frame")
-
-        # Main test: verify we can read the callstack without errors
-        # If REGISTER rules work, unwinding succeeds even with register aliasing
-        frame0 = callstack[0]
-        self.assertIsNotNone(frame0.function_name)
-
-        print(f"\n[ALIASING] Successfully unwound {len(callstack)} frames with REGISTER rules:")
-        for i, frame in enumerate(callstack):
-            print(f"  Frame {i}: {frame.function_name} (args: {len(frame.arguments)}, locals: {len(frame.locals)})")
-
-        if len(frame0.arguments) > 0:
-            print(f"[ALIASING] Frame 0 arguments readable:")
-            for arg in frame0.arguments:
-                print(f"  - {arg.name}: {arg.value}")
-
-        # Reset for next test
-        self.core_sim.set_reset(True)
-
-
-class TestFrameUnwindingDeep(unittest.TestCase):
-    """Deep callstack test - validates recursive frame state caching.
-
-    Tests unwinding through 5 frames to stress-test the frame state caching
-    and recursive register resolution implementation.
-    """
-
-    context: Context
-    core_sim: RiscvCoreSimulator
-
-    @classmethod
-    def setUpClass(cls):
-        cls.context = init_cached_test_context()
-        risc_debug = cls.context.devices[0].get_blocks()[0].all_riscs[0]
-        cls.core_sim = RiscvCoreSimulator(
-            cls.context,
-            risc_debug.risc_location.location.to_str(),
-            risc_debug.risc_location.risc_name,
-            risc_debug.risc_location.neo_id,
-        )
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.core_sim.set_reset(True)
-
-    def test_debug_deep_stack(self):
-        """Test deep callstack unwinding with debug build."""
-        # Load debug ELF
-        self.core_sim.load_elf("frame_unwinding_test_deep.debug")
-        parsed_elf = self.core_sim.parse_elf("frame_unwinding_test_deep.debug")
-
-        # Take core out of reset - runs until ebreak
-        self.core_sim.set_reset(False)
-
-        # Verify halted at ebreak
-        self.assertTrue(self.core_sim.is_halted(), "Core should be halted at ebreak")
-
-        # Get callstack
-        callstack = self.core_sim.risc_debug.get_callstack([parsed_elf])
-
-        # Verify 5 frames: level1, level2, level3, level4, main
-        self.assertGreaterEqual(len(callstack), 5, "Should have at least 5 frames")
-
-        # Verify we can read all frames
-        for i, frame in enumerate(callstack[:5]):
-            self.assertIsNotNone(frame.function_name, f"Frame {i} should have function name")
-
-        print(f"\n[DEEP DEBUG] Successfully unwound {len(callstack)} frames:")
-        for i, frame in enumerate(callstack[:5]):
-            print(f"  Frame {i}: {frame.function_name} (args: {len(frame.arguments)}, locals: {len(frame.locals)})")
-
-        # Reset for next test
-        self.core_sim.set_reset(True)
-
-    def test_release_deep_stack(self):
-        """Test deep callstack unwinding with release build.
-
-        This validates that SAME_VALUE chains work correctly across many frames.
+        This test verifies full callstack unwinding through:
+        - leaf_function (ebreak location)
+        - middle_with_same_value (12 SAME_VALUE rules for s0-s11, plus VAL_OFFSET for gp)
+        - function_with_register_rule (REGISTER rule: s1 value in s2, SAME_VALUE for s3-s11)
+        - top_level_asm (sets up initial register values)
+        - main (entry point)
         """
-        # Load release ELF
-        self.core_sim.load_elf("frame_unwinding_test_deep.release")
-        parsed_elf = self.core_sim.parse_elf("frame_unwinding_test_deep.release")
+        # Load debug ELF
+        self.core_sim.load_elf("frame_unwinding_test_cfi_asm.debug")
+        parsed_elf = self.core_sim.parse_elf("frame_unwinding_test_cfi_asm.debug")
 
         # Take core out of reset - runs until ebreak
         self.core_sim.set_reset(False)
@@ -264,19 +177,47 @@ class TestFrameUnwindingDeep(unittest.TestCase):
         # Verify halted at ebreak
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted at ebreak")
 
-        # Get callstack
+        # Get callstack - should successfully unwind through all 5 frames
         callstack = self.core_sim.risc_debug.get_callstack([parsed_elf])
+        self.assertGreaterEqual(len(callstack), 5, "Should unwind through all 5 frames")
 
-        # Verify we have frames (may be fewer due to inlining)
-        self.assertGreaterEqual(len(callstack), 1, "Should have at least 1 frame")
+        # Verify expected function names
+        function_names = [frame.function_name.lower() if frame.function_name else "" for frame in callstack[:5]]
+        self.assertTrue(any("leaf" in name for name in function_names), "Should find leaf_function")
+        self.assertTrue(any("middle" in name for name in function_names), "Should find middle_with_same_value")
+        self.assertTrue(
+            any("function_with_register" in name or "register_rule" in name for name in function_names),
+            "Should find function_with_register_rule",
+        )
+        self.assertTrue(any("top_level" in name for name in function_names), "Should find top_level_asm")
+        self.assertTrue(any("main" in name for name in function_names), "Should find main")
 
-        # Main test: verify we can unwind without errors
-        frame0 = callstack[0]
-        self.assertIsNotNone(frame0.function_name)
+        # Verify frame order
+        self.assertIn("leaf", callstack[0].function_name.lower())
+        self.assertIn("middle", callstack[1].function_name.lower())
 
-        print(f"\n[DEEP RELEASE] Successfully unwound {len(callstack)} frames:")
-        for i, frame in enumerate(callstack):
-            print(f"  Frame {i}: {frame.function_name} (args: {len(frame.arguments)}, locals: {len(frame.locals)})")
+        # Verify all functions DID execute by checking register values
+        # top_level_asm sets s0-s4 to known values
+        s0 = self.core_sim.risc_debug.read_gpr(8)
+        s3 = self.core_sim.risc_debug.read_gpr(19)
+        s4 = self.core_sim.risc_debug.read_gpr(20)
+        self.assertEqual(s0, 0x1000, "s0 should be 0x1000 (set by top_level_asm)")
+        self.assertEqual(s3, 0x4000, "s3 should be 0x4000 (set by top_level_asm)")
+        self.assertEqual(s4, 0x5000, "s4 should be 0x5000 (set by top_level_asm)")
+
+        # function_with_register_rule modifies s1 to 0x9999, saves original (0x2000) in s2
+        s1 = self.core_sim.risc_debug.read_gpr(9)
+        s2 = self.core_sim.risc_debug.read_gpr(18)
+        self.assertEqual(s1, 0x9999, "s1 should be 0x9999 (modified by function_with_register_rule)")
+        self.assertEqual(s2, 0x2000, "s2 should be 0x2000 (original s1, saved by REGISTER rule)")
+
+        print(f"\n[CFI DIRECTIVES] Successfully unwound through {len(callstack)} frames:")
+        for i, frame in enumerate(callstack[:5]):
+            name = frame.function_name if frame.function_name else "(none)"
+            print(f"  Frame {i}: {name}")
+        print(f"\n  Register verification:")
+        print(f"    top_level_asm: s0=0x{s0:x}, s3=0x{s3:x}, s4=0x{s4:x}")
+        print(f"    function_with_register_rule: s1=0x{s1:x} (modified), s2=0x{s2:x} (saved)")
 
         # Reset for next test
         self.core_sim.set_reset(True)

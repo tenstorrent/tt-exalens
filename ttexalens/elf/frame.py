@@ -40,7 +40,10 @@ class FrameDescription:
             # Handle SAME_VALUE rule - register value is unchanged from previous frame
             elif register_rule.type == "SAME_VALUE":
                 if previous_frame is not None:
-                    return previous_frame.read_register(register_index)
+                    value = previous_frame.read_register(register_index)
+                    # DEBUG: Uncomment to trace SAME_VALUE reads
+                    # print(f"  [SAME_VALUE] r{register_index} from prev frame: 0x{value:08x}" if value else f"  [SAME_VALUE] r{register_index} from prev frame: None")
+                    return value
                 # This shouldn't happen in normal unwinding - if it does, something is wrong
                 return None
 
@@ -50,7 +53,10 @@ class FrameDescription:
                     return None
                 address = cfa + register_rule.arg
                 try:
-                    return self.mem_access.read_word(address)
+                    value = self.mem_access.read_word(address)
+                    # DEBUG: Uncomment to trace OFFSET reads
+                    # print(f"  [OFFSET] r{register_index} from [0x{address:08x}] (CFA+{register_rule.arg}): 0x{value:08x}")
+                    return value
                 except RestrictedMemoryAccessError:
                     # If access was restricted (outside L1/data_private_memory), return None
                     return None
@@ -59,7 +65,10 @@ class FrameDescription:
             elif register_rule.type == "REGISTER":
                 other_register_index = register_rule.arg
                 if previous_frame is not None:
-                    return previous_frame.read_register(other_register_index)
+                    value = previous_frame.read_register(other_register_index)
+                    # DEBUG: Uncomment to trace REGISTER reads
+                    # print(f"  [REGISTER] r{register_index} from prev r{other_register_index}: 0x{value:08x}" if value else f"  [REGISTER] r{register_index} from prev r{other_register_index}: None")
+                    return value
                 # This shouldn't happen in normal unwinding - if it does, something is wrong
                 return None
 
@@ -67,7 +76,10 @@ class FrameDescription:
             elif register_rule.type == "VAL_OFFSET":
                 if cfa is None:
                     return None
-                return int(cfa + register_rule.arg)
+                value = int(cfa + register_rule.arg)
+                # DEBUG: Uncomment to trace VAL_OFFSET reads
+                # print(f"  [VAL_OFFSET] r{register_index} = CFA+{register_rule.arg}: 0x{value:08x}")
+                return value
 
             # Handle EXPRESSION and VAL_EXPRESSION rules - not yet implemented
             # These would require evaluating DWARF expressions, which is complex
@@ -77,15 +89,17 @@ class FrameDescription:
 
         return None
 
-    def read_register(self, register_index: int, cfa: int) -> int | None:
+    def read_register(self, register_index: int, cfa: int, previous_frame: FrameInspection | None = None) -> int | None:
         # Try to read using frame rules first
-        value = self.try_read_register(register_index, cfa)
+        value = self.try_read_register(register_index, cfa, previous_frame)
         if value is not None:
             return value
         # Fall back to reading current register value
         return self.risc_debug.read_gpr(register_index)
 
-    def read_previous_cfa(self, current_cfa: int | None = None) -> int | None:
+    def read_previous_cfa(
+        self, current_cfa: int | None = None, previous_frame: FrameInspection | None = None
+    ) -> int | None:
         if self.current_fde_entry is not None and self.fde.cie is not None:
             cfa_location = self.current_fde_entry["cfa"]
             register_index = cfa_location.reg
@@ -101,7 +115,7 @@ class FrameDescription:
                     return current_cfa + offset
 
                 # Just read stored value of the register in current frame
-                return self.read_register(register_index, current_cfa)
+                return self.read_register(register_index, current_cfa, previous_frame)
 
         # We don't know how to calculate CFA, return 0 which will stop callstack evaluation
         return None

@@ -6,9 +6,12 @@
 //
 // Tests:
 // - Debug builds (-O0): OFFSET rules (variables saved to stack)
-// - Release builds (-O3): SAME_VALUE rules (variables kept in registers)
+// - Release builds (-O3): OFFSET rules (compiler always generates OFFSET for saved registers)
 // - 3-frame callstack: main → caller → callee
 // - Reading arguments and local variables from non-top frames
+//
+// Note: Compilers do NOT generate SAME_VALUE or REGISTER rules automatically.
+// See frame_unwinding_test_cfi_directives.S for tests with those rules.
 
 #include <cstdint>
 
@@ -17,9 +20,7 @@ volatile uint32_t g_result = 0;
 
 // Callee function - deepest frame where we capture the callstack
 __attribute__((noinline)) uint32_t callee(uint32_t a, uint32_t b, uint32_t c) {
-    // Local variables - will test different DWARF rules:
-    // Debug: saved to stack (OFFSET)
-    // Release: kept in registers (SAME_VALUE)
+    // Local variables - will test OFFSET DWARF rules (both debug and release)
     uint32_t sum = a + b + c;
     uint32_t product = a * b * c;
     uint32_t result = sum + product;
