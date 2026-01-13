@@ -23,7 +23,7 @@ The wheel can be installed directly from GitHub with:
 pip install git+https://github.com/tenstorrent/tt-exalens.git
 ```
 
-The latest published version can be installed with:
+Alternatively, you can install latest published version with:
 ```
 pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens
 ```
@@ -41,11 +41,7 @@ Project has been tested on Ubuntu 22.04.
 To build it, you need the following dependencies:
 
 - software-properties-common,
-- build-essential,
-- python3.X-venv,
-- libyaml-cpp-dev,
-- libhwloc-dev,
-- ninja-build
+- python3.X-venv
 
 Install them with:
 
