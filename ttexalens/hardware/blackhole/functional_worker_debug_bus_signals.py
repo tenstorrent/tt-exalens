@@ -746,12 +746,12 @@ debug_bus_signal_map = {
     "rwc1_dst_cr": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0xFFC00000),
     "rwc1_dst": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3FF000),
     "rwc0_dst_cr": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0xFFC),
-    "rwc0_dst/1": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3
-    ),  # Signal spans two consecutive groups, so its value cannot be read atomically.
-    "rwc0_dst/0": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=3, sig_sel=2, mask=0xFF000000
-    ),  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "rwc0_dst/1": DebugBusSignalDescription(
+    #     rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3
+    # ),  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    # "rwc0_dst/0": DebugBusSignalDescription(
+    #     rd_sel=3, daisy_sel=3, sig_sel=2, mask=0xFF000000
+    # ),  # Signal spans two consecutive groups, so its value cannot be read atomically.
     "rwc2_srcb_cr": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=2, mask=0xFC000),
     "rwc2_srcb": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=2, mask=0x3F0),
     "rwc1_srcb_cr": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=2, mask=0xFC000000),

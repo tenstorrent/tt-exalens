@@ -34,7 +34,7 @@ Examples:
 import tabulate
 
 from ttexalens import util
-from ttexalens.debug_bus_signal_store import DebugBusSignalStore, SignalGroupSample
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore, SignalGroupSample
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
 from ttexalens.device import Device
@@ -241,18 +241,22 @@ def run(cmd_text, context, ui_state: UIState):
                 print(put_table_list_side_by_side(tables))
 
             if group == "rwc" or group == "all":
+                print(f"{CLR_GREEN}RWCs{CLR_END}")
+                rwc_signal_dicts = read_signal_groups(
+                    tensix_debug_bus_desc.register_window_counter_groups, debug_bus, l1_address
+                )
+                parsed_rwc_signal_dicts = parse_signal_groups(rwc_signal_dicts, "rwc")
+                # Dealing with signal that spans accros two groups - rwc0_dst
                 if device.is_blackhole():
-                    util.WARN(
-                        "Skipping RWC group since they are currently not supported on Blackhole devices. Issue: #729"
+                    rwc0_dst_lo = debug_bus.read_signal(
+                        DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=2, mask=0xFF000000)
                     )
-                else:
-                    print(f"{CLR_GREEN}RWCs{CLR_END}")
-                    rwc_signal_dicts = read_signal_groups(
-                        tensix_debug_bus_desc.register_window_counter_groups, debug_bus, l1_address
+                    rwc0_dst_hi = debug_bus.read_signal(
+                        DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3)
                     )
-                    parsed_rwc_signal_dicts = parse_signal_groups(rwc_signal_dicts, "rwc")
-                    tables_rwc = debug_bus_to_tables(parsed_rwc_signal_dicts)
-                    print_3_tables_side_by_side(tables_rwc)
+                    parsed_rwc_signal_dicts["coordinates_b"]["rwc0_dst"] = hex(rwc0_dst_lo + (rwc0_dst_hi << 8))
+                tables_rwc = debug_bus_to_tables(parsed_rwc_signal_dicts)
+                print_3_tables_side_by_side(tables_rwc)
 
             if group == "adc" or group == "all":
 
