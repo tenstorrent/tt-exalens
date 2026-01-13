@@ -510,7 +510,11 @@ class RiscDebug:
                 if return_address is None:
                     break
                 pc = return_address
-                frame_inspection = FrameInspection(self, elf.loaded_offset, frame_description, cfa)
+                # Create new frame with reference to previous frame for SAME_VALUE and REGISTER rules
+                previous_frame_inspection = frame_inspection
+                frame_inspection = FrameInspection(
+                    self, elf.loaded_offset, frame_description, cfa, previous_frame_inspection
+                )
                 frame_description = elf.frame_info.get_frame_description(pc, self)
 
                 # If we do not get frame description from current elf check in others

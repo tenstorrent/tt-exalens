@@ -19,6 +19,7 @@ class FrameDescription:
         self.fde = fde
         self.risc_debug = risc_debug
         self.mem_access = MemoryAccess.create(risc_debug)
+        self.current_fde_entry = None
 
         # Go through fde and try to find one that fits the pc
         decoded = self.fde.get_decoded()
@@ -27,7 +28,9 @@ class FrameDescription:
                 break
             self.current_fde_entry = entry
 
-    def try_read_register(self, register_index: int, cfa: int | None) -> int | None:
+    def try_read_register(
+        self, register_index: int, cfa: int | None, previous_frame: "FrameInspection | None" = None
+    ) -> int | None:
         """Try to read a register value based on DWARF frame information rules.
 
         This method attempts to read a saved register value from the stack or another
@@ -37,6 +40,7 @@ class FrameDescription:
         Args:
             register_index: The register index to read
             cfa: The Canonical Frame Address (can be None for top frame)
+            previous_frame: The previous frame's inspection context (for SAME_VALUE and REGISTER rules)
 
         Returns:
             The register value if it can be determined from frame rules, None otherwise
@@ -49,8 +53,13 @@ class FrameDescription:
                 return None
 
             # Handle SAME_VALUE rule - register value is unchanged from previous frame
+            # This means we need to read the register value from the previous frame's context
             elif register_rule.type == "SAME_VALUE":
-                return self.risc_debug.read_gpr(register_index)
+                if previous_frame is not None:
+                    return previous_frame.read_register(register_index)
+                # If no previous frame available, we can't determine the value
+                # This shouldn't happen in normal unwinding - if it does, something is wrong
+                return None
 
             # Handle OFFSET rule - register value is stored at address CFA + offset
             elif register_rule.type == "OFFSET":
@@ -63,20 +72,25 @@ class FrameDescription:
                     # If access was restricted (outside L1/data_private_memory), return None
                     return None
 
-            # Handle REGISTER rule - register value is in another register
+            # Handle REGISTER rule - register value is in another register from previous frame
+            # This means the value we want was stored in a different register in the previous frame
             elif register_rule.type == "REGISTER":
                 other_register_index = register_rule.arg
-                return self.risc_debug.read_gpr(other_register_index)
+                if previous_frame is not None:
+                    return previous_frame.read_register(other_register_index)
+                # If no previous frame available, we can't determine the value
+                # This shouldn't happen in normal unwinding - if it does, something is wrong
+                return None
 
             # Handle VAL_OFFSET rule - register value is CFA + offset (not at that address)
             elif register_rule.type == "VAL_OFFSET":
                 if cfa is None:
                     return None
-                return cfa + register_rule.arg
+                return int(cfa + register_rule.arg)
 
             # Handle EXPRESSION and VAL_EXPRESSION rules - not yet implemented
             # These would require evaluating DWARF expressions, which is complex
-            # and may not be needed for the current use case
+            # For now, we return None and let the caller handle it
             elif register_rule.type in ("EXPRESSION", "VAL_EXPRESSION"):
                 return None
 
@@ -134,12 +148,17 @@ class FrameInspection:
         loaded_offset: int,
         frame_description: FrameDescription | None = None,
         cfa: int | None = None,
+        previous_frame: "FrameInspection | None" = None,
     ):
         self.risc_debug = risc_debug
         self.loaded_offset = loaded_offset
         self.frame_description = frame_description
         self.cfa = cfa
+        self.previous_frame = previous_frame
         self.mem_access = MemoryAccess.create(risc_debug)
+        # Register cache to avoid re-reading the same register multiple times
+        # This is especially important when variables reference the same register
+        self._register_cache: dict[int, int | None] = {}
 
     @cached_property
     def pc(self) -> int:
@@ -148,12 +167,23 @@ class FrameInspection:
         return value
 
     def read_register(self, register_index: int) -> int | None:
-        # If it is top frame, we can read all registers from RiscDebug
-        if self.frame_description is None:
-            return self.risc_debug.read_gpr(register_index)
+        # Check cache first to avoid re-computation
+        if register_index in self._register_cache:
+            return self._register_cache[register_index]
 
-        # If it is not top frame, we need to read registers from frame description
-        return self.frame_description.try_read_register(register_index, self.cfa)
+        # Compute the register value
+        value: int | None
+        if self.frame_description is None:
+            # Top frame - read all registers from RiscDebug (current hardware state)
+            value = self.risc_debug.read_gpr(register_index)
+        else:
+            # Non-top frame - read registers from frame description using DWARF rules
+            # Pass previous_frame so SAME_VALUE and REGISTER rules can work correctly
+            value = self.frame_description.try_read_register(register_index, self.cfa, self.previous_frame)
+
+        # Cache the value for future reads
+        self._register_cache[register_index] = value
+        return value
 
 
 class FrameInfoProvider:
