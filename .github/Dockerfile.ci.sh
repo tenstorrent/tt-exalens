@@ -19,8 +19,8 @@ rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
 pip install --upgrade pip --ignore-installed
 
 # Install Python dependencies
-uv pip install --no-cache-dir --extra-index-url https://test.pypi.org/simple/ -r requirements.txt
-uv pip install --no-cache-dir -r dev-requirements.txt
-uv pip install --no-cache-dir -r test_requirements.txt
-uv pip install --no-cache-dir wheel build setuptools
+uv pip install --no-cache-dir --system --extra-index-url https://test.pypi.org/simple/ -r requirements.txt
+uv pip install --no-cache-dir --system -r dev-requirements.txt
+uv pip install --no-cache-dir --system -r test_requirements.txt
+uv pip install --no-cache-dir --system wheel build setuptools
 uv pip cache purge
