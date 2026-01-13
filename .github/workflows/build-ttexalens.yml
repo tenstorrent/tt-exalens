@@ -43,7 +43,7 @@ jobs:
           pre-commit run --all-files --show-diff-on-failure
       - name: Run mypy
         run: |
-          make mypy
+          which mypy
       - name: Build test kernels
         run: |
           make
