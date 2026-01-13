@@ -77,11 +77,9 @@ class FrameDescription:
 
         return None
 
-    def read_register(
-        self, register_index: int, cfa: int, previous_frame: "FrameInspection | None" = None
-    ) -> int | None:
+    def read_register(self, register_index: int, cfa: int) -> int | None:
         # Try to read using frame rules first
-        value = self.try_read_register(register_index, cfa, previous_frame)
+        value = self.try_read_register(register_index, cfa)
         if value is not None:
             return value
         # Fall back to reading current register value

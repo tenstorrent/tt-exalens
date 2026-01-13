@@ -505,7 +505,7 @@ class RiscDebug:
 
                 # Prepare for next iteration
                 cfa = frame_pointer
-                return_address = frame_description.read_register(1, cfa, frame_inspection)
+                return_address = frame_description.read_register(1, cfa)
                 frame_pointer = frame_description.read_previous_cfa(cfa)
                 if return_address is None:
                     break
