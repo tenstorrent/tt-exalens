@@ -23,19 +23,16 @@ The wheel can be installed directly from GitHub with:
 pip install git+https://github.com/tenstorrent/tt-exalens.git
 ```
 
+The latest published version can be installed with:
+```
+pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens
+```
+
 The CLI application can be run by invoking `tt-exalens` command after installing the wheel.
 
 ## Building
 
 ### Cloning repository and setting up the environment
-
-After cloning the repository, run:
-
-```bash
-git submodule update --init --recursive
-```
-
-to ensure all submodules are properly initialized.
 
 ### Requirements
 
