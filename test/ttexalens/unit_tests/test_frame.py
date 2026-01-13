@@ -272,5 +272,292 @@ class TestFrameDescriptionTryReadRegister(unittest.TestCase):
         self.mock_risc_debug.read_gpr.assert_called_once_with(10)
 
 
+class TestMultiFrameUnwinding(unittest.TestCase):
+    """Integration tests for frame unwinding across multiple frames.
+
+    These tests verify that DWARF register rules work correctly across
+    multiple stack frames, including recursive resolution of SAME_VALUE
+    and REGISTER rules through the frame chain.
+    """
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from ttexalens.elf.frame import FrameInspection
+
+        self.FrameInspection = FrameInspection
+        self.mock_risc_debug = Mock()
+        self.mock_mem_access = Mock()
+
+    def _create_mock_frame_description(self, register_rules: dict):
+        """Create a mock FrameDescription with specified register rules."""
+        mock_frame_desc = Mock()
+
+        def mock_try_read_register(reg_index, cfa, previous_frame=None):
+            if reg_index not in register_rules:
+                return None
+
+            rule = register_rules[reg_index]
+            rule_type = rule["type"]
+
+            if rule_type == "OFFSET":
+                # Read from mock memory
+                if cfa is None:
+                    return None
+                # In real code, would read from address = cfa + rule["offset"]
+                # For tests, we just return the mocked value
+                return rule.get("value", 0xDEADBEEF)
+
+            elif rule_type == "SAME_VALUE":
+                if previous_frame is not None:
+                    return previous_frame.read_register(reg_index)
+                return None
+
+            elif rule_type == "REGISTER":
+                other_reg = rule["other_reg"]
+                if previous_frame is not None:
+                    return previous_frame.read_register(other_reg)
+                return None
+
+            elif rule_type == "VAL_OFFSET":
+                if cfa is None:
+                    return None
+                return cfa + rule["offset"]
+
+            elif rule_type == "UNDEFINED":
+                return None
+
+            return None
+
+        mock_frame_desc.try_read_register = Mock(side_effect=mock_try_read_register)
+        return mock_frame_desc
+
+    def test_same_value_recursive_to_top_frame(self):
+        """Test SAME_VALUE rule recurses through frames to top frame."""
+        # Setup: Frame 2 → Frame 1 → Frame 0 (top)
+        # Frame 2: R5 has SAME_VALUE
+        # Frame 1: R5 has SAME_VALUE
+        # Frame 0 (top): R5 = 0xABCD1234 (from hardware)
+
+        # Frame 0 (top frame) - reads from hardware
+        self.mock_risc_debug.read_gpr.return_value = 0xABCD1234
+        frame0 = self.FrameInspection(
+            self.mock_risc_debug,
+            loaded_offset=0,
+            frame_description=None,  # Top frame has no frame_description
+            cfa=None,
+            previous_frame=None,
+        )
+
+        # Frame 1 - R5 has SAME_VALUE rule
+        frame1_desc = self._create_mock_frame_description({5: {"type": "SAME_VALUE"}})
+        frame1 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame1_desc, cfa=0x2000, previous_frame=frame0
+        )
+
+        # Frame 2 - R5 has SAME_VALUE rule
+        frame2_desc = self._create_mock_frame_description({5: {"type": "SAME_VALUE"}})
+        frame2 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame2_desc, cfa=0x3000, previous_frame=frame1
+        )
+
+        # Read R5 from Frame 2 - should recurse to Frame 0
+        result = frame2.read_register(5)
+
+        self.assertEqual(result, 0xABCD1234, "SAME_VALUE should recurse to top frame")
+        self.mock_risc_debug.read_gpr.assert_called_with(5)
+
+    def test_same_value_resolves_to_offset_in_middle(self):
+        """Test SAME_VALUE recurses until finding OFFSET rule."""
+        # Frame 2: R5 has SAME_VALUE
+        # Frame 1: R5 has OFFSET (saved to stack at address 0x1FF8)
+        # Frame 0: R5 = 0xBADC0DE (shouldn't be read)
+
+        self.mock_risc_debug.read_gpr.return_value = 0xBADC0DE  # Should NOT be used
+
+        # Frame 0 (top)
+        frame0 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=None, cfa=None, previous_frame=None
+        )
+
+        # Frame 1 - R5 has OFFSET rule (saved to stack)
+        frame1_desc = self._create_mock_frame_description({5: {"type": "OFFSET", "offset": -8, "value": 0x12345678}})
+        frame1 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame1_desc, cfa=0x2000, previous_frame=frame0
+        )
+
+        # Frame 2 - R5 has SAME_VALUE rule
+        frame2_desc = self._create_mock_frame_description({5: {"type": "SAME_VALUE"}})
+        frame2 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame2_desc, cfa=0x3000, previous_frame=frame1
+        )
+
+        # Read R5 from Frame 2 - should stop at Frame 1's OFFSET rule
+        result = frame2.read_register(5)
+
+        self.assertEqual(result, 0x12345678, "SAME_VALUE should resolve to OFFSET in Frame 1")
+        # Verify we did NOT read from hardware (would be wrong!)
+        self.mock_risc_debug.read_gpr.assert_not_called()
+
+    def test_register_rule_across_frames(self):
+        """Test REGISTER rule reads from other register in previous frame."""
+        # Frame 2: R5 has REGISTER(R10) rule
+        # Frame 1: R10 has OFFSET rule (saved at stack)
+        # Frame 0: R10 = 0xBEEF (shouldn't be used)
+
+        self.mock_risc_debug.read_gpr.return_value = 0xBEEF  # Should NOT be used
+
+        # Frame 0 (top)
+        frame0 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=None, cfa=None, previous_frame=None
+        )
+
+        # Frame 1 - R10 has OFFSET rule
+        frame1_desc = self._create_mock_frame_description({10: {"type": "OFFSET", "offset": -16, "value": 0x99887766}})
+        frame1 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame1_desc, cfa=0x2000, previous_frame=frame0
+        )
+
+        # Frame 2 - R5 has REGISTER(R10) rule
+        frame2_desc = self._create_mock_frame_description({5: {"type": "REGISTER", "other_reg": 10}})
+        frame2 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame2_desc, cfa=0x3000, previous_frame=frame1
+        )
+
+        # Read R5 from Frame 2 - should read R10 from Frame 1
+        result = frame2.read_register(5)
+
+        self.assertEqual(result, 0x99887766, "REGISTER should read from other register in previous frame")
+        self.mock_risc_debug.read_gpr.assert_not_called()
+
+    def test_mixed_rules_complex_unwinding(self):
+        """Test complex unwinding with mix of rule types."""
+        # Frame 3: R5=SAME_VALUE, R6=REGISTER(R7)
+        # Frame 2: R5=REGISTER(R8), R7=OFFSET
+        # Frame 1: R8=OFFSET
+        # Frame 0: top frame
+
+        # Frame 0 (top)
+        frame0 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=None, cfa=None, previous_frame=None
+        )
+
+        # Frame 1 - R8 has OFFSET
+        frame1_desc = self._create_mock_frame_description({8: {"type": "OFFSET", "offset": -24, "value": 0x11111111}})
+        frame1 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame1_desc, cfa=0x2000, previous_frame=frame0
+        )
+
+        # Frame 2 - R5=REGISTER(R8), R7=OFFSET
+        frame2_desc = self._create_mock_frame_description(
+            {5: {"type": "REGISTER", "other_reg": 8}, 7: {"type": "OFFSET", "offset": -32, "value": 0x22222222}}
+        )
+        frame2 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame2_desc, cfa=0x3000, previous_frame=frame1
+        )
+
+        # Frame 3 - R5=SAME_VALUE, R6=REGISTER(R7)
+        frame3_desc = self._create_mock_frame_description(
+            {5: {"type": "SAME_VALUE"}, 6: {"type": "REGISTER", "other_reg": 7}}
+        )
+        frame3 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame3_desc, cfa=0x4000, previous_frame=frame2
+        )
+
+        # Read R5 from Frame 3: SAME_VALUE → Frame 2: REGISTER(R8) → Frame 1: OFFSET → 0x11111111
+        result_r5 = frame3.read_register(5)
+        self.assertEqual(result_r5, 0x11111111, "R5 should resolve through complex chain")
+
+        # Read R6 from Frame 3: REGISTER(R7) → Frame 2: OFFSET → 0x22222222
+        result_r6 = frame3.read_register(6)
+        self.assertEqual(result_r6, 0x22222222, "R6 should resolve to R7 in Frame 2")
+
+    def test_multiple_variables_share_register(self):
+        """Test cache efficiency when multiple variables use same register."""
+        # Multiple reads of same register should hit cache
+
+        # Frame 0 (top)
+        self.mock_risc_debug.read_gpr.return_value = 0xCAFEBABE
+        frame0 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=None, cfa=None, previous_frame=None
+        )
+
+        # Frame 1 - R5 has SAME_VALUE
+        frame1_desc = self._create_mock_frame_description({5: {"type": "SAME_VALUE"}})
+        frame1 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame1_desc, cfa=0x2000, previous_frame=frame0
+        )
+
+        # Read R5 multiple times (simulating multiple variables)
+        result1 = frame1.read_register(5)
+        result2 = frame1.read_register(5)
+        result3 = frame1.read_register(5)
+
+        # All should return same value
+        self.assertEqual(result1, 0xCAFEBABE)
+        self.assertEqual(result2, 0xCAFEBABE)
+        self.assertEqual(result3, 0xCAFEBABE)
+
+        # But hardware read should only happen once (cache efficiency)
+        self.mock_risc_debug.read_gpr.assert_called_once_with(5)
+
+    def test_register_rule_to_undefined_register(self):
+        """Test REGISTER rule pointing to register with no value."""
+        # Frame 1: R5 has REGISTER(R10)
+        # Frame 0: R10 has UNDEFINED (no rule, returns None)
+
+        # Frame 0 (top) - no rule for R10, will return None
+        frame0_desc = self._create_mock_frame_description({10: {"type": "UNDEFINED"}})
+        frame0 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame0_desc, cfa=None, previous_frame=None
+        )
+
+        # Frame 1 - R5 has REGISTER(R10)
+        frame1_desc = self._create_mock_frame_description({5: {"type": "REGISTER", "other_reg": 10}})
+        frame1 = self.FrameInspection(
+            self.mock_risc_debug, loaded_offset=0, frame_description=frame1_desc, cfa=0x2000, previous_frame=frame0
+        )
+
+        # Read R5 from Frame 1 - should return None (R10 is undefined)
+        result = frame1.read_register(5)
+
+        self.assertIsNone(result, "REGISTER to UNDEFINED should return None")
+
+    def test_deeply_nested_same_value_chain(self):
+        """Test many frames all with SAME_VALUE (stress test recursion)."""
+        # Create 10 frames, all with SAME_VALUE for R5
+        # Final top frame has R5 = 0xDEADC0DE
+
+        self.mock_risc_debug.read_gpr.return_value = 0xDEADC0DE
+
+        # Build frame chain from bottom up
+        frames = []
+
+        # Frame 0 (top)
+        frames.append(
+            self.FrameInspection(
+                self.mock_risc_debug, loaded_offset=0, frame_description=None, cfa=None, previous_frame=None
+            )
+        )
+
+        # Frames 1-9 (all with SAME_VALUE)
+        for i in range(1, 10):
+            frame_desc = self._create_mock_frame_description({5: {"type": "SAME_VALUE"}})
+            frames.append(
+                self.FrameInspection(
+                    self.mock_risc_debug,
+                    loaded_offset=0,
+                    frame_description=frame_desc,
+                    cfa=0x1000 + (i * 0x1000),
+                    previous_frame=frames[i - 1],
+                )
+            )
+
+        # Read R5 from deepest frame (Frame 9)
+        result = frames[9].read_register(5)
+
+        self.assertEqual(result, 0xDEADC0DE, "Deep SAME_VALUE chain should resolve to top frame")
+        self.mock_risc_debug.read_gpr.assert_called_once_with(5)
+
+
 if __name__ == "__main__":
     unittest.main()
