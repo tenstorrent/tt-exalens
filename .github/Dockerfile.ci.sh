@@ -20,7 +20,6 @@ apt-get install -y \
 
 # Build tools
 apt-get install -y \
-    ccache \
     ninja-build \
     cmake
 apt-get clean
@@ -30,7 +29,8 @@ rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
 pip install --upgrade pip --ignore-installed
 
 # Install Python dependencies
-pip install --no-cache-dir --extra-index-url https://test.pypi.org/simple/ -r requirements.txt
-pip install --no-cache-dir -r dev-requirements.txt
-pip install --no-cache-dir -r test_requirements.txt
-pip install wheel build setuptools
+uv pip install --no-cache-dir --extra-index-url https://test.pypi.org/simple/ -r requirements.txt
+uv pip install --no-cache-dir -r dev-requirements.txt
+uv pip install --no-cache-dir -r test_requirements.txt
+uv pip install --no-cache-dir wheel build setuptools
+uv pip cache purge

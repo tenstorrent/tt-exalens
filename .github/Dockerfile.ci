@@ -1,9 +1,20 @@
 ARG UBUNTU_VERSION=22.04
+
+# Compile uv (Astral UV version manager) from source
+FROM ubuntu:${UBUNTU_VERSION} AS uv_builder
+RUN apt-get update && apt-get install -y curl ca-certificates
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --no-modify-path
+
+
+# Final image
 FROM ubuntu:${UBUNTU_VERSION}
 SHELL ["/bin/bash", "-c"]
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
+
+# Copy uv binary from the uv_builder stage
+COPY --from=uv_builder /root/.local/bin/uv /usr/bin/uv
 
 # Copy the requirements files for pip in current directory
 COPY ttexalens/requirements.txt \
