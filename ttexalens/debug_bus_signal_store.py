@@ -8,7 +8,6 @@ from time import sleep
 from typing import Iterable, TYPE_CHECKING
 
 from ttexalens.hardware.noc_block import NocBlock
-from ttexalens.tt_exalens_lib import read_word_from_device, read_words_from_device, write_words_to_device
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
@@ -19,6 +18,7 @@ if TYPE_CHECKING:
 WORD_SIZE_BITS = 32
 WAIT_SLEEP_SECONDS = 0.001
 SENTINEL_VALUE = 0xDEADBEEF
+SENTINEL_BYTES = SENTINEL_VALUE.to_bytes(4, byteorder="little") * 4  # 16 bytes for 128-bit sample
 
 
 @dataclass
@@ -204,11 +204,11 @@ class DebugBusSignalStore:
             return self.signals[signal_name]
         elif self.neo_id is None:
             raise ValueError(
-                f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device._id}."
+                f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device.id}."
             )
         else:
             raise ValueError(
-                f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device._id}."
+                f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device.id}."
             )
 
     def _validate_signal_parameters(self, signal: DebugBusSignalDescription) -> None:
@@ -248,11 +248,10 @@ class DebugBusSignalStore:
         # Configure debug bus to read the signal
         en = 1
         config = (en << 29) | (signal_desc.rd_sel << 25) | (signal_desc.daisy_sel << 16) | (signal_desc.sig_sel << 0)
-        write_words_to_device(
-            self.location, self._control_register_address, config, self.device._id, self.device._context
-        )
+        self.location.noc_write32(self._control_register_address, config)
+
         # Read the data
-        return read_word_from_device(self.location, self._data_register_address, self.device._id, self.device._context)
+        return self.location.noc_read32(self._data_register_address)
 
     def read_signal(
         self,
@@ -330,9 +329,7 @@ class DebugBusSignalStore:
         # Write the configuration - select 128 bit word
         en = 1
         config = (en << 29) | (daisy_sel << 16) | sig_sel
-        write_words_to_device(
-            self.location, self._control_register_address, config, self.device._id, self.device._context
-        )
+        self.location.noc_write32(self._control_register_address, config)
 
         # Get L1 register addresses
         reg0_addr = self._l1_mem_reg0_address
@@ -344,9 +341,9 @@ class DebugBusSignalStore:
 
         # Prepare L1 writing - set initial write mode and reg0
         reg2_struct.write_mode = 0xF
-        write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
+        self.location.noc_write32(reg2_addr, reg2_struct.encode())
         reg0_val = (l1_address >> 4) & 0xFFFFFFFF
-        write_words_to_device(self.location, reg0_addr, reg0_val, self.device._id, self.device._context)
+        self.location.noc_write32(reg0_addr, reg0_val)
 
         # Configure sampling mode based on number of samples
         # Write mode values:
@@ -358,14 +355,14 @@ class DebugBusSignalStore:
         # set configuration
         if samples > 1:
             reg1_val = ((l1_address >> 4) + samples) & 0xFFFFFFFF
-            write_words_to_device(self.location, reg1_addr, reg1_val, self.device._id, self.device._context)
+            self.location.noc_write32(reg1_addr, reg1_val)
             reg2_struct.write_mode = 4
             reg2_struct.sampling_interval = sampling_interval - 1
         else:
             reg2_struct.write_mode = write_mode
 
         # Write final configuration to reg2
-        write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
+        self.location.noc_write32(reg2_addr, reg2_struct.encode())
 
         return reg2_addr, reg2_struct
 
@@ -378,17 +375,16 @@ class DebugBusSignalStore:
         # wait for the last memory location to be written to
         wait_addr = l1_address + ((samples - 1) * self.L1_SAMPLE_SIZE_BYTES)
         # Write sentinel value to all 4 32-bit words in the 128-bit location
-        sentinel_words = [SENTINEL_VALUE] * self.WORDS_PER_SAMPLE
-        write_words_to_device(self.location, wait_addr, sentinel_words, self.device._id, self.device._context)
+        self.location.noc_write(wait_addr, SENTINEL_BYTES)
 
         # instruct to write
         reg2_struct.write_trigger = 1
-        write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
+        self.location.noc_write32(reg2_addr, reg2_struct.encode())
         reg2_struct.write_trigger = 0
-        write_words_to_device(self.location, reg2_addr, reg2_struct.encode(), self.device._id, self.device._context)
+        self.location.noc_write32(reg2_addr, reg2_struct.encode())
 
         # wait for the last memory location to be written to - using sentinel value as indicator
-        while read_word_from_device(self.location, wait_addr, self.device._id, self.device._context) == SENTINEL_VALUE:
+        while self.location.noc_read32(wait_addr) == SENTINEL_VALUE:
             sleep(WAIT_SLEEP_SECONDS)
 
     def _process_l1_samples(self, l1_address: int, group_name: str, samples: int = 1) -> list[SignalGroupSample]:
@@ -396,10 +392,8 @@ class DebugBusSignalStore:
 
         def read_sample(addr: int) -> int:
             """Read 4x32-bit words and combine them into a single 128-bit integer"""
-            words = read_words_from_device(
-                self.location, addr, self.device._id, self.WORDS_PER_SAMPLE, self.device._context
-            )
-            return sum((words[i] << (WORD_SIZE_BITS * i)) for i in range(self.WORDS_PER_SAMPLE))
+            data = self.location.noc_read(addr, self.L1_SAMPLE_SIZE_BYTES)
+            return int.from_bytes(data, byteorder="little")
 
         # Read samples from L1 memory
         sample_values = [read_sample(l1_address + (i * self.L1_SAMPLE_SIZE_BYTES)) for i in range(samples)]

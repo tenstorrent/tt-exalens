@@ -65,7 +65,7 @@ sudo apt install python3.10-venv
 Additional Python dependencies are listed in `ttexalens/requirements.txt` and can be installed with:
 
 ```bash
-pip install -r ttexalens/requirements.txt
+pip install --extra-index-url https://test.pypi.org/simple/ -r ttexalens/requirements.txt
 ```
 
 ### Building the library and the application

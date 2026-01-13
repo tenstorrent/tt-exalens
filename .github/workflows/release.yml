@@ -1,5 +1,4 @@
 name: "Release"
-description: "Release ttexalens wheel, triggered by other workflows. Will create a prerelease."
 
 on:
   workflow_call:
@@ -20,12 +19,12 @@ jobs:
     name: "Prepare Release"
     strategy:
       matrix:
-        ubuntu-version: [ "22.04", "24.04" ]
+        ubuntu-version: [ "22.04" ]
 
     runs-on: ubuntu-latest
 
     container:
-      image: ghcr.io/tenstorrent/tt-exalens/tt-exalens-ird-ubuntu-${{ matrix.ubuntu-version }}:latest
+      image: ghcr.io/tenstorrent/tt-exalens/tt-exalens-ci-ubuntu-${{ matrix.ubuntu-version }}:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
@@ -50,12 +49,15 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "Version is $version"
 
-      - name: "Build and upload wheel artifacts"
-        uses: ./.github/actions/prepare-wheel-for-release
-        id: prepare-wheel
+      - name: "Build wheel"
+        run: |
+          make wheel
+
+      - name: "Upload wheel artifact"
+        uses: actions/upload-artifact@v4
         with:
-          build-version: ${{ steps.get-version.outputs.version }}
-          ubuntu-version: ${{ matrix.ubuntu-version }}
+          name: ttexalens_wheel
+          path: build/ttexalens_wheel/*.whl
 
   release:
     needs: prepare-release

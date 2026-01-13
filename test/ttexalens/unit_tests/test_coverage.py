@@ -2,13 +2,13 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 import unittest
-from test.ttexalens.unit_tests.test_base import init_cached_test_context
+from test.ttexalens.unit_tests.test_base import get_parsed_elf_file, init_cached_test_context
 from parameterized import parameterized, parameterized_class
 
 import os
 import tempfile
 
-from ttexalens import Context, OnChipCoordinate, Device, parse_elf, TTException
+from ttexalens import Context, OnChipCoordinate, Device, TTException
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.coverage import dump_coverage
@@ -46,14 +46,15 @@ class TestCoverage(unittest.TestCase):
 
     def setUp(self):
         # Arch is needed to know the ELF path
-        if not self.context.arch:
+        if not self.device._arch:
             self.skipTest(f"Undefined architecture")
-        if self.context.arch.startswith("wormhole"):
+        arch = str(self.device._arch).lower()
+        if arch.startswith("wormhole"):
             arch = "wormhole"
-        elif self.context.arch.startswith("blackhole"):
+        elif arch.startswith("blackhole"):
             arch = "blackhole"
         else:
-            self.skipTest(f"Unsupported architecture: {self.context.arch}")
+            self.skipTest(f"Unsupported architecture: {arch}")
 
         self.elf_root = "build/riscv-src/" + arch + "/"
 
@@ -93,16 +94,16 @@ class TestCoverage(unittest.TestCase):
 
     def test_no_coverage(self):
         elf_path = self.get_elf_name("callstack.release")
-        elf = parse_elf(elf_path, self.context)
-        self.loader.run_elf(elf_path)
+        elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(elf)
         with self.assertRaises(TTException) as cm:
             dump_coverage(elf, self.location, "/tmp/callstack.release.gcda", "/tmp/callstack.release.gcno")
             self.assertIn("__coverage_start not found", str(cm.exception))
 
     def test_coverage_not_finished(self):
         elf_path = self.get_elf_name("callstack.coverage")
-        elf = parse_elf(elf_path, self.context)
-        self.loader.run_elf(elf_path)
+        elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(elf)
         with self.assertRaises(TTException) as cm:
             dump_coverage(elf, self.location, "/tmp/callstack.release.gcda", "/tmp/callstack.release.gcno")
             self.assertIn("Kernel did not finish writing coverage data", str(cm.exception))
@@ -113,8 +114,8 @@ class TestCoverage(unittest.TestCase):
 
             # Run the ELF and save its coverage data.
             elf_path = self.get_elf_name(elf)
-            elf = parse_elf(elf_path, self.context)
-            self.loader.run_elf(elf_path)
+            elf = get_parsed_elf_file(elf_path)
+            self.loader.run_elf(elf)
 
             basename, _ = os.path.splitext(os.path.basename(elf_path))
             gcda = os.path.join(temp_root, f"{basename}.gcda")

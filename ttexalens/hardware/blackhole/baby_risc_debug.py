@@ -5,7 +5,6 @@
 from typing import Callable
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
-from ttexalens.tt_exalens_lib import read_from_device, write_to_device
 from ttexalens.util import TTException
 
 
@@ -29,12 +28,9 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         if self.enable_asserts:
             self.assert_not_in_reset()
 
-        noc_address = self.risc_info.translate_to_noc_address(address)
+        noc_address = self.baby_risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
-            address = noc_address
-            return read_from_device(
-                self.risc_info.noc_block.location, address, self.risc_info.noc_block.location.device_id, size_bytes
-            )
+            return self.risc_info.noc_block.location.noc_read(noc_address, size_bytes, use_4B_mode=True)
         else:
             self.assert_trisc2_address(address)
             return super().read_memory_bytes(address, size_bytes)
@@ -43,12 +39,9 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         if self.enable_asserts:
             self.assert_not_in_reset()
 
-        noc_address = self.risc_info.translate_to_noc_address(address)
+        noc_address = self.baby_risc_info.translate_to_noc_address(address)
         if noc_address is not None and not self.is_in_reset():
-            address = noc_address
-            write_to_device(
-                self.risc_info.noc_block.location, address, data, self.risc_info.noc_block.location.device_id
-            )
+            self.risc_info.noc_block.location.noc_write(noc_address, data, use_4B_mode=True)
         else:
             self.assert_trisc2_address(address)
             super().write_memory_bytes(address, data)

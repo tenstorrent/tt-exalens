@@ -1,9 +1,10 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import cached_property
 from ttexalens.hardware.risc_debug import RiscDebug
+from ttexalens.memory_access import MemoryAccess
 
 
 @dataclass
@@ -22,6 +23,10 @@ class GdbProcess:
     risc_debug: RiscDebug
     virtual_core_id: int
     core_type: str
+    mem_access: MemoryAccess = field(init=False)
+
+    def __post_init__(self):
+        self.mem_access = MemoryAccess.create(self.risc_debug)
 
     @cached_property
     def thread_id(self):

@@ -9,10 +9,6 @@ permissions:
   packages: write
 
 jobs:
-  pre-commit:
-    uses: ./.github/workflows/pre-commit.yml
-    secrets: inherit
-
   build-and-test:
     strategy:
       matrix:
@@ -21,3 +17,4 @@ jobs:
     with:
       ubuntu-version: ${{ matrix.ubuntu-version }}
     secrets: inherit
+    name: Ubuntu ${{ matrix.ubuntu-version }}

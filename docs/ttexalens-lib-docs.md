@@ -3,7 +3,7 @@
 ## init_ttexalens
 
 ```
-init_ttexalens(wanted_devices: list[int] | None = None, init_jtag: bool = False, use_noc1: bool = False, use_4B_mode: bool = True, simulation_directory: str | None = None) -> Context
+init_ttexalens(init_jtag: bool = False, use_noc1: bool = False, use_4B_mode: bool = True, simulation_directory: str | None = None) -> Context
 ```
 
 
@@ -15,7 +15,6 @@ Interfacing device is local, through pybind.
 
 ### Args
 
-- `wanted_devices` *(list, optional)*: List of device IDs we want to connect to. If None, connect to all available devices.
 - `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
 - `use_noc1` *(bool)*: Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
 - `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
@@ -57,7 +56,7 @@ Interfacing device is done remotely through TTExaLens client.
 ## set_active_context
 
 ```
-set_active_context(context: Context | None) -> None
+set_active_context(context: Context | None)
 ```
 
 
@@ -212,7 +211,7 @@ Reads num_bytes of data starting from address 'addr' at specified location using
 ## write_words_to_device
 
 ```
-write_words_to_device(location: str | OnChipCoordinate, addr: int, data: int | list[int], device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None) -> int
+write_words_to_device(location: str | OnChipCoordinate, addr: int, data: int | list[int], device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None)
 ```
 
 
@@ -232,16 +231,12 @@ Writes data word to address 'addr' at specified location using specified noc.
 - `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
 
-### Returns
-
- *(int)*: If the execution is successful, return value should be 4 (number of bytes written).
-
 
 
 ## write_to_device
 
 ```
-write_to_device(location: str | OnChipCoordinate, addr: int, data: list[int] | bytes, device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None) -> int
+write_to_device(location: str | OnChipCoordinate, addr: int, data: list[int] | bytes, device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None)
 ```
 
 
@@ -261,16 +256,12 @@ Writes data to address 'addr' at specified location using specified noc.
 - `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
 
-### Returns
-
- *(int)*: If the execution is successful, return value should be number of bytes written.
-
 
 
 ## load_elf
 
 ```
-load_elf(elf_file: str, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, return_start_address: bool = False) -> None | int | list[int]
+load_elf(elf_file: str | ParsedElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, return_start_address: bool = False) -> None | int | list[int]
 ```
 
 
@@ -281,7 +272,7 @@ Loads the given ELF file into the specified RISC core. RISC core must be in rese
 
 ### Args
 
-- `elf_file` *(str)*: Path to the ELF file to run.
+- `elf_file` *(str | ParsedElfFile)*: ELF file to be loaded.
 - `location` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
 1. "all" to run the ELF on all cores;
 2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -298,7 +289,7 @@ Loads the given ELF file into the specified RISC core. RISC core must be in rese
 ## run_elf
 
 ```
-run_elf(elf_file: str, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> None
+run_elf(elf_file: str | ParsedElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -309,7 +300,7 @@ Loads the given ELF file into the specified RISC core and executes it. Similar t
 
 ### Args
 
-- `elf_file` *(str)*: Path to the ELF file to run.
+- `elf_file` *(str | ParsedElfFile)*: ELF file to be run.
 - `location` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
 1. "all" to run the ELF on all cores;
 2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -355,7 +346,7 @@ Sends an ARC message to the device.
 ## read_arc_telemetry_entry
 
 ```
-read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None) -> int
+read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: int | None = None) -> int
 ```
 
 
@@ -409,7 +400,7 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 ## write_register
 
 ```
-write_register(location: str | OnChipCoordinate, register, value: int, noc_id: int = 0, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> None
+write_register(location: str | OnChipCoordinate, register, value: int, noc_id: int = 0, neo_id: int | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -510,7 +501,7 @@ Retrieves the callstack of the specified RISC core for a given ELF.
 ## coverage
 
 ```
-coverage(location: str | OnChipCoordinate, elf: str | ParsedElfFile, gcda_path: str, gcno_copy_path: str | None = None, device_id: int = 0, context: Context | None = None) -> None
+coverage(location: str | OnChipCoordinate, elf: str | ParsedElfFile, gcda_path: str, gcno_copy_path: str | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -562,7 +553,7 @@ Reads a 32-bit word from the specified RISC-V core's private memory.
 ## write_riscv_memory
 
 ```
-write_riscv_memory(location: str | OnChipCoordinate, addr: int, value: int, risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> None
+write_riscv_memory(location: str | OnChipCoordinate, addr: int, value: int, risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -641,7 +632,13 @@ Returns coordinates for the specified device.
 create(coord_str, device, coord_type = None) -> OnChipCoordinate
 ```
 Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
- *(OnChipCoordinate)*: The created coordinate object.
+- `coord_str` *(str)*: The string representation of the coordinate.
+- `device` *(Device)*: The device object representing the chip.
+- `coord_type` *(str, optional)*: The type of coordinate system used in the string.
+If not specified, it will be determined based on the separators used in the string.
+ *(OnChipCoordinate)*: The created coordinate object.- If the coordinate format is X-Y or R,C, the coordinates will be converted to integers.
+- If the coordinate format is DRAM channel, the corresponding NOC0 coordinates will be used.
+
 
 # context
 
@@ -702,7 +699,7 @@ Returns the type of block at the given location
 
 
 ```
-set(verbosity: int | Verbosity) -> None
+set(verbosity: int | Verbosity)
 ```
 Set the verbosity level of messages shown.
 - `verbosity` *(int)*: Verbosity level.

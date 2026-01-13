@@ -575,7 +575,8 @@ class ElfDie:
         """
         Read the value of the variable represented by this DIE using the provided frame inspection context.
         """
-        from ttexalens.elf.variable import ElfVariable, FixedMemoryAccess
+        from ttexalens.elf.variable import ElfVariable
+        from ttexalens.memory_access import FixedMemoryAccess
 
         # TODO: Check if it is variable (global, local, member, argument)
         if not self.tag_is("formal_parameter") and not self.tag_is("variable"):
@@ -678,7 +679,8 @@ class ElfDie:
     def _evaluate_location_expression(
         self, parsed_expression: list[DWARFExprOp], frame_inspection: FrameInspection | None = None
     ) -> tuple[bool, Any | None]:
-        from ttexalens.elf.variable import ElfVariable, FixedMemoryAccess
+        from ttexalens.elf.variable import ElfVariable
+        from ttexalens.memory_access import FixedMemoryAccess
 
         util.DEBUG(f"   {parsed_expression}")
 
@@ -826,11 +828,9 @@ class ElfDie:
                     read_address = int(value)
                 except:
                     return False, None
-                read_size = 4  # Default to 4 bytes
                 if frame_inspection is None:
                     return False, None
-                memory = frame_inspection.mem_access.read(read_address, read_size)
-                value = int.from_bytes(memory, byteorder="little")
+                value = frame_inspection.mem_access.read_word(read_address)  # Default to 4 bytes as generic type
                 is_address = False
             elif op.op_name == "DW_OP_const_type":
                 if (
@@ -919,11 +919,9 @@ class ElfDie:
                     return False, None
                 address = stack.pop()
                 address_space_id = stack.pop()  # TODO: Does our architecture support multiple address spaces?
-                read_size = 4  # Default to 4 bytes as generic type
                 if frame_inspection is None:
                     return False, None
-                memory = frame_inspection.mem_access.read(address, read_size)
-                value = int.from_bytes(memory, byteorder="little")
+                value = frame_inspection.mem_access.read_word(address)  # Default to 4 bytes as generic type
                 is_address = False
             elif op.op_name == "DW_OP_abs":
                 if len(stack) > 0:

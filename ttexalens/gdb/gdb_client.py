@@ -17,7 +17,7 @@ def get_gdb_client_path():
     sfpi_path = "sfpi/compiler/bin/riscv-tt-elf-gdb"
     gdb_client_path = os.path.abspath(os.path.join(util.application_path(), sfpi_path))
     if not os.path.isfile(gdb_client_path):
-        gdb_client_path = os.path.abspath(os.path.join(util.application_path(), "../build_riscv", sfpi_path))
+        gdb_client_path = os.path.abspath(os.path.join(util.application_path(), "../build", sfpi_path))
     return gdb_client_path
 
 

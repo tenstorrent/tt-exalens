@@ -15,11 +15,14 @@ Description:
   and place it into the output directory along with its gcno.
 
 Examples:
-  re build_riscv/wormhole/cov_test.coverage.brisc.elf -r brisc # Pre-requisite: we have to run the elf before running coverage
-  cov build_riscv/wormhole/cov_test.coverage.brisc.elf cov_test.gcda cov_test.gcno
+  re build/riscv-src/wormhole/cov_test.coverage.brisc.elf -r brisc # Pre-requisite: we have to run the elf before running coverage
+  cov build/riscv-src/wormhole/cov_test.coverage.brisc.elf cov_test.gcda cov_test.gcno
 """
 
 from ttexalens import util
+from ttexalens.context import Context
+from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.device import Device
 from ttexalens.tt_exalens_lib import check_context, parse_elf
 from ttexalens.uistate import UIState
 from ttexalens.coverage import dump_coverage
@@ -34,7 +37,7 @@ command_metadata = CommandMetadata(
 )
 
 
-def run(cmd_text, context, ui_state: UIState) -> list[dict[str, str]]:
+def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, str]]:
     dopt = tt_docopt(command_metadata, cmd_text)
     elf_path = dopt.args["<elf>"]
     gcda_path = dopt.args["<gcda_path>"]
@@ -43,6 +46,8 @@ def run(cmd_text, context, ui_state: UIState) -> list[dict[str, str]]:
     context = check_context(context)
     elf = parse_elf(elf_path, context)
 
+    device: Device
+    loc: OnChipCoordinate
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             try:

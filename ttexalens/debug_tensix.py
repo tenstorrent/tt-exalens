@@ -7,7 +7,6 @@ import struct
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
-from ttexalens.tt_exalens_lib import check_context, validate_device_id
 from ttexalens.util import WARN, TTException
 from ttexalens.device import Device
 from ttexalens.pack_unpack_regfile import (
@@ -16,6 +15,7 @@ from ttexalens.pack_unpack_regfile import (
     pack_data_direct_access,
     TensixDataFormat,
 )
+from ttexalens.memory_access import MemoryAccess
 
 
 def validate_thread_id(thread_id: int) -> None:
@@ -55,27 +55,20 @@ def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
 
 
 class TensixDebug:
-    core_loc: OnChipCoordinate
-    device_id: int
-    context: Context
-    device: Device
-
     def __init__(
         self,
-        core_loc: str | OnChipCoordinate,
-        device_id: int,
-        context: Context | None = None,
+        location: OnChipCoordinate,
     ) -> None:
-        self.context = check_context(context)
-        validate_device_id(device_id, self.context)
-        self.device_id = device_id
-        self.device = self.context.devices[self.device_id]
-        self.noc_block = self.device.get_block(core_loc)
+        self.location = location
+        self.device = location.device
+        self.noc_block = location.noc_block
         self.register_store = self.noc_block.get_register_store()
-        if not isinstance(core_loc, OnChipCoordinate):
-            self.core_loc = OnChipCoordinate.create(core_loc, device=self.device)
-        else:
-            self.core_loc = core_loc
+
+        # Using TRISC0 debug hardware to read/write memory
+        # Use restricted_access=False because the Tensix dest is outside L1/data_private, but we still need to read/write it via TRISC0 debug hardware.
+        self.mem_access = MemoryAccess.create(
+            self.noc_block.get_risc_debug(risc_name="trisc0"), restricted_access=False
+        )
 
     def dbg_buff_status(self):
         return self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS")
@@ -178,8 +171,6 @@ class TensixDebug:
 
     def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int]:
         data: list[int] = []
-        # Using TRISC0 debug hardware to read memory
-        risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
         if not isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
             raise TTException("Direct dest reading not supported for this architecture.")
 
@@ -189,15 +180,13 @@ class TensixDebug:
         size_bytes = num_tiles * TILE_SIZE * 4
         if size_bytes > dest_size:
             raise TTException(f"Size {size_bytes} bytes is out of bounds for destination memory block.")
-        with risc_debug.ensure_private_memory_access():
-            bytes_data = risc_debug.read_memory_bytes(base_address, size_bytes)
-            for i in range(0, size_bytes, 4):
-                data.append(int.from_bytes(bytes_data[i : i + 4], byteorder="little"))
+
+        bytes_data = self.mem_access.read(base_address, size_bytes)
+        data.extend(int.from_bytes(bytes_data[i : i + 4], byteorder="little") for i in range(0, size_bytes, 4))
 
         return data
 
     def direct_dest_write(self, data: list[int], df: TensixDataFormat) -> None:
-        risc_debug = self.noc_block.get_risc_debug(risc_name="trisc0")
         if not isinstance(self.noc_block, BlackholeFunctionalWorkerBlock):
             raise TTException("Direct dest writing not supported for this architecture.")
         dest_size = self.noc_block.dest.size
@@ -207,8 +196,8 @@ class TensixDebug:
         base_address = self.noc_block.dest.address.private_address
         assert base_address is not None
         bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in data)
-        with risc_debug.ensure_private_memory_access():
-            risc_debug.write_memory_bytes(base_address, bytes_data)
+
+        self.mem_access.write(base_address, bytes_data)
 
     def read_regfile_data(
         self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None
@@ -351,7 +340,7 @@ class TensixDebug:
         self.register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", df_to_write.value)
         self.direct_dest_write(data, df)
 
-    def write_regfile(self, regfile: int | str | REGFILE, data: list[int | float], df: TensixDataFormat) -> None:
+    def write_regfile(self, regfile: int | str | REGFILE, data: list[int] | list[float], df: TensixDataFormat) -> None:
         """
         Writes data to the register file.
         Writing is only supported for dest register and only for formats using 32 bit mode (Float32, Int32, UInt32, Int8, UInt8)

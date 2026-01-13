@@ -31,9 +31,9 @@ Examples:
 """  # Note: Limit the above comment to 120 characters in width
 
 from ttexalens import util as util
+from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.coordinate import VALID_COORDINATE_TYPES, OnChipCoordinate
-from ttexalens.context import LimitedContext
 from ttexalens.uistate import UIState
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
@@ -47,7 +47,7 @@ command_metadata = CommandMetadata(
 
 
 def color_block(text: str, block_type: str):
-    color = Device.block_types[block_type]["color"]
+    color = Device.block_types[block_type].color
     return f"{color}{text}{util.CLR_END}"
 
 
@@ -73,7 +73,7 @@ def get_riscv_run_status(device: Device, loc: OnChipCoordinate) -> str:
     return device.get_block_type(loc)
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     dont_print_legend = dopt.args["--no-legend"]
     axis_coordinate = dopt.args["<axis-coordinate>"] or "logical-tensix"
@@ -88,10 +88,8 @@ def run(cmd_text, context, ui_state: UIState):
     cell_contents = ""
     if dopt.args["<cell-contents>"]:
         cell_contents = dopt.args["<cell-contents>"]
-    elif isinstance(context, LimitedContext):
-        cell_contents = "riscv"
     else:
-        raise util.TTException(f"Invalid cell contents")
+        cell_contents = "riscv"
 
     # Create a legend
     if not dont_print_legend:
@@ -122,15 +120,19 @@ def run(cmd_text, context, ui_state: UIState):
     device: Device
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
-        device_id_str = f"{device.id()}"
+        device_id_str = f"{device.id}"
+        device_unique_id_str = ""
         if device.unique_id is not None:
-            device_id_str += f" [0x{device.unique_id:x}]"
-        util.INFO(f"==== Device {jtag_prompt}{device_id_str}")
+            device_unique_id_str += f"0x{device.unique_id:x}"
+        local_remote = "local" if device.is_local else f"remote({device.local_device.id})"
+        util.INFO(
+            f"==== Device {jtag_prompt}{device_id_str} [{device.board_type} / {local_remote}] (Unique ID: {device_unique_id_str})"
+        )
 
         # What to render in each cell
         cell_contents_array = [s.strip() for s in cell_contents.split(",")]
 
-        def cell_render_function(loc):
+        def cell_render_function(loc: OnChipCoordinate) -> str:
             # One string for each of cell_contents_array elements
             cell_contents_str = []
 

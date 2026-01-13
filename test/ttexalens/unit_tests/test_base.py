@@ -1,8 +1,10 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device
 import os
+from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device, Context
+from ttexalens.elf import ParsedElfFile
+
 
 # Global cache for simulator context to ensure only one simulator process
 # is created when TTEXALENS_SIMULATOR is set, preventing conflicts between
@@ -14,6 +16,10 @@ _cached_simulator_context = None
 # initializations of the test context
 _cached_test_context = None
 
+# Storing all parsed ELF files to avoid multiple reads of the same file
+# during tests
+_cached_parsed_elf_files: dict[str, ParsedElfFile] = {}
+
 
 def init_default_test_context():
     global _cached_simulator_context
@@ -22,15 +28,15 @@ def init_default_test_context():
     if os.getenv("TTEXALENS_TESTS_REMOTE"):
         ip_address = os.getenv("TTEXALENS_TESTS_REMOTE_ADDRESS", "localhost")
         port = int(os.getenv("TTEXALENS_TESTS_REMOTE_PORT", "5555"))
-        _cached_test_context = init_ttexalens_remote(ip_address, port)
+        _cached_test_context = init_ttexalens_remote(ip_address, port, use_4B_mode=False)
     elif os.getenv("TTEXALENS_SIMULATOR"):
         # Reuse cached simulator context to prevent multiple simulator processes
         if _cached_simulator_context is None:
             simulation_directory = os.getenv("TTEXALENS_SIMULATOR")
-            _cached_simulator_context = init_ttexalens(simulation_directory=simulation_directory)
+            _cached_simulator_context = init_ttexalens(simulation_directory=simulation_directory, use_4B_mode=False)
         return _cached_simulator_context
     else:
-        _cached_test_context = init_ttexalens()
+        _cached_test_context = init_ttexalens(use_4B_mode=False)
     return _cached_test_context
 
 
@@ -44,7 +50,7 @@ def init_cached_test_context():
 def init_test_context(use_noc1: bool = False):
     if use_noc1:
         assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing for NOC1 not supported"
-        return init_ttexalens(use_noc1=True)
+        return init_ttexalens(use_noc1=True, use_4B_mode=False)
     else:
         return init_default_test_context()
 
@@ -75,3 +81,15 @@ def get_core_location(core_desc: str, device: Device) -> OnChipCoordinate:
         return OnChipCoordinate.create(core_desc, device=device)
     except:
         raise ValueError(f"Unknown core description {core_desc}")
+
+
+def get_parsed_elf_file(elf_path: str) -> ParsedElfFile:
+    """Get a cached ParsedElfFile or parse and cache it if not already done."""
+    global _cached_parsed_elf_files
+    if elf_path not in _cached_parsed_elf_files:
+        from elftools.elf.elffile import ELFFile
+
+        elf = ELFFile.load_from_path(elf_path)
+        parsed_elf = ParsedElfFile(elf, elf_path)
+        _cached_parsed_elf_files[elf_path] = parsed_elf
+    return _cached_parsed_elf_files[elf_path]

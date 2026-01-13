@@ -29,12 +29,12 @@ Examples:
 import time
 from docopt import docopt
 
+from ttexalens.context import Context
 from ttexalens.memory_map import MemoryMap
 from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_words_from_device, read_word_from_device
-from ttexalens.object import DataArray
 from ttexalens import util as util
 from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
 
@@ -47,7 +47,7 @@ command_metadata = CommandMetadata(
 )
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     args = dopt.args
 
@@ -66,8 +66,8 @@ def run(cmd_text, context, ui_state: UIState):
     except ValueError:
         pass
 
-    def process_device(device_id):
-        location = OnChipCoordinate.create(location_str, device=context.devices[device_id])
+    def process_device(device_id: int):
+        location = OnChipCoordinate.create(location_str, device=context.find_device_by_id(device_id))
 
         addr, size_bytes = addr_arg, size_bytes_arg
 
@@ -77,7 +77,6 @@ def run(cmd_text, context, ui_state: UIState):
             addr += offset
 
         print_a_burst_read(
-            device_id,
             location,
             addr,
             word_count=word_count if word_count > 0 else size_words,
@@ -102,24 +101,29 @@ def print_a_read(header, addr, val, comment=""):
 
 
 def print_memory_block(header: str, start_addr: int, data: list[int], bytes_per_entry: int, is_hex: bool):
-    da = DataArray(f"{header} : 0x{start_addr:08x} ({len(data) * 4} bytes)", 4)
+    da = util.DataArray(f"{header} : 0x{start_addr:08x} ({len(data) * 4} bytes)", 4)
     da.data = data
     if bytes_per_entry != 4:
         da.to_bytes_per_entry(bytes_per_entry)
-    print(f"{da._id}\n{util.dump_memory(start_addr, da.data, bytes_per_entry, 16, is_hex)}")
+    print(f"{da.id}\n{util.dump_memory(start_addr, da.data, bytes_per_entry, 16, is_hex)}")
 
 
-def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_format="hex32", context=None):
+def print_a_burst_read(
+    location: OnChipCoordinate,
+    addr: int,
+    word_count: int,
+    sample: float,
+    print_format: str,
+    context: Context,
+):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
 
-    device = context.devices[device_id]
-    noc_block = device.get_block(location)
-    memory_map: MemoryMap = noc_block.get_noc_memory_map()
+    memory_map: MemoryMap = location.noc_block.noc_memory_map
 
     if sample == 0:  # No sampling, just a single read
         # Read all data at once for efficiency
-        data = read_words_from_device(location, addr, device_id, word_count, context)
+        data = read_words_from_device(location, addr, word_count=word_count)
 
         # Print overall header
         print(f"{location.to_user_str()} : 0x{addr:08x} ({word_count * 4} total bytes)")
@@ -127,15 +131,14 @@ def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_
         i = 0
         while i < word_count:
             word_addr = addr + i * 4
-            memory_block_name = memory_map.get_block_name_by_noc_address(word_addr)
-
-            if memory_block_name is not None:
+            memory_block_info = memory_map.find_by_noc_address(word_addr)
+            if memory_block_info is not None:
                 # Get block info and calculate how many words fit in this known region
-                memory_block = memory_map.get_block_by_name(memory_block_name)
-                assert memory_block is not None, f"Memory block '{memory_block_name}' not found in map but expected"
+                memory_block_name = memory_block_info.name
+                memory_block = memory_block_info.memory_block
                 assert (
                     memory_block.address.noc_address is not None
-                ), f"Memory block '{memory_block_name}' has no NOC address"
+                ), f"Memory block '{memory_block_info.name}' has no NOC address"
                 memory_block_start = memory_block.address.noc_address
                 memory_block_end = memory_block_start + memory_block.size
                 remaining_words_in_block = max(
@@ -149,7 +152,7 @@ def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_
                 words_to_read = remaining_words_in_block
                 for offset in range(remaining_words_in_block):
                     check_addr = word_addr + offset * 4
-                    if memory_map.get_block_name_by_noc_address(check_addr) is not None:
+                    if memory_map.find_by_noc_address(check_addr) is not None:
                         words_to_read = offset if offset > 0 else 1
                         break
 
@@ -167,17 +170,15 @@ def print_a_burst_read(device_id, location, addr, word_count=1, sample=1, print_
         for i in range(word_count):
             word_addr = addr + 4 * i
 
-            block_name = memory_map.get_block_name_by_noc_address(word_addr)
-            if block_name is None:
-                block_name = "?"
-
+            block_info = memory_map.find_by_noc_address(word_addr)
+            block_name = block_info.name if block_info is not None else "?"
             block_header = f"{location.to_user_str()} ({block_name})"
 
             values = {}
             print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
             t_end = time.time() + sample / word_count
             while time.time() < t_end:
-                val = read_word_from_device(location, word_addr, device_id, context=context)
+                val = read_word_from_device(location, word_addr)
                 if val not in values:
                     values[val] = 0
                 values[val] += 1

@@ -13,7 +13,7 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from ttexalens.context import Context
 from ttexalens.gdb.gdb_server import GdbServer, ServerSocket
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.tt_exalens_server import TTExaLensServer, start_server
+from ttexalens.server import TTExaLensServer, start_server
 
 
 class TTExaLensCompleter(Completer):
@@ -113,7 +113,7 @@ class UIState:
             self.ttexalens_server.stop()
         if port is None:
             port = 5555
-        self.ttexalens_server = start_server(port, self.context.server_ifc)
+        self.ttexalens_server = start_server(port, self.context)
 
     def stop_server(self):
         if self.ttexalens_server is not None:

@@ -46,11 +46,8 @@ build_and_push() {
 }
 
 CI_IMAGE_NAME=ghcr.io/$REPO/tt-exalens-ci-ubuntu-$UBUNTU_VERSION
-IRD_IMAGE_NAME=ghcr.io/$REPO/tt-exalens-ird-ubuntu-$UBUNTU_VERSION
 
 build_and_push $CI_IMAGE_NAME .github/Dockerfile.ci
-build_and_push $IRD_IMAGE_NAME .github/Dockerfile.ird ci
 
 echo "Ubuntu $UBUNTU_VERSION images:"
 echo "$CI_IMAGE_NAME:$DOCKER_TAG"
-echo "$IRD_IMAGE_NAME:$DOCKER_TAG"

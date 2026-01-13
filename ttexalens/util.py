@@ -2,8 +2,9 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from __future__ import annotations
 from contextlib import nullcontext, AbstractContextManager, contextmanager
-from typing import Any, Iterator
+from typing import Any, Iterator, TYPE_CHECKING
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
@@ -11,6 +12,9 @@ import traceback, socket
 import ryml, yaml
 from fnmatch import fnmatch
 from enum import Enum
+
+if TYPE_CHECKING:
+    from ttexalens.server import FileAccessApi
 
 
 # Setting the verbosity of messages shown
@@ -78,6 +82,7 @@ def notify_exception(exc_type, exc_value, tb):
     indent = 0
     fn = "-"
     line_number = "-"
+    func_name = "-"
     for ss in ss_list:
         file_name, line_number, func_name, text = ss
         abs_filename = os.path.abspath(file_name)
@@ -122,10 +127,10 @@ sys.excepthook = notify_exception
 # Get path of this script. 'frozen' means packaged with pyinstaller.
 def application_path():
     if getattr(sys, "frozen", False):
-        application_path = os.path.dirname(sys.executable)
+        return os.path.dirname(sys.executable)
     elif __file__:
-        application_path = os.path.dirname(__file__)
-    return application_path
+        return os.path.dirname(__file__)
+    return None
 
 
 def to_hex_if_possible(val):
@@ -301,7 +306,7 @@ def dict_to_table(dct):
 
 # Converts list of dictionaries with same keys to a table where every column is one dictionary.
 def dict_list_to_table(
-    dicts: list[dict[str, int]] | list[dict[str, str]], table_name: str, column_names: list[str]
+    dicts: list[dict[str, int | str]] | list[dict[str, str]], table_name: str, column_names: list[str]
 ) -> str:
     keys = dicts[0].keys()
     data = []
@@ -588,7 +593,7 @@ class YamlFile:
     # Cache
     file_cache: dict = {}
 
-    def __init__(self, file_ifc, filepath, post_process_yaml=None, content=None):
+    def __init__(self, file_ifc: FileAccessApi, filepath: str, post_process_yaml=None, content: str | None = None):
         self.filepath = filepath
         self.content = content
         self.file_ifc = file_ifc
@@ -726,8 +731,10 @@ from functools import total_ordering
 
 @total_ordering
 class FirmwareVersion:
-    def __init__(self, version: tuple[int, int, int]):
-        self.major, self.minor, self.patch = version
+    def __init__(self, major: int, minor: int, patch: int):
+        self.major = major
+        self.minor = minor
+        self.patch = patch
 
     def __repr__(self):
         return f"{self.major}.{self.minor}.{self.patch}"
@@ -1009,6 +1016,7 @@ def color_text_by_index(text, color_index):
 # Return a list of up to n elements from strings that match the given wildcard pattern.
 # Defaults to 10 elements, negative values of max or "all" mean all.
 def search(strings: list[str], pattern: str = "*", max: str | int = "all") -> list[str]:
+    n = 0
     try:
         if max != "all":
             n = int(max)
@@ -1033,3 +1041,47 @@ def search(strings: list[str], pattern: str = "*", max: str | int = "all") -> li
             n -= 1
 
     return results
+
+
+# Just an array of numbers that knows how to print itself
+class DataArray:
+    def __str__(self):
+        return f"{self.id}\n" + array_to_str(self.data, cell_formatter=self.cell_formatter)
+
+    def __repr__(self):
+        return f"{self.id} len:{len(self.data)} ({len(self.data)*self.bytes_per_entry} bytes)"
+
+    def __init__(self, id, bytes_per_entry=4, cell_formatter=None):
+        self.id = id
+        self.data = []
+        self.bytes_per_entry = bytes_per_entry
+        self.cell_formatter = CELLFMT.hex(self.bytes_per_entry) if not cell_formatter else cell_formatter
+
+    def to_bytes_per_entry(self, bytes_per_entry):
+        dest = bytes()
+        for v in self.data:
+            dest += int.to_bytes(v, length=self.bytes_per_entry, byteorder="little")
+        self.data = []
+        for i in range(0, len(dest), bytes_per_entry):
+            self.data.append(int.from_bytes(dest[i : i + bytes_per_entry], byteorder="little"))
+        self.bytes_per_entry = bytes_per_entry
+        self.cell_formatter = CELLFMT.hex(self.bytes_per_entry)
+
+    def from_bytes(self, bytes):
+        """
+        Initiliaze the data array from a byte array
+        """
+        self.data = []
+        for i in range(0, len(bytes), self.bytes_per_entry):
+            self.data.append(int.from_bytes(bytes[i : i + self.bytes_per_entry], byteorder="little"))
+        return self
+
+    def bytes(self):
+        """
+        Return the data array as a byte array
+        """
+        return b"".join(int.to_bytes(v, length=self.bytes_per_entry, byteorder="little") for v in self.data)
+
+    # subsript operator
+    def __getitem__(self, key):
+        return self.data[key]

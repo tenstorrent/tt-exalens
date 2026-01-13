@@ -6,7 +6,8 @@ import unittest
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens.context import Context
-from ttexalens.elf import ElfVariable, MemoryAccess
+from ttexalens.elf import ElfVariable, ParsedElfFile
+from ttexalens.memory_access import MemoryAccess, RestrictedMemoryAccessError
 
 
 class MemoryAccessWrapper(MemoryAccess):
@@ -43,6 +44,8 @@ class MemoryAccessWrapper(MemoryAccess):
 class TestDebugSymbols(unittest.TestCase):
     context: Context  # TTExaLens context
     core_sim: RiscvCoreSimulator  # RISC-V core simulator instance
+    parsed_elf: ParsedElfFile
+    mem_access: MemoryAccessWrapper  # Wrapped memory access
 
     @classmethod
     def setUpClass(cls):
@@ -58,7 +61,7 @@ class TestDebugSymbols(unittest.TestCase):
         cls.parsed_elf = cls.core_sim.parse_elf("globals_test.release")
 
         # Create the memory access wrapper
-        original_mem_access = MemoryAccess.get(risc_debug)
+        original_mem_access = MemoryAccess.create(risc_debug)
         cls.mem_access = MemoryAccessWrapper(original_mem_access)
 
         assert not cls.core_sim.is_in_reset()
@@ -404,53 +407,52 @@ class TestDebugSymbols(unittest.TestCase):
         invalid_ptr = g_global_struct.invalid_memory_ptr
 
         # Dereferencing should raise memory access error
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference().read_value())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference().read_value())
 
         # Test all comparison operators propagate memory errors
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() < 100)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 > invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() <= 100)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 >= invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() > 100)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 < invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() >= 100)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 <= invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() == 100)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 100 == invalid_ptr.dereference())
-
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() < 100)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 > invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() <= 100)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 >= invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() > 100)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 < invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() >= 100)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 <= invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() == 100)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 == invalid_ptr.dereference())
         # Test all arithmetic operators propagate memory errors
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() + 10)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 10 + invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() - 10)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 10 - invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() * 10)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 10 * invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() / 10)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 10 / invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() // 10)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 10 // invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() % 10)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 10 % invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() ** 2)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 2 ** invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() + 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 + invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() - 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 - invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() * 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 * invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() / 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 / invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() // 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 // invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() % 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 % invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() ** 2)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 2 ** invalid_ptr.dereference())
 
         # Test all bitwise operators propagate memory errors
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() & 0xFF)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 0xFF & invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() | 0xFF)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 0xFF | invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() ^ 0xFF)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 0xFF ^ invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() << 2)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 2 << invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: invalid_ptr.dereference() >> 2)
-        self.assertRaisesRegex(Exception, "restricted access", lambda: 2 >> invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() & 0xFF)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 0xFF & invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() | 0xFF)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 0xFF | invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() ^ 0xFF)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 0xFF ^ invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() << 2)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 2 << invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() >> 2)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 2 >> invalid_ptr.dereference())
 
         # Test all unary operators propagate memory errors
-        self.assertRaisesRegex(Exception, "restricted access", lambda: -invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: +invalid_ptr.dereference())
-        self.assertRaisesRegex(Exception, "restricted access", lambda: abs(invalid_ptr.dereference()))
-        self.assertRaisesRegex(Exception, "restricted access", lambda: ~invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: -invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: +invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: abs(invalid_ptr.dereference()))
+        self.assertRaises(RestrictedMemoryAccessError, lambda: ~invalid_ptr.dereference())
 
     def test_elf_variable_type_errors(self):
         """Test that all operators handle type incompatibility correctly"""

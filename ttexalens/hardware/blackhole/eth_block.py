@@ -13,6 +13,7 @@ from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
+from ttexalens.memory_map import MemoryMapBlockInfo
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
@@ -177,6 +178,50 @@ class BlackholeEthBlock(BlackholeNocBlock):
             size=512 * 1024,
             address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000),
         )
+        self.debug_regs = MemoryBlock(
+            size=0x2010,
+            address=DeviceAddress(noc_address=0xFFB12000, private_address=0xFFB12000),
+        )
+        self.pic_regs = MemoryBlock(
+            size=0x44,
+            address=DeviceAddress(noc_address=0xFFB14020, private_address=0xFFB14020),
+        )
+        self.noc0_regs = MemoryBlock(
+            size=0x10000,
+            address=DeviceAddress(noc_address=0xFFB20000, private_address=0xFFB20000),
+        )
+        self.noc1_regs = MemoryBlock(
+            size=0x10000,
+            address=DeviceAddress(noc_address=0xFFB30000, private_address=0xFFB30000),
+        )
+        self.noc_overlay = MemoryBlock(
+            size=0x40000,
+            address=DeviceAddress(noc_address=0xFFB40000, private_address=0xFFB40000),
+        )
+        self.eth_txq0_regs = MemoryBlock(
+            size=0x3000,
+            address=DeviceAddress(noc_address=0xFFB90000, private_address=0xFFB90000),
+        )
+        self.eth_rxq0_regs = MemoryBlock(
+            size=0x3000,
+            address=DeviceAddress(noc_address=0xFFB94000, private_address=0xFFB94000),
+        )
+        self.eth_control_regs = MemoryBlock(
+            size=0x200,
+            address=DeviceAddress(noc_address=0xFFB98000, private_address=0xFFB98000),
+        )
+        self.eth_tx_header_table = MemoryBlock(
+            size=0x500,
+            address=DeviceAddress(noc_address=0xFFB98200, private_address=0xFFB98200),
+        )
+        self.eth_rx_classifier = MemoryBlock(
+            size=0x2A20,
+            address=DeviceAddress(noc_address=0xFFB9C000, private_address=0xFFB9C000),
+        )
+        self.eth_mac_pcs_regs = MemoryBlock(
+            size=0x10000,
+            address=DeviceAddress(noc_address=0xFFBA0000, private_address=0xFFBA0000),
+        )
 
         self.erisc0 = BabyRiscInfo(
             risc_name="erisc0",
@@ -221,7 +266,58 @@ class BlackholeEthBlock(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-        self.memory_map.map_block("l1", self.l1)
+        self.noc_memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
+                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
+                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
+                MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
+                MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
+                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs),
+            ]
+        )
+
+        self.erisc0.memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("data_private_memory", self.erisc0.data_private_memory),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
+                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
+                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
+                MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
+                MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
+                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs),
+            ]
+        )
+
+        self.erisc1.memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("data_private_memory", self.erisc1.data_private_memory),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
+                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
+                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
+                MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
+                MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
+                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs),
+            ]
+        )
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:

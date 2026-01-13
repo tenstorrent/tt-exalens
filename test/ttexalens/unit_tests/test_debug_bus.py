@@ -11,6 +11,7 @@ from test.ttexalens.unit_tests.test_base import get_core_location, init_cached_t
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.context import Context
 from ttexalens.cli_commands.debug_bus import parse_string
+from ttexalens.device import Device
 
 
 @parameterized_class(
@@ -30,6 +31,7 @@ class TestDebugBus(unittest.TestCase):
     context: Context  # TTExaLens context
     core_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
     debug_bus: DebugBusSignalStore  # Debug bus signal store
+    device: Device
 
     @classmethod
     def setUpClass(cls):
@@ -174,7 +176,7 @@ class TestDebugBus(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             self.debug_bus.get_signal_description(signal_name)
         self.assertIn(
-            f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device._id}.",
+            f"Unknown signal name '{signal_name}' on {self.location.to_user_str()} for device {self.device.id}.",
             str(cm.exception),
         )
 

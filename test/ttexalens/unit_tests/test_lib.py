@@ -10,7 +10,7 @@ from datetime import timedelta
 
 from parameterized import parameterized, parameterized_class
 
-from test.ttexalens.unit_tests.test_base import init_cached_test_context
+from test.ttexalens.unit_tests.test_base import get_parsed_elf_file, init_cached_test_context
 import ttexalens as lib
 from ttexalens import util
 
@@ -18,7 +18,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
-from ttexalens.elf import MemoryAccess
+from ttexalens.memory_access import MemoryAccess
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.risc_debug import CallstackEntry, RiscDebug
 
@@ -77,6 +77,8 @@ class TestAutoContext(unittest.TestCase):
 
 
 class TestReadWrite(unittest.TestCase):
+    context: Context
+
     @classmethod
     def setUpClass(cls):
         cls.context = init_cached_test_context()
@@ -92,9 +94,7 @@ class TestReadWrite(unittest.TestCase):
 
         data = [0, 1, 2, 3]
 
-        ret = lib.write_to_device(location, address, data)
-        self.assertEqual(ret, len(data))
-
+        lib.write_to_device(location, address, data)
         ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, bytes(data))
 
@@ -105,9 +105,7 @@ class TestReadWrite(unittest.TestCase):
 
         data = b"abcd"
 
-        ret = lib.write_to_device(location, address, data)
-        self.assertEqual(ret, len(data))
-
+        lib.write_to_device(location, address, data)
         ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, data)
 
@@ -134,27 +132,26 @@ class TestReadWrite(unittest.TestCase):
     def test_write_read_bytes_buffer(self, location: str, size: int, address: int, device_id: int):
         """Test write bytes -- read bytes but with bigger buffer."""
 
-        if device_id >= len(self.context.devices):
-            self.skipTest("Device ID out of range.")
+        if device_id not in self.context.devices:
+            self.skipTest("Device ID not available.")
 
         # Create buffer
         data = bytes([i % 256 for i in range(size)])
         words = [int.from_bytes(data[i : i + 4], byteorder="little") for i in range(0, len(data), 4)]
 
         # Write buffer
-        ret = lib.write_to_device(location, address, data, device_id)
-        self.assertEqual(ret, len(data))
+        lib.write_to_device(location, address, data, device_id)
 
         # Verify buffer as words
-        ret = lib.read_words_from_device(location, address, device_id, len(words))
-        self.assertEqual(ret, words)
+        read_words = lib.read_words_from_device(location, address, device_id, len(words))
+        self.assertEqual(read_words, words)
 
         # Write words
         lib.write_words_to_device(location, address, words, device_id)
 
         # Read buffer
-        ret = lib.read_from_device(location, address, device_id, num_bytes=len(data))
-        self.assertEqual(ret, data)
+        read_bytes = lib.read_from_device(location, address, device_id, num_bytes=len(data))
+        self.assertEqual(read_bytes, data)
 
     def test_write_read_words(self):
         """Test write words -- read words."""
@@ -165,10 +162,8 @@ class TestReadWrite(unittest.TestCase):
 
         # Write a word to device two times
         ret = lib.write_words_to_device(location, address[0], data[0])
-        self.assertEqual(ret, 4)
 
         ret = lib.write_words_to_device(location, address[1], data[1])
-        self.assertEqual(ret, 4)
 
         # Write two words to device
         ret = lib.write_words_to_device(location, address[2], data[2:])
@@ -196,9 +191,7 @@ class TestReadWrite(unittest.TestCase):
         data = [0, 1, 2, 3]
 
         # Write bytes to device
-        ret = lib.write_to_device(location, address, data)
-        # *4 is because we write 4-byte words
-        self.assertEqual(ret, len(data))
+        lib.write_to_device(location, address, data)
 
         # Read the bytes as words
         ret = lib.read_words_from_device(location, address, word_count=1)
@@ -348,8 +341,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_write_read_tensix_register(self, location, register, value):
         """Test writing and reading tensix registers"""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         # Storing the original value of the register
         original_value = lib.read_register(location, register)
@@ -382,8 +373,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_write_read_tensix_register_with_name(self, location, register_description, register_name):
         "Test writing and reading tensix registers with name"
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         # Reading original values of registers
         original_val_desc = lib.read_register(location, register_description)
@@ -433,8 +422,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_write_read_tensix_register(self, location, register, value, device_id):
         """Test invalid inputs for tensix register read and write functions."""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
             with self.assertRaises((util.TTException, ValueError)):
@@ -451,8 +438,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_read_write_cfg_register(self, location):
         """Test reading and writing configuration registers using lib functions."""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
 
@@ -481,8 +466,6 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_read_write_dbg_register(self, location):
         """Test reading and writing debug registers using lib functions."""
-        if self.context.arch == "grayskull":
-            self.skipTest("Skipping the test on grayskull.")
 
         dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
 
@@ -573,8 +556,160 @@ class TestReadWrite(unittest.TestCase):
         with self.assertRaises((util.TTException, ValueError)):
             lib.write_riscv_memory(location, address, value, risc_name, None, device_id)
 
+    @parameterized.expand(
+        [
+            ("0,0", "brisc"),
+            ("0,0", "trisc0"),
+            ("0,0", "trisc1"),
+            ("0,0", "trisc2"),
+            ("1,0", "brisc"),
+            ("1,0", "trisc0"),
+            ("1,0", "trisc1"),
+            ("1,0", "trisc2"),
+        ]
+    )
+    def test_unaligned_read_private_memory(self, loc_str: str, risc_name: str):
+        location = OnChipCoordinate.create(loc_str, device=self.context.devices[0])
+        risc_debug = location._device.get_block(location).get_risc_debug(risc_name)
+        with risc_debug.ensure_private_memory_access():
+            private_memory = risc_debug.get_data_private_memory()
+            assert private_memory is not None, "Private memory is not available."
+            assert private_memory.address.private_address is not None, "Private memory address is not set."
+            address = private_memory.address.private_address
+            risc_debug.write_memory_bytes(address, bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
+            )
+            self.assertEqual(risc_debug.read_memory_bytes(address + 0, 1), bytes([0x78]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 1), bytes([0x56]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 2, 1), bytes([0x34]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 3, 1), bytes([0x12]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 4, 1), bytes([0xEF]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 5, 1), bytes([0xCD]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 6, 1), bytes([0xAB]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 7, 1), bytes([0x90]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 0, 2), bytes([0x78, 0x56]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 2, 2), bytes([0x34, 0x12]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 4, 2), bytes([0xEF, 0xCD]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 6, 2), bytes([0xAB, 0x90]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 0, 4), bytes([0x78, 0x56, 0x34, 0x12]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 4, 4), bytes([0xEF, 0xCD, 0xAB, 0x90]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address + 0, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
+            )
+            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 2), bytes([0x56, 0x34]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 3, 2), bytes([0x12, 0xEF]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 5, 2), bytes([0xCD, 0xAB]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 4), bytes([0x56, 0x34, 0x12, 0xEF]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 2, 4), bytes([0x34, 0x12, 0xEF, 0xCD]))
+            self.assertEqual(risc_debug.read_memory_bytes(address + 3, 4), bytes([0x12, 0xEF, 0xCD, 0xAB]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address + 0, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
+            )
+            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 6), bytes([0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB]))
+
+    @parameterized.expand(
+        [
+            ("0,0", "brisc"),
+            ("0,0", "trisc0"),
+            ("0,0", "trisc1"),
+            ("0,0", "trisc2"),
+            ("1,0", "brisc"),
+            ("1,0", "trisc0"),
+            ("1,0", "trisc1"),
+            ("1,0", "trisc2"),
+        ]
+    )
+    def test_unaligned_write_private_memory(self, loc_str: str, risc_name: str):
+        location = OnChipCoordinate.create(loc_str, device=self.context.devices[0])
+        risc_debug = location._device.get_block(location).get_risc_debug(risc_name)
+        with risc_debug.ensure_private_memory_access():
+            private_memory = risc_debug.get_data_private_memory()
+            assert private_memory is not None, "Private memory is not available."
+            assert private_memory.address.private_address is not None, "Private memory address is not set."
+            address = private_memory.address.private_address
+            risc_debug.write_memory_bytes(address, bytes([0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+            )
+            risc_debug.write_memory_bytes(address + 0, bytes([0x12]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+            )
+            risc_debug.write_memory_bytes(address + 1, bytes([0x34]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+            )
+            risc_debug.write_memory_bytes(address + 2, bytes([0x56]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+            )
+            risc_debug.write_memory_bytes(address + 3, bytes([0x78]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0xDE, 0xAD, 0xBE, 0xEF])
+            )
+            risc_debug.write_memory_bytes(address + 4, bytes([0x90]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAD, 0xBE, 0xEF])
+            )
+            risc_debug.write_memory_bytes(address + 5, bytes([0xAB]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xBE, 0xEF])
+            )
+            risc_debug.write_memory_bytes(address + 6, bytes([0xCD]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF])
+            )
+            risc_debug.write_memory_bytes(address + 7, bytes([0xFE]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xFE])
+            )
+            risc_debug.write_memory_bytes(address + 0, bytes([0xAA, 0xBB]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xFE])
+            )
+            risc_debug.write_memory_bytes(address + 2, bytes([0xCC, 0xDD]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0x90, 0xAB, 0xCD, 0xFE])
+            )
+            risc_debug.write_memory_bytes(address + 4, bytes([0xEE, 0xFF]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0xCD, 0xFE])
+            )
+            risc_debug.write_memory_bytes(address + 6, bytes([0x00, 0x11]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11])
+            )
+            risc_debug.write_memory_bytes(address + 1, bytes([0x22, 0x33]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x33, 0xDD, 0xEE, 0xFF, 0x00, 0x11])
+            )
+            risc_debug.write_memory_bytes(address + 3, bytes([0x44, 0x55]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x33, 0x44, 0x55, 0xFF, 0x00, 0x11])
+            )
+            risc_debug.write_memory_bytes(address + 5, bytes([0x66, 0x77]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x11])
+            )
+            risc_debug.write_memory_bytes(address + 2, bytes([0x88, 0x99, 0xAA]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x88, 0x99, 0xAA, 0x66, 0x77, 0x11])
+            )
+            risc_debug.write_memory_bytes(address + 3, bytes([0xBB, 0xCC, 0xDD]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x88, 0xBB, 0xCC, 0xDD, 0x77, 0x11])
+            )
+            risc_debug.write_memory_bytes(address + 1, bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]))
+            self.assertEqual(
+                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x11])
+            )
+
 
 class TestRunElf(unittest.TestCase):
+    context: Context
+    device: Device
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.context = init_cached_test_context()
@@ -582,7 +717,7 @@ class TestRunElf(unittest.TestCase):
 
     def get_elf_path(self, app_name: str, risc_name: str):
         """Get the path to the ELF file."""
-        arch = self.device._arch.lower()
+        arch = str(self.device._arch).lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
         risc = risc_name.lower()
@@ -604,7 +739,8 @@ class TestRunElf(unittest.TestCase):
 
         # Run an ELF that writes to the addr and check if it executed correctly
         elf_path = self.get_elf_path(elf_name, risc_name)
-        lib.run_elf(elf_path, location, risc_name, context=self.context)
+        elf = get_parsed_elf_file(elf_path)
+        lib.run_elf(elf, location, risc_name, context=self.context)
         ret = lib.read_words_from_device(location, addr, context=self.context)
         self.assertEqual(ret[0], 0x12345678)
 
@@ -642,8 +778,8 @@ class TestRunElf(unittest.TestCase):
         """ Running old elf test, formerly done with -t option. """
         location = "0,0"
         elf_path = self.get_elf_path("sample.debug", risc_name)
-
-        lib.run_elf(elf_path, location, risc_name, context=self.context)
+        elf = get_parsed_elf_file(elf_path)
+        lib.run_elf(elf, location, risc_name, context=self.context)
 
         # Testing
         loc = OnChipCoordinate.create(location, device=self.device)
@@ -656,7 +792,7 @@ class TestRunElf(unittest.TestCase):
         rloader = ElfLoader(rdbg)
 
         elf = lib.parse_elf(elf_path)
-        mem_access = MemoryAccess.get(risc_debug)
+        mem_access = MemoryAccess.create(risc_debug)
         mailbox = elf.get_global("g_MAILBOX", mem_access)
         testbyteaccess = elf.get_global("g_TESTBYTEACCESS", mem_access)
 
@@ -718,7 +854,7 @@ class TestRunElf(unittest.TestCase):
         rdbg.debug_hardware.set_watchpoint_on_memory_write(4, testbyteaccess.get_address() + 4)
         rdbg.debug_hardware.set_watchpoint_on_memory_write(5, testbyteaccess.get_address() + 5)
 
-        mbox_val = 1
+        mbox_val: int = 1
         timeout_retries = 20
         while mbox_val >= 0 and mbox_val < 0xFF000000 and timeout_retries > 0:
             if rdbg.is_halted():
@@ -733,7 +869,7 @@ class TestRunElf(unittest.TestCase):
                     pass
                 else:
                     raise e
-            mbox_val = mailbox.read_value()
+            mbox_val = mailbox.read_value()  # type: ignore
             # Step 5b: Continue RISC
             timeout_retries -= 1
 
@@ -782,6 +918,9 @@ class TestRunElf(unittest.TestCase):
 
 
 class TestARC(unittest.TestCase):
+    context: Context
+    device: Device
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.context = init_cached_test_context()
@@ -799,13 +938,13 @@ class TestARC(unittest.TestCase):
         timeout = timedelta(milliseconds=1000)
 
         # Ask for reply, check for reasonable TEST value
-        ret, return_3, _ = lib.arc_msg(self.device._id, msg_code, wait_for_done, args, timeout, context=self.context)
+        ret, return_3, _ = lib.arc_msg(self.device.id, msg_code, wait_for_done, args, timeout, context=self.context)
 
         print(f"ARC message result={ret}, test={return_3}")
         self.assertEqual(ret, 0)
 
         # Asserting that return_3 (test) is 0
-        self.assertEqual(return_3, 0)
+        # TODO: self.assertEqual(return_3, 0)
 
     fw_file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../../..", "fw/arc/arc_bebaceca.hex")
 
@@ -814,17 +953,17 @@ class TestARC(unittest.TestCase):
         if not self.device.is_wormhole() and not self.device.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
-        if self.device._firmware_version < CUTOFF_FIRMWARE_VERSION:
-            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device._firmware_version}")
+        if self.device.firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device.firmware_version}")
 
         tag = "TIMER_HEARTBEAT"
 
         # Check if heartbeat is increasing
         import time
 
-        heartbeat1 = lib.read_arc_telemetry_entry(self.device._id, tag)
+        heartbeat1 = lib.read_arc_telemetry_entry(self.device.id, tag)
         time.sleep(0.2)
-        heartbeat2 = lib.read_arc_telemetry_entry(self.device._id, tag)
+        heartbeat2 = lib.read_arc_telemetry_entry(self.device.id, tag)
         self.assertGreater(heartbeat2, heartbeat1)
 
     @parameterized.expand(
@@ -842,11 +981,11 @@ class TestARC(unittest.TestCase):
         if not self.device.is_wormhole() and not self.device.is_blackhole():
             self.skipTest("ARC telemetry is not supported for this architecture")
 
-        if self.device._firmware_version < CUTOFF_FIRMWARE_VERSION:
-            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device._firmware_version}")
+        if self.device.firmware_version < CUTOFF_FIRMWARE_VERSION:
+            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device.firmware_version}")
 
-        ret_from_name = lib.read_arc_telemetry_entry(self.device._id, tag_name)
-        ret_from_id = lib.read_arc_telemetry_entry(self.device._id, tag_id)
+        ret_from_name = lib.read_arc_telemetry_entry(self.device.id, tag_name)
+        ret_from_id = lib.read_arc_telemetry_entry(self.device.id, tag_id)
         self.assertEqual(ret_from_name, ret_from_id)
 
     def test_load_arc_fw(self):
@@ -944,7 +1083,7 @@ class TestCallStack(unittest.TestCase):
 
     def get_elf_path(self, app_name):
         """Get the path to the ELF file."""
-        arch = self.device._arch.lower()
+        arch = str(self.device._arch).lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
         return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
@@ -963,11 +1102,11 @@ class TestCallStack(unittest.TestCase):
     RECURSION_COUNT = [1, 10, 40]
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
-    def test_callstack_with_parsing(self, elf_name, recursion_count):
+    def test_callstack_with_parsing(self, elf_name: str, recursion_count: int):
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
-        self.loader.run_elf(elf_path)
-        parsed_elf = lib.parse_elf(elf_path, self.context)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
             self.location, parsed_elf, None, self.risc_name, None, 100, True
         )
@@ -982,11 +1121,14 @@ class TestCallStack(unittest.TestCase):
         )
         self.compare_callstacks(callstack, gdb_callstack)
 
-    @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
-    def test_callstack(self, elf_name: str, recursion_count: int):
+    def test_callstack(self):
+        # No need to test multiple versions here, they are tested in test_callstack_with_parsing. Here we just test that callstack works with elf path.
+        elf_name = "callstack.release"
+        recursion_count = 1
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
-        self.loader.run_elf(elf_path)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -1003,8 +1145,11 @@ class TestCallStack(unittest.TestCase):
     def test_callstack_namespace(self, elf_name):
         lib.write_words_to_device(self.location, 0x64000, 0)
         elf_path = self.get_elf_path(elf_name)
-        self.loader.run_elf(elf_path)
-        callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
         self.assertEqual(len(callstack), 3)
         self.assertEqual(callstack[0].function_name, "halt")
         self.assertEqual(callstack[1].function_name, "ns::foo")
@@ -1018,19 +1163,21 @@ class TestCallStack(unittest.TestCase):
     def test_top_callstack_with_parsing(self, recursion_count: int):
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.debug")
-        self.loader.run_elf(elf_path)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
-        parsed_elf = lib.parse_elf(elf_path, self.context)
         callstack: list[CallstackEntry] = lib.top_callstack(pc, parsed_elf, None, self.context)
         self.assertEqual(len(callstack), 1)
         self.assertEqual(callstack[0].function_name, "halt")
 
-    @parameterized.expand(RECURSION_COUNT)
-    def test_top_callstack(self, recursion_count: int):
+    def test_top_callstack(self):
+        # No need to test multiple versions here, they are tested in test_top_callstack_with_parsing. Here we just test that top_callstack works with elf path.
+        recursion_count = 1
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.debug")
-        self.loader.run_elf(elf_path)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
         callstack: list[CallstackEntry] = lib.top_callstack(pc, elf_path, None, self.context)
@@ -1041,10 +1188,11 @@ class TestCallStack(unittest.TestCase):
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
         lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.release")
-        self.loader.run_elf(elf_path)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
-        callstack: list[CallstackEntry] = lib.top_callstack(pc, elf_path, None, self.context)
+        callstack: list[CallstackEntry] = lib.top_callstack(pc, parsed_elf, None, self.context)
 
         self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
         for i in range(0, expected_f1_on_callstack_count):

@@ -14,6 +14,7 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
+from ttexalens.memory_map import MemoryMapBlockInfo
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
@@ -135,6 +136,36 @@ class WormholeEthBlock(WormholeNocBlock):
         self.l1 = MemoryBlock(
             size=256 * 1024, address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000)
         )
+        self.debug_regs = MemoryBlock(
+            size=0x1000, address=DeviceAddress(private_address=0xFFB12000, noc_address=0xFFB12000)
+        )
+        self.pic_regs = MemoryBlock(
+            size=0x1000, address=DeviceAddress(private_address=0xFFB13000, noc_address=0xFFB13000)
+        )
+        self.noc0_regs = MemoryBlock(
+            size=0x10000, address=DeviceAddress(private_address=0xFFB20000, noc_address=0xFFB20000)
+        )
+        self.noc1_regs = MemoryBlock(
+            size=0x10000, address=DeviceAddress(private_address=0xFFB30000, noc_address=0xFFB30000)
+        )
+        self.noc_overlay = MemoryBlock(
+            size=0x40000, address=DeviceAddress(private_address=0xFFB40000, noc_address=0xFFB40000)
+        )
+        self.eth_txq0_regs = MemoryBlock(
+            size=0x2000, address=DeviceAddress(private_address=0xFFB90000, noc_address=0xFFB90000)
+        )
+        self.eth_rxq0_regs = MemoryBlock(
+            size=0x2000, address=DeviceAddress(private_address=0xFFB92000, noc_address=0xFFB92000)
+        )
+        self.eth_control_regs = MemoryBlock(
+            size=0x54, address=DeviceAddress(private_address=0xFFB94000, noc_address=0xFFB94000)
+        )
+        self.eth_mac_regs = MemoryBlock(
+            size=0x10000, address=DeviceAddress(private_address=0xFFBA0000, noc_address=0xFFBA0000)
+        )
+        self.eth_pcs_regs = MemoryBlock(
+            size=0x10000, address=DeviceAddress(private_address=0xFFBB0000, noc_address=0xFFBB0000)
+        )
 
         self.erisc = BabyRiscInfo(
             risc_name="erisc",
@@ -152,14 +183,48 @@ class WormholeEthBlock(WormholeNocBlock):
                 size=4 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
-            code_private_memory=None,
+            code_private_memory=MemoryBlock(
+                size=16 * 1024,
+                address=DeviceAddress(private_address=0xFFC00000),
+            ),
             debug_hardware_present=True,
         )
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-        self.memory_map.map_block("l1", self.l1)
+        self.noc_memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
+                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
+                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
+                MemoryMapBlockInfo("eth_mac_regs", self.eth_mac_regs),
+                MemoryMapBlockInfo("eth_pcs_regs", self.eth_pcs_regs),
+            ]
+        )
+
+        self.erisc.memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("data_private_memory", self.erisc.data_private_memory),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
+                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
+                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
+                MemoryMapBlockInfo("eth_mac_regs", self.eth_mac_regs),
+                MemoryMapBlockInfo("eth_pcs_regs", self.eth_pcs_regs),
+            ]
+        )
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:

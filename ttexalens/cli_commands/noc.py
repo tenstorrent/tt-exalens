@@ -35,10 +35,6 @@ Examples:
     noc register --search *_RD* --max all       # Show all registers that have "_RD" in their name
 """
 
-# Third-party imports
-from docopt import docopt
-
-# Local imports
 from ttexalens import util
 from ttexalens.util import search
 from ttexalens.context import Context
@@ -363,6 +359,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
     simple_print = dopt.args["--simple"]
 
     # Iterate over selected devices, locations, and NOC identifiers
+    device: Device
+    loc: OnChipCoordinate
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             formatter.print_device_header(device, loc)
@@ -388,10 +386,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
                     if len(reg_names) == 0:
                         print("No matches found.")
                         return []
-
                 else:
                     # Parse the comma-separated register names
-                    reg_names_str = dopt.args["<reg-names>"]
+                    reg_names_str: str = dopt.args["<reg-names>"]
                     reg_names = [name.strip() for name in reg_names_str.split(",")]
 
                 if dopt.args["--noc"]:

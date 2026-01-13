@@ -64,7 +64,7 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
     """
     Given a command trough args, run the corresponding RISC-V command
     """
-    where = f"{risc_name} {loc.to_str('logical')} [{device._id}]"
+    where = f"{risc_name} {loc.to_str('logical')} [{device.id}]"
 
     noc_block = device.get_block(loc)
     risc = noc_block.get_risc_debug(risc_name)
@@ -178,8 +178,11 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
             risc.set_reset_signal(False)
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
+    device: Device
+    loc: OnChipCoordinate
+    risc_name: str
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             for risc_name in dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc):

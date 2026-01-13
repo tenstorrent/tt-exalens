@@ -3,9 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.tt_exalens_lib import read_from_device
 from ttexalens.tt_exalens_lib import TTException
-from ttexalens.elf import ParsedElfFile, MemoryAccess
+from ttexalens.elf import ParsedElfFile
+from ttexalens.memory_access import MemoryAccess
 
 """
 Extract the coverage data from the device into a .gcda file.
@@ -36,7 +36,7 @@ def dump_coverage(
         raise TTException("__coverage_end not found")
 
     # Find coverage header in device memory.
-    coverage_header = elf.get_global("coverage_header", MemoryAccess.get_l1(location))
+    coverage_header = elf.get_global("coverage_header", MemoryAccess.create_l1(location))
     if coverage_header is None:
         raise TTException("coverage_header not found")
     coverage_header = coverage_header.dereference()
@@ -63,16 +63,16 @@ def dump_coverage(
         filename_len = coverage_header.filename_length.read_value()
         assert isinstance(filename_len, int)
         filename_addr = coverage_header.filename.dereference().get_address()
-        filename: str = read_from_device(location, filename_addr, num_bytes=filename_len).decode("ascii")
+        filename: str = location.noc_read(filename_addr, filename_len).decode("ascii")
 
         # This points to the expected gcda file, which is in the same directory where the compiler placed the gcno,
         # so we just replace the extension and get the gcno path.
-        # We fetch it through context.server_ifc.get_binary in case this is a remote debugging session.
+        # We fetch it through context.file_api.get_binary in case this is a remote debugging session.
         gcno_path = filename[:-4] + "gcno"
-        with location.context.server_ifc.get_binary(gcno_path) as gcno_reader:
+        with location.context.file_api.get_binary(gcno_path) as gcno_reader:
             with open(gcno_copy_path, "wb") as f:
                 f.write(gcno_reader.read())
 
-    data = read_from_device(location, coverage_start + header_size, num_bytes=length - header_size)
+    data = location.noc_read(coverage_start + header_size, length - header_size)
     with open(gcda_path, "wb") as f:
         f.write(data)

@@ -23,7 +23,7 @@ class NocBlock:
         self.location = location
         self.block_type = block_type
         self.debug_bus = debug_bus
-        self.memory_map: MemoryMap = MemoryMap()
+        self.noc_memory_map: MemoryMap = MemoryMap()
 
     @property
     def device(self) -> Device:
@@ -32,10 +32,6 @@ class NocBlock:
     @abstractmethod
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
         pass
-
-    def get_noc_memory_map(self) -> MemoryMap | None:
-        # Currently only mapping NoC address space
-        return self.memory_map
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
         if neo_id is None:

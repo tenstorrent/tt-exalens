@@ -8,9 +8,10 @@ from ttexalens import util
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.elf.parsed import ParsedElfFile
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.tt_exalens_lib import read_from_device, write_to_device
+from ttexalens.memory_access import MemoryAccess
 
 
 class ElfLoader:
@@ -20,6 +21,7 @@ class ElfLoader:
 
     def __init__(self, risc_debug: RiscDebug):
         self.risc_debug = risc_debug
+        self.mem_access = MemoryAccess.create(risc_debug)
 
     @property
     def risc_name(self) -> str:
@@ -43,7 +45,7 @@ class ElfLoader:
     SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".gcov_info"]
 
     @staticmethod
-    def get_jump_to_offset_instruction(offset, rd=0):
+    def get_jump_to_offset_instruction(offset: int, rd: int = 0) -> int:
         """
         Generate a JAL instruction code based on the given offset.
 
@@ -81,16 +83,13 @@ class ElfLoader:
         """
         Writes a block of data to a given address through the debug interface.
         """
-        with self.risc_debug.ensure_private_memory_access():
-            self.risc_debug.write_memory_bytes(address, data)
+        self.mem_access.write(address, data)
 
     def read_block_through_debug(self, address, byte_count):
         """
         Reads a block of data from a given address through the debug interface.
         """
-        with self.risc_debug.ensure_private_memory_access():
-            data = self.risc_debug.read_memory_bytes(address, byte_count)
-        return data
+        return self.mem_access.read(address, byte_count)
 
     @staticmethod
     def __inside_private_memory(memory_block: MemoryBlock | None, address: int) -> bool:
@@ -121,7 +120,7 @@ class ElfLoader:
             # Use debug interface
             self.write_block_through_debug(address, data)
         else:
-            write_to_device(self.location, address, data, self.device._id, self.context)
+            self.location.noc_write(address, data)
 
     def read_block(self, address, byte_count):
         """
@@ -142,7 +141,7 @@ class ElfLoader:
             # Use debug interface
             return self.read_block_through_debug(address, byte_count)
         else:
-            return read_from_device(self.location, address, self.device._id, byte_count, self.context)
+            return self.location.noc_read(address, byte_count)
 
     def remap_address(self, address: int, loader_data: int | None, loader_code: int | None):
         data_private_memory = self.risc_debug.get_data_private_memory()
@@ -163,21 +162,24 @@ class ElfLoader:
             return address
         return address
 
-    def load_elf_sections(self, elf_path, loader_data: str | int, loader_code: str | int):
+    def load_elf_sections(
+        self, elf_path: str | ParsedElfFile, loader_data: str | int, loader_code: str | int, verify_write: bool = True
+    ):
         """
         Given an ELF file, this function loads the sections specified in SECTIONS_TO_LOAD to the
         memory of the RISC-V core. It also loads (into location 0) the jump instruction to the
         address of the .init section.
         """
-        if not os.path.exists(elf_path):
-            raise FileNotFoundError(f"File {elf_path} not found")
-
         # Remember the .init section address to jump to after loading
         init_section_address = None
 
         try:
-            elf_file_io = self.context.server_ifc.get_binary(elf_path)
-            elf_file = ELFFile(elf_file_io)
+            if isinstance(elf_path, ParsedElfFile):
+                elf_file = elf_path.elf
+                elf_path = elf_path.elf_file_path
+            else:
+                elf_file_io = self.context.file_api.get_binary(elf_path)
+                elf_file = ELFFile(elf_file_io)
             address: int
             loader_data_address = loader_data if isinstance(loader_data, int) else None
             loader_code_address = loader_code if isinstance(loader_code, int) else None
@@ -212,22 +214,16 @@ class ElfLoader:
                         util.VERBOSE(f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
                         self.write_block(address, data)
 
-            # Check that what we have written is correct
-            for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, "sh_addr"):
-                    name = section.name
-                    if name in self.SECTIONS_TO_LOAD:
-                        address = section.header.sh_addr
-                        data = section.data()
-                        address = self.remap_address(address, loader_data_address, loader_code_address)
-                        read_data = self.read_block(address, len(data))
-                        if read_data != data:
-                            util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
-                            continue
-                        else:
-                            util.VERBOSE(
-                                f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes"
-                            )
+                        # Check that what we have written is correct
+                        if verify_write:
+                            read_data = self.read_block(address, len(data))
+                            if read_data != data:
+                                util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
+                                continue
+                            else:
+                                util.VERBOSE(
+                                    f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes"
+                                )
         except Exception as e:
             util.ERROR(e)
             raise util.TTException(f"Error loading elf file {elf_path}")
@@ -235,13 +231,15 @@ class ElfLoader:
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
 
-    def load_elf(self, elf_path: str, return_start_address: bool = False) -> int | None:
+    def load_elf(
+        self, elf_path: str | ParsedElfFile, verify_write: bool = True, return_start_address: bool = False
+    ) -> int | None:
         # Risc must be in reset
         assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.risc_location} is not in reset."
 
         # Load elf file to the L1 memory; avoid writing to private sections
         init_section_address: int | None = self.load_elf_sections(
-            elf_path, loader_data=".loader_init", loader_code=".loader_code"
+            elf_path, loader_data=".loader_init", loader_code=".loader_code", verify_write=verify_write
         )
         assert init_section_address is not None, "No .init section found in the ELF file"
 
@@ -251,12 +249,12 @@ class ElfLoader:
             self.risc_debug.set_code_start_address(init_section_address)
             return None
 
-    def run_elf(self, elf_path: str):
+    def run_elf(self, elf_path: str | ParsedElfFile, verify_write: bool = True):
         # Make sure risc is in reset
         if not self.risc_debug.is_in_reset():
             self.risc_debug.set_reset_signal(True)
 
-        self.load_elf(elf_path)
+        self.load_elf(elf_path, verify_write=verify_write)
 
         # Take risc out of reset
         self.risc_debug.set_reset_signal(False)

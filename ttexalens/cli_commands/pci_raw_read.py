@@ -15,6 +15,7 @@ Examples:
   pcir 0x0
 """
 
+from ttexalens.context import Context
 from ttexalens.uistate import UIState
 from ttexalens.command_parser import CommandMetadata, tt_docopt
 
@@ -26,9 +27,10 @@ command_metadata = CommandMetadata(
 )
 
 
-def run(cmd_text, context, ui_state: UIState):
+def run(cmd_text: str, context: Context, ui_state: UIState):
     args = tt_docopt(command_metadata, cmd_text).args
     addr = int(args["<addr>"], 0)
-    pci_read_result = context.server_ifc.pci_read32_raw(ui_state.current_device_id, addr)
+    device = context.devices[ui_state.current_device_id]
+    pci_read_result = device.bar0_read32(addr)
     print(f"PCI RD [0x{addr:x}]: 0x{pci_read_result:x}")
     return None

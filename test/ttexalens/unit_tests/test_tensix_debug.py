@@ -4,8 +4,8 @@
 import math
 import unittest
 from parameterized import parameterized_class, parameterized
+import tt_umd
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
-from ttexalens import tt_exalens_init
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
@@ -24,6 +24,7 @@ class TestTensixDebug(unittest.TestCase):
     context: Context
     location: OnChipCoordinate
     tensix_debug: TensixDebug
+    location_str: str
 
     @classmethod
     def setUpClass(cls):
@@ -31,10 +32,10 @@ class TestTensixDebug(unittest.TestCase):
 
     def setUp(self):
         self.location = OnChipCoordinate.create(self.location_str, device=self.context.devices[0])
-        self.tensix_debug = TensixDebug(self.location, 0, self.context)
+        self.tensix_debug = TensixDebug(self.location)
 
     def is_blackhole(self) -> bool:
-        return self.context.devices[0]._arch == "blackhole"
+        return self.location.device._arch == tt_umd.ARCH.BLACKHOLE
 
     @parameterized.expand(
         [
@@ -66,9 +67,9 @@ class TestTensixDebug(unittest.TestCase):
         ret = self.tensix_debug.read_regfile(regfile, num_tiles)
         if value is None:
             assert len(ret) == len(data)
-            assert all(abs(a - b) < error_threshold for a, b in zip(ret, data))
+            assert all(abs(a - b) < error_threshold for a, b in zip(ret, data) if isinstance(a, float))
         elif math.isnan(value):
-            assert all(math.isnan(a) for a in ret)
+            assert all(math.isnan(a) for a in ret if isinstance(a, float))
         else:
             assert ret == data
 
