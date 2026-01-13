@@ -23,4 +23,6 @@ uv pip install --no-cache-dir --system --extra-index-url https://test.pypi.org/s
 uv pip install --no-cache-dir --system -r dev-requirements.txt
 uv pip install --no-cache-dir --system -r test_requirements.txt
 uv pip install --no-cache-dir --system wheel build setuptools
-uv pip cache purge
+
+# Clean up pip cache
+pip cache purge
