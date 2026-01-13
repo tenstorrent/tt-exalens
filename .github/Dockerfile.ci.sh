@@ -1,22 +1,12 @@
 # Install run dependencies
 apt-get update
 apt-get install -y \
-    software-properties-common \
-    build-essential \
-    git \
-    sudo \
-    wget \
-    curl \
-    jq
+    git
 
 # Python environment dependencies
 apt-get install -y \
-    libssl-dev \
     python3 \
-    python3-venv \
-    python3-pip \
-    python3-dev \
-    python3-wheel
+    python3-pip
 
 # Build tools
 apt-get install -y \
