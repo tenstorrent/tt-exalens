@@ -34,14 +34,16 @@ The CLI application can be run by invoking `tt-exalens` command after installing
 
 ### Cloning repository and setting up the environment
 
+Clone the `tt-exalens` repository.
+
 ### Requirements
 
 Project has been tested on Ubuntu 22.04.
 
 To build it, you need the following dependencies:
 
-- software-properties-common,
-- python3.X-venv
+- ninja-build,
+- cmake
 
 Install them with:
 
