@@ -43,7 +43,15 @@ jobs:
           pre-commit run --all-files --show-diff-on-failure
       - name: Run mypy
         run: |
-          which mypy
+          echo "MYPY PATH: $(which mypy)"
+          echo "installed packages:"
+          pip list
+          echo "uv installed packages:"
+          uv pip list
+          echo "/usr/lib/python3.10/ contents:"
+          ls /usr/lib/python3.10/
+          echo "running mypy..."
+          make mypy
       - name: Build test kernels
         run: |
           make
