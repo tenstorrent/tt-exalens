@@ -162,7 +162,9 @@ class ElfLoader:
             return address
         return address
 
-    def load_elf_sections(self, elf_path: str | ParsedElfFile, loader_data: str | int, loader_code: str | int):
+    def load_elf_sections(
+        self, elf_path: str | ParsedElfFile, loader_data: str | int, loader_code: str | int, verify_write: bool = True
+    ):
         """
         Given an ELF file, this function loads the sections specified in SECTIONS_TO_LOAD to the
         memory of the RISC-V core. It also loads (into location 0) the jump instruction to the
@@ -212,22 +214,16 @@ class ElfLoader:
                         util.VERBOSE(f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
                         self.write_block(address, data)
 
-            # Check that what we have written is correct
-            for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, "sh_addr"):
-                    name = section.name
-                    if name in self.SECTIONS_TO_LOAD:
-                        address = section.header.sh_addr
-                        data = section.data()
-                        address = self.remap_address(address, loader_data_address, loader_code_address)
-                        read_data = self.read_block(address, len(data))
-                        if read_data != data:
-                            util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
-                            continue
-                        else:
-                            util.VERBOSE(
-                                f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes"
-                            )
+                        # Check that what we have written is correct
+                        if verify_write:
+                            read_data = self.read_block(address, len(data))
+                            if read_data != data:
+                                util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
+                                continue
+                            else:
+                                util.VERBOSE(
+                                    f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes"
+                                )
         except Exception as e:
             util.ERROR(e)
             raise util.TTException(f"Error loading elf file {elf_path}")
@@ -235,13 +231,15 @@ class ElfLoader:
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
 
-    def load_elf(self, elf_path: str | ParsedElfFile, return_start_address: bool = False) -> int | None:
+    def load_elf(
+        self, elf_path: str | ParsedElfFile, verify_write: bool = True, return_start_address: bool = False
+    ) -> int | None:
         # Risc must be in reset
         assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.risc_location} is not in reset."
 
         # Load elf file to the L1 memory; avoid writing to private sections
         init_section_address: int | None = self.load_elf_sections(
-            elf_path, loader_data=".loader_init", loader_code=".loader_code"
+            elf_path, loader_data=".loader_init", loader_code=".loader_code", verify_write=verify_write
         )
         assert init_section_address is not None, "No .init section found in the ELF file"
 
@@ -251,12 +249,12 @@ class ElfLoader:
             self.risc_debug.set_code_start_address(init_section_address)
             return None
 
-    def run_elf(self, elf_path: str | ParsedElfFile):
+    def run_elf(self, elf_path: str | ParsedElfFile, verify_write: bool = True):
         # Make sure risc is in reset
         if not self.risc_debug.is_in_reset():
             self.risc_debug.set_reset_signal(True)
 
-        self.load_elf(elf_path)
+        self.load_elf(elf_path, verify_write=verify_write)
 
         # Take risc out of reset
         self.risc_debug.set_reset_signal(False)
