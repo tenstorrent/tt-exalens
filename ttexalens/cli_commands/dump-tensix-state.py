@@ -265,6 +265,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
                 print(f"{CLR_GREEN}ADCs{CLR_END}")
                 if l1_address is None:
+
                     util.WARN(
                         "No L1 address provided. Disabling atomic group reading for ADC group. Use -a option to specify L1 address."
                     )
