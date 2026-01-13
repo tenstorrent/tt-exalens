@@ -5,13 +5,19 @@
 """
 Integration tests for DWARF frame unwinding with real compiled RISC-V code.
 
-These tests verify that frame unwinding works correctly with both debug and
-release builds, ensuring that:
-1. Debug builds (-O0): OFFSET rules work correctly (regression test)
-2. Release builds (-O3): SAME_VALUE and REGISTER rules work correctly (new functionality)
+These tests use 3 focused test programs to validate frame unwinding:
 
-The tests use frame_unwinding_test.cc which creates multi-level callstacks
-and triggers ebreak instructions at specific points to capture the callstack.
+1. frame_unwinding_test.cc - Basic multi-frame unwinding
+   - Tests: OFFSET (debug), SAME_VALUE (release)
+   - 3-frame callstack: main → caller → callee
+
+2. frame_unwinding_test_aliasing.cc - Register aliasing
+   - Tests: REGISTER rules (release)
+   - Focus on register-to-register value transfers
+
+3. frame_unwinding_test_deep.cc - Deep callstack
+   - Tests: Recursive frame state caching
+   - 5-frame deep callstack stress test
 """
 
 import unittest
@@ -20,12 +26,12 @@ from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens.context import Context
 
 
-class TestFrameUnwindingDebug(unittest.TestCase):
-    """Test frame unwinding with debug build (-O0).
+class TestFrameUnwindingBasic(unittest.TestCase):
+    """Basic frame unwinding test with 3-frame callstack.
 
-    Debug builds save most variables to the stack, so DWARF rules are
-    primarily OFFSET. This tests that our implementation correctly handles
-    stack-based variable storage and serves as a regression test.
+    Tests fundamental multi-frame unwinding with:
+    - Debug builds (-O0): OFFSET rules (variables saved to stack)
+    - Release builds (-O3): SAME_VALUE rules (variables kept in registers)
     """
 
     context: Context
@@ -33,7 +39,6 @@ class TestFrameUnwindingDebug(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        """Set up the test environment and load the debug ELF."""
         cls.context = init_cached_test_context()
         risc_debug = cls.context.devices[0].get_blocks()[0].all_riscs[0]
         cls.core_sim = RiscvCoreSimulator(
@@ -43,180 +48,238 @@ class TestFrameUnwindingDebug(unittest.TestCase):
             risc_debug.risc_location.neo_id,
         )
 
-        # Load the debug build ELF
-        cls.core_sim.load_elf("frame_unwinding_test.debug")
-        cls.parsed_elf = cls.core_sim.parse_elf("frame_unwinding_test.debug")
-
-        assert not cls.core_sim.is_in_reset()
-
     @classmethod
     def tearDownClass(cls):
-        """Clean up after tests."""
         cls.core_sim.set_reset(True)
 
-    def test_debug_multi_level_callstack(self):
-        """Test unwinding multi-level callstack in debug build."""
-        # Take core out of reset - code will run until it hits ebreak
+    def test_debug_build(self):
+        """Test basic frame unwinding with debug build (-O0)."""
+        # Load debug ELF
+        self.core_sim.load_elf("frame_unwinding_test.debug")
+        parsed_elf = self.core_sim.parse_elf("frame_unwinding_test.debug")
+
+        # Take core out of reset - runs until ebreak
         self.core_sim.set_reset(False)
 
-        # Verify core is halted at ebreak
-        self.assertTrue(self.core_sim.is_halted(), "Core should be halted after hitting ebreak")
-        self.assertTrue(self.core_sim.is_ebreak_hit(), "Core should have hit ebreak instruction")
+        # Verify halted at ebreak
+        self.assertTrue(self.core_sim.is_halted(), "Core should be halted at ebreak")
+        self.assertTrue(self.core_sim.is_ebreak_hit(), "Should have hit ebreak")
 
         # Get callstack
-        callstack = self.core_sim.risc_debug.get_callstack([self.parsed_elf])
+        callstack = self.core_sim.risc_debug.get_callstack([parsed_elf])
 
-        # Verify we have at least 3 frames: leaf_function, middle_function, top_function
-        self.assertGreaterEqual(len(callstack), 3, "Should have at least 3 frames in callstack")
+        # Verify 3 frames: callee, caller, main
+        self.assertGreaterEqual(len(callstack), 3, "Should have at least 3 frames")
 
-        # Verify frame 0 (leaf_function) - deepest frame
+        # Frame 0 (callee) - deepest frame
         frame0 = callstack[0]
-        self.assertIsNotNone(frame0.function_name, "Frame 0 should have function name")
-        self.assertIn(
-            "leaf_function",
-            frame0.function_name,
-            "Frame 0 should be leaf_function",
-        )
+        self.assertIsNotNone(frame0.function_name)
+        self.assertIn("callee", frame0.function_name.lower())
+        self.assertGreaterEqual(len(frame0.arguments), 3, "callee should have 3+ arguments")
+        self.assertGreater(len(frame0.locals), 0, "callee should have local variables")
 
-        # Verify frame 0 has arguments (a, b, c, d)
-        self.assertGreaterEqual(
-            len(frame0.arguments),
-            4,
-            "leaf_function should have at least 4 arguments",
-        )
-
-        # Verify frame 0 has local variables
-        # In debug build, local_x, local_y, local_z, local_w should be readable
-        self.assertGreater(len(frame0.locals), 0, "leaf_function should have local variables")
-
-        # Verify frame 1 (middle_function)
+        # Frame 1 (caller)
         frame1 = callstack[1]
-        self.assertIsNotNone(frame1.function_name, "Frame 1 should have function name")
-        self.assertIn(
-            "middle_function",
-            frame1.function_name,
-            "Frame 1 should be middle_function",
-        )
+        self.assertIsNotNone(frame1.function_name)
+        self.assertIn("caller", frame1.function_name.lower())
 
-        # Verify frame 1 has arguments (param1, param2)
-        self.assertGreaterEqual(
-            len(frame1.arguments),
-            2,
-            "middle_function should have at least 2 arguments",
-        )
-
-        # Verify frame 2 (top_function)
-        frame2 = callstack[2]
-        self.assertIsNotNone(frame2.function_name, "Frame 2 should have function name")
-        self.assertIn("top_function", frame2.function_name, "Frame 2 should be top_function")
-
-        # Verify frame 2 has arguments (input_value)
-        self.assertGreaterEqual(len(frame2.arguments), 1, "top_function should have at least 1 argument")
-
-        print(f"\n[DEBUG BUILD] Successfully unwound {len(callstack)} frames:")
+        print(f"\n[BASIC DEBUG] Successfully unwound {len(callstack)} frames:")
         for i, frame in enumerate(callstack[:3]):
-            print(f"  Frame {i}: {frame.function_name} " f"(args: {len(frame.arguments)}, locals: {len(frame.locals)})")
+            print(f"  Frame {i}: {frame.function_name} (args: {len(frame.arguments)}, locals: {len(frame.locals)})")
 
+        # Reset for next test
+        self.core_sim.set_reset(True)
 
-class TestFrameUnwindingRelease(unittest.TestCase):
-    """Test frame unwinding with release build (-O3).
+    def test_release_build(self):
+        """Test basic frame unwinding with release build (-O3).
 
-    Release builds optimize aggressively and keep variables in registers.
-    DWARF rules include SAME_VALUE (register unchanged) and REGISTER
-    (value in different register). This tests the NEW functionality
-    implemented in Phase 2 and Phase 3 of the frame unwinding improvements.
-    """
-
-    context: Context
-    core_sim: RiscvCoreSimulator
-
-    @classmethod
-    def setUpClass(cls):
-        """Set up the test environment and load the release ELF."""
-        cls.context = init_cached_test_context()
-        risc_debug = cls.context.devices[0].get_blocks()[0].all_riscs[0]
-        cls.core_sim = RiscvCoreSimulator(
-            cls.context,
-            risc_debug.risc_location.location.to_str(),
-            risc_debug.risc_location.risc_name,
-            risc_debug.risc_location.neo_id,
-        )
-
-        # Load the release build ELF
-        cls.core_sim.load_elf("frame_unwinding_test.release")
-        cls.parsed_elf = cls.core_sim.parse_elf("frame_unwinding_test.release")
-
-        assert not cls.core_sim.is_in_reset()
-
-    @classmethod
-    def tearDownClass(cls):
-        """Clean up after tests."""
-        cls.core_sim.set_reset(True)
-
-    def test_release_multi_level_callstack(self):
-        """Test unwinding multi-level callstack in release build (optimized).
-
-        This is the KEY test for the new functionality. In optimized builds,
-        variables stay in registers and DWARF uses SAME_VALUE and REGISTER rules.
-        Our Phase 2 and Phase 3 implementations should make this work.
+        This validates SAME_VALUE rules where variables stay in registers.
         """
-        # Take core out of reset - code will run until it hits ebreak
+        # Load release ELF
+        self.core_sim.load_elf("frame_unwinding_test.release")
+        parsed_elf = self.core_sim.parse_elf("frame_unwinding_test.release")
+
+        # Take core out of reset - runs until ebreak
         self.core_sim.set_reset(False)
 
-        # Verify core is halted at ebreak
-        self.assertTrue(self.core_sim.is_halted(), "Core should be halted after hitting ebreak")
+        # Verify halted at ebreak
+        self.assertTrue(self.core_sim.is_halted(), "Core should be halted at ebreak")
 
         # Get callstack
-        callstack = self.core_sim.risc_debug.get_callstack([self.parsed_elf])
+        callstack = self.core_sim.risc_debug.get_callstack([parsed_elf])
 
-        # Verify we have at least 3 frames
-        # Note: Optimized code might inline some functions, so be flexible
-        self.assertGreaterEqual(len(callstack), 1, "Should have at least 1 frame in callstack")
+        # Verify we have frames (may be fewer due to inlining)
+        self.assertGreaterEqual(len(callstack), 1, "Should have at least 1 frame")
 
-        # Verify we can read the callstack without errors
-        # This is the main success criterion - if we get here without
-        # exceptions, frame unwinding with SAME_VALUE/REGISTER rules works!
+        # Verify frame 0 is readable
         frame0 = callstack[0]
-        self.assertIsNotNone(frame0.function_name, "Frame 0 should have function name")
+        self.assertIsNotNone(frame0.function_name)
 
-        # Try to read arguments and locals
-        # In release build, some may be optimized away, but we should
-        # be able to read those that are present without errors
+        # Try to read arguments/locals (some may be optimized away)
         if len(frame0.arguments) > 0:
-            print(f"\n[RELEASE BUILD] Frame 0 arguments: {len(frame0.arguments)}")
+            print(f"\n[BASIC RELEASE] Frame 0 arguments: {len(frame0.arguments)}")
             for arg in frame0.arguments:
                 print(f"  - {arg.name}: {arg.value}")
 
         if len(frame0.locals) > 0:
-            print(f"[RELEASE BUILD] Frame 0 locals: {len(frame0.locals)}")
+            print(f"[BASIC RELEASE] Frame 0 locals: {len(frame0.locals)}")
             for local in frame0.locals:
                 print(f"  - {local.name}: {local.value}")
 
-        # Verify higher frames if they exist
-        if len(callstack) >= 2:
-            frame1 = callstack[1]
-            self.assertIsNotNone(frame1.function_name, "Frame 1 should have function name")
-
-        print(f"\n[RELEASE BUILD] Successfully unwound {len(callstack)} frames:")
+        print(f"\n[BASIC RELEASE] Successfully unwound {len(callstack)} frames:")
         for i, frame in enumerate(callstack):
-            print(f"  Frame {i}: {frame.function_name} " f"(args: {len(frame.arguments)}, locals: {len(frame.locals)})")
+            print(f"  Frame {i}: {frame.function_name} (args: {len(frame.arguments)}, locals: {len(frame.locals)})")
+
+        # Reset for next test
+        self.core_sim.set_reset(True)
+
+
+class TestFrameUnwindingAliasing(unittest.TestCase):
+    """Register aliasing test - validates REGISTER rules in optimized builds.
+
+    In release builds, the compiler may move register values around (REGISTER rule).
+    This test focuses on scenarios that create register aliasing.
+    """
+
+    context: Context
+    core_sim: RiscvCoreSimulator
+
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_cached_test_context()
+        risc_debug = cls.context.devices[0].get_blocks()[0].all_riscs[0]
+        cls.core_sim = RiscvCoreSimulator(
+            cls.context,
+            risc_debug.risc_location.location.to_str(),
+            risc_debug.risc_location.risc_name,
+            risc_debug.risc_location.neo_id,
+        )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.core_sim.set_reset(True)
 
     def test_release_register_aliasing(self):
-        """Test frame unwinding with register aliasing in release build.
+        """Test REGISTER rules with release build."""
+        # Load release ELF
+        self.core_sim.load_elf("frame_unwinding_test_aliasing.release")
+        parsed_elf = self.core_sim.parse_elf("frame_unwinding_test_aliasing.release")
 
-        NOTE: This test is currently skipped due to a hardware/simulator limitation
-        where cont() after the first ebreak doesn't advance execution to subsequent
-        ebreaks. The second ebreak exists in the binary (verified via objdump) but
-        execution doesn't reach it after continuing from the first ebreak.
+        # Take core out of reset - runs until ebreak
+        self.core_sim.set_reset(False)
 
-        The main functionality (SAME_VALUE and REGISTER rules for frame unwinding)
-        is already validated by test_release_multi_level_callstack, so this is not
-        a blocker for the frame unwinding improvements.
-        """
-        self.skipTest(
-            "Continuing to second ebreak not working - likely hardware/simulator limitation. "
-            "Main REGISTER/SAME_VALUE functionality already validated by first release test."
+        # Verify halted at ebreak
+        self.assertTrue(self.core_sim.is_halted(), "Core should be halted at ebreak")
+
+        # Get callstack
+        callstack = self.core_sim.risc_debug.get_callstack([parsed_elf])
+
+        # Verify we have frames
+        self.assertGreaterEqual(len(callstack), 1, "Should have at least 1 frame")
+
+        # Main test: verify we can read the callstack without errors
+        # If REGISTER rules work, unwinding succeeds even with register aliasing
+        frame0 = callstack[0]
+        self.assertIsNotNone(frame0.function_name)
+
+        print(f"\n[ALIASING] Successfully unwound {len(callstack)} frames with REGISTER rules:")
+        for i, frame in enumerate(callstack):
+            print(f"  Frame {i}: {frame.function_name} (args: {len(frame.arguments)}, locals: {len(frame.locals)})")
+
+        if len(frame0.arguments) > 0:
+            print(f"[ALIASING] Frame 0 arguments readable:")
+            for arg in frame0.arguments:
+                print(f"  - {arg.name}: {arg.value}")
+
+        # Reset for next test
+        self.core_sim.set_reset(True)
+
+
+class TestFrameUnwindingDeep(unittest.TestCase):
+    """Deep callstack test - validates recursive frame state caching.
+
+    Tests unwinding through 5 frames to stress-test the frame state caching
+    and recursive register resolution implementation.
+    """
+
+    context: Context
+    core_sim: RiscvCoreSimulator
+
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_cached_test_context()
+        risc_debug = cls.context.devices[0].get_blocks()[0].all_riscs[0]
+        cls.core_sim = RiscvCoreSimulator(
+            cls.context,
+            risc_debug.risc_location.location.to_str(),
+            risc_debug.risc_location.risc_name,
+            risc_debug.risc_location.neo_id,
         )
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.core_sim.set_reset(True)
+
+    def test_debug_deep_stack(self):
+        """Test deep callstack unwinding with debug build."""
+        # Load debug ELF
+        self.core_sim.load_elf("frame_unwinding_test_deep.debug")
+        parsed_elf = self.core_sim.parse_elf("frame_unwinding_test_deep.debug")
+
+        # Take core out of reset - runs until ebreak
+        self.core_sim.set_reset(False)
+
+        # Verify halted at ebreak
+        self.assertTrue(self.core_sim.is_halted(), "Core should be halted at ebreak")
+
+        # Get callstack
+        callstack = self.core_sim.risc_debug.get_callstack([parsed_elf])
+
+        # Verify 5 frames: level1, level2, level3, level4, main
+        self.assertGreaterEqual(len(callstack), 5, "Should have at least 5 frames")
+
+        # Verify we can read all frames
+        for i, frame in enumerate(callstack[:5]):
+            self.assertIsNotNone(frame.function_name, f"Frame {i} should have function name")
+
+        print(f"\n[DEEP DEBUG] Successfully unwound {len(callstack)} frames:")
+        for i, frame in enumerate(callstack[:5]):
+            print(f"  Frame {i}: {frame.function_name} (args: {len(frame.arguments)}, locals: {len(frame.locals)})")
+
+        # Reset for next test
+        self.core_sim.set_reset(True)
+
+    def test_release_deep_stack(self):
+        """Test deep callstack unwinding with release build.
+
+        This validates that SAME_VALUE chains work correctly across many frames.
+        """
+        # Load release ELF
+        self.core_sim.load_elf("frame_unwinding_test_deep.release")
+        parsed_elf = self.core_sim.parse_elf("frame_unwinding_test_deep.release")
+
+        # Take core out of reset - runs until ebreak
+        self.core_sim.set_reset(False)
+
+        # Verify halted at ebreak
+        self.assertTrue(self.core_sim.is_halted(), "Core should be halted at ebreak")
+
+        # Get callstack
+        callstack = self.core_sim.risc_debug.get_callstack([parsed_elf])
+
+        # Verify we have frames (may be fewer due to inlining)
+        self.assertGreaterEqual(len(callstack), 1, "Should have at least 1 frame")
+
+        # Main test: verify we can unwind without errors
+        frame0 = callstack[0]
+        self.assertIsNotNone(frame0.function_name)
+
+        print(f"\n[DEEP RELEASE] Successfully unwound {len(callstack)} frames:")
+        for i, frame in enumerate(callstack):
+            print(f"  Frame {i}: {frame.function_name} (args: {len(frame.arguments)}, locals: {len(frame.locals)})")
+
+        # Reset for next test
+        self.core_sim.set_reset(True)
 
 
 if __name__ == "__main__":

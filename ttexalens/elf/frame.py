@@ -29,35 +29,18 @@ class FrameDescription:
             self.current_fde_entry = entry
 
     def try_read_register(
-        self, register_index: int, cfa: int | None, previous_frame: "FrameInspection | None" = None
+        self, register_index: int, cfa: int | None, previous_frame: FrameInspection | None = None
     ) -> int | None:
-        """Try to read a register value based on DWARF frame information rules.
-
-        This method attempts to read a saved register value from the stack or another
-        register using DWARF call frame information rules. Unlike `read_register`, this
-        method does NOT fall back to reading the current register value if no rule is found.
-
-        Args:
-            register_index: The register index to read
-            cfa: The Canonical Frame Address (can be None for top frame)
-            previous_frame: The previous frame's inspection context (for SAME_VALUE and REGISTER rules)
-
-        Returns:
-            The register value if it can be determined from frame rules, None otherwise
-        """
         if self.current_fde_entry is not None and register_index in self.current_fde_entry:
             register_rule = self.current_fde_entry[register_index]
 
-            # Handle UNDEFINED rule - register value is undefined
             if register_rule.type == "UNDEFINED":
                 return None
 
             # Handle SAME_VALUE rule - register value is unchanged from previous frame
-            # This means we need to read the register value from the previous frame's context
             elif register_rule.type == "SAME_VALUE":
                 if previous_frame is not None:
                     return previous_frame.read_register(register_index)
-                # If no previous frame available, we can't determine the value
                 # This shouldn't happen in normal unwinding - if it does, something is wrong
                 return None
 
@@ -73,12 +56,10 @@ class FrameDescription:
                     return None
 
             # Handle REGISTER rule - register value is in another register from previous frame
-            # This means the value we want was stored in a different register in the previous frame
             elif register_rule.type == "REGISTER":
                 other_register_index = register_rule.arg
                 if previous_frame is not None:
                     return previous_frame.read_register(other_register_index)
-                # If no previous frame available, we can't determine the value
                 # This shouldn't happen in normal unwinding - if it does, something is wrong
                 return None
 
@@ -94,24 +75,9 @@ class FrameDescription:
             elif register_rule.type in ("EXPRESSION", "VAL_EXPRESSION"):
                 return None
 
-        # If no rule found or rule type not handled, return None
         return None
 
     def read_register(self, register_index: int, cfa: int) -> int | None:
-        """Read a register value, with fallback to current register state.
-
-        This method attempts to read a saved register value using DWARF frame rules,
-        and falls back to reading the current register value from risc_debug if no
-        rule is available or the rule evaluation returns None.
-        This is useful for scenarios where you want to guarantee a register value.
-
-        Args:
-            register_index: The register index to read
-            cfa: The Canonical Frame Address
-
-        Returns:
-            The register value
-        """
         # Try to read using frame rules first
         value = self.try_read_register(register_index, cfa)
         if value is not None:
@@ -156,8 +122,6 @@ class FrameInspection:
         self.cfa = cfa
         self.previous_frame = previous_frame
         self.mem_access = MemoryAccess.create(risc_debug)
-        # Register cache to avoid re-reading the same register multiple times
-        # This is especially important when variables reference the same register
         self._register_cache: dict[int, int | None] = {}
 
     @cached_property
@@ -167,21 +131,17 @@ class FrameInspection:
         return value
 
     def read_register(self, register_index: int) -> int | None:
-        # Check cache first to avoid re-computation
         if register_index in self._register_cache:
             return self._register_cache[register_index]
 
-        # Compute the register value
         value: int | None
         if self.frame_description is None:
             # Top frame - read all registers from RiscDebug (current hardware state)
             value = self.risc_debug.read_gpr(register_index)
         else:
             # Non-top frame - read registers from frame description using DWARF rules
-            # Pass previous_frame so SAME_VALUE and REGISTER rules can work correctly
             value = self.frame_description.try_read_register(register_index, self.cfa, self.previous_frame)
 
-        # Cache the value for future reads
         self._register_cache[register_index] = value
         return value
 

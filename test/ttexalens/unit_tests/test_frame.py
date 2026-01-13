@@ -8,12 +8,13 @@ Unit tests for ttexalens.elf.frame.FrameDescription.try_read_register
 These tests verify the implementation of the try_read_register method which handles
 different DWARF register rule types for reading saved register values from the stack.
 
-To run these tests, first install the project dependencies from ttexalens/requirements.txt,
-then run:
-    python3 -m unittest test.ttexalens.unit_tests.test_frame
-
-Or run all tests with:
-    make test
+Supported DWARF register rule types:
+- UNDEFINED: Register value is undefined
+- SAME_VALUE: Register value unchanged from previous frame
+- OFFSET: Register value stored at memory address CFA + offset
+- REGISTER: Register value copied to another register
+- VAL_OFFSET: Register value equals CFA + offset
+- EXPRESSION/VAL_EXPRESSION: Not yet implemented (returns None)
 """
 
 import unittest
@@ -21,28 +22,13 @@ from unittest.mock import Mock, patch
 
 
 class MockRegisterRule:
-    """Mock class for DWARF register rules."""
-
     def __init__(self, rule_type: str, arg: int | None = None):
         self.type = rule_type
         self.arg = arg
 
 
 class TestFrameDescriptionTryReadRegister(unittest.TestCase):
-    """Test suite for FrameDescription.try_read_register method.
-
-    This test suite validates the implementation of try_read_register for all
-    supported DWARF register rule types:
-    - UNDEFINED: Register value is undefined
-    - SAME_VALUE: Register value unchanged from previous frame
-    - OFFSET: Register value stored at memory address CFA + offset
-    - REGISTER: Register value copied to another register
-    - VAL_OFFSET: Register value equals CFA + offset
-    - EXPRESSION/VAL_EXPRESSION: Not yet implemented (returns None)
-    """
-
     def setUp(self):
-        """Set up test fixtures."""
         # Mock FDE (Frame Description Entry)
         self.mock_fde = Mock()
         self.mock_fde.get_decoded = Mock()
@@ -273,15 +259,7 @@ class TestFrameDescriptionTryReadRegister(unittest.TestCase):
 
 
 class TestMultiFrameUnwinding(unittest.TestCase):
-    """Integration tests for frame unwinding across multiple frames.
-
-    These tests verify that DWARF register rules work correctly across
-    multiple stack frames, including recursive resolution of SAME_VALUE
-    and REGISTER rules through the frame chain.
-    """
-
     def setUp(self):
-        """Set up test fixtures."""
         from ttexalens.elf.frame import FrameInspection
 
         self.FrameInspection = FrameInspection
