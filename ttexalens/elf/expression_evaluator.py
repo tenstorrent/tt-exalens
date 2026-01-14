@@ -26,6 +26,7 @@ def evaluate_dwarf_expression(
     frame_inspection: FrameInspection | None = None,
     cfa: int | None = None,
     cu: "ElfCompileUnit | None" = None,
+    frame_base: int | None = None,
 ) -> tuple[bool, Any | None]:
     """
     Evaluate a DWARF expression and return (is_address, value).
@@ -35,6 +36,7 @@ def evaluate_dwarf_expression(
         frame_inspection: Frame context for register reads and memory access
         cfa: Call Frame Address for DW_OP_call_frame_cfa operations
         cu: Compile Unit for operations that need DIE lookups (optional)
+        frame_base: Precomputed frame base for DW_OP_fbreg operations (optional)
 
     Returns:
         (is_address, value): Tuple where:
@@ -53,15 +55,16 @@ def evaluate_dwarf_expression(
     for op in parsed_expression:
         if op.op_name == "DW_OP_fbreg":
             # Frame base relative addressing
-            # This requires finding the function's frame_base attribute
-            if cu is None:
-                util.DEBUG(f"DW_OP_fbreg requires CU context")
+            # Requires precomputed frame_base (computed by DIE context in die.py)
+            if frame_base is None:
+                util.DEBUG(f"DW_OP_fbreg requires frame_base parameter")
                 return False, None
 
-            # Note: In CFI context, we might not have DIE context, so this may fail
-            # For CFI expressions, DW_OP_call_frame_cfa is more common
-            util.DEBUG(f"DW_OP_fbreg not fully supported without DIE context")
-            return False, None
+            if len(op.args) != 1 or not isinstance(op.args[0], int):
+                return False, None
+
+            value = frame_base + op.args[0]
+            is_address = True
 
         elif op.op_name == "DW_OP_call_frame_cfa":
             if cfa is None:
@@ -77,7 +80,7 @@ def evaluate_dwarf_expression(
             if len(op.args) != 1 or not isinstance(op.args[0], list):
                 return False, None
             parsed_sub_expression = op.args[0]
-            _, value = evaluate_dwarf_expression(parsed_sub_expression, frame_inspection, cfa, cu)
+            _, value = evaluate_dwarf_expression(parsed_sub_expression, frame_inspection, cfa, cu, frame_base)
             if value is None:
                 return False, None
             stack.append(value)
