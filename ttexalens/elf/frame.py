@@ -14,10 +14,11 @@ if TYPE_CHECKING:
 
 
 class FrameDescription:
-    def __init__(self, pc: int, fde: FDE, risc_debug: RiscDebug):
+    def __init__(self, pc: int, fde: FDE, risc_debug: RiscDebug, dwarf_info=None):
         self.pc = pc
         self.fde = fde
         self.risc_debug = risc_debug
+        self.dwarf_info = dwarf_info
         self.mem_access = MemoryAccess.create(risc_debug)
         self.current_fde_entry = None
 
@@ -81,11 +82,78 @@ class FrameDescription:
                 # print(f"  [VAL_OFFSET] r{register_index} = CFA+{register_rule.arg}: 0x{value:08x}")
                 return value
 
-            # Handle EXPRESSION and VAL_EXPRESSION rules - not yet implemented
-            # These would require evaluating DWARF expressions, which is complex
-            # For now, we return None and let the caller handle it
-            elif register_rule.type in ("EXPRESSION", "VAL_EXPRESSION"):
-                return None
+            # Handle EXPRESSION rule - evaluate expression to get memory address, then read value
+            elif register_rule.type == "EXPRESSION":
+                if self.dwarf_info is None or previous_frame is None:
+                    # Need DWARF info for expression parser and previous frame for context
+                    return None
+
+                from ttexalens.elf.expression_evaluator import evaluate_dwarf_expression
+
+                # Parse the expression bytes
+                expression_bytes = register_rule.arg
+                try:
+                    expr_parser = self.dwarf_info.location_parser
+                    # The arg should be a bytes-like expression
+                    if isinstance(expression_bytes, (list, bytes)):
+                        # Parse expression using DWARF expression parser
+                        parsed = self.dwarf_info.expression_parser.parse_expr(expression_bytes)
+
+                        # Evaluate to get address
+                        is_address, address = evaluate_dwarf_expression(parsed, previous_frame, cfa, cu=None)
+
+                        if address is None:
+                            return None
+
+                        if not is_address:
+                            # EXPRESSION should yield an address, not a value
+                            return None
+
+                        # Read value from the computed address
+                        try:
+                            value = self.mem_access.read_word(address)
+                            # DEBUG: Uncomment to trace EXPRESSION reads
+                            # print(f"  [EXPRESSION] r{register_index} from [0x{address:08x}]: 0x{value:08x}")
+                            return value
+                        except RestrictedMemoryAccessError:
+                            return None
+                    else:
+                        return None
+                except Exception:
+                    # Expression evaluation failed
+                    return None
+
+            # Handle VAL_EXPRESSION rule - evaluate expression to get value directly
+            elif register_rule.type == "VAL_EXPRESSION":
+                if self.dwarf_info is None or previous_frame is None:
+                    # Need DWARF info for expression parser and previous frame for context
+                    return None
+
+                from ttexalens.elf.expression_evaluator import evaluate_dwarf_expression
+
+                # Parse the expression bytes
+                expression_bytes = register_rule.arg
+                try:
+                    # The arg should be a bytes-like expression
+                    if isinstance(expression_bytes, (list, bytes)):
+                        # Parse expression using DWARF expression parser
+                        parsed = self.dwarf_info.expression_parser.parse_expr(expression_bytes)
+
+                        # Evaluate to get value directly
+                        is_address, value = evaluate_dwarf_expression(parsed, previous_frame, cfa, cu=None)
+
+                        if value is None:
+                            return None
+
+                        # VAL_EXPRESSION gives value directly (not an address to read from)
+                        # DEBUG: Uncomment to trace VAL_EXPRESSION reads
+                        # print(f"  [VAL_EXPRESSION] r{register_index} = 0x{value:08x}" if isinstance(value, int) else f"  [VAL_EXPRESSION] r{register_index} = {value}")
+                        return value if isinstance(value, int) else None
+                    else:
+                        return None
+                except Exception:
+                    # Expression evaluation failed
+                    return None
 
         return None
 
@@ -177,7 +245,7 @@ class FrameInfoProvider:
     def get_frame_description(self, pc, risc_debug) -> FrameDescription | None:
         for start_address, end_address, fde in self.fdes:
             if start_address <= pc < end_address:
-                return FrameDescription(pc, fde, risc_debug)
+                return FrameDescription(pc, fde, risc_debug, self.dwarf_info)
         return None
 
 
@@ -189,5 +257,5 @@ class FrameInfoProviderWithOffset(FrameInfoProvider):
         self.loaded_offset = loaded_offset
 
     def get_frame_description(self, pc, risc_debug) -> FrameDescription | None:
-        pc = pc + self.loaded_offset
-        return self._frame_info.get_frame_description(pc, risc_debug)
+        adjusted_pc = pc + self.loaded_offset
+        return self._frame_info.get_frame_description(adjusted_pc, risc_debug)

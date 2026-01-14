@@ -679,10 +679,40 @@ class ElfDie:
     def _evaluate_location_expression(
         self, parsed_expression: list[DWARFExprOp], frame_inspection: FrameInspection | None = None
     ) -> tuple[bool, Any | None]:
+        """
+        Evaluate a DWARF location expression in the context of this DIE.
+
+        This method delegates to the shared expression evaluator but handles
+        DIE-specific operations like DW_OP_fbreg that need function DIE lookups.
+        """
         from ttexalens.elf.variable import ElfVariable
         from ttexalens.memory_access import FixedMemoryAccess
+        from ttexalens.elf.expression_evaluator import evaluate_dwarf_expression
 
         util.DEBUG(f"   {parsed_expression}")
+
+        # Check if expression contains DW_OP_fbreg which needs special handling
+        has_fbreg = any(op.op_name == "DW_OP_fbreg" for op in parsed_expression)
+
+        if has_fbreg:
+            # DW_OP_fbreg requires looking up the function's frame_base attribute
+            # We need to handle this before delegating to the shared evaluator
+            return self._evaluate_location_expression_with_fbreg(parsed_expression, frame_inspection)
+
+        # Delegate to shared evaluator
+        cfa = frame_inspection.cfa if frame_inspection else None
+        return evaluate_dwarf_expression(parsed_expression, frame_inspection, cfa, self.cu)
+
+    def _evaluate_location_expression_with_fbreg(
+        self, parsed_expression: list[DWARFExprOp], frame_inspection: FrameInspection | None = None
+    ) -> tuple[bool, Any | None]:
+        """
+        Evaluate location expression with DW_OP_fbreg support (requires DIE context).
+
+        This is a fallback for expressions that need full DIE context.
+        """
+        from ttexalens.elf.variable import ElfVariable
+        from ttexalens.memory_access import FixedMemoryAccess
 
         location_parser = self.cu.dwarf.location_parser
         is_address = False

@@ -186,23 +186,50 @@ class TestFrameDescriptionTryReadRegister(unittest.TestCase):
 
         self.assertIsNone(result, "VAL_OFFSET with None CFA should return None")
 
-    def test_try_read_register_expression_rule(self):
-        """Test EXPRESSION rule returns None (not implemented)."""
+    def test_try_read_register_expression_rule_without_dwarf_info(self):
+        """Test EXPRESSION rule returns None without DWARF info."""
         fde_entry = {9: MockRegisterRule("EXPRESSION")}
         frame_desc = self._create_frame_description(fde_entry)
 
+        # Without dwarf_info (None by default), should return None
         result = frame_desc.try_read_register(9, 0x2000)
 
-        self.assertIsNone(result, "EXPRESSION should return None (not implemented)")
+        self.assertIsNone(result, "EXPRESSION without DWARF info should return None")
 
-    def test_try_read_register_val_expression_rule(self):
-        """Test VAL_EXPRESSION rule returns None (not implemented)."""
+    def test_try_read_register_expression_rule_without_previous_frame(self):
+        """Test EXPRESSION rule returns None without previous frame."""
+        fde_entry = {9: MockRegisterRule("EXPRESSION")}
+        frame_desc = self._create_frame_description(fde_entry)
+
+        # Mock dwarf_info
+        frame_desc.dwarf_info = Mock()
+
+        # Without previous_frame, should return None
+        result = frame_desc.try_read_register(9, 0x2000, previous_frame=None)
+
+        self.assertIsNone(result, "EXPRESSION without previous frame should return None")
+
+    def test_try_read_register_val_expression_rule_without_dwarf_info(self):
+        """Test VAL_EXPRESSION rule returns None without DWARF info."""
         fde_entry = {9: MockRegisterRule("VAL_EXPRESSION")}
         frame_desc = self._create_frame_description(fde_entry)
 
         result = frame_desc.try_read_register(9, 0x2000)
 
-        self.assertIsNone(result, "VAL_EXPRESSION should return None (not implemented)")
+        self.assertIsNone(result, "VAL_EXPRESSION without DWARF info should return None")
+
+    def test_try_read_register_val_expression_rule_without_previous_frame(self):
+        """Test VAL_EXPRESSION rule returns None without previous frame."""
+        fde_entry = {9: MockRegisterRule("VAL_EXPRESSION")}
+        frame_desc = self._create_frame_description(fde_entry)
+
+        # Mock dwarf_info
+        frame_desc.dwarf_info = Mock()
+
+        # Without previous_frame, should return None
+        result = frame_desc.try_read_register(9, 0x2000, previous_frame=None)
+
+        self.assertIsNone(result, "VAL_EXPRESSION without previous frame should return None")
 
     def test_try_read_register_no_rule(self):
         """Test returns None when no rule exists for the register."""
