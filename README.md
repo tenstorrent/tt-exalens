@@ -18,7 +18,16 @@ It supports Wormhole and Blackhole devices.
 
 ## Quickstart
 
-The wheel can be installed directly from GitHub with:
+You can install latest published version with:
+```
+pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens
+```
+Or specific version with:
+```
+pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens=="x.y.z"
+```
+
+Alternatively, the wheel can be installed directly from GitHub with:
 ```
 pip install git+https://github.com/tenstorrent/tt-exalens.git
 ```
@@ -29,13 +38,7 @@ The CLI application can be run by invoking `tt-exalens` command after installing
 
 ### Cloning repository and setting up the environment
 
-After cloning the repository, run:
-
-```bash
-git submodule update --init --recursive
-```
-
-to ensure all submodules are properly initialized.
+Clone the `tt-exalens` repository.
 
 ### Requirements
 
@@ -43,17 +46,13 @@ Project has been tested on Ubuntu 22.04.
 
 To build it, you need the following dependencies:
 
-- software-properties-common,
-- build-essential,
-- python3.X-venv,
-- libyaml-cpp-dev,
-- libhwloc-dev,
-- ninja-build
+- ninja-build,
+- cmake
 
 Install them with:
 
 ```bash
-sudo apt install software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libgtest-dev libgmock-dev xxd ninja-build
+sudo apt install ninja-build cmake
 ```
 
 Python 3.10 is the only supported version. Install it with:
@@ -98,6 +97,19 @@ from the root directory.
 The wheel can be installed from the [GitHub release](https://github.com/tenstorrent/tt-exalens/releases), built from source, or installed directly from GitHub with
 ```
 pip install git+https://github.com/tenstorrent/tt-exalens.git
+```
+Alternatively, you can install latest published version with:
+```
+pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens
+```
+Or specific version with:
+```
+pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens=="x.y.z"
+```
+
+Or you can simply run following in root directory:
+```
+pip install .
 ```
 
 Another option is to build the wheel from local source, run:
