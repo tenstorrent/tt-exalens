@@ -17,8 +17,10 @@ class RiscHaltError(Exception):
     """
     Raised when we failed to halt RISC core.
     """
+
     def __init__(self, risc_name: str, location: OnChipCoordinate):
         super().__init__(f"Failed to halt {risc_name} core at {location.to_user_str()} on device {location.device_id}")
+
 
 @dataclass
 class RiscLocation:

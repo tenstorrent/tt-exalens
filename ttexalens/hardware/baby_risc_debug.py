@@ -12,7 +12,13 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation, RiscDebugStatus, RiscDebugWatchpointState, RiscHaltError
+from ttexalens.hardware.risc_debug import (
+    RiscDebug,
+    RiscLocation,
+    RiscDebugStatus,
+    RiscDebugWatchpointState,
+    RiscHaltError,
+)
 from ttexalens.register_store import RegisterDescription, RegisterStore
 from ttexalens.hardware.noc_block import NocBlock
 
