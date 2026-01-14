@@ -251,13 +251,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                 parsed_rwc_signal_dicts = parse_signal_groups(rwc_signal_dicts, "rwc")
                 # Dealing with signal that spans accros two groups - rwc0_dst
                 if device.is_blackhole():
-                    rwc0_dst_lo = debug_bus.read_signal(
-                        DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=2, mask=0xFF000000)
+                    signal_desc_lo = debug_bus.get_signal_description("rwc0_dst/0")
+                    signal_desc_hi = debug_bus.get_signal_description("rwc0_dst/1")
+                    parsed_rwc_signal_dicts["coordinates_b"]["rwc0_dst"] = hex(
+                        debug_bus.read_signal(signal_desc_lo)
+                        + (debug_bus.read_signal(signal_desc_hi) << signal_desc_lo.mask.bit_length())
                     )
-                    rwc0_dst_hi = debug_bus.read_signal(
-                        DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3)
-                    )
-                    parsed_rwc_signal_dicts["coordinates_b"]["rwc0_dst"] = hex(rwc0_dst_lo + (rwc0_dst_hi << 8))
                 tables_rwc = debug_bus_to_tables(parsed_rwc_signal_dicts)
                 print_3_tables_side_by_side(tables_rwc)
 
