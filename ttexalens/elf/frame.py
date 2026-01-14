@@ -42,8 +42,6 @@ class FrameDescription:
             elif register_rule.type == "SAME_VALUE":
                 if previous_frame is not None:
                     value = previous_frame.read_register(register_index)
-                    # DEBUG: Uncomment to trace SAME_VALUE reads
-                    # print(f"  [SAME_VALUE] r{register_index} from prev frame: 0x{value:08x}" if value else f"  [SAME_VALUE] r{register_index} from prev frame: None")
                     return value
                 # This shouldn't happen in normal unwinding - if it does, something is wrong
                 return None
@@ -55,8 +53,6 @@ class FrameDescription:
                 address = cfa + register_rule.arg
                 try:
                     value = self.mem_access.read_word(address)
-                    # DEBUG: Uncomment to trace OFFSET reads
-                    # print(f"  [OFFSET] r{register_index} from [0x{address:08x}] (CFA+{register_rule.arg}): 0x{value:08x}")
                     return value
                 except RestrictedMemoryAccessError:
                     # If access was restricted (outside L1/data_private_memory), return None
@@ -67,8 +63,6 @@ class FrameDescription:
                 other_register_index = register_rule.arg
                 if previous_frame is not None:
                     value = previous_frame.read_register(other_register_index)
-                    # DEBUG: Uncomment to trace REGISTER reads
-                    # print(f"  [REGISTER] r{register_index} from prev r{other_register_index}: 0x{value:08x}" if value else f"  [REGISTER] r{register_index} from prev r{other_register_index}: None")
                     return value
                 # This shouldn't happen in normal unwinding - if it does, something is wrong
                 return None
@@ -78,8 +72,6 @@ class FrameDescription:
                 if cfa is None:
                     return None
                 value = int(cfa + register_rule.arg)
-                # DEBUG: Uncomment to trace VAL_OFFSET reads
-                # print(f"  [VAL_OFFSET] r{register_index} = CFA+{register_rule.arg}: 0x{value:08x}")
                 return value
 
             # Handle EXPRESSION rule - evaluate expression to get memory address, then read value
@@ -112,8 +104,6 @@ class FrameDescription:
                         # Read value from the computed address
                         try:
                             value = self.mem_access.read_word(address)
-                            # DEBUG: Uncomment to trace EXPRESSION reads
-                            # print(f"  [EXPRESSION] r{register_index} from [0x{address:08x}]: 0x{value:08x}")
                             return value
                         except RestrictedMemoryAccessError:
                             return None
@@ -146,8 +136,6 @@ class FrameDescription:
                             return None
 
                         # VAL_EXPRESSION gives value directly (not an address to read from)
-                        # DEBUG: Uncomment to trace VAL_EXPRESSION reads
-                        # print(f"  [VAL_EXPRESSION] r{register_index} = 0x{value:08x}" if isinstance(value, int) else f"  [VAL_EXPRESSION] r{register_index} = {value}")
                         return value if isinstance(value, int) else None
                     else:
                         return None
