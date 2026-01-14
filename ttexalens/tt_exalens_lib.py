@@ -321,8 +321,11 @@ def load_elf(
     else:
         locations = [convert_coordinate(location, device_id, context)]
 
-    if isinstance(elf_file, str) and not os.path.exists(elf_file):
-        raise TTException(f"ELF file {elf_file} does not exist.")
+    if isinstance(elf_file, str):
+        if not os.path.exists(elf_file):
+            raise TTException(f"ELF file {elf_file} does not exist.")
+        context = check_context(context)
+        elf_file = read_elf(context.file_api, elf_file, require_debug_symbols=False)
 
     assert locations, "No valid core locations provided."
     returns = []
@@ -386,8 +389,11 @@ def run_elf(
     else:
         locations = [convert_coordinate(location, device_id, context)]
 
-    if isinstance(elf_file, str) and not os.path.exists(elf_file):
-        raise TTException(f"ELF file {elf_file} does not exist.")
+    if isinstance(elf_file, str):
+        if not os.path.exists(elf_file):
+            raise TTException(f"ELF file {elf_file} does not exist.")
+        context = check_context(context)
+        elf_file = read_elf(context.file_api, elf_file, require_debug_symbols=False)
 
     assert locations, "No valid core locations provided."
     for loc in locations:
