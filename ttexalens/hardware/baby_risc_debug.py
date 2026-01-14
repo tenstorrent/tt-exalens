@@ -12,7 +12,13 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation, RiscDebugStatus, RiscDebugWatchpointState
+from ttexalens.hardware.risc_debug import (
+    RiscDebug,
+    RiscLocation,
+    RiscDebugStatus,
+    RiscDebugWatchpointState,
+    RiscHaltError,
+)
 from ttexalens.register_store import RegisterDescription, RegisterStore
 from ttexalens.hardware.noc_block import NocBlock
 
@@ -296,9 +302,8 @@ class BabyRiscDebugHardware:
             return
         util.TRACE("  halt()")
         self._halt_command()
-        assert (
-            self.is_halted()
-        ), f"Failed to halt {self.risc_info.risc_name} core at {self.risc_info.noc_block.location}"
+        if not self.is_halted():
+            raise RiscHaltError(self.risc_info.risc_name, self.risc_info.noc_block.location)
 
     def flush(self, pc_address: int):
         """
