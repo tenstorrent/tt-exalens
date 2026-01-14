@@ -109,6 +109,26 @@ class TestReadWrite(unittest.TestCase):
         ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, data)
 
+    def test_write_read_bytes_over_dma(self):
+        """Test write bytes -- read bytes."""
+        location_str = "1,0"
+        location = OnChipCoordinate.create(location_str, self.context.devices[0])
+        data = b"test_me!" * 16  # 128 bytes
+        for address in range(0, 128, 1):
+            # Write over regular TLB access to clean any previous data
+            location.noc_write(address, b"\x00" * len(data), use_4B_mode=False, dma_threshold=len(data) + 1)
+
+            # Write over DMA
+            location.noc_write(address, data, use_4B_mode=False, dma_threshold=0)
+
+            # Read over regular TLB access
+            read_data = location.noc_read(address, len(data), use_4B_mode=False, dma_threshold=len(data) + 1)
+            self.assertEqual(read_data, data)
+
+            # Read over DMA
+            read_data = location.noc_read(address, len(data), use_4B_mode=False, dma_threshold=0)
+            self.assertEqual(read_data, data)
+
     @parameterized.expand(
         [
             ("1,0", 1024, 0x100, 0),  # 1KB from device 0 at location 1,0
