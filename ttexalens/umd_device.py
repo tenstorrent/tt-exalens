@@ -9,6 +9,8 @@ import time
 from typing import Sequence
 import tt_umd
 
+from ttexalens.device_access_tracer import trace_device_access
+
 
 class TimeoutDeviceRegisterError(Exception):
     def __init__(
@@ -112,6 +114,7 @@ class UmdDevice:
     WRITE_TIMEOUT = float(os.environ.get("TT_EXALENS_WRITE_TIMEOUT_MS", 2)) / 1_000  # seconds
     NUM_OF_CONSECUTIVE_TIMEOUTS = int(os.environ.get("TT_EXALENS_NUM_OF_CONSECUTIVE_TIMEOUTS", 5))
 
+    @trace_device_access("read")
     def __read_from_device_reg(self, coord_x: int, coord_y: int, address: int, size: int) -> bytes:
         # TODO: Until UMD implements timeout exception, we measure time here
         start_time = time.time()
@@ -130,6 +133,7 @@ class UmdDevice:
             raise TimeoutDeviceRegisterError(self.device_id, translated_coord, address, size, True, elapsed_time)
         return result
 
+    @trace_device_access("write")
     def __write_to_device_reg(self, coord_x: int, coord_y: int, address: int, data: bytes):
         # TODO: Until UMD implements timeout exception, we measure time here
         start_time = time.time()
