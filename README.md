@@ -25,14 +25,12 @@ pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens
 Or specific version with:
 ```
 pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens=="x.y.z"
+```
 
 Alternatively, the wheel can be installed directly from GitHub with:
 ```
 pip install git+https://github.com/tenstorrent/tt-exalens.git
 ```
-
-Alternatively, you can install latest published version with:
-
 
 The CLI application can be run by invoking `tt-exalens` command after installing the wheel.
 
@@ -109,7 +107,7 @@ Or specific version with:
 pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens=="x.y.z"
 ```
 
-Or you can simply run this in project root:
+Or you can simply run following in root directory:
 ```
 pip install .
 ```
