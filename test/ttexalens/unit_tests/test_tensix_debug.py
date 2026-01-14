@@ -9,9 +9,9 @@ from test.ttexalens.unit_tests.test_base import init_cached_test_context
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.debug_tensix import TensixDebug, TILE_SIZE, TensixDataFormat, REGFILE
 from ttexalens.device import TensixInstructions
-from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import debug_bus_signal_map
 from ttexalens.util import TTException
 
 
