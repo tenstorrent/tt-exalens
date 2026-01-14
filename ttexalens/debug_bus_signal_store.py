@@ -27,6 +27,7 @@ class DebugBusSignalDescription:
     daisy_sel: int = 0
     sig_sel: int = 0
     mask: int = 0xFFFFFFFF
+    across_groups: bool = False
 
 
 @dataclass
@@ -492,6 +493,9 @@ class DebugBusSignalStore:
             # group dictionary where key is signal name and value is ShiftMask for that signal
             signal_group: dict[str, ShiftMask] = {}
             for signal_name, signal_desc in signals.items():
+                # Skip signals that span across groups - they cannot be read atomically
+                if signal_desc.across_groups:
+                    continue
                 if signal_desc.daisy_sel == daisy_sel and signal_desc.sig_sel == sig_sel:
                     base_name = DebugBusSignalStore.get_base_signal_name(signal_name)
                     mask = signal_group[base_name].mask if base_name in signal_group else 0

@@ -36,7 +36,7 @@ import tabulate
 from ttexalens import util
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.debug_bus_signal_store import DebugBusSignalStore, SignalGroupSample
+from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore, SignalGroupSample
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
 from ttexalens.device import Device
@@ -244,23 +244,27 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                 print(put_table_list_side_by_side(tables))
 
             if group == "rwc" or group == "all":
+                print(f"{CLR_GREEN}RWCs{CLR_END}")
+                rwc_signal_dicts = read_signal_groups(
+                    tensix_debug_bus_desc.register_window_counter_groups, debug_bus, l1_address
+                )
+                parsed_rwc_signal_dicts = parse_signal_groups(rwc_signal_dicts, "rwc")
+                # Dealing with signal that spans accros two groups - rwc0_dst
                 if device.is_blackhole():
-                    util.WARN(
-                        "Skipping RWC group since they are currently not supported on Blackhole devices. Issue: #729"
+                    signal_desc_lo = debug_bus.get_signal_description("rwc0_dst/0")
+                    signal_desc_hi = debug_bus.get_signal_description("rwc0_dst/1")
+                    parsed_rwc_signal_dicts["coordinates_b"]["rwc0_dst"] = hex(
+                        debug_bus.read_signal(signal_desc_lo)
+                        + (debug_bus.read_signal(signal_desc_hi) << signal_desc_lo.mask.bit_length())
                     )
-                else:
-                    print(f"{CLR_GREEN}RWCs{CLR_END}")
-                    rwc_signal_dicts = read_signal_groups(
-                        tensix_debug_bus_desc.register_window_counter_groups, debug_bus, l1_address
-                    )
-                    parsed_rwc_signal_dicts = parse_signal_groups(rwc_signal_dicts, "rwc")
-                    tables_rwc = debug_bus_to_tables(parsed_rwc_signal_dicts)
-                    print_3_tables_side_by_side(tables_rwc)
+                tables_rwc = debug_bus_to_tables(parsed_rwc_signal_dicts)
+                print_3_tables_side_by_side(tables_rwc)
 
             if group == "adc" or group == "all":
 
                 print(f"{CLR_GREEN}ADCs{CLR_END}")
                 if l1_address is None:
+
                     util.WARN(
                         "No L1 address provided. Disabling atomic group reading for ADC group. Use -a option to specify L1 address."
                     )

@@ -138,12 +138,12 @@ debug_bus_signal_map = {
     "trisc0_pc_buffer_i_mops_outstanding": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x2000000),
     "trisc0_pc_buffer_cmd_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x1000000),
     "trisc0_pc_buffer_cmd_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x800000),
-    # "trisc0_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(       # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
-    #     rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7FFFFF
-    # ),
-    # "trisc0_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(       # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
-    #     rd_sel=3, daisy_sel=7, sig_sel=18, mask=0xFF800000
-    # ),
+    "trisc0_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
+        rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7FFFFF, across_groups=True
+    ),
+    "trisc0_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
+        rd_sel=3, daisy_sel=7, sig_sel=18, mask=0xFF800000, across_groups=True
+    ),
     "trisc0_risc_wrapper_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x400000
     ),
@@ -248,12 +248,12 @@ debug_bus_signal_map = {
     "trisc1_pc_buffer_i_mops_outstanding": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x2000000),
     "trisc1_pc_buffer_cmd_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x1000000),
     "trisc1_pc_buffer_cmd_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x800000),
-    # "trisc1_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(   # Signal spans two consecutive groups, so its value cannot be read atomically.
-    #     rd_sel=3, daisy_sel=7, sig_sel=20, mask=0xFF800000
-    # ),
-    # "trisc1_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
-    #     rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x7FFFFF
-    # ),
+    "trisc1_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+        rd_sel=3, daisy_sel=7, sig_sel=20, mask=0xFF800000, across_groups=True
+    ),
+    "trisc1_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+        rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x7FFFFF, across_groups=True
+    ),
     "trisc1_risc_wrapper_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x400000
     ),
@@ -327,12 +327,12 @@ debug_bus_signal_map = {
     "trisc2_pc_buffer_i_mops_outstanding": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x2000000),
     "trisc2_pc_buffer_cmd_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x1000000),
     "trisc2_pc_buffer_cmd_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x800000),
-    # "trisc2_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
-    #     rd_sel=3, daisy_sel=7, sig_sel=22, mask=0xFF800000
-    # ),
-    # "trisc2_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
-    #     rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x7FFFFF
-    # ),
+    "trisc2_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+        rd_sel=3, daisy_sel=7, sig_sel=22, mask=0xFF800000, across_groups=True
+    ),
+    "trisc2_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+        rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x7FFFFF, across_groups=True
+    ),
     "trisc2_risc_wrapper_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=22, mask=0x400000
     ),
@@ -718,13 +718,15 @@ debug_bus_signal_map = {
     "rwc_i_dest_target_reg_cfg_pack_sec3_zoffset": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x7E
     ),
-    # "rwc_i_dest_target_reg_cfg_math_offset/2": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x1), # Signal spans two consecutive groups, so its value cannot be read atomically.
-    # "rwc_i_dest_target_reg_cfg_math_offset/1": DebugBusSignalDescription(             # Signal spans two consecutive groups, so its value cannot be read atomically.
-    #     rd_sel=3, daisy_sel=3, sig_sel=0, mask=0xFFFFFFFF
-    # ),
-    # "rwc_i_dest_target_reg_cfg_math_offset/0": DebugBusSignalDescription(         # Signal spans two consecutive groups, so its value cannot be read atomically.
-    #     rd_sel=2, daisy_sel=3, sig_sel=0, mask=0xE0000000
-    # ),
+    "rwc_i_dest_target_reg_cfg_math_offset/2": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=3, sig_sel=1, mask=0x1, across_groups=True
+    ),  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    "rwc_i_dest_target_reg_cfg_math_offset/1": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+        rd_sel=3, daisy_sel=3, sig_sel=0, mask=0xFFFFFFFF, across_groups=True
+    ),
+    "rwc_i_dest_target_reg_cfg_math_offset/0": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+        rd_sel=2, daisy_sel=3, sig_sel=0, mask=0xE0000000, across_groups=True
+    ),
     "rwc_i_thread_state_id": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=0, mask=0xE000000),
     "rwc_i_opcode[23..16]": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=0, mask=0x1FE0000),
     "rwc_i_instrn_payload[54..48]": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=0, mask=0xFE000000),
