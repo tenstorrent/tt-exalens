@@ -28,6 +28,7 @@ class TestTensixDebug(unittest.TestCase):
     tensix_debug: TensixDebug
     location_str: str
     ops: TensixInstructions
+    debug_bus: DebugBusSignalStore
 
     @classmethod
     def setUpClass(cls):
@@ -38,6 +39,7 @@ class TestTensixDebug(unittest.TestCase):
         self.location = OnChipCoordinate.create(self.location_str, device=self.context.devices[0])
         self.tensix_debug = TensixDebug(self.location)
         self.debug_bus = self.location.noc_block.debug_bus
+        assert self.debug_bus is not None
 
     def is_blackhole(self) -> bool:
         return self.location.device._arch == tt_umd.ARCH.BLACKHOLE
