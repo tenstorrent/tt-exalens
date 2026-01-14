@@ -18,18 +18,21 @@ It supports Wormhole and Blackhole devices.
 
 ## Quickstart
 
-The wheel can be installed directly from GitHub with:
-```
-pip install git+https://github.com/tenstorrent/tt-exalens.git
-```
-
-Alternatively, you can install latest published version with:
+You can install latest published version with:
 ```
 pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens
 ```
 Or specific version with:
 ```
 pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens=="x.y.z"
+
+Alternatively, the wheel can be installed directly from GitHub with:
+```
+pip install git+https://github.com/tenstorrent/tt-exalens.git
+```
+
+Alternatively, you can install latest published version with:
+
 
 The CLI application can be run by invoking `tt-exalens` command after installing the wheel.
 
@@ -51,7 +54,7 @@ To build it, you need the following dependencies:
 Install them with:
 
 ```bash
-sudo apt install software-properties-common build-essential libyaml-cpp-dev libhwloc-dev libgtest-dev libgmock-dev xxd ninja-build
+sudo apt install ninja-build cmake
 ```
 
 Python 3.10 is the only supported version. Install it with:
@@ -104,6 +107,11 @@ pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens
 Or specific version with:
 ```
 pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens=="x.y.z"
+```
+
+Or you can simply run this in project root:
+```
+pip install .
 ```
 
 Another option is to build the wheel from local source, run:
