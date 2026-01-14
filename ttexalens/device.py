@@ -159,13 +159,16 @@ class Device:
         size_bytes: int,
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
     ) -> bytes:
         noc_x, noc_y = location._noc0_coord
         if noc_id is None:
             noc_id = 1 if self._context.use_noc1 else 0
         if use_4B_mode is None:
             use_4B_mode = self._context.use_4B_mode
-        return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode)
+        if dma_threshold is None:
+            dma_threshold = self._context.dma_read_threshold
+        return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
 
     def noc_read32(self, location: OnChipCoordinate, address: int, noc_id: int | None = None) -> int:
         result = self.noc_read(location, address, 4, noc_id, True)
@@ -178,13 +181,16 @@ class Device:
         data: bytes,
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
     ):
         noc_x, noc_y = location._noc0_coord
         if noc_id is None:
             noc_id = 1 if self._context.use_noc1 else 0
         if use_4B_mode is None:
             use_4B_mode = self._context.use_4B_mode
-        return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode)
+        if dma_threshold is None:
+            dma_threshold = self._context.dma_write_threshold
+        return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
 
     def noc_write32(self, location: OnChipCoordinate, address: int, data: int, noc_id: int | None = None):
         return self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True)
