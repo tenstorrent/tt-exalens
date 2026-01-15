@@ -3,6 +3,8 @@ cmake_policy(VERSION 3.22)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
+option(DUMP_ELFS "Dump data using objdump and readelf" OFF)
+
 # Set toolchain and tools
 set(TOOL_PATH "${SFPI_RELEASE_PATH}/compiler/bin")
 set(GXX "${TOOL_PATH}/riscv-tt-elf-g++")
@@ -130,19 +132,21 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
     add_custom_target("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" ALL
         DEPENDS ${OUTPUT_ELF})
 
-    add_custom_command(
-        OUTPUT ${OUTPUT_OBJDUMP} ${OUTPUT_DWARF}
-        COMMAND ${OBJDUMP} -d -s -S ${OUTPUT_ELF} > ${OUTPUT_OBJDUMP}
-        COMMAND ${OBJDUMP} -t ${OUTPUT_ELF} | sort >> ${OUTPUT_OBJDUMP}
-        COMMAND ${READELF} --debug-dump ${OUTPUT_ELF} > ${OUTPUT_DWARF}
-        DEPENDS ${OUTPUT_ELF}
-        COMMENT "Generating dump and disassembly for ${OUTPUT_ELF}"
-    )
+    if(DUMP_ELFS)
+        add_custom_command(
+            OUTPUT ${OUTPUT_OBJDUMP} ${OUTPUT_DWARF}
+            COMMAND ${OBJDUMP} -d -s -S ${OUTPUT_ELF} > ${OUTPUT_OBJDUMP}
+            COMMAND ${OBJDUMP} -t ${OUTPUT_ELF} | sort >> ${OUTPUT_OBJDUMP}
+            COMMAND ${READELF} --debug-dump ${OUTPUT_ELF} > ${OUTPUT_DWARF}
+            DEPENDS ${OUTPUT_ELF}
+            COMMENT "Generating dump and disassembly for ${OUTPUT_ELF}"
+        )
 
-    add_custom_target("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis" ALL
-        DEPENDS ${OUTPUT_OBJDUMP} ${OUTPUT_DWARF})
+        add_custom_target("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis" ALL
+            DEPENDS ${OUTPUT_OBJDUMP} ${OUTPUT_DWARF})
 
-    add_dependencies("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" "${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis")
+        add_dependencies("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" "${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis")
+    endif()
 endfunction()
 
 # Create targets for all architectures, applications, and cores
