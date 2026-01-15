@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass
 import datetime
@@ -151,6 +152,18 @@ class Device:
         noc_id = 1 if self._context.use_noc1 else 0
         fw = self._umd_device.get_firmware_version(noc_id)
         return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
+
+    # Get all remote devices that are connected to this local device
+    @cached_property
+    def remote_devices(self) -> list[Device] | None:
+        if not self.is_local:
+            return None
+        return [
+            device
+            for device in self._context.devices.values()
+            if not device.is_local
+            and self.id == self._context.cluster_descriptor.get_closest_mmio_capable_chip(device.id)
+        ]
 
     def noc_read(
         self,
