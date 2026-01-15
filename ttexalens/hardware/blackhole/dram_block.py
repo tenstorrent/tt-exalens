@@ -6,8 +6,8 @@ from functools import cache, cached_property
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
-from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
+from ttexalens.hardware.blackhole.baby_risc_debug import BlackholeBabyRiscDebug
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
@@ -22,12 +22,46 @@ from ttexalens.register_store import (
 )
 
 
-# TODO #432: Once signals are added, we can remove type hint
-debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
+debug_bus_signal_map = {
+    "drisc_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 9 + 1, mask=0x3FFFFFFF),
+    "drisc_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x200),
+    "drisc_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x40000000
+    ),
+    "drisc_id_ex_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x100),
+    "drisc_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x80000000
+    ),
+    "drisc_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x80),
+    "drisc_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x20),
+    "drisc_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x1F),
+    "drisc_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=19, mask=0xFFFFFFFF),
+    "drisc_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x3FFFFFFF),
+    "drisc_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x10000000),
+    "drisc_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x1F00000),
+    "drisc_id_rf_p1_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x40000),
+    "drisc_id_rf_p1_rdaddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7C00),
+    "drisc_id_rf_p0_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x100),
+    "drisc_id_rf_p0_rdaddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x1F),
+    "drisc_i_instrn_vld": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "drisc_i_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
+    "drisc_i_instrn_req_rtr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "drisc_(o_instrn_req_early&~o_instrn_req_cancel)": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x40000000
+    ),
+    "drisc_o_instrn_addr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x3FFFFFFF),
+    "drisc_dbg_obs_mem_wren": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "drisc_dbg_obs_mem_rden": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x40000000),
+    "drisc_dbg_obs_mem_addr": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x3FFFFFFF),
+    "drisc_dbg_obs_cmt_vld": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "drisc_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
+}
 
-# TODO(#651) Once signals are grouped, we can remove type hint
-group_map: dict[str, tuple[int, int]] = {}
-
+# Signal name mapping to (DaisySel, sig_sel)
+group_map: dict[str, tuple[int, int]] = {
+    "drisc_group_a": (7, 18),
+    "drisc_group_b": (7, 19),
+}
 
 register_map: dict[str, RegisterDescription] = {
     "RISCV_DEBUG_REG_PERF_CNT_INSTRN_THREAD0": DebugRegisterDescription(offset=0x00),
@@ -46,7 +80,7 @@ register_map: dict[str, RegisterDescription] = {
     "RISCV_DEBUG_REG_DBG_L1_MEM_REG0": DebugRegisterDescription(offset=0x048),
     "RISCV_DEBUG_REG_DBG_L1_MEM_REG1": DebugRegisterDescription(offset=0x04C),
     "RISCV_DEBUG_REG_DBG_L1_MEM_REG2": DebugRegisterDescription(offset=0x050),
-    "RISCV_DEBUG_REG_DBG_BUS_CTRL": DebugRegisterDescription(offset=0x054),
+    "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG": DebugRegisterDescription(offset=0x054),
     "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(offset=0x58),  # Old name
     "RISCV_DEBUG_REG_TENSIX_CREG_READ": DebugRegisterDescription(offset=0x058),  # New name
     "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(offset=0x05C),
@@ -309,7 +343,5 @@ class BlackholeDramBlock(BlackholeNocBlock):
         assert neo_id is None, "NEO ID is not applicable for Blackhole device."
         risc_name = risc_name.lower()
         if risc_name == self.drisc.risc_name:
-            return BabyRiscDebug(
-                risc_info=self.drisc
-            )  # TODO: Once we have debug bus signals, we will create WormholeBabyRiscDebug instance
+            return BlackholeBabyRiscDebug(risc_info=self.drisc)
         raise ValueError(f"RISC debug for {risc_name} is not supported in Blackhole eth block.")

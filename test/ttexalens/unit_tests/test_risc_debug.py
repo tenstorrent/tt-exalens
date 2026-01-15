@@ -26,7 +26,7 @@ from ttexalens.elf_loader import ElfLoader
         {"core_desc": "FW1", "risc_name": "TRISC0", "neo_id": None},
         {"core_desc": "FW1", "risc_name": "TRISC1", "neo_id": None},
         {"core_desc": "FW1", "risc_name": "TRISC2", "neo_id": None},
-        # {"core_desc": "DRAM0", "risc_name": "DRISC", "neo_id": None},
+        {"core_desc": "DRAM0", "risc_name": "DRISC", "neo_id": None},
         {"core_desc": "FW0", "risc_name": "TRISC0", "neo_id": 0},
         {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": 0},
         {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": 0},
@@ -69,6 +69,8 @@ class TestDebugging(unittest.TestCase):
                 self.skipTest(f"Core {self.core_desc}:{self.risc_name} not available on this platform: {e}")
             else:
                 raise e
+        except NotImplementedError as e:
+            self.skipTest(f"RISC debugging not implemented for core {self.risc_name} on this platform: {e}")
         except AssertionError as e:
             if self.neo_id is not None and "NEO ID" in e.__str__():
                 self.skipTest(f"Test requires NEO ID, but is not supported on this platform: {e}")
@@ -162,9 +164,11 @@ class TestDebugging(unittest.TestCase):
     def test_read_write_l1_memory(self):
         """Testing read_memory and write_memory through debugging interface on L1 memory range."""
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write code for brisc core at address 0
         # C++:
@@ -186,7 +190,9 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.core_sim.risc_debug.read_memory(addr), 0x12345678, "Memory value should be 0x12345678.")
         self.core_sim.risc_debug.write_memory(addr, 0x87654321)
         self.assertEqual(self.core_sim.risc_debug.read_memory(addr), 0x87654321, "Memory value should be 0x87654321.")
-        self.assertEqual(self.core_sim.read_data(addr), 0x87654321)
+        self.assertEqual(
+            self.core_sim.read_data(noc_addr), 0x87654321, "Memory value read over NOC should be 0x87654321."
+        )
 
     def test_read_write_private_memory(self):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
@@ -239,11 +245,13 @@ class TestDebugging(unittest.TestCase):
     def test_read_write_memory_bytes_aligned(self):
         """Test reading and writing aligned memory blocks using read_memory_bytes and write_memory_bytes."""
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write initial data to memory
-        self.core_sim.write_data_checked(addr, 0x11223344)
-        self.core_sim.write_data_checked(addr + 4, 0x55667788)
-        self.core_sim.write_data_checked(addr + 8, 0x99AABBCC)
+        self.core_sim.write_data_checked(noc_addr, 0x11223344)
+        self.core_sim.write_data_checked(noc_addr + 4, 0x55667788)
+        self.core_sim.write_data_checked(noc_addr + 8, 0x99AABBCC)
 
         # Write code for brisc core at address 0
         # C++:
@@ -271,11 +279,11 @@ class TestDebugging(unittest.TestCase):
         # Test reading back what we wrote
         data = self.core_sim.risc_debug.read_memory_bytes(addr, 8)
         self.assertEqual(data, b"\x78\x56\x34\x12\xdd\xcc\xbb\xaa", "Should read/write 8 bytes correctly")
-        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
-        self.assertEqual(self.core_sim.read_data(addr + 4), 0xAABBCCDD)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addr + 4), 0xAABBCCDD)
 
         # Verify third word is unchanged
-        self.assertEqual(self.core_sim.read_data(addr + 8), 0x99AABBCC, "Third word should be unchanged")
+        self.assertEqual(self.core_sim.read_data(noc_addr + 8), 0x99AABBCC, "Third word should be unchanged")
 
     @parameterized.expand(
         [
@@ -320,11 +328,13 @@ class TestDebugging(unittest.TestCase):
     def test_read_write_memory_bytes_unaligned(self, offset, size, expected_read, write_data):
         """Test reading and writing unaligned memory blocks (not on 4-byte boundary)."""
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Initialize memory and halt
-        self.core_sim.write_data_checked(addr, 0x12345678)
-        self.core_sim.write_data_checked(addr + 4, 0xAABBCCDD)
-        self.core_sim.write_data_checked(addr + 8, 0x99887766)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr + 4, 0xAABBCCDD)
+        self.core_sim.write_data_checked(noc_addr + 8, 0x99887766)
         self.program_writer.append_while_true()
         self.program_writer.write_program()
 
@@ -343,7 +353,7 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(data, expected_read, f"Should read {size} bytes at offset {offset}")
 
         # Test unaligned write preserves surrounding data
-        self.core_sim.write_data_checked(addr, [0x12345678, 0xAABBCCDD, 0x99887766])
+        self.core_sim.write_data_checked(noc_addr, [0x12345678, 0xAABBCCDD, 0x99887766])
         self.core_sim.risc_debug.write_memory_bytes(addr + offset, write_data)
 
         # Verify the write by reading back and comparing
@@ -351,9 +361,9 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(read_back, write_data, f"Read back data should match written data at offset {offset}")
 
         # Verify all three words to ensure proper boundary handling
-        word0 = self.core_sim.read_data(addr)
-        word1 = self.core_sim.read_data(addr + 4)
-        word2 = self.core_sim.read_data(addr + 8)
+        word0 = self.core_sim.read_data(noc_addr)
+        word1 = self.core_sim.read_data(noc_addr + 4)
+        word2 = self.core_sim.read_data(noc_addr + 8)
 
         # Calculate expected words based on the write
         memory = bytearray()
@@ -385,9 +395,11 @@ class TestDebugging(unittest.TestCase):
     def test_minimal_run_generated_code(self):
         """Test running 16 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write code for brisc core at address 0
         # C++:
@@ -411,14 +423,16 @@ class TestDebugging(unittest.TestCase):
                     break
 
         # Verify value at address
-        self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
 
     def test_ebreak(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write code for brisc core at address 0
         # C++:
@@ -437,7 +451,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.set_reset(False)
 
         # Verify value at address, value should not be changed and should stay the same since core is in halt
-        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
         self.assertPcEquals(4)
@@ -445,9 +459,11 @@ class TestDebugging(unittest.TestCase):
     def test_ebreak_and_step(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write code for brisc core at address 0
         # C++:
@@ -467,17 +483,17 @@ class TestDebugging(unittest.TestCase):
         # On blackhole, we need to step one more time...
 
         # Verify value at address, value should not be changed and should stay the same since core is in halt
-        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertPcEquals(4)
         # Step and verify that pc is 8 and value is not changed
         self.core_sim.step()
-        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertPcEquals(8)
         # Adding two steps since logic in hw automatically updates register and memory values
         self.core_sim.step()
         self.core_sim.step()
         # Verify that pc is 16 and value has changed
-        self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
         self.assertPcEquals(16)
         # Since we are on endless loop, we should never go past 16
         for i in range(10):
@@ -488,9 +504,11 @@ class TestDebugging(unittest.TestCase):
     def test_continue(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write code for brisc core at address 0
         # C++:
@@ -512,7 +530,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.continue_execution()
 
         # Verify value at address
-        self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
 
     def test_core_lockup(self):
         """Running code that should lock up the core and then trying to halt it."""
@@ -555,9 +573,11 @@ class TestDebugging(unittest.TestCase):
     def test_halt_continue(self):
         """Test running 28 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write code for brisc core at address 0
         # C++:
@@ -580,13 +600,13 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.set_reset(False)
 
         # Verify that value didn't change cause of ebreak
-        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
 
         # Continue
         self.core_sim.continue_execution()
 
         # Verify that value changed cause of continue
-        previous_value = self.core_sim.read_data(addr)
+        previous_value = self.core_sim.read_data(noc_addr)
         self.assertGreaterEqual(previous_value, 0x87654000)
 
         # Loop halt and continue
@@ -595,12 +615,12 @@ class TestDebugging(unittest.TestCase):
             self.core_sim.halt()
 
             # Read value
-            value = self.core_sim.read_data(addr)
+            value = self.core_sim.read_data(noc_addr)
             self.assertGreater(value, previous_value)
             previous_value = value
 
             # Second read should have the same value if core is halted
-            self.assertEqual(self.core_sim.read_data(addr), previous_value)
+            self.assertEqual(self.core_sim.read_data(noc_addr), previous_value)
 
             # Continue
             self.core_sim.continue_execution()
@@ -608,9 +628,11 @@ class TestDebugging(unittest.TestCase):
     def test_halt_status(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write code for brisc core at address 0
         # C++:
@@ -629,7 +651,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.set_reset(False)
 
         # Verify value at address
-        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
 
@@ -637,7 +659,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.continue_execution()
 
         # Verify value at address
-        self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
 
         # Halt and test status
@@ -646,14 +668,16 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
 
     def test_invalidate_cache(self):
-        if self.core_sim.is_eth_block():
-            self.skipTest("This test is not applicable for ETH cores.")
+        if self.core_sim.is_eth_block() or self.core_sim.location.noc_block.block_type == "dram":
+            self.skipTest("This test is not applicable for ETH cores or DRAM blocks.")
 
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation. All that is done on brisc."""
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write endless loop for brisc core at address 0
         # C++:
@@ -674,7 +698,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.halt()
 
         # Value should not be changed and should stay the same since core is in halt
-        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertPcEquals(0)
 
@@ -705,14 +729,16 @@ class TestDebugging(unittest.TestCase):
         self.assertPcEquals(12)
 
         # Verify value at address
-        self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
 
     def test_invalidate_cache_with_reset(self):
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation by reseting core. All that is done on brisc."""
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write endless loop for brisc core at address 0
         # C++:
@@ -733,7 +759,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.halt()
 
         # Value should not be changed and should stay the same since core is in halt
-        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertPcEquals(0)
 
@@ -760,7 +786,7 @@ class TestDebugging(unittest.TestCase):
         self.assertPcEquals(12)
 
         # Verify value at address
-        self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
 
     def test_invalidate_cache_with_nops_and_long_jump(self):
         """Test running 16 bytes of generated code that just write data on memory and tries to reload it with instruction cache invalidation by having NOPs block and jump back. All that is done on brisc."""
@@ -773,9 +799,11 @@ class TestDebugging(unittest.TestCase):
         break_addr = 0x950
         jump_addr = 0x2000
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write endless loop for brisc core at address 0
         # C++:
@@ -803,7 +831,7 @@ class TestDebugging(unittest.TestCase):
                 self.core_sim.read_data(0)
 
         # Value should not be changed and should stay the same since core is in halt
-        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
         self.assertPcEquals(break_addr + 4)
@@ -826,7 +854,7 @@ class TestDebugging(unittest.TestCase):
         # Since simulator is slow, we need to wait a bit by reading something
         if self.device.is_quasar():
             for i in range(200):
-                if self.core_sim.read_data(addr) == 0x87654000:
+                if self.core_sim.read_data(noc_addr) == 0x87654000:
                     break
 
         # Halt to verify PC
@@ -835,7 +863,7 @@ class TestDebugging(unittest.TestCase):
         self.assertPcEquals(12)
 
         # Verify value at address
-        self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
 
     # Wrapper for setting watchpoints on different types of watchpoints.
     def _set_watchpoint(self, watchpoint_type: str, watchpoint_index: int, address: int):
@@ -861,9 +889,11 @@ class TestDebugging(unittest.TestCase):
             self.skipTest("This test ND fails in CI. Issue: #770")
 
         addr = 0x10000
+        noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+        assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        self.core_sim.write_data_checked(addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write code for brisc core at address 0
         # C++:
@@ -890,7 +920,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.set_reset(False)
 
         # Verify value at address
-        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
         self.assertFalse(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
@@ -912,7 +942,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.read_status().watchpoints_hit[1], "Watchpoint 1 should not be hit.")
 
         self.assertPcLess(28)
-        self.assertEqual(self.core_sim.read_data(addr), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
 
         # Continue and verify that we hit first watchpoint
         self.core_sim.continue_execution()
@@ -925,7 +955,7 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.read_status().watchpoints_hit[0], "Watchpoint 0 should not be hit.")
         self.assertTrue(self.core_sim.read_status().watchpoints_hit[1], "Watchpoint 1 should be hit.")
         self.assertPcEquals(32)
-        self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
 
     def test_watchpoint_address(self):
         """Test setting and reading watchpoint address (both memory and PC)."""
@@ -1111,14 +1141,17 @@ class TestDebugging(unittest.TestCase):
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
 
-        addresses = [0x10000, 0x20000, 0x30000, 0x40000]
+        addresses = [0x10000, 0x11000, 0x12000, 0x13000]
+        noc_addresses: list[int] = []
+        for addr in addresses:
+            noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
+            assert noc_addr is not None, "Translated NOC address should not be None."
+            noc_addresses.append(noc_addr)
 
         value = 0x12345678
         # Write our data to memory
-        self.core_sim.write_data_checked(addresses[0], value)
-        self.core_sim.write_data_checked(addresses[1], value)
-        self.core_sim.write_data_checked(addresses[2], value)
-        self.core_sim.write_data_checked(addresses[3], value)
+        for noc_address in noc_addresses:
+            self.core_sim.write_data_checked(noc_address, value)
 
         # Write code for brisc core at address 0
         # C++:
@@ -1152,7 +1185,7 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.set_reset(False)
 
         # Verify value at address
-        self.assertEqual(self.core_sim.read_data(addresses[0]), 0x12345678)
+        self.assertEqual(self.core_sim.read_data(noc_addresses[0]), 0x12345678)
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertTrue(self.core_sim.is_ebreak_hit(), "ebreak should be the cause.")
         self.assertFalse(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
@@ -1190,9 +1223,9 @@ class TestDebugging(unittest.TestCase):
                     )
 
                 if i == 0:
-                    self.assertEqual(self.core_sim.read_data(addresses[i]), 0x45678000)
+                    self.assertEqual(self.core_sim.read_data(noc_addresses[0]), 0x45678000)
                 elif i == 2:
-                    self.assertEqual(self.core_sim.read_data(addresses[i]), 0x87654000)
+                    self.assertEqual(self.core_sim.read_data(noc_addresses[2]), 0x87654000)
 
     def test_bne_with_debug_fail(self):
         """Test running 48 bytes of generated code that confirms problem with BNE when debugging hardware is enabled."""
@@ -1261,7 +1294,7 @@ class TestDebugging(unittest.TestCase):
     def test_bne_without_debug(self):
         """Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is disabled."""
 
-        if self.core_sim.is_eth_block():
+        if self.core_sim.is_eth_block() or self.core_sim.location.noc_block.block_type == "dram":
             self.skipTest("We don't know how to enable/disable branch prediction ETH cores.")
 
         # Enable branch prediction
@@ -1328,7 +1361,7 @@ class TestDebugging(unittest.TestCase):
     def test_bne_with_debug_without_bp(self):
         """Test running 48 bytes of generated code that confirms that there is no problem with BNE when debugging hardware is enabled and branch prediction is disabled."""
 
-        if self.core_sim.is_eth_block():
+        if self.core_sim.is_eth_block() or self.core_sim.location.noc_block.block_type == "dram":
             self.skipTest("We don't know how to enable/disable branch prediction ETH cores.")
 
         # Enable branch prediction
