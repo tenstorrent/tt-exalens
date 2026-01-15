@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass
 import datetime
@@ -133,7 +134,11 @@ class Device:
         self._init_coordinate_systems()
 
     @property
-    def local_device(self) -> "Device":
+    def board_type(self) -> tt_umd.BoardType:
+        return self._context.cluster_descriptor.get_board_type(self.id)
+
+    @cached_property
+    def local_device(self) -> Device:
         if self.is_local:
             return self
         local_tt_device = self._umd_device.get_local_tt_device()
@@ -142,15 +147,19 @@ class Device:
                 return device
         raise RuntimeError("Local device not found in context devices")
 
-    @property
-    def board_type(self) -> tt_umd.BoardType:
-        return self._context.cluster_descriptor.get_board_type(self.id)
-
     @cached_property
     def firmware_version(self):
         noc_id = 1 if self._context.use_noc1 else 0
         fw = self._umd_device.get_firmware_version(noc_id)
         return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
+
+    # Get all remote devices that are connected to this local device
+    @cached_property
+    def remote_devices(self) -> list[Device]:
+        assert self.is_local, "Only local devices can get remote devices"
+        return [
+            device for device in self._context.devices.values() if not device.is_local and device.local_device == self
+        ]
 
     def noc_read(
         self,
