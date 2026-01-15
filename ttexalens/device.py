@@ -156,8 +156,7 @@ class Device:
     # Get all remote devices that are connected to this local device
     @cached_property
     def remote_devices(self) -> list[Device] | None:
-        if not self.is_local:
-            return None
+        assert self.is_local, "Only local devices can get remote devices"
         return [
             device
             for device in self._context.devices.values()
