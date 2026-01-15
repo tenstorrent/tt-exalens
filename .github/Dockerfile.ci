@@ -1,16 +1,41 @@
 ARG UBUNTU_VERSION=22.04
+
+# Compile uv (Astral UV version manager) from source
+FROM ubuntu:${UBUNTU_VERSION} AS uv_builder
+RUN apt-get update && apt-get install -y curl ca-certificates
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- --no-modify-path
+
+
+# Final image
 FROM ubuntu:${UBUNTU_VERSION}
 SHELL ["/bin/bash", "-c"]
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
 
+# Copy uv binary from the uv_builder stage
+COPY --from=uv_builder /root/.local/bin/uv /usr/bin/uv
+
 # Copy the requirements files for pip in current directory
 COPY ttexalens/requirements.txt \
     ttexalens/dev-requirements.txt \
     test/test_requirements.txt \
-    .github/Dockerfile.ci.sh \
     ./
 
-# Run single script to setup the environment in order to generate a single layer
-RUN ./Dockerfile.ci.sh
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y \
+    git \
+    python3 \
+    python3-pip \
+    ninja-build \
+    cmake && \
+    apt-get clean && \
+    # Remove externally-managed marker
+    rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
+
+# Install Python dependencies
+RUN uv pip install --no-cache-dir --system --index-strategy unsafe-best-match --extra-index-url https://test.pypi.org/simple/ -r requirements.txt && \
+    uv pip install --no-cache-dir --system -r dev-requirements.txt && \
+    uv pip install --no-cache-dir --system -r test_requirements.txt && \
+    uv pip install --no-cache-dir --system wheel build setuptools

@@ -180,6 +180,23 @@ class TestDebugBus(unittest.TestCase):
             str(cm.exception),
         )
 
+    def test_across_groups_signals_excluded_from_groups(self):
+        """Verify that signals with across_groups=True are not included in any signal groups."""
+        # Find all signals with across_groups=True
+        across_group_signals = [
+            signal_name for signal_name, signal_desc in self.debug_bus.signals.items() if signal_desc.across_groups
+        ]
+
+        # Verify each across_groups signal is NOT in any signal group
+        for signal_name in across_group_signals:
+            base_signal_name = self.debug_bus.get_base_signal_name(signal_name)
+            for group_name, group_signals in self.debug_bus.signal_groups.items():
+                self.assertNotIn(
+                    base_signal_name,
+                    group_signals,
+                    f"Signal '{signal_name}' with across_groups=True should not be in group '{group_name}'",
+                )
+
     def _get_group_for_signal(self, signal_store: DebugBusSignalStore, signal: str) -> str:
         """Get the group name for a given signal name."""
         for group_name, group_dict in signal_store.signal_groups.items():

@@ -282,6 +282,7 @@ def load_elf(
     device_id: int = 0,
     context: Context | None = None,
     return_start_address: bool = False,
+    verify_write: bool = True,
 ) -> None | int | list[int]:
     """
     Loads the given ELF file into the specified RISC core. RISC core must be in reset before loading the ELF.
@@ -297,6 +298,8 @@ def load_elf(
         neo_id (int | None, optional): NEO ID of the RISC-V core.
         device_id (int, default 0):	ID number of device to run ELF on.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        return_start_address (bool, default False): If True, returns the start address of the loaded ELF.
+        verify_write (bool, default True): If True, verifies that the ELF was written correctly to the device.
     """
 
     from ttexalens.elf_loader import ElfLoader
@@ -318,15 +321,20 @@ def load_elf(
     else:
         locations = [convert_coordinate(location, device_id, context)]
 
-    if isinstance(elf_file, str) and not os.path.exists(elf_file):
-        raise TTException(f"ELF file {elf_file} does not exist.")
+    if isinstance(elf_file, str):
+        if not os.path.exists(elf_file):
+            raise TTException(f"ELF file {elf_file} does not exist.")
+        context = check_context(context)
+        elf_file = read_elf(context.file_api, elf_file, require_debug_symbols=False)
 
     assert locations, "No valid core locations provided."
     returns = []
     for loc in locations:
         risc_debug = loc.noc_block.get_risc_debug(risc_name, neo_id)
         elf_loader = ElfLoader(risc_debug)
-        start_address = elf_loader.load_elf(elf_file, return_start_address=return_start_address)
+        start_address = elf_loader.load_elf(
+            elf_file, return_start_address=return_start_address, verify_write=verify_write
+        )
         if return_start_address:
             assert start_address is not None
             returns.append(start_address)
@@ -344,6 +352,7 @@ def run_elf(
     neo_id: int | None = None,
     device_id: int = 0,
     context: Context | None = None,
+    verify_write: bool = True,
 ) -> None:
     """
     Loads the given ELF file into the specified RISC core and executes it. Similar to load_elf, but RISC core is taken out of reset after load.
@@ -359,6 +368,7 @@ def run_elf(
         neo_id (int | None, optional): NEO ID of the RISC-V core.
         device_id (int, default 0):	ID number of device to run ELF on.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        verify_write (bool, default True): If True, verifies that the ELF was written correctly to the device.
     """
     from ttexalens.elf_loader import ElfLoader
 
@@ -379,14 +389,17 @@ def run_elf(
     else:
         locations = [convert_coordinate(location, device_id, context)]
 
-    if isinstance(elf_file, str) and not os.path.exists(elf_file):
-        raise TTException(f"ELF file {elf_file} does not exist.")
+    if isinstance(elf_file, str):
+        if not os.path.exists(elf_file):
+            raise TTException(f"ELF file {elf_file} does not exist.")
+        context = check_context(context)
+        elf_file = read_elf(context.file_api, elf_file, require_debug_symbols=False)
 
     assert locations, "No valid core locations provided."
     for loc in locations:
         risc_debug = loc.noc_block.get_risc_debug(risc_name, neo_id)
         elf_loader = ElfLoader(risc_debug)
-        elf_loader.run_elf(elf_file)
+        elf_loader.run_elf(elf_file, verify_write=verify_write)
 
 
 @trace_api

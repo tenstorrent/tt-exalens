@@ -72,7 +72,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         device = context.find_device_by_id(device_id)
         core_loc = OnChipCoordinate.create(core_loc_str, device)
 
-        debug_tensix = TensixDebug(core_loc, device_id, context)
+        debug_tensix = TensixDebug(core_loc)
         data = debug_tensix.read_regfile(regfile, num_tiles)
         print_regfile(data)
 
