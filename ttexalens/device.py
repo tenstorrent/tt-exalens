@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass
 import datetime
@@ -133,7 +134,11 @@ class Device:
         self._init_coordinate_systems()
 
     @property
-    def local_device(self) -> "Device":
+    def board_type(self) -> tt_umd.BoardType:
+        return self._context.cluster_descriptor.get_board_type(self.id)
+
+    @cached_property
+    def local_device(self) -> Device:
         if self.is_local:
             return self
         local_tt_device = self._umd_device.get_local_tt_device()
@@ -142,15 +147,19 @@ class Device:
                 return device
         raise RuntimeError("Local device not found in context devices")
 
-    @property
-    def board_type(self) -> tt_umd.BoardType:
-        return self._context.cluster_descriptor.get_board_type(self.id)
-
     @cached_property
     def firmware_version(self):
         noc_id = 1 if self._context.use_noc1 else 0
         fw = self._umd_device.get_firmware_version(noc_id)
         return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
+
+    # Get all remote devices that are connected to this local device
+    @cached_property
+    def remote_devices(self) -> list[Device]:
+        assert self.is_local, "Only local devices can get remote devices"
+        return [
+            device for device in self._context.devices.values() if not device.is_local and device.local_device == self
+        ]
 
     def noc_read(
         self,
@@ -159,13 +168,16 @@ class Device:
         size_bytes: int,
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
     ) -> bytes:
         noc_x, noc_y = location._noc0_coord
         if noc_id is None:
             noc_id = 1 if self._context.use_noc1 else 0
         if use_4B_mode is None:
             use_4B_mode = self._context.use_4B_mode
-        return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode)
+        if dma_threshold is None:
+            dma_threshold = self._context.dma_read_threshold
+        return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
 
     def noc_read32(self, location: OnChipCoordinate, address: int, noc_id: int | None = None) -> int:
         result = self.noc_read(location, address, 4, noc_id, True)
@@ -178,13 +190,16 @@ class Device:
         data: bytes,
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
     ):
         noc_x, noc_y = location._noc0_coord
         if noc_id is None:
             noc_id = 1 if self._context.use_noc1 else 0
         if use_4B_mode is None:
             use_4B_mode = self._context.use_4B_mode
-        return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode)
+        if dma_threshold is None:
+            dma_threshold = self._context.dma_write_threshold
+        return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
 
     def noc_write32(self, location: OnChipCoordinate, address: int, data: int, noc_id: int | None = None):
         return self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True)
