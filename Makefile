@@ -1,4 +1,5 @@
 BUILD_DIR ?= build
+DUMP_ELFS ?= OFF
 
 .PHONY: build
 build:
@@ -6,12 +7,17 @@ build:
 		cmake -B $(BUILD_DIR) -G Ninja \
 			-DCMAKE_C_COMPILER_LAUNCHER=ccache \
 			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+			-DDUMP_ELFS=$(DUMP_ELFS) \
 			-DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
 	else \
 		cmake -B $(BUILD_DIR) -G Ninja \
+			-DDUMP_ELFS=$(DUMP_ELFS) \
 			-DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
 	fi
 	@ninja -C $(BUILD_DIR)
+
+dump_elfs:
+	DUMP_ELFS=ON $(MAKE) build
 
 .PHONY: clean
 clean:
