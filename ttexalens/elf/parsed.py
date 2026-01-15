@@ -10,6 +10,7 @@ from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 from functools import cache, cached_property
 import os
+from ttexalens.server import FileAccessApi
 import ttexalens.util as util
 from ttexalens.elf.dwarf import ElfDwarf, ElfDwarfWithOffset
 from ttexalens.elf.frame import FrameInfoProvider, FrameInfoProviderWithOffset
@@ -129,11 +130,27 @@ def decode_file_line(dwarf: DWARFInfo) -> dict[int, tuple[str, int, int]]:
     return PC_to_fileline_map
 
 
+class ParsedElfFileSection:
+    def __init__(self, section):
+        self._section = section
+        self.name = section.name
+        self.address = int(section.header.sh_addr) if hasattr(section.header, "sh_addr") else None
+        self.size = int(section.header.sh_size) if hasattr(section.header, "sh_size") else 0
+
+    @cached_property
+    def data(self):
+        return self._section.data()
+
+
 class ParsedElfFile:
     def __init__(self, elf: ELFFile, elf_file_path: str):
         self.elf = elf
         self.elf_file_path = elf_file_path
         self.loaded_offset = 0
+
+    @cached_property
+    def sections(self):
+        return [ParsedElfFileSection(section) for section in self.elf.iter_sections()]
 
     @cached_property
     def _dwarf(self) -> ElfDwarf:
@@ -333,7 +350,9 @@ class ParsedElfFileWithOffset(ParsedElfFile):
         return FrameInfoProviderWithOffset(self.parsed_elf.frame_info, self.code_load_address)
 
 
-def read_elf(file_ifc, elf_file_path: str, load_address: int | None = None) -> ParsedElfFile:
+def read_elf(
+    file_ifc: FileAccessApi, elf_file_path: str, load_address: int | None = None, require_debug_symbols: bool = True
+) -> ParsedElfFile:
     """
     Reads the ELF file and returns a dictionary with the DWARF info
     """
@@ -341,7 +360,7 @@ def read_elf(file_ifc, elf_file_path: str, load_address: int | None = None) -> P
     f = file_ifc.get_binary(elf_file_path)
     elf = ELFFile(f)
 
-    if not elf.has_dwarf_info():
+    if require_debug_symbols and not elf.has_dwarf_info():
         raise ValueError(f"{elf_file_path} does not have DWARF info. Source file must be compiled with -g")
     parsed_elf = ParsedElfFile(elf, elf_file_path)
     if load_address is None:

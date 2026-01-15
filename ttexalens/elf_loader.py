@@ -2,12 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-import os
-from elftools.elf.elffile import ELFFile
 from ttexalens import util
-from ttexalens.context import Context
-from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.device import Device
 from ttexalens.elf.parsed import ParsedElfFile
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebug
@@ -21,26 +16,9 @@ class ElfLoader:
 
     def __init__(self, risc_debug: RiscDebug):
         self.risc_debug = risc_debug
+        self.location = risc_debug.risc_location.location
+        self.context = self.location.context
         self.mem_access = MemoryAccess.create(risc_debug)
-
-    @property
-    def risc_name(self) -> str:
-        return self.risc_debug.risc_location.risc_name
-
-    @property
-    def location(self) -> OnChipCoordinate:
-        return self.risc_debug.risc_location.location
-
-    @property
-    def device(self) -> Device:
-        return self.location._device
-
-    @property
-    def context(self) -> Context:
-        """
-        Returns the context of the RISC loader.
-        """
-        return self.device._context
 
     SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".gcov_info"]
 
@@ -163,7 +141,7 @@ class ElfLoader:
         return address
 
     def load_elf_sections(
-        self, elf_path: str | ParsedElfFile, loader_data: str | int, loader_code: str | int, verify_write: bool = True
+        self, elf: ParsedElfFile, loader_data: str | int, loader_code: str | int, verify_write: bool = True
     ):
         """
         Given an ELF file, this function loads the sections specified in SECTIONS_TO_LOAD to the
@@ -172,58 +150,47 @@ class ElfLoader:
         """
         # Remember the .init section address to jump to after loading
         init_section_address = None
+        elf_path = elf.elf_file_path
 
         try:
-            if isinstance(elf_path, ParsedElfFile):
-                elf_file = elf_path.elf
-                elf_path = elf_path.elf_file_path
-            else:
-                elf_file_io = self.context.file_api.get_binary(elf_path)
-                elf_file = ELFFile(elf_file_io)
             address: int
             loader_data_address = loader_data if isinstance(loader_data, int) else None
             loader_code_address = loader_code if isinstance(loader_code, int) else None
 
             # Try to find address mapping for loader_data and loader_code
-            for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, "sh_addr"):
-                    name = section.name
-                    address = section.header.sh_addr
-                    if name == loader_data:
-                        loader_data_address = address
-                    elif name == loader_code:
-                        loader_code_address = address
+            for section in elf.sections:
+                if section.name == loader_data:
+                    loader_data_address = section.address
+                elif section.name == loader_code:
+                    loader_code_address = section.address
 
             # Load section into memory
-            for section in elf_file.iter_sections():
-                if section.data() and hasattr(section.header, "sh_addr"):
-                    name = section.name
-                    if name in self.SECTIONS_TO_LOAD:
-                        address = section.header.sh_addr
-                        if address % 4 != 0:
-                            raise ValueError(
-                                f"{elf_path}: section {section.name} (0x{address:08x}) is not 32-bit aligned"
+            for section in elf.sections:
+                if section.address is not None and section.name in self.SECTIONS_TO_LOAD and section.data:
+                    if section.address % 4 != 0:
+                        raise ValueError(
+                            f"{elf_path}: section {section.name} (0x{section.address:08x}) is not 32-bit aligned"
+                        )
+
+                    address = self.remap_address(section.address, loader_data_address, loader_code_address)
+                    if section.name == ".init":
+                        init_section_address = address
+
+                    util.VERBOSE(
+                        f"Writing section {section.name} to address 0x{address:08x}. Size: {len(section.data)} bytes"
+                    )
+                    self.write_block(address, section.data)
+
+                    # Check that what we have written is correct
+                    if verify_write:
+                        read_data = self.read_block(address, len(section.data))
+                        if read_data != section.data:
+                            util.ERROR(f"Error writing section {section.name} to address 0x{address:08x}.")
+                            continue
+                        else:
+                            util.VERBOSE(
+                                f"Section {section.name} loaded successfully to address 0x{address:08x}. Size: {len(section.data)} bytes"
                             )
-
-                        address = self.remap_address(address, loader_data_address, loader_code_address)
-                        data = section.data()
-
-                        if name == ".init":
-                            init_section_address = address
-
-                        util.VERBOSE(f"Writing section {name} to address 0x{address:08x}. Size: {len(data)} bytes")
-                        self.write_block(address, data)
-
-                        # Check that what we have written is correct
-                        if verify_write:
-                            read_data = self.read_block(address, len(data))
-                            if read_data != data:
-                                util.ERROR(f"Error writing section {name} to address 0x{address:08x}.")
-                                continue
-                            else:
-                                util.VERBOSE(
-                                    f"Section {name} loaded successfully to address 0x{address:08x}. Size: {len(data)} bytes"
-                                )
         except Exception as e:
             util.ERROR(e)
             raise util.TTException(f"Error loading elf file {elf_path}")
@@ -232,14 +199,14 @@ class ElfLoader:
         return init_section_address
 
     def load_elf(
-        self, elf_path: str | ParsedElfFile, verify_write: bool = True, return_start_address: bool = False
+        self, elf_file: ParsedElfFile, verify_write: bool = True, return_start_address: bool = False
     ) -> int | None:
         # Risc must be in reset
         assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.risc_location} is not in reset."
 
         # Load elf file to the L1 memory; avoid writing to private sections
         init_section_address: int | None = self.load_elf_sections(
-            elf_path, loader_data=".loader_init", loader_code=".loader_code", verify_write=verify_write
+            elf_file, loader_data=".loader_init", loader_code=".loader_code", verify_write=verify_write
         )
         assert init_section_address is not None, "No .init section found in the ELF file"
 
@@ -249,12 +216,12 @@ class ElfLoader:
             self.risc_debug.set_code_start_address(init_section_address)
             return None
 
-    def run_elf(self, elf_path: str | ParsedElfFile, verify_write: bool = True):
+    def run_elf(self, elf_file: ParsedElfFile, verify_write: bool = True):
         # Make sure risc is in reset
         if not self.risc_debug.is_in_reset():
             self.risc_debug.set_reset_signal(True)
 
-        self.load_elf(elf_path, verify_write=verify_write)
+        self.load_elf(elf_file, verify_write=verify_write)
 
         # Take risc out of reset
         self.risc_debug.set_reset_signal(False)
