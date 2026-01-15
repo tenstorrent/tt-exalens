@@ -134,7 +134,11 @@ class Device:
         self._init_coordinate_systems()
 
     @property
-    def local_device(self) -> "Device":
+    def board_type(self) -> tt_umd.BoardType:
+        return self._context.cluster_descriptor.get_board_type(self.id)
+
+    @cached_property
+    def local_device(self) -> Device:
         if self.is_local:
             return self
         local_tt_device = self._umd_device.get_local_tt_device()
@@ -142,10 +146,6 @@ class Device:
             if device.is_local and device._umd_device.get_local_tt_device() == local_tt_device:
                 return device
         raise RuntimeError("Local device not found in context devices")
-
-    @property
-    def board_type(self) -> tt_umd.BoardType:
-        return self._context.cluster_descriptor.get_board_type(self.id)
 
     @cached_property
     def firmware_version(self):
@@ -158,10 +158,7 @@ class Device:
     def remote_devices(self) -> list[Device]:
         assert self.is_local, "Only local devices can get remote devices"
         return [
-            device
-            for device in self._context.devices.values()
-            if not device.is_local
-            and self.id == self._context.cluster_descriptor.get_closest_mmio_capable_chip(device.id)
+            device for device in self._context.devices.values() if not device.is_local and device.local_device == self
         ]
 
     def noc_read(
