@@ -759,8 +759,8 @@ class TestSafeAccess(unittest.TestCase):
         memory_map = block.noc_memory_map
 
         block_info = memory_map.find_by_name(block_name)
-        self.assertIsNotNone(block_info, f"Block '{block_name}' not found in memory map")
-        self.assertIsNotNone(block_info.memory_block.address.noc_address, f"Block '{block_name}' must have NOC address")
+        assert block_info is not None
+        assert block_info.memory_block.address.noc_address is not None
 
         # Calculate address from block base + offset
         address = block_info.memory_block.address.noc_address + offset
@@ -794,7 +794,12 @@ class TestSafeAccess(unittest.TestCase):
         device = self.context.devices[0]
         coord = OnChipCoordinate.create(location, device)
         block = device.get_block(coord)
-        l1_size = block.l1.size
+        memory_map = block.noc_memory_map
+
+        l1_block_info = memory_map.find_by_name("l1")
+        assert l1_block_info is not None
+
+        l1_size = l1_block_info.memory_block.size
         # Start read near end of L1 (but within bounds)
         address = l1_size - num_bytes
 
@@ -825,8 +830,10 @@ class TestSafeAccess(unittest.TestCase):
         block1_info = memory_map.find_by_name(block1_name)
         block2_info = memory_map.find_by_name(block2_name)
 
-        self.assertIsNotNone(block1_info, f"Block '{block1_name}' not found")
-        self.assertIsNotNone(block2_info, f"Block '{block2_name}' not found")
+        assert block1_info is not None
+        assert block2_info is not None
+        assert block1_info.memory_block.address.noc_address is not None
+        assert block2_info.memory_block.address.noc_address is not None
 
         # Verify both blocks are readable
         self.assertTrue(block1_info.safe_to_read, f"Block '{block1_name}' must be readable")
@@ -871,8 +878,8 @@ class TestSafeAccess(unittest.TestCase):
         memory_map = block.noc_memory_map
 
         block_info = memory_map.find_by_name(block_name)
-        self.assertIsNotNone(block_info, f"Block '{block_name}' not found in memory map")
-        self.assertIsNotNone(block_info.memory_block.address.noc_address, f"Block '{block_name}' must have NOC address")
+        assert block_info is not None
+        assert block_info.memory_block.address.noc_address is not None
 
         # Calculate address near the end of the block so it extends past
         block_end = block_info.memory_block.address.noc_address + block_info.memory_block.size
@@ -919,8 +926,8 @@ class TestSafeAccess(unittest.TestCase):
         memory_map = block.noc_memory_map
 
         block_info = memory_map.find_by_name(block_name)
-        self.assertIsNotNone(block_info, f"Block '{block_name}' not found")
-        self.assertIsNotNone(block_info.memory_block.address.noc_address, f"Block '{block_name}' must have NOC address")
+        assert block_info is not None
+        assert block_info.memory_block.address.noc_address is not None
 
         # Verify block is read-only (safe_to_read=True, safe_to_write=False)
         self.assertTrue(block_info.safe_to_read, f"Block '{block_name}' should be readable")
@@ -1000,9 +1007,9 @@ class TestSafeAccess(unittest.TestCase):
         block_name = f"{risc_name}.data_private_memory"
         block_info = memory_map.find_by_name(block_name)
 
-        self.assertIsNotNone(block_info, f"Block '{block_name}' not found in NOC memory map")
-        self.assertIsNotNone(block_info.memory_block.address.noc_address, f"Block '{block_name}' must have NOC address")
-        self.assertIsNotNone(block_info.access_check, f"Block '{block_name}' must have access_check")
+        assert block_info is not None
+        assert block_info.memory_block.address.noc_address is not None
+        assert block_info.access_check is not None
 
         noc_address = block_info.memory_block.address.noc_address
 
@@ -1054,9 +1061,9 @@ class TestSafeAccess(unittest.TestCase):
         block_name = f"{risc_name}.data_private_memory"
         block_info = memory_map.find_by_name(block_name)
 
-        self.assertIsNotNone(block_info, f"Block '{block_name}' not found in NOC memory map")
-        self.assertIsNotNone(block_info.memory_block.address.noc_address, f"Block '{block_name}' must have NOC address")
-        self.assertIsNotNone(block_info.access_check, f"Block '{block_name}' must have access_check")
+        assert block_info is not None
+        assert block_info.memory_block.address.noc_address is not None
+        assert block_info.access_check is not None
 
         noc_address = block_info.memory_block.address.noc_address
 
@@ -1155,7 +1162,7 @@ class TestSafeAccess(unittest.TestCase):
             block = device.get_block(coord)
             memory_map = block.noc_memory_map
             block_info = memory_map.find_by_name(block_name)
-            self.assertIsNotNone(block_info, f"Block '{block_name}' not found")
+            assert block_info is not None
             address = block_info.memory_block.address.noc_address + address_or_offset
         else:
             # Unmapped region - use hardcoded address
@@ -1191,7 +1198,7 @@ class TestSafeAccess(unittest.TestCase):
             block = device.get_block(coord)
             memory_map = block.noc_memory_map
             block_info = memory_map.find_by_name(block_name)
-            self.assertIsNotNone(block_info, f"Block '{block_name}' not found")
+            assert block_info is not None
             address = block_info.memory_block.address.noc_address + address_or_offset
         else:
             # Unmapped region - use hardcoded address
@@ -1225,7 +1232,7 @@ class TestSafeAccess(unittest.TestCase):
             block = device.get_block(coord)
             memory_map = block.noc_memory_map
             block_info = memory_map.find_by_name(block_name)
-            self.assertIsNotNone(block_info, f"Block '{block_name}' not found")
+            assert block_info is not None
             address = block_info.memory_block.address.noc_address + address_or_offset
         else:
             # Unmapped region - use hardcoded address
