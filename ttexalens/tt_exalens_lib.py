@@ -104,7 +104,7 @@ def convert_coordinate(
     return location
 
 
-def _read_safe(location: OnChipCoordinate, addr: int, num_bytes: int, noc_id: int, use_4B_mode: bool = False) -> bytes:
+def read_safe(location: OnChipCoordinate, addr: int, num_bytes: int, noc_id: int, use_4B_mode: bool = False) -> bytes:
     """
     Reads num_bytes of data starting from address 'addr' at specified location using specified noc in safe mode.
 
@@ -182,7 +182,7 @@ def read_word_from_device(
     noc_id = check_noc_id(noc_id, coordinate.context)
 
     if safe_mode:
-        return int.from_bytes(_read_safe(coordinate, addr, 4, noc_id), byteorder="little")
+        return int.from_bytes(read_safe(coordinate, addr, 4, noc_id), byteorder="little")
 
     return coordinate.noc_read32(addr, noc_id)
 
@@ -222,7 +222,7 @@ def read_words_from_device(
         raise TTException("word_count must be greater than 0.")
 
     if safe_mode:
-        bytes_data = _read_safe(coordinate, addr, word_count * 4, noc_id, use_4B_mode)
+        bytes_data = read_safe(coordinate, addr, word_count * 4, noc_id, use_4B_mode)
     else:
         bytes_data = coordinate.noc_read(addr, 4 * word_count, noc_id, use_4B_mode)
 
@@ -264,7 +264,7 @@ def read_from_device(
         raise TTException("num_bytes must be greater than 0.")
 
     if safe_mode:
-        return _read_safe(coordinate, addr, num_bytes, noc_id, use_4B_mode)
+        return read_safe(coordinate, addr, num_bytes, noc_id, use_4B_mode)
 
     return coordinate.noc_read(addr, num_bytes, noc_id, use_4B_mode)
 

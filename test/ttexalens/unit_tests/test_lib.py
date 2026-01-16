@@ -725,6 +725,58 @@ class TestReadWrite(unittest.TestCase):
                 risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x11])
             )
 
+    @parameterized.expand(
+        [
+            ("0,0", 0xFFFFFFFF, 4),
+            ("0,0", 0xF0000000, 4),
+            ("1,0", 0xFFFFFFFF, 4),
+            ("1,0", 0xF0000000, 4),
+            ("0,0", 0xFFFFFFF0, 32),
+            ("1,0", 0xFFFFFFF0, 32),
+        ]
+    )
+    def test_safe_read_invalid_memory_regions(self, location, address, num_bytes):
+        """Test that safe_mode=True raises exceptions for invalid memory addresses."""
+        # Test with read_from_device
+        with self.assertRaises(util.TTException) as context:
+            lib.read_from_device(location, address, num_bytes=num_bytes, safe_mode=True, context=self.context)
+        # Verify the exception message mentions the address or memory block issue
+        self.assertTrue(
+            "not in a known memory block" in str(context.exception) or "not accessible" in str(context.exception)
+        )
+
+    @parameterized.expand(
+        [
+            ("0,0", 0xFFFFFFFC),
+            ("0,0", 0xF0000000),
+            ("1,0", 0xFFFFFFFC),
+            ("1,0", 0xF0000000),
+        ]
+    )
+    def test_safe_read_word_invalid_memory(self, location, address):
+        """Test that safe_mode=True raises exceptions for invalid memory addresses with read_word_from_device."""
+        with self.assertRaises(util.TTException) as context:
+            lib.read_word_from_device(location, address, safe_mode=True, context=self.context)
+        self.assertTrue(
+            "not in a known memory block" in str(context.exception) or "not accessible" in str(context.exception)
+        )
+
+    @parameterized.expand(
+        [
+            ("0,0", 0xFFFFFF00, 64),
+            ("0,0", 0xF0000000, 16),
+            ("1,0", 0xFFFFFF00, 64),
+            ("1,0", 0xF0000000, 16),
+        ]
+    )
+    def test_safe_read_words_invalid_memory(self, location, address, word_count):
+        """Test that safe_mode=True raises exceptions for invalid memory addresses with read_words_from_device."""
+        with self.assertRaises(util.TTException) as context:
+            lib.read_words_from_device(location, address, word_count=word_count, safe_mode=True, context=self.context)
+        self.assertTrue(
+            "not in a known memory block" in str(context.exception) or "not accessible" in str(context.exception)
+        )
+
 
 class TestRunElf(unittest.TestCase):
     context: Context
