@@ -13,6 +13,7 @@ from parameterized import parameterized, parameterized_class
 from test.ttexalens.unit_tests.test_base import get_parsed_elf_file, init_cached_test_context
 import ttexalens as lib
 from ttexalens import util
+from ttexalens.elf.parsed import ParsedElfFile
 from ttexalens.tt_exalens_lib import UnsafeAccessException
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -1646,15 +1647,26 @@ class TestCallStack(unittest.TestCase):
             if entry1.pc is not None and entry2.pc is not None:
                 self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
 
+    def set_recursion_count(self, elf: ParsedElfFile, count: int):
+        text_section = next((s for s in elf.sections if s.name == ".text"), None)
+        assert text_section is not None
+
+        address = text_section.address + text_section.size
+        lib.write_words_to_device(self.location, address, count)
+
     CALLSTACK_ELFS = ["callstack.debug", "callstack.release", "callstack.coverage"]
     RECURSION_COUNT = [1, 10, 40]
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack_with_parsing(self, elf_name: str, recursion_count: int):
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
+
+        mem_access = MemoryAccess.create(self.risc_debug)
+        x = parsed_elf.get_global("g_MAILBOX", mem_access)
+
         callstack: list[CallstackEntry] = lib.callstack(
             self.location, parsed_elf, None, self.risc_name, None, 100, True
         )
@@ -1673,9 +1685,9 @@ class TestCallStack(unittest.TestCase):
         # No need to test multiple versions here, they are tested in test_callstack_with_parsing. Here we just test that callstack works with elf path.
         elf_name = "callstack.release"
         recursion_count = 1
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
         self.assertEqual(len(callstack), recursion_count + 3)
@@ -1691,9 +1703,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_namespace(self, elf_name):
-        lib.write_words_to_device(self.location, 0x64000, 0)
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
             self.location, parsed_elf, None, self.risc_name, None, 100, True
@@ -1709,9 +1721,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(RECURSION_COUNT)
     def test_top_callstack_with_parsing(self, recursion_count: int):
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.debug")
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
@@ -1722,9 +1734,9 @@ class TestCallStack(unittest.TestCase):
     def test_top_callstack(self):
         # No need to test multiple versions here, they are tested in test_top_callstack_with_parsing. Here we just test that top_callstack works with elf path.
         recursion_count = 1
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.debug")
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
@@ -1734,9 +1746,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.release")
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
