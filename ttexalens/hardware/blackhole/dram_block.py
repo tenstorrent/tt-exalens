@@ -285,46 +285,81 @@ class BlackholeDramBlock(BlackholeNocBlock):
 
         self.noc_memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("dram_bank", self.dram_bank),
-                MemoryMapBlockInfo("l1", self.l1.just_noc_address()),
-                MemoryMapBlockInfo("tx_stream0_regs", self.tx_stream0_regs.just_noc_address()),
-                MemoryMapBlockInfo("tx_stream1_regs", self.tx_stream1_regs.just_noc_address()),
-                MemoryMapBlockInfo("tx_control_regs", self.tx_control_regs.just_noc_address()),
-                MemoryMapBlockInfo("gddr_mc_regs", self.gddr_mc_regs.just_noc_address()),
-                MemoryMapBlockInfo("gddr_control_regs", self.gddr_control_regs.just_noc_address()),
-                MemoryMapBlockInfo("ictrl_regs", self.ictrl_regs.just_noc_address()),
-                MemoryMapBlockInfo("gddr_xbar0_regs", self.gddr_xbar0_regs.just_noc_address()),
-                MemoryMapBlockInfo("gddr_xbar1_regs", self.gddr_xbar1_regs.just_noc_address()),
-                MemoryMapBlockInfo("gddr_xbar2_regs", self.gddr_xbar2_regs.just_noc_address()),
-                MemoryMapBlockInfo("gddr_phy_regs", self.gddr_phy_regs.just_noc_address()),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs.just_noc_address()),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs.just_noc_address()),
-                MemoryMapBlockInfo("control_regs", self.control_regs.just_noc_address()),
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs.just_noc_address()),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs.just_noc_address()),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay.just_noc_address()),
+                MemoryMapBlockInfo("dram_bank", self.dram_bank, safe_to_read=True, safe_to_write=True),
+                MemoryMapBlockInfo("l1", self.l1.just_noc_address(), safe_to_read=True, safe_to_write=True),
+                MemoryMapBlockInfo(
+                    "tx_stream0_regs", self.tx_stream0_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "tx_stream1_regs", self.tx_stream1_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "tx_control_regs", self.tx_control_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "gddr_mc_regs", self.gddr_mc_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "gddr_control_regs",
+                    self.gddr_control_regs.just_noc_address(),
+                    safe_to_read=True,
+                    safe_to_write=False,
+                ),
+                MemoryMapBlockInfo(
+                    "ictrl_regs", self.ictrl_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "gddr_xbar0_regs", self.gddr_xbar0_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "gddr_xbar1_regs", self.gddr_xbar1_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "gddr_xbar2_regs", self.gddr_xbar2_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "gddr_phy_regs", self.gddr_phy_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "debug_regs", self.debug_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "pic_regs", self.pic_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "control_regs", self.control_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "noc0_regs", self.noc0_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "noc1_regs", self.noc1_regs.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo(
+                    "noc_overlay", self.noc_overlay.just_noc_address(), safe_to_read=True, safe_to_write=False
+                ),
             ]
         )
 
         self.drisc.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1),
-                MemoryMapBlockInfo("tx_stream0_regs", self.tx_stream0_regs),
-                MemoryMapBlockInfo("tx_stream1_regs", self.tx_stream1_regs),
-                MemoryMapBlockInfo("tx_control_regs", self.tx_control_regs),
-                MemoryMapBlockInfo("gddr_mc_regs", self.gddr_mc_regs),
-                MemoryMapBlockInfo("gddr_control_regs", self.gddr_control_regs),
-                MemoryMapBlockInfo("ictrl_regs", self.ictrl_regs),
-                MemoryMapBlockInfo("gddr_xbar0_regs", self.gddr_xbar0_regs),
-                MemoryMapBlockInfo("gddr_xbar1_regs", self.gddr_xbar1_regs),
-                MemoryMapBlockInfo("gddr_xbar2_regs", self.gddr_xbar2_regs),
-                MemoryMapBlockInfo("gddr_phy_regs", self.gddr_phy_regs),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs),
-                MemoryMapBlockInfo("control_regs", self.control_regs),
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
+                MemoryMapBlockInfo("tx_stream0_regs", self.tx_stream0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("tx_stream1_regs", self.tx_stream1_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("tx_control_regs", self.tx_control_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("gddr_mc_regs", self.gddr_mc_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("gddr_control_regs", self.gddr_control_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("ictrl_regs", self.ictrl_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("gddr_xbar0_regs", self.gddr_xbar0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("gddr_xbar1_regs", self.gddr_xbar1_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("gddr_xbar2_regs", self.gddr_xbar2_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("gddr_phy_regs", self.gddr_phy_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("control_regs", self.control_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
             ]
         )
 

@@ -268,54 +268,60 @@ class BlackholeEthBlock(BlackholeNocBlock):
 
         self.noc_memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs),
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
-                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
-                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
-                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
-                MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
-                MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
-                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo(
+                    "eth_tx_header_table", self.eth_tx_header_table, safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs, safe_to_read=True, safe_to_write=False),
             ]
         )
 
         self.erisc0.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1),
-                MemoryMapBlockInfo("data_private_memory", self.erisc0.data_private_memory),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("debug_regs", self.debug_regs),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs),
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
-                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
-                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
-                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
-                MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
-                MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
-                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.erisc0.data_private_memory, safe_to_read=True, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo(
+                    "eth_tx_header_table", self.eth_tx_header_table, safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs, safe_to_read=True, safe_to_write=False),
             ]
         )
 
         self.erisc1.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1),
-                MemoryMapBlockInfo("data_private_memory", self.erisc1.data_private_memory),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("debug_regs", self.debug_regs),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs),
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
-                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
-                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
-                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
-                MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
-                MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
-                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.erisc1.data_private_memory, safe_to_read=True, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo(
+                    "eth_tx_header_table", self.eth_tx_header_table, safe_to_read=True, safe_to_write=False
+                ),
+                MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs, safe_to_read=True, safe_to_write=False),
             ]
         )
 

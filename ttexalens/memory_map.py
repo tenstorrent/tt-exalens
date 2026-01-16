@@ -13,6 +13,8 @@ from intervaltree import Interval, IntervalTree
 class MemoryMapBlockInfo:
     name: str
     memory_block: MemoryBlock
+    safe_to_read: bool
+    safe_to_write: bool
     access_check: Callable[[], bool] | None = None
 
     @property
