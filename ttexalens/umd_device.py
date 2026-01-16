@@ -11,22 +11,20 @@ import tt_umd
 
 
 class TimeoutDeviceRegisterError(Exception):
-    def __init__(
-        self, chip_id: int, coord: tt_umd.CoreCoord, address: int, size: int, is_read: bool, duration_us: float
-    ):
+    def __init__(self, chip_id: int, coord: tt_umd.CoreCoord, address: int, size: int, is_read: bool, duration: float):
         self.chip_id = chip_id
         self.coord = coord
         self.address = address
         self.size = size
         self.is_read = is_read
-        self.duration_us = duration_us
+        self.duration = duration
 
     def __str__(self):
         operation = "read" if self.is_read else "write"
         return (
             f"TimeoutDeviceRegisterError: Timeout during {operation} operation on device {self.chip_id}, "
             f"coord ({self.coord.x}, {self.coord.y}, {self.coord.core_type}), address {hex(self.address)}, "
-            f"size {self.size} bytes after {self.duration_us:.2f} us."
+            f"size {self.size} bytes after {self.duration:.4f} seconds."
         )
 
 
@@ -205,7 +203,7 @@ class UmdDevice:
         coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
         try:
             return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode, dma_threshold)
-        except TimeoutDeviceRegisterError as e:
+        except TimeoutDeviceRegisterError:
             raise
         except:
             if self._is_simulation or self._is_mmio_capable:
@@ -263,7 +261,7 @@ class UmdDevice:
         coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
         try:
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
-        except TimeoutDeviceRegisterError as e:
+        except TimeoutDeviceRegisterError:
             raise
         except:
             if self._is_simulation or self._is_mmio_capable:
