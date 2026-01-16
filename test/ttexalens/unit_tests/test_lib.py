@@ -13,6 +13,8 @@ from parameterized import parameterized, parameterized_class
 from test.ttexalens.unit_tests.test_base import get_parsed_elf_file, init_cached_test_context
 import ttexalens as lib
 from ttexalens import util
+from ttexalens.elf.parsed import ParsedElfFile
+from ttexalens.tt_exalens_lib import UnsafeAccessException
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
@@ -726,6 +728,533 @@ class TestReadWrite(unittest.TestCase):
             )
 
 
+class TestSafeAccess(unittest.TestCase):
+    context: Context
+
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_cached_test_context()
+
+    def setUp(self):
+        self.assertIsNotNone(self.context)
+        self.assertIsInstance(self.context, Context)
+
+    @parameterized.expand(
+        [
+            # Test different block types with different access patterns
+            ("0,0", "l1", 0x100, 256, False),  # Read from L1
+            ("1,0", "l1", 0x1000, 1024, False),  # Read larger chunk from L1
+            ("0,0", "l1", 0x100, 256, True),  # Write to L1
+            ("1,0", "l1", 0x1000, 1024, True),  # Write larger chunk to L1
+            ("0,0", "debug_regs", 0x000, 64, False),  # Read from debug regs start
+            ("1,0", "debug_regs", 0x100, 256, False),  # Read from debug regs middle
+            ("0,0", "debug_regs", 0xF00, 256, False),  # Read from debug regs near end
+        ]
+    )
+    def test_safe_access_fully_inside_allowed_region(self, location, block_name, offset, num_bytes, is_write):
+        """Test that operations fully inside allowed regions succeed with safe_mode=True."""
+        # Query the actual block from the device's memory map
+        device = self.context.devices[0]
+        coord = OnChipCoordinate.create(location, device)
+        block = device.get_block(coord)
+        memory_map = block.noc_memory_map
+
+        block_info = memory_map.find_by_name(block_name)
+        assert block_info is not None
+        assert block_info.memory_block.address.noc_address is not None
+
+        # Calculate address from block base + offset
+        address = block_info.memory_block.address.noc_address + offset
+
+        # Verify the operation is within bounds
+        block_end = block_info.memory_block.address.noc_address + block_info.memory_block.size
+        self.assertLessEqual(address + num_bytes, block_end, f"Test operation exceeds block '{block_name}' boundary")
+
+        if is_write:
+            # Verify block is writable
+            self.assertTrue(block_info.safe_to_write, f"Block '{block_name}' should be writable for this test")
+            data = bytes([i % 256 for i in range(num_bytes)])
+            # Should not raise exception
+            lib.write_to_device(location, address, data, safe_mode=True, context=self.context)
+        else:
+            # Verify block is readable
+            self.assertTrue(block_info.safe_to_read, f"Block '{block_name}' should be readable for this test")
+            # Should not raise exception
+            result = lib.read_from_device(location, address, num_bytes=num_bytes, safe_mode=True, context=self.context)
+            self.assertEqual(len(result), num_bytes)
+
+    @parameterized.expand(
+        [
+            ("0,0", 256, False),  # Read near end of L1
+            ("1,0", 512, False),  # Read near end of L1 (larger)
+        ]
+    )
+    def test_safe_access_spanning_within_same_allowed_region(self, location, num_bytes, is_write):
+        """Test operations that span addresses within the same allowed region."""
+        # Dynamically get L1 size for this architecture
+        device = self.context.devices[0]
+        coord = OnChipCoordinate.create(location, device)
+        block = device.get_block(coord)
+        memory_map = block.noc_memory_map
+
+        l1_block_info = memory_map.find_by_name("l1")
+        assert l1_block_info is not None
+
+        l1_size = l1_block_info.memory_block.size
+        # Start read near end of L1 (but within bounds)
+        address = l1_size - num_bytes
+
+        if is_write:
+            data = bytes([i % 256 for i in range(num_bytes)])
+            lib.write_to_device(location, address, data, safe_mode=True, context=self.context)
+        else:
+            result = lib.read_from_device(location, address, num_bytes=num_bytes, safe_mode=True, context=self.context)
+            self.assertEqual(len(result), num_bytes)
+
+    @parameterized.expand(
+        [
+            # Span from one read-only region to another adjacent read-only region
+            ("0,0", "tdma_regs", "debug_regs", 0x200),  # Span TDMA -> Debug
+            ("1,0", "tdma_regs", "debug_regs", 0x180),  # Span TDMA -> Debug (smaller)
+            ("0,0", "debug_regs", "pic_regs", 0x200),  # Span Debug -> PIC
+            ("1,0", "debug_regs", "pic_regs", 0x180),  # Span Debug -> PIC (smaller)
+        ]
+    )
+    def test_safe_access_spanning_two_allowed_regions(self, location, block1_name, block2_name, num_bytes):
+        """Test read operations that span across two adjacent allowed regions with same permissions."""
+        # Query the actual blocks from the device's memory map
+        device = self.context.devices[0]
+        coord = OnChipCoordinate.create(location, device)
+        block = device.get_block(coord)
+        memory_map = block.noc_memory_map
+
+        block1_info = memory_map.find_by_name(block1_name)
+        block2_info = memory_map.find_by_name(block2_name)
+
+        assert block1_info is not None
+        assert block2_info is not None
+        assert block1_info.memory_block.address.noc_address is not None
+        assert block2_info.memory_block.address.noc_address is not None
+
+        # Verify both blocks are readable
+        self.assertTrue(block1_info.safe_to_read, f"Block '{block1_name}' must be readable")
+        self.assertTrue(block2_info.safe_to_read, f"Block '{block2_name}' must be readable")
+
+        # Calculate start address near end of first block
+        block1_end = block1_info.memory_block.address.noc_address + block1_info.memory_block.size
+        start_address = block1_end - (num_bytes // 2)
+
+        # Verify that the read will actually span both blocks
+        end_address = start_address + num_bytes
+        block2_start = block2_info.memory_block.address.noc_address
+        self.assertLess(start_address, block1_end, "Read should start in first block")
+        self.assertGreater(end_address, block2_start, "Read should extend into second block")
+
+        # This tests the validate function's ability to validate across multiple memory blocks
+        result = lib.read_from_device(
+            location, start_address, num_bytes=num_bytes, safe_mode=True, context=self.context
+        )
+        self.assertEqual(len(result), num_bytes)
+
+    @parameterized.expand(
+        [
+            # Read/write starting in L1 but extending past its end into unmapped space
+            ("0,0", "l1", 0x200, False),  # Starts in L1, extends past end
+            ("1,0", "l1", 0x300, False),  # Starts in L1, extends further past end
+            ("0,0", "l1", 0x200, True),  # Write starts in L1, extends past end
+            ("1,0", "l1", 0x300, True),  # Write starts in L1, extends further past end
+            # Read starting in read-only register region but extending into unmapped gap
+            ("0,0", "pic_regs", 0x200, False),  # Starts in PIC regs, extends into gap
+            ("1,0", "pic_regs", 0x300, False),  # Starts in PIC regs, extends further into gap
+            # Write starting in read-only region extending past into unmapped gap
+            ("0,0", "noc0_regs", 0x200, True),  # Write starting in NOC0 regs extending past
+        ]
+    )
+    def test_safe_access_partially_outside_allowed_region(self, location, block_name, num_bytes, is_write):
+        """Test that operations partially outside allowed regions raise UnsafeAccessException."""
+        # Query the actual block from the device's memory map
+        device = self.context.devices[0]
+        coord = OnChipCoordinate.create(location, device)
+        block = device.get_block(coord)
+        memory_map = block.noc_memory_map
+
+        block_info = memory_map.find_by_name(block_name)
+        assert block_info is not None
+        assert block_info.memory_block.address.noc_address is not None
+
+        # Calculate address near the end of the block so it extends past
+        block_end = block_info.memory_block.address.noc_address + block_info.memory_block.size
+        address = block_end - (num_bytes // 2)
+
+        # Verify that this operation will actually extend past the block boundary
+        self.assertGreater(
+            address + num_bytes, block_end, f"Test operation should extend past block '{block_name}' boundary"
+        )
+
+        # Also verify there's actually an issue (either unmapped or next block doesn't allow this operation)
+        # This ensures we're testing the right thing
+
+        with self.assertRaises(UnsafeAccessException):
+            if is_write:
+                data = bytes([i % 256 for i in range(num_bytes)])
+                lib.write_to_device(location, address, data, safe_mode=True, context=self.context)
+            else:
+                lib.read_from_device(location, address, num_bytes=num_bytes, safe_mode=True, context=self.context)
+
+    @parameterized.expand(
+        [
+            # Try to write to various read-only register regions
+            ("0,0", "tdma_regs", 0x000, 64),  # Write to TDMA regs start
+            ("1,0", "tdma_regs", 0x100, 256),  # Write to TDMA regs middle
+            ("0,0", "debug_regs", 0x000, 64),  # Write to debug regs start
+            ("1,0", "debug_regs", 0x500, 128),  # Write to debug regs middle
+            ("0,0", "pic_regs", 0x000, 64),  # Write to PIC regs start
+            ("1,0", "pic_regs", 0x800, 256),  # Write to PIC regs middle
+            ("0,0", "noc0_regs", 0x000, 64),  # Write to NOC0 regs start
+            ("1,0", "noc0_regs", 0x5000, 512),  # Write to NOC0 regs middle
+            ("0,0", "noc1_regs", 0x000, 64),  # Write to NOC1 regs start
+            ("1,0", "noc1_regs", 0x8000, 256),  # Write to NOC1 regs middle
+            ("0,0", "noc_overlay", 0x000, 128),  # Write to NOC overlay start
+            ("1,0", "noc_overlay", 0x10000, 512),  # Write to NOC overlay middle
+        ]
+    )
+    def test_safe_access_write_to_read_only_region(self, location, block_name, offset, num_bytes):
+        """Test that write operations to read-only regions raise UnsafeAccessException."""
+        # Query the actual block from the device's memory map
+        device = self.context.devices[0]
+        coord = OnChipCoordinate.create(location, device)
+        block = device.get_block(coord)
+        memory_map = block.noc_memory_map
+
+        block_info = memory_map.find_by_name(block_name)
+        assert block_info is not None
+        assert block_info.memory_block.address.noc_address is not None
+
+        # Verify block is read-only (safe_to_read=True, safe_to_write=False)
+        self.assertTrue(block_info.safe_to_read, f"Block '{block_name}' should be readable")
+        self.assertFalse(block_info.safe_to_write, f"Block '{block_name}' should NOT be writable")
+
+        # Calculate address from block base + offset
+        address = block_info.memory_block.address.noc_address + offset
+
+        # Verify the operation is within bounds
+        block_end = block_info.memory_block.address.noc_address + block_info.memory_block.size
+        self.assertLessEqual(address + num_bytes, block_end, f"Test operation exceeds block '{block_name}' boundary")
+
+        with self.assertRaises(UnsafeAccessException):
+            data = bytes([i % 256 for i in range(num_bytes)])
+            lib.write_to_device(location, address, data, safe_mode=True, context=self.context)
+
+    @parameterized.expand(
+        [
+            # Completely unmapped high addresses
+            ("0,0", 0xF0000000, 4, False),  # Read from unmapped high address
+            ("1,0", 0xF0000000, 64, False),  # Read larger chunk from unmapped
+            ("0,0", 0xF0000000, 4, True),  # Write to unmapped high address
+            ("1,0", 0xF0000000, 64, True),  # Write larger chunk to unmapped
+            # Unmapped addresses in middle range
+            ("0,0", 0x80000000, 4, False),  # Read from unmapped middle
+            ("1,0", 0x80000000, 256, False),  # Read larger from unmapped middle
+            ("0,0", 0x80000000, 4, True),  # Write to unmapped middle
+            ("1,0", 0x80000000, 256, True),  # Write larger to unmapped middle
+            # Very high addresses (near max)
+            ("0,0", 0xFFFFFF00, 4, False),  # Read from very high address
+            ("1,0", 0xFFFFFFFC, 4, False),  # Read from near-max address
+            ("0,0", 0xFFFFFF00, 4, True),  # Write to very high address
+            ("1,0", 0xFFFFFFFC, 4, True),  # Write to near-max address
+            # Unmapped gap between memory regions
+            # Gap between L1 (arch-dependent size: Wormhole ~1.4MB, Blackhole ~1.5MB, Quasar 4MB)
+            # and BRISC private memory (starts at 0xFFB00000)
+            ("0,0", 0x200000, 64, False),  # Read from gap
+            ("1,0", 0x500000, 256, False),  # Read from different gap location
+            ("0,0", 0x200000, 64, True),  # Write to gap
+            ("1,0", 0x500000, 256, True),  # Write to different gap location
+        ]
+    )
+    def test_safe_access_unmapped_region(self, location, address, num_bytes, is_write):
+        """Test that operations in unmapped regions raise UnsafeAccessException."""
+        with self.assertRaises(UnsafeAccessException):
+            if is_write:
+                data = bytes([i % 256 for i in range(num_bytes)])
+                lib.write_to_device(location, address, data, safe_mode=True, context=self.context)
+            else:
+                lib.read_from_device(location, address, num_bytes=num_bytes, safe_mode=True, context=self.context)
+
+    @parameterized.expand(
+        [
+            ("0,0", "brisc"),
+            ("1,0", "brisc"),
+            ("0,0", "ncrisc"),
+            ("1,0", "ncrisc"),
+            ("0,0", "trisc0"),
+            ("1,0", "trisc0"),
+        ]
+    )
+    def test_safe_access_risc_in_reset_blocks_private_memory(self, location, risc_name):
+        """Test that accessing RISC private memory while RISC is in reset raises UnsafeAccessException."""
+        device = self.context.devices[0]
+
+        # Only run on devices where private memory is accessible via NOC and has access_check
+        # (Currently only Blackhole)
+        if not device.is_blackhole():
+            self.skipTest("Test requires architecture where private memory is accessible via NOC with access_check")
+
+        coord = OnChipCoordinate.create(location, device)
+        block = device.get_block(coord)
+        risc_debug = block.get_risc_debug(risc_name)
+
+        # Find the private memory block in the NOC memory map
+        memory_map = block.noc_memory_map
+        block_name = f"{risc_name}.data_private_memory"
+        block_info = memory_map.find_by_name(block_name)
+
+        assert block_info is not None
+        assert block_info.memory_block.address.noc_address is not None
+        assert block_info.access_check is not None
+
+        noc_address = block_info.memory_block.address.noc_address
+
+        # Store original reset state
+        original_reset_state = risc_debug.is_in_reset()
+
+        try:
+            # Put RISC in reset
+            risc_debug.set_reset_signal(True)
+            self.assertTrue(risc_debug.is_in_reset())
+
+            # Verify access_check now returns False (block is not accessible)
+            self.assertFalse(block_info.is_accessible, "Private memory should NOT be accessible when RISC is in reset")
+
+            # Try to read from private memory - should fail because RISC is in reset
+            with self.assertRaises(UnsafeAccessException):
+                lib.read_from_device(location, noc_address, num_bytes=64, safe_mode=True, context=self.context)
+
+            # Try to write to private memory - should also fail
+            with self.assertRaises(UnsafeAccessException):
+                data = bytes([0xAB] * 64)
+                lib.write_to_device(location, noc_address, data, safe_mode=True, context=self.context)
+
+        finally:
+            # Restore original reset state
+            risc_debug.set_reset_signal(original_reset_state)
+
+    @parameterized.expand(
+        [
+            ("0,0", "brisc"),
+            ("1,0", "trisc0"),
+        ]
+    )
+    def test_safe_access_risc_not_in_reset_allows_private_memory(self, location, risc_name):
+        """Test that accessing RISC private memory while RISC is NOT in reset succeeds."""
+        device = self.context.devices[0]
+
+        # Only run on devices where private memory is accessible via NOC and has access_check
+        # (Currently only Blackhole)
+        if not device.is_blackhole():
+            self.skipTest("Test requires architecture where private memory is accessible via NOC with access_check")
+
+        coord = OnChipCoordinate.create(location, device)
+        block = device.get_block(coord)
+        risc_debug = block.get_risc_debug(risc_name)
+
+        # Find the private memory block in the NOC memory map
+        memory_map = block.noc_memory_map
+        block_name = f"{risc_name}.data_private_memory"
+        block_info = memory_map.find_by_name(block_name)
+
+        assert block_info is not None
+        assert block_info.memory_block.address.noc_address is not None
+        assert block_info.access_check is not None
+
+        noc_address = block_info.memory_block.address.noc_address
+
+        # Store original reset state
+        original_reset_state = risc_debug.is_in_reset()
+
+        try:
+            # Ensure RISC is NOT in reset
+            risc_debug.set_reset_signal(False)
+            self.assertFalse(risc_debug.is_in_reset())
+
+            # Verify access_check now returns True (block is accessible)
+            self.assertTrue(block_info.is_accessible, "Private memory should be accessible when RISC is NOT in reset")
+
+            # Read from private memory - should succeed because RISC is not in reset
+            result = lib.read_from_device(location, noc_address, num_bytes=64, safe_mode=True, context=self.context)
+            self.assertEqual(len(result), 64)
+
+            # Write to private memory - should also succeed
+            data = bytes([i % 256 for i in range(64)])
+            lib.write_to_device(location, noc_address, data, safe_mode=True, context=self.context)
+
+            # Read back to verify
+            result = lib.read_from_device(location, noc_address, num_bytes=64, context=self.context)
+            self.assertEqual(result, data)
+
+        finally:
+            # Restore original reset state
+            risc_debug.set_reset_signal(original_reset_state)
+
+    def test_blackhole_specific_riscv_pcs_read(self):
+        """Test reading from Blackhole-specific riscv_pcs region (PC snapshot buffer)."""
+        # Only run on Blackhole devices
+        device = self.context.devices[0]
+        if not device.is_blackhole():
+            self.skipTest("Blackhole-specific test")
+
+        # riscv_pcs: Read-only region
+        location = "0,0"
+        address = 0xFFB18000  # RISCV PCS region on Blackhole
+        num_bytes = 64
+
+        # Read should succeed
+        result = lib.read_from_device(location, address, num_bytes=num_bytes, safe_mode=True, context=self.context)
+        self.assertEqual(len(result), num_bytes)
+
+    def test_blackhole_specific_riscv_pcs_write_fails(self):
+        """Test that writing to Blackhole-specific riscv_pcs region fails."""
+        # Only run on Blackhole devices
+        device = self.context.devices[0]
+        if not device.is_blackhole():
+            self.skipTest("Blackhole-specific test")
+
+        # riscv_pcs: Read-only region
+        location = "0,0"
+        address = 0xFFB18000  # RISCV PCS region on Blackhole
+        num_bytes = 64
+        data = bytes([0xFF] * num_bytes)
+
+        # Write should fail
+        with self.assertRaises(UnsafeAccessException):
+            lib.write_to_device(location, address, data, safe_mode=True, context=self.context)
+
+    def test_blackhole_specific_dest_buffer_read(self):
+        """Test reading from Blackhole-specific dest region (debug destination buffer)."""
+        # Only run on Blackhole devices
+        device = self.context.devices[0]
+        if not device.is_blackhole():
+            self.skipTest("Blackhole-specific test")
+
+        # dest buffer: Read-only region
+        location = "0,0"
+        address = 0xFFB1C000  # DEST buffer region on Blackhole
+        num_bytes = 64
+
+        # Read should succeed
+        result = lib.read_from_device(location, address, num_bytes=num_bytes, safe_mode=True, context=self.context)
+        self.assertEqual(len(result), num_bytes)
+
+    @parameterized.expand(
+        [
+            # Read words from allowed region
+            ("0,0", "l1", 0x100, 16, False),  # Read 16 words from L1
+            ("1,0", "l1", 0x1000, 64, False),  # Read 64 words from L1
+            # Read words from unmapped region (keep hardcoded for unmapped tests)
+            ("0,0", None, 0xF0000000, 16, True),  # Read words from unmapped
+            ("1,0", None, 0xFFFFFF00, 4, True),  # Read words from very high address
+        ]
+    )
+    def test_safe_access_read_words(self, location, block_name, address_or_offset, word_count, should_fail):
+        """Test read_words_from_device with safe_mode=True."""
+        # Calculate actual address
+        if block_name is not None:
+            device = self.context.devices[0]
+            coord = OnChipCoordinate.create(location, device)
+            block = device.get_block(coord)
+            memory_map = block.noc_memory_map
+            block_info = memory_map.find_by_name(block_name)
+            assert block_info is not None
+            address = block_info.memory_block.address.noc_address + address_or_offset
+        else:
+            # Unmapped region - use hardcoded address
+            address = address_or_offset
+
+        if should_fail:
+            with self.assertRaises(UnsafeAccessException):
+                lib.read_words_from_device(
+                    location, address, word_count=word_count, safe_mode=True, context=self.context
+                )
+        else:
+            result = lib.read_words_from_device(
+                location, address, word_count=word_count, safe_mode=True, context=self.context
+            )
+            self.assertEqual(len(result), word_count)
+
+    @parameterized.expand(
+        [
+            # Read single word from allowed region
+            ("0,0", "l1", 0x100, False),  # Read word from L1
+            ("1,0", "l1", 0x1000, False),  # Read word from L1
+            # Read single word from unmapped region (keep hardcoded for unmapped tests)
+            ("0,0", None, 0xF0000000, True),  # Read word from unmapped
+            ("1,0", None, 0xFFFFFFFC, True),  # Read word from very high address
+        ]
+    )
+    def test_safe_access_read_word(self, location, block_name, address_or_offset, should_fail):
+        """Test read_word_from_device with safe_mode=True."""
+        # Calculate actual address
+        if block_name is not None:
+            device = self.context.devices[0]
+            coord = OnChipCoordinate.create(location, device)
+            block = device.get_block(coord)
+            memory_map = block.noc_memory_map
+            block_info = memory_map.find_by_name(block_name)
+            assert block_info is not None
+            address = block_info.memory_block.address.noc_address + address_or_offset
+        else:
+            # Unmapped region - use hardcoded address
+            address = address_or_offset
+
+        if should_fail:
+            with self.assertRaises(UnsafeAccessException):
+                lib.read_word_from_device(location, address, safe_mode=True, context=self.context)
+        else:
+            result = lib.read_word_from_device(location, address, safe_mode=True, context=self.context)
+            self.assertIsInstance(result, int)
+
+    @parameterized.expand(
+        [
+            # Write words to allowed region
+            ("0,0", "l1", 0x100, [0x12345678, 0xABCDEF00], False),  # Write words to L1
+            ("1,0", "l1", 0x1000, [0x11111111, 0x22222222, 0x33333333], False),  # Write multiple words to L1
+            # Write words to read-only region
+            ("0,0", "debug_regs", 0x000, [0x12345678], True),  # Write word to debug regs (read-only)
+            ("1,0", "noc0_regs", 0x000, [0x11111111, 0x22222222], True),  # Write words to NOC0 regs (read-only)
+            # Write words to unmapped region (keep hardcoded for unmapped tests)
+            ("0,0", None, 0xF0000000, [0xDEADBEEF], True),  # Write word to unmapped
+        ]
+    )
+    def test_safe_access_write_words(self, location, block_name, address_or_offset, data, should_fail):
+        """Test write_words_to_device with safe_mode=True."""
+        # Calculate actual address
+        if block_name is not None:
+            device = self.context.devices[0]
+            coord = OnChipCoordinate.create(location, device)
+            block = device.get_block(coord)
+            memory_map = block.noc_memory_map
+            block_info = memory_map.find_by_name(block_name)
+            assert block_info is not None
+            address = block_info.memory_block.address.noc_address + address_or_offset
+        else:
+            # Unmapped region - use hardcoded address
+            address = address_or_offset
+
+        if should_fail:
+            with self.assertRaises(UnsafeAccessException):
+                lib.write_words_to_device(location, address, data, safe_mode=True, context=self.context)
+        else:
+            # Should not raise exception
+            lib.write_words_to_device(location, address, data, safe_mode=True, context=self.context)
+            # Verify by reading back
+            result = lib.read_words_from_device(
+                location, address, word_count=len(data) if isinstance(data, list) else 1, context=self.context
+            )
+            if isinstance(data, list):
+                self.assertEqual(result, data)
+            else:
+                self.assertEqual(result[0], data)
+
+
 class TestRunElf(unittest.TestCase):
     context: Context
     device: Device
@@ -1118,15 +1647,26 @@ class TestCallStack(unittest.TestCase):
             if entry1.pc is not None and entry2.pc is not None:
                 self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
 
+    def set_recursion_count(self, elf: ParsedElfFile, count: int):
+        text_section = next((s for s in elf.sections if s.name == ".text"), None)
+        assert text_section is not None
+
+        address = text_section.address + text_section.size
+        lib.write_words_to_device(self.location, address, count)
+
     CALLSTACK_ELFS = ["callstack.debug", "callstack.release", "callstack.coverage"]
     RECURSION_COUNT = [1, 10, 40]
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack_with_parsing(self, elf_name: str, recursion_count: int):
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
+
+        mem_access = MemoryAccess.create(self.risc_debug)
+        x = parsed_elf.get_global("g_MAILBOX", mem_access)
+
         callstack: list[CallstackEntry] = lib.callstack(
             self.location, parsed_elf, None, self.risc_name, None, 100, True
         )
@@ -1145,9 +1685,9 @@ class TestCallStack(unittest.TestCase):
         # No need to test multiple versions here, they are tested in test_callstack_with_parsing. Here we just test that callstack works with elf path.
         elf_name = "callstack.release"
         recursion_count = 1
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
         self.assertEqual(len(callstack), recursion_count + 3)
@@ -1163,9 +1703,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_namespace(self, elf_name):
-        lib.write_words_to_device(self.location, 0x64000, 0)
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
             self.location, parsed_elf, None, self.risc_name, None, 100, True
@@ -1181,9 +1721,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(RECURSION_COUNT)
     def test_top_callstack_with_parsing(self, recursion_count: int):
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.debug")
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
@@ -1194,9 +1734,9 @@ class TestCallStack(unittest.TestCase):
     def test_top_callstack(self):
         # No need to test multiple versions here, they are tested in test_top_callstack_with_parsing. Here we just test that top_callstack works with elf path.
         recursion_count = 1
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.debug")
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
@@ -1206,9 +1746,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.release")
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
