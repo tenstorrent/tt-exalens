@@ -253,7 +253,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.brisc.data_private_memory, safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
@@ -327,7 +327,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc0.data_private_memory, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
@@ -390,7 +390,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc1.data_private_memory, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
@@ -453,7 +453,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),

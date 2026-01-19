@@ -772,13 +772,18 @@ class TestSafeAccess(unittest.TestCase):
 
         if is_write:
             # Verify block is writable
-            self.assertTrue(block_info.safe_to_write, f"Block '{block_name}' should be writable for this test")
+            self.assertTrue(
+                block_info.is_safe_to_write(address, num_bytes),
+                f"Block '{block_name}' should be writable for this test",
+            )
             data = bytes([i % 256 for i in range(num_bytes)])
             # Should not raise exception
             lib.write_to_device(location, address, data, safe_mode=True, context=self.context)
         else:
             # Verify block is readable
-            self.assertTrue(block_info.safe_to_read, f"Block '{block_name}' should be readable for this test")
+            self.assertTrue(
+                block_info.is_safe_to_read(address, num_bytes), f"Block '{block_name}' should be readable for this test"
+            )
             # Should not raise exception
             result = lib.read_from_device(location, address, num_bytes=num_bytes, safe_mode=True, context=self.context)
             self.assertEqual(len(result), num_bytes)
@@ -814,8 +819,6 @@ class TestSafeAccess(unittest.TestCase):
     @parameterized.expand(
         [
             # Span from one read-only region to another adjacent read-only region
-            ("0,0", "tdma_regs", "debug_regs", 0x200),  # Span TDMA -> Debug
-            ("1,0", "tdma_regs", "debug_regs", 0x180),  # Span TDMA -> Debug (smaller)
             ("0,0", "debug_regs", "pic_regs", 0x200),  # Span Debug -> PIC
             ("1,0", "debug_regs", "pic_regs", 0x180),  # Span Debug -> PIC (smaller)
         ]
@@ -836,13 +839,18 @@ class TestSafeAccess(unittest.TestCase):
         assert block1_info.memory_block.address.noc_address is not None
         assert block2_info.memory_block.address.noc_address is not None
 
-        # Verify both blocks are readable
-        self.assertTrue(block1_info.safe_to_read, f"Block '{block1_name}' must be readable")
-        self.assertTrue(block2_info.safe_to_read, f"Block '{block2_name}' must be readable")
-
         # Calculate start address near end of first block
         block1_end = block1_info.memory_block.address.noc_address + block1_info.memory_block.size
         start_address = block1_end - (num_bytes // 2)
+
+        # Verify both blocks are readable
+        self.assertTrue(
+            block1_info.is_safe_to_read(start_address, num_bytes // 2), f"Block '{block1_name}' must be readable"
+        )
+        self.assertTrue(
+            block2_info.is_safe_to_read(block2_info.memory_block.address.noc_address, num_bytes // 2),
+            f"Block '{block2_name}' must be readable",
+        )
 
         # Verify that the read will actually span both blocks
         end_address = start_address + num_bytes
@@ -904,8 +912,6 @@ class TestSafeAccess(unittest.TestCase):
     @parameterized.expand(
         [
             # Try to write to various read-only register regions
-            ("0,0", "tdma_regs", 0x000, 64),  # Write to TDMA regs start
-            ("1,0", "tdma_regs", 0x100, 256),  # Write to TDMA regs middle
             ("0,0", "debug_regs", 0x000, 64),  # Write to debug regs start
             ("1,0", "debug_regs", 0x500, 128),  # Write to debug regs middle
             ("0,0", "pic_regs", 0x000, 64),  # Write to PIC regs start
@@ -930,12 +936,14 @@ class TestSafeAccess(unittest.TestCase):
         assert block_info is not None
         assert block_info.memory_block.address.noc_address is not None
 
-        # Verify block is read-only (safe_to_read=True, safe_to_write=False)
-        self.assertTrue(block_info.safe_to_read, f"Block '{block_name}' should be readable")
-        self.assertFalse(block_info.safe_to_write, f"Block '{block_name}' should NOT be writable")
-
         # Calculate address from block base + offset
         address = block_info.memory_block.address.noc_address + offset
+
+        # Verify block is read-only (safe_to_read=True, safe_to_write=False)
+        self.assertTrue(block_info.is_safe_to_read(address, num_bytes), f"Block '{block_name}' should be readable")
+        self.assertFalse(
+            block_info.is_safe_to_write(address, num_bytes), f"Block '{block_name}' should NOT be writable"
+        )
 
         # Verify the operation is within bounds
         block_end = block_info.memory_block.address.noc_address + block_info.memory_block.size
@@ -1719,7 +1727,7 @@ class TestCallStack(unittest.TestCase):
         )
         self.compare_callstacks(callstack, gdb_callstack)
 
-    @parameterized.expand(RECURSION_COUNT)
+    @parameterized.expand([(x,) for x in RECURSION_COUNT])
     def test_top_callstack_with_parsing(self, recursion_count: int):
         elf_path = self.get_elf_path("callstack.debug")
         parsed_elf = get_parsed_elf_file(elf_path)
