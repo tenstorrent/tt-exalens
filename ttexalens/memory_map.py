@@ -17,13 +17,11 @@ class MemoryMapBlockInfo:
     safe_to_write: Callable[[int, int], bool] | bool | None = None
     access_check: Callable[[], bool] | None = None
 
-    @property
     def is_safe_to_read(self, address: int, num_bytes: int) -> bool:
         if callable(self.safe_to_read):
             return self.safe_to_read(address, num_bytes)
         return self.safe_to_read if self.safe_to_read is not None else True
 
-    @property
     def is_safe_to_write(self, address: int, num_bytes: int) -> bool:
         if callable(self.safe_to_write):
             return self.safe_to_write(address, num_bytes)
