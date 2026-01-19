@@ -204,7 +204,7 @@ class WormholeEthBlock(WormholeNocBlock):
                 MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
                 MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
                 MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
-                MemoryMapBlockInfo("eth_mac_regs", self.eth_mac_regs),
+                MemoryMapBlockInfo("eth_mac_regs", self.eth_mac_regs, safe_to_read=False),
                 MemoryMapBlockInfo("eth_pcs_regs", self.eth_pcs_regs),
             ]
         )
@@ -221,7 +221,7 @@ class WormholeEthBlock(WormholeNocBlock):
                 MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
                 MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
                 MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
-                MemoryMapBlockInfo("eth_mac_regs", self.eth_mac_regs),
+                MemoryMapBlockInfo("eth_mac_regs", self.eth_mac_regs, safe_to_read=False),
                 MemoryMapBlockInfo("eth_pcs_regs", self.eth_pcs_regs),
             ]
         )
