@@ -20,29 +20,26 @@ Examples:
   callstack build/riscv-src/wormhole/sample.brisc.elf -r brisc
 """
 
-command_metadata = {
-    "short": "bt",
-    "type": "low-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc"],
-}
-
 import os
+from ttexalens.context import Context
+from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
 
-from ttexalens import command_parser
 from ttexalens import util
 import ttexalens.tt_exalens_lib as lib
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
+
+command_metadata = CommandMetadata(
+    short_name="bt",
+    type="low-level",
+    description=__doc__,
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+)
 
 
-def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
+def run(cmd_text: str, context: Context, ui_state: UIState):
+    dopt = tt_docopt(command_metadata, cmd_text)
 
     limit = int(dopt.args["-m"])
     elf_paths = dopt.args["<elf-files>"].split(",")
@@ -64,9 +61,11 @@ def run(cmd_text, context, ui_state: UIState):
     elfs = [lib.parse_elf(elf_path, context) for elf_path in elf_paths]
 
     device: Device
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            for risc_name in dopt.for_each("--risc", context, ui_state, device=device, location=loc):
+    loc: OnChipCoordinate
+    risc_name: str
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
+            for risc_name in dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc):
                 if risc_name == "first risc":
                     noc_block = device.get_block(loc)
                     riscs = noc_block.all_riscs

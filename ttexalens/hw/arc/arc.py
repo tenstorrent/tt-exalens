@@ -1,12 +1,13 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+import tt_umd
 from ttexalens.context import Context
 from ttexalens.util import TTException
 import re
 import os
 
-from ttexalens.tt_exalens_lib_utils import check_context
+from ttexalens.tt_exalens_lib import check_context
 from time import sleep
 
 
@@ -20,7 +21,7 @@ def run_arc_core(mask: int, device_id: int = 0, context: Context | None = None):
     """
     context = check_context(context)
 
-    device = context.devices[device_id]
+    device = context.find_device_by_id(device_id)
     arc_register_store = device.arc_block.get_register_store()
 
     # Write to bits 0-3
@@ -52,7 +53,7 @@ def halt_arc_core(mask: int, device_id: int = 0, context: Context | None = None)
     """
     context = check_context(context)
 
-    device = context.devices[device_id]
+    device = context.find_device_by_id(device_id)
     arc_register_store = device.arc_block.get_register_store()
 
     # Read current value
@@ -82,7 +83,7 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context: Context | Non
     """
     context = check_context(context)
 
-    device = context.devices[device_id]
+    device = context.find_device_by_id(device_id)
     arc_register_store = device.arc_block.get_register_store()
 
     iccm_id = re.findall("\d", mem_type)
@@ -96,7 +97,7 @@ def set_udmiaxi_region(mem_type: str, device_id: int = 0, context: Context | Non
     base_addr = ((0x10000000 >> 24) & 0xFF) if mem_type == "csm" else (iccm_id_int * 0x3)
 
     # Additional bit needs to be set for blackhole, indicating that the udmiaxi region is going to be changed
-    if context.devices[device_id]._arch == "blackhole":
+    if device._arch == tt_umd.ARCH.BLACKHOLE:
         base_addr |= 0x100
 
     arc_register_store.write_register("ARC_RESET_ARC_UDMIAXI_REGION", base_addr)
@@ -113,7 +114,7 @@ def trigger_fw_int(device_id: int = 0, context: Context | None = None) -> bool:
         bool: True if the interrupt was successfully triggered, False otherwise.
     """
     context = check_context(context)
-    device = context.devices[device_id]
+    device = context.find_device_by_id(device_id)
     arc_register_store = device.arc_block.get_register_store()
 
     misc = arc_register_store.read_register("ARC_RESET_ARC_MISC_CNTL")
@@ -146,7 +147,7 @@ def load_arc_fw(file_name: str, iccm_id: int, device_id: int, context: Context |
 
     context = check_context(context)
 
-    device = context.devices[device_id]
+    device = context.find_device_by_id(device_id)
     arc_register_store = device.arc_block.get_register_store()
 
     mem_type = f"iccm{iccm_id}"

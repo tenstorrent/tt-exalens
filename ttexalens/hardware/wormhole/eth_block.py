@@ -14,6 +14,7 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
+from ttexalens.memory_map import MemoryMapBlockInfo
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
@@ -22,8 +23,49 @@ from ttexalens.register_store import (
 )
 
 
+# Commented signals marked with "# Duplicate signal name" are true duplicates -
+# their name already exists in the map and they represent the same signal so suffix "_dup" is added.
 debug_bus_signal_map = {
-    "erisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=2 * 9, mask=0x7FFFFFFF),
+    "erisc_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
+    "erisc_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x200),
+    "erisc_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x40000000
+    ),
+    "erisc_id_ex_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x100),
+    "erisc_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x80000000
+    ),
+    "erisc_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x80),
+    "erisc_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x20),
+    "erisc_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x1F),
+    "erisc_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=19, mask=0xFFFFFFFF),
+    "erisc_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x3FFFFFFF),
+    "erisc_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x10000000),
+    "erisc_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x1F00000),
+    "erisc_id_rf_p1_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x40000),
+    "erisc_id_rf_p1_rdaddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7C00),
+    "erisc_id_rf_p0_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x100),
+    "erisc_id_rf_p0_rdaddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x1F),
+    "erisc_i_instrn_vld": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "erisc_i_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
+    "erisc_i_instrn_req_rtr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "erisc_(o_instrn_req_early&~o_instrn_req_cancel)": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x40000000
+    ),
+    "erisc_o_instrn_addr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x3FFFFFFF),
+    "erisc_dbg_obs_mem_wren": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "erisc_dbg_obs_mem_rden": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x40000000),
+    "erisc_dbg_obs_mem_addr": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x3FFFFFFF),
+    "erisc_dbg_obs_cmt_vld": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "erisc_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
+}
+
+# Group name mapping (daisy_sel, sig_sel) based on documentation
+"""https://github.com/tenstorrent/tt-isa-documentation/blob/main/WormholeB0/TensixTile/DebugDaisychain.md"""
+# Signal name mapping to (DaisySel, sig_sel)
+group_map: dict[str, tuple[int, int]] = {
+    "erisc_group_a": (7, 18),
+    "erisc_group_b": (7, 19),
 }
 
 register_map = {
@@ -34,6 +76,9 @@ register_map = {
     "TRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=161, mask=0x7),
     "NCRISC_RESET_PC_PC": ConfigurationRegisterDescription(index=162),
     "NCRISC_RESET_PC_OVERRIDE_Reset_PC_Override_en": ConfigurationRegisterDescription(index=163, mask=0x1),
+    "RISCV_DEBUG_REG_DBG_L1_MEM_REG0": DebugRegisterDescription(offset=0x048),
+    "RISCV_DEBUG_REG_DBG_L1_MEM_REG1": DebugRegisterDescription(offset=0x04C),
+    "RISCV_DEBUG_REG_DBG_L1_MEM_REG2": DebugRegisterDescription(offset=0x050),
     "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG": DebugRegisterDescription(offset=0x54),
     "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(offset=0x58),
     "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(offset=0x5C),
@@ -77,14 +122,49 @@ register_store_noc0_initialization = RegisterStore.create_initialization(
 register_store_noc1_initialization = RegisterStore.create_initialization(
     [register_map, niu_register_map], get_register_base_address_callable(noc_id=1)
 )
+debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
 
 class WormholeEthBlock(WormholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
-        super().__init__(location, block_type="eth", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self))
+        super().__init__(
+            location,
+            block_type="eth",
+            debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
+        )
 
         self.l1 = MemoryBlock(
             size=256 * 1024, address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000)
+        )
+        self.debug_regs = MemoryBlock(
+            size=0x1000, address=DeviceAddress(private_address=0xFFB12000, noc_address=0xFFB12000)
+        )
+        self.pic_regs = MemoryBlock(
+            size=0x1000, address=DeviceAddress(private_address=0xFFB13000, noc_address=0xFFB13000)
+        )
+        self.noc0_regs = MemoryBlock(
+            size=0x10000, address=DeviceAddress(private_address=0xFFB20000, noc_address=0xFFB20000)
+        )
+        self.noc1_regs = MemoryBlock(
+            size=0x10000, address=DeviceAddress(private_address=0xFFB30000, noc_address=0xFFB30000)
+        )
+        self.noc_overlay = MemoryBlock(
+            size=0x40000, address=DeviceAddress(private_address=0xFFB40000, noc_address=0xFFB40000)
+        )
+        self.eth_txq0_regs = MemoryBlock(
+            size=0x2000, address=DeviceAddress(private_address=0xFFB90000, noc_address=0xFFB90000)
+        )
+        self.eth_rxq0_regs = MemoryBlock(
+            size=0x2000, address=DeviceAddress(private_address=0xFFB92000, noc_address=0xFFB92000)
+        )
+        self.eth_control_regs = MemoryBlock(
+            size=0x54, address=DeviceAddress(private_address=0xFFB94000, noc_address=0xFFB94000)
+        )
+        self.eth_mac_regs = MemoryBlock(
+            size=0x10000, address=DeviceAddress(private_address=0xFFBA0000, noc_address=0xFFBA0000)
+        )
+        self.eth_pcs_regs = MemoryBlock(
+            size=0x10000, address=DeviceAddress(private_address=0xFFBB0000, noc_address=0xFFBB0000)
         )
 
         self.erisc = BabyRiscInfo(
@@ -93,7 +173,7 @@ class WormholeEthBlock(WormholeNocBlock):
             noc_block=self,
             neo_id=None,  # NEO ID is not applicable for Wormhole
             l1=self.l1,
-            max_watchpoints=8,
+            max_watchpoints=0,  # Due to #762, we disable watchpoints for erisc
             reset_flag_shift=11,
             branch_prediction_register=None,  # We don't have a branch prediction register on erisc
             default_code_start_address=0,
@@ -103,12 +183,48 @@ class WormholeEthBlock(WormholeNocBlock):
                 size=4 * 1024,
                 address=DeviceAddress(private_address=0xFFB00000),
             ),
-            code_private_memory=None,
+            code_private_memory=MemoryBlock(
+                size=16 * 1024,
+                address=DeviceAddress(private_address=0xFFC00000),
+            ),
             debug_hardware_present=True,
         )
 
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
+
+        self.noc_memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
+                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
+                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
+                MemoryMapBlockInfo("eth_mac_regs", self.eth_mac_regs),
+                MemoryMapBlockInfo("eth_pcs_regs", self.eth_pcs_regs),
+            ]
+        )
+
+        self.erisc.memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("data_private_memory", self.erisc.data_private_memory),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo("eth_txq0_regs", self.eth_txq0_regs),
+                MemoryMapBlockInfo("eth_rxq0_regs", self.eth_rxq0_regs),
+                MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
+                MemoryMapBlockInfo("eth_mac_regs", self.eth_mac_regs),
+                MemoryMapBlockInfo("eth_pcs_regs", self.eth_pcs_regs),
+            ]
+        )
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:

@@ -7,7 +7,6 @@ from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_info import RiscInfo
 from ttexalens.register_store import RegisterStore
 from ttexalens.elf_loader import ElfLoader
-from ttexalens.tt_exalens_lib import write_words_to_device
 
 
 class BabyRiscInfo(RiscInfo):
@@ -70,13 +69,7 @@ class BabyRiscInfo(RiscInfo):
             # If we cannot change the code start address, we write a jump instruction to the specified address
             assert self.default_code_start_address is not None
             jump_instruction = ElfLoader.get_jump_to_offset_instruction(address)
-            write_words_to_device(
-                register_store.location,
-                self.default_code_start_address,
-                jump_instruction,
-                register_store.location._device._id,
-                register_store.location._device._context,
-            )
+            register_store.location.noc_write32(self.default_code_start_address, jump_instruction)
         elif address is not None:
             if self.code_start_address_enable_register is not None and self.code_start_address_enable_bit is not None:
                 enabled_register_value = register_store.read_register(self.code_start_address_enable_register)
@@ -93,3 +86,13 @@ class BabyRiscInfo(RiscInfo):
             register_store.write_register(
                 self.code_start_address_enable_register, enabled_register_value & ~self.code_start_address_enable_bit
             )
+
+    def translate_to_noc_address(self, addr: int) -> int | None:
+        # Try data-private, then L1
+        for mem in (self.data_private_memory, self.l1):
+            if mem is None:
+                continue
+            noc = mem.translate_to_noc_address(addr)
+            if noc is not None:
+                return noc
+        return None

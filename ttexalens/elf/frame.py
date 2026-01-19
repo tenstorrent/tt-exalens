@@ -3,8 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
+from functools import cached_property
 from elftools.dwarf.callframe import FDE
 from typing import TYPE_CHECKING
+
+from ttexalens.memory_access import MemoryAccess, RestrictedMemoryAccessError
 
 if TYPE_CHECKING:
     from ttexalens.hardware.risc_debug import RiscDebug
@@ -15,6 +18,7 @@ class FrameDescription:
         self.pc = pc
         self.fde = fde
         self.risc_debug = risc_debug
+        self.mem_access = MemoryAccess.create(risc_debug)
 
         # Go through fde and try to find one that fits the pc
         decoded = self.fde.get_decoded()
@@ -23,7 +27,13 @@ class FrameDescription:
                 break
             self.current_fde_entry = entry
 
-    def read_register(self, register_index: int, cfa: int):
+    def try_read_register(self, register_index: int, cfa: int | None) -> int | None:
+        if self.current_fde_entry is not None and register_index in self.current_fde_entry:
+            register_rule = self.current_fde_entry[register_index]
+            # TODO #761: Figure out how to handle all types of rules (CFARule, RegisterRule)
+        return None
+
+    def read_register(self, register_index: int, cfa: int) -> int | None:
         if self.current_fde_entry is not None and register_index in self.current_fde_entry:
             register_rule = self.current_fde_entry[register_index]
             if register_rule.type == "OFFSET":
@@ -31,28 +41,62 @@ class FrameDescription:
             else:
                 address = None
             if address is not None:
-                return self.risc_debug.read_memory(address)
+                try:
+                    return self.mem_access.read_word(address)
+                except RestrictedMemoryAccessError:
+                    # If access was restricted (outside L1/data_private_memory), return None
+                    return None
         return self.risc_debug.read_gpr(register_index)
 
     def read_previous_cfa(self, current_cfa: int | None = None) -> int | None:
         if self.current_fde_entry is not None and self.fde.cie is not None:
             cfa_location = self.current_fde_entry["cfa"]
             register_index = cfa_location.reg
+            offset: int = cfa_location.offset
 
             # Check if it is first CFA
             if current_cfa is None:
                 # We have rule on how to calculate CFA (register_value + offset)
-                return self.risc_debug.read_gpr(register_index) + cfa_location.offset
+                return self.risc_debug.read_gpr(register_index) + offset
             else:
                 # If register is not stored in the current frame, we can calculate it from the previous CFA
                 if not register_index in self.current_fde_entry:
-                    return current_cfa + cfa_location.offset
+                    return current_cfa + offset
 
                 # Just read stored value of the register in current frame
                 return self.read_register(register_index, current_cfa)
 
         # We don't know how to calculate CFA, return 0 which will stop callstack evaluation
         return None
+
+
+class FrameInspection:
+    def __init__(
+        self,
+        risc_debug: RiscDebug,
+        loaded_offset: int,
+        frame_description: FrameDescription | None = None,
+        cfa: int | None = None,
+    ):
+        self.risc_debug = risc_debug
+        self.loaded_offset = loaded_offset
+        self.frame_description = frame_description
+        self.cfa = cfa
+        self.mem_access = MemoryAccess.create(risc_debug)
+
+    @cached_property
+    def pc(self) -> int:
+        value = self.read_register(register_index=32)
+        assert value is not None
+        return value
+
+    def read_register(self, register_index: int) -> int | None:
+        # If it is top frame, we can read all registers from RiscDebug
+        if self.frame_description is None:
+            return self.risc_debug.read_gpr(register_index)
+
+        # If it is not top frame, we need to read registers from frame description
+        return self.frame_description.try_read_register(register_index, self.cfa)
 
 
 class FrameInfoProvider:

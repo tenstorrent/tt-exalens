@@ -104,9 +104,8 @@ class DocstringParser:
     def parse_description(self, help: str) -> dict:
         # Remove leading/trailing whitespaces
         lines = [line.strip() for line in help.split("\n")]
-        lines = "\n".join(lines)
 
-        return {"text": lines}
+        return {"text": "\n".join(lines)}
 
     def parse_args(self, help: str) -> dict:
         result = {}
@@ -114,11 +113,11 @@ class DocstringParser:
 
         for line in lines:
             # Arguments are separated from their descriptions by a colon (:)
-            line = line.split(":", 1)
+            sline = line.split(":", 1)
 
-            if len(line) > 1:
+            if len(sline) > 1:
                 # We have both argument name and description
-                arg = line[0]
+                arg = sline[0]
                 # Argument name is before the first opening parenthesis
                 name = arg.split("(")[0].strip()
                 # Argument types are inside the parentheses
@@ -130,24 +129,22 @@ class DocstringParser:
                 else:
                     types = types_match[0].split(", ")
 
-                description = line[1]
+                description = sline[1]
                 # Remove leading/trailing whitespaces
-                description = [desc.strip() for desc in description.split("\n")]
-                description = "\n".join(description)
+                description_lines = [desc.strip() for desc in description.split("\n")]
+                description = "\n".join(description_lines)
 
                 result[name] = {"type": types, "description": description}
             else:
                 # This is a continuation of the previous argument's description
-                result[name]["description"] += f"\n{line[0].strip()}"
+                result[name]["description"] += f"\n{line.strip()}"  # type: ignore
 
         return result
 
     def parse_returns(self, help: str) -> dict:
         [name, desc] = help.split(":", 1)
 
-        desc = [line.strip() for line in desc.split("\n")]
-        desc = "\n".join(desc)
-
+        desc = "\n".join([line.strip() for line in desc.split("\n")])
         return {"type": name.strip(), "description": desc}
 
     def parse_notes(self, help: str) -> dict:
@@ -194,7 +191,7 @@ class FileParser:
 
         # We keep track of the functions and variables we find in the file
         # At some point we might want to add support for classes
-        result = {"functions": [], "variables": [], "classes": []}
+        result: dict = {"functions": [], "variables": [], "classes": []}
 
         for id, node in enumerate(tree.body):
             if type(node) == ast.FunctionDef:
@@ -207,11 +204,12 @@ class FileParser:
                 result["functions"].append(parsed)
 
             elif type(node) == ast.AnnAssign:
-                if not type(tree.body[id - 1]) == ast.Expr:
-                    WARNING(f"No docstring found for variable {node.target.id} in file {file}. Skippning...")
+                expr = tree.body[id - 1]
+                if not isinstance(expr, ast.Expr):
+                    WARNING(f"No docstring found for variable {node.target.id} in file {file}. Skipping...")  # type: ignore
                     # Variables without docstrings are not added to the documentation
                     continue
-                parsed = self.parse_variable(node, tree.body[id - 1])
+                parsed = self.parse_variable(node, expr)
                 parsed["docs"] = self.docstring_parser.parse(parsed["docstring"])
                 result["variables"].append(parsed)
 
@@ -250,7 +248,9 @@ class FileParser:
 
             elif isinstance(node, ast.Assign):
                 # Similar to AnnAssign but with no annotation
-                INFO(f"Found assignment to {node.targets[0].id} at line {node.lineno}.")
+                target = node.targets[0]
+                if isinstance(target, ast.Name):
+                    INFO(f"Found assignment to {target.id} at line {node.lineno}.")
                 # ...handle docstring/comment if desired...
 
             else:
@@ -258,18 +258,19 @@ class FileParser:
 
         return result
 
-    def parse_variable(self, node: ast.AnnAssign, docstring_node: ast.Expr = None):
+    def parse_variable(self, node: ast.AnnAssign, docstring_node: ast.Expr | None = None):
         """Parses a variable declaration and its docstring."""
-        name = node.target.id
+        name = node.target.id  # type: ignore
         docstring = None
+        annotation: str | None = None
         if hasattr(node.annotation, "op"):
             annotation = self._resolve_node_returns(node.annotation)
         else:
             annotation = getattr(node.annotation, "id", None)
-        value = node.value.value if node.value.value else "None"
+        value = node.value.value if node.value.value else "None"  # type: ignore
 
         if docstring_node:
-            docstring = docstring_node.value.value
+            docstring = docstring_node.value.value  # type: ignore
 
         return {"name": name, "docstring": docstring, "annotation": annotation, "value": value}
 
@@ -277,7 +278,7 @@ class FileParser:
         if type(node_returns) == ast.Name:
             return node_returns.id
         elif type(node_returns) == ast.Constant:
-            return node_returns.value
+            return str(node_returns.value)
         elif type(node_returns) == ast.Subscript:
             slice_obj = node_returns.slice
             if isinstance(slice_obj, ast.Tuple):
@@ -292,7 +293,7 @@ class FileParser:
                         returns.append("Unknown")
                 return " | ".join(returns)
             else:
-                return self._resolve_node_returns(slice_obj)
+                return f"list[{self._resolve_node_returns(slice_obj)}]"
         elif type(node_returns) == ast.Attribute:
             return f"{self._resolve_node_returns(node_returns.value)}.{node_returns.attr}"
         elif type(node_returns) == ast.BinOp:
@@ -311,16 +312,22 @@ class FileParser:
         docstring = ast.get_docstring(node)
 
         returns_string = self._resolve_node_returns(node.returns)
+        returns_string = f" -> {returns_string}" if returns_string != "None" else ""
 
         argstring = ""
         # going backwards, first parse arguments with default values...
         for i in range(-1, -len(defaults) - 1, -1):
-            argstring = f"{args[i].arg}={defaults[i].value}, " + argstring
+            default_value = self._resolve_node_returns(defaults[i])
+            argtype = self._resolve_node_returns(args[i].annotation)
+            argwithtype = f"{args[i].arg}: {argtype}" if argtype != "None" else f"{args[i].arg}"
+            argstring = f"{argwithtype} = {default_value}, {argstring}"
         # and then arguments without default values
         for i in range(-len(defaults) - 1, -len(args) - 1, -1):
-            argstring = f"{args[i].arg}, " + argstring
+            argtype = self._resolve_node_returns(args[i].annotation)
+            argwithtype = f"{args[i].arg}: {argtype}" if argtype != "None" else f"{args[i].arg}"
+            argstring = f"{argwithtype}, " + argstring
 
-        return {"name": f"{name}", "call": f"{name}({argstring[:-2]}) -> {returns_string}", "docstring": docstring}
+        return {"name": f"{name}", "call": f"{name}({argstring[:-2]}){returns_string}", "docstring": docstring}
         # remove trailing ", "
 
 
@@ -397,6 +404,10 @@ class LibPPrinter(SectionPPrinter):
                 method_name = method["name"]
                 signature = method["call"]
 
+                if method_name.startswith("_"):
+                    # Skip private methods
+                    continue
+
                 # Print method as a sub-section
                 result += self.eprinter.print_section(method_name, "", level=3)
                 result += self.eprinter.print_code(signature)
@@ -416,23 +427,57 @@ class LibPPrinter(SectionPPrinter):
 
 
 def get_all_files(path: os.PathLike) -> list:
-    """Returns a list of .py files specified in the __all__ variable in __init__.py,
-    or all .py files in the directory if __init__.py is not found or does not contain __all__."""
-    spec = importlib.util.spec_from_file_location("ttexalens", os.path.join(path, "__init__.py"))
-    if spec is not None:
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        try:
-            return [f + ".py" for f in module.__all__]
-        except:
-            WARNING(f"__all__ not found in {os.path.join(path, '__init.py__')}. Importing all files from folder.")
-    else:
-        INFO(f"__init__.py not found in {path}. Importing all files from folder.")
-
+    """Gets all .py files in a directory."""
     return [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f)) and f.endswith(".py")]
 
 
-def parse_directory(path: os.PathLike, parser: FileParser, interactive: bool = False) -> dict:
+def get_imported_modules_from_init(init_path: str) -> list:
+    """Extracts all module names imported from __init__.py.
+
+    Args:
+        init_path (str): Path to the __init__.py file.
+
+    Returns:
+        list: List of module names (without .py extension) imported in __init__.py.
+    """
+    with open(init_path) as f:
+        tree = ast.parse(f.read())
+
+    modules = set()
+    ordered_modules = []
+    for node in tree.body:
+        if isinstance(node, ast.ImportFrom):
+            # Handle: from .module import ...
+            if node.module and node.level == 1:  # relative import from same package
+                if node.module not in modules:
+                    modules.add(node.module)
+                    ordered_modules.append(node.module)
+    return ordered_modules
+
+
+def get_all_from_init(init_path: str) -> set | None:
+    """Extracts __all__ list from __init__.py by parsing AST.
+
+    Args:
+        init_path (str): Path to the __init__.py file.
+
+    Returns:
+        set: Set of exported item names from __all__, or None if not found.
+    """
+    with open(init_path) as f:
+        tree = ast.parse(f.read())
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == "__all__":
+                    # Found __all__ assignment
+                    if isinstance(node.value, ast.List):
+                        return set(elt.value for elt in node.value.elts if isinstance(elt, ast.Constant))
+    return None
+
+
+def parse_directory(path: os.PathLike, parser: FileParser, interactive: bool = False) -> list[tuple[str, dict]]:
     """Parses all .py files in a directory using the provided parser.
 
     Args:
@@ -440,8 +485,26 @@ def parse_directory(path: os.PathLike, parser: FileParser, interactive: bool = F
             parser (FileParser): Parser object to use for parsing the files.
             interactive (bool, optional): If True, the user will be prompted before parsing each file.
     """
-    files = get_all_files(path)
-    result = {}
+    from collections import OrderedDict
+
+    exported_items = None
+
+    if not os.path.isfile(os.path.join(path, "__init__.py")):
+        files = get_all_files(path)
+    else:
+        # If __init__.py exists, parse imports and get __all__ for filtering
+        init_path = os.path.join(path, "__init__.py")
+
+        # Get list of imported modules
+        imported_modules = get_imported_modules_from_init(init_path)
+        files = [f"{name}.py" for name in imported_modules if os.path.isfile(os.path.join(path, f"{name}.py"))]
+
+        # Get exported items from __all__ for filtering
+        exported_items = get_all_from_init(init_path)
+        if exported_items:
+            INFO(f"Found {len(exported_items)} exported items in __all__")
+
+    result = []
 
     for file in files:
         if interactive:
@@ -452,11 +515,38 @@ def parse_directory(path: os.PathLike, parser: FileParser, interactive: bool = F
         INFO(f"Processing {file}")
         process_result = parser.parse(os.path.join(path, file))
         if process_result:
-            result[file] = process_result
+            # Filter results to only include exported items if __all__ is defined
+            if exported_items is not None:
+                process_result = filter_exported_items(process_result, exported_items)
+
+            # Only add to result if there are any items left after filtering
+            if process_result.get("functions") or process_result.get("variables") or process_result.get("classes"):
+                result.append((file, process_result))
+            else:
+                INFO(f"No exported items found in {file}. Skipping...")
         else:
             WARNING(f"Failed to process {file}. Skipping...")
 
     return result
+
+
+def filter_exported_items(parsed_result: dict, exported_items: set) -> dict:
+    """Filters parsed results to only include items that are in the exported_items set.
+
+    Args:
+        parsed_result (dict): Dictionary containing 'functions', 'variables', and 'classes' lists.
+        exported_items (set): Set of item names that should be included in the output.
+
+    Returns:
+        dict: Filtered dictionary containing only exported items.
+    """
+    filtered = {
+        "functions": [f for f in parsed_result.get("functions", []) if f["name"] in exported_items],
+        "variables": [v for v in parsed_result.get("variables", []) if v["name"] in exported_items],
+        "classes": [c for c in parsed_result.get("classes", []) if c["name"] in exported_items],
+    }
+
+    return filtered
 
 
 if __name__ == "__main__":
@@ -471,13 +561,13 @@ if __name__ == "__main__":
         ERROR("Invalid input. Please provide a valid file or directory.")
         sys.exit(1)
     elif isfile:
-        parser_result = {os.path.basename(args["<input>"])[:-3]: fp.parse(args["<input>"])}
+        parser_result = [(os.path.basename(args["<input>"]), fp.parse(args["<input>"]))]
     elif isdir:
         parser_result = parse_directory(args["<input>"], fp, interactive=args["--interactive"])
 
     output = ""
-    for file in parser_result.keys():
-        output += lp.eprinter.print_section(file[:-3], lp.print_docs(parser_result[file]), 1)
+    for file, parsed_data in parser_result:
+        output += lp.eprinter.print_section(file[:-3], lp.print_docs(parsed_data), 1)
 
     if args["<output_file>"]:
         with open(args["<output_file>"], "a" if args["--append"] else "w") as f:

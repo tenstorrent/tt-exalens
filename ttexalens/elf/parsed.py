@@ -8,13 +8,14 @@ import struct
 from elftools.dwarf.dwarfinfo import DWARFInfo
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
-from functools import cached_property
+from functools import cache, cached_property
 import os
-from ttexalens import Verbosity
+from ttexalens.server import FileAccessApi
 import ttexalens.util as util
 from ttexalens.elf.dwarf import ElfDwarf, ElfDwarfWithOffset
 from ttexalens.elf.frame import FrameInfoProvider, FrameInfoProviderWithOffset
-from ttexalens.elf.variable import ElfVariable, MemoryAccess
+from ttexalens.elf.variable import ElfVariable
+from ttexalens.memory_access import MemoryAccess
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -34,7 +35,7 @@ def process_die(die: ElfDie, recurse_dict, r_depth):
     path = die.path
 
     # We add test for debug_enabled here, because we don't want string formatting to be executed without printint anything
-    if Verbosity.supports(Verbosity.DEBUG):
+    if util.Verbosity.supports(util.Verbosity.DEBUG):
         log(
             f"{util.CLR_BLUE}{path}{util.CLR_END} {category} {util.CLR_GREEN}{die.resolved_type.path}{util.CLR_END} {die.offset}/{hex(die.offset)} {die}"
         )
@@ -97,19 +98,14 @@ class ElfDwarfSymbol:
 
 def decode_symbols(elf_file: ELFFile) -> dict[str, ElfDwarfSymbol]:
     symbols = {}
-    for section in elf_file.iter_sections():
-        # Check if it's a symbol table section
-        if section.name == ".symtab":
-            # Iterate through symbols
-            assert isinstance(section, SymbolTableSection)
-            for symbol in section.iter_symbols():
-                # Check if it's a label symbol
-                if symbol["st_info"]["type"] == "STT_NOTYPE" and symbol.name:
-                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
-                elif symbol["st_info"]["type"] == "STT_FUNC":
-                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
-                elif symbol["st_info"]["type"] == "STT_OBJECT":
-                    symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
+    section = elf_file.get_section_by_name(".symtab")
+    assert section is not None and isinstance(section, SymbolTableSection)
+    for symbol in section.iter_symbols():
+        if not symbol.name:
+            continue
+        type = symbol["st_info"]["type"]
+        if type == "STT_NOTYPE" or type == "STT_FUNC" or type == "STT_OBJECT":
+            symbols[symbol.name] = ElfDwarfSymbol(value=symbol["st_value"], size=symbol["st_size"])
     return symbols
 
 
@@ -134,10 +130,27 @@ def decode_file_line(dwarf: DWARFInfo) -> dict[int, tuple[str, int, int]]:
     return PC_to_fileline_map
 
 
+class ParsedElfFileSection:
+    def __init__(self, section):
+        self._section = section
+        self.name = section.name
+        self.address = int(section.header.sh_addr) if hasattr(section.header, "sh_addr") else None
+        self.size = int(section.header.sh_size) if hasattr(section.header, "sh_size") else 0
+
+    @cached_property
+    def data(self):
+        return self._section.data()
+
+
 class ParsedElfFile:
     def __init__(self, elf: ELFFile, elf_file_path: str):
         self.elf = elf
         self.elf_file_path = elf_file_path
+        self.loaded_offset = 0
+
+    @cached_property
+    def sections(self):
+        return [ParsedElfFileSection(section) for section in self.elf.iter_sections()]
 
     @cached_property
     def _dwarf(self) -> ElfDwarf:
@@ -176,7 +189,7 @@ class ParsedElfFile:
             text_sh = self.elf.get_section_by_name(".firmware_text")
         if text_sh is None:
             raise ValueError(f"Could not locate text section in {self.elf_file_path}.")
-        return text_sh["sh_addr"]
+        return int(text_sh["sh_addr"])
 
     @cached_property
     def symbols(self):
@@ -190,11 +203,52 @@ class ParsedElfFile:
     def frame_info(self) -> FrameInfoProvider:
         return FrameInfoProvider(self._dwarf.dwarf)
 
-    def get_global(self, name: str, mem_access: MemoryAccess) -> ElfVariable:
+    @cache
+    def find_die_by_name(self, name: str) -> ElfDie | None:
+        names = name.split("::")
+        if len(names) == 0:
+            return None
+        declaration_die = None
+        for cu in self._dwarf.iter_CUs():
+            index = 0
+            die: ElfDie | None = cu.top_DIE
+            while index < len(names) and die is not None:
+                die = die.get_child_by_name(names[index])
+                index += 1
+            if die is not None:
+                if "DW_AT_abstract_origin" in die.attributes:
+                    die = die.get_DIE_from_attribute("DW_AT_abstract_origin")
+                    if die is None:
+                        return None
+                elif "DW_AT_specification" in die.attributes:
+                    die = die.get_DIE_from_attribute("DW_AT_specification")
+                    if die is None:
+                        return None
+                if "DW_AT_declaration" in die.attributes and die.attributes["DW_AT_declaration"].value:
+                    declaration_die = die
+                    continue
+                return die
+        return declaration_die
+
+    def get_enum_value(self, name: str, allow_fallback: bool = False) -> int | None:
+        # Try to use fast lookup first
+        die: ElfDie | None = self.find_die_by_name(name)
+        if die is None or die.category != "enumerator":
+            # Fallback to full lookup
+            die = self.enumerators.get(name) if allow_fallback else None
+        if die is not None:
+            return int(die.value)
+        return None
+
+    def get_global(self, name: str, mem_access: MemoryAccess, allow_fallback: bool = False) -> ElfVariable:
         """
         Given a global variable name, return an ElfVariable object that can be used to access it
         """
-        die = self.variables.get(name)
+        # Try to use fast lookup first
+        die = self.find_die_by_name(name)
+        if die is None or die.category != "variable":
+            # Fallback to full lookup
+            die = self.variables.get(name) if allow_fallback else None
         if die is None:
             raise Exception(f"ERROR: Cannot find global variable {name} in ELF DWARF info")
         address = die.address
@@ -205,14 +259,18 @@ class ParsedElfFile:
             return ElfVariable(die.resolved_type.dereference_type, address, mem_access)
         return ElfVariable(die.resolved_type, address, mem_access)
 
-    def read_global(self, name: str, mem_access: MemoryAccess) -> ElfVariable:
+    def read_global(self, name: str, mem_access: MemoryAccess, allow_fallback: bool = False) -> ElfVariable:
         """
         Given a global variable name, return an ElfVariable object that has been read
         """
-        return self.get_global(name, mem_access).read()
+        return self.get_global(name, mem_access, allow_fallback).read()
 
-    def get_constant(self, name: str):
-        die = self.variables.get(name)
+    def get_constant(self, name: str, allow_fallback: bool = False):
+        # Try to use fast lookup first
+        die = self.find_die_by_name(name)
+        if die is None or die.category != "variable":
+            # Fallback to full lookup
+            die = self.variables.get(name) if allow_fallback else None
         if die is None:
             raise Exception(f"ERROR: Cannot find constant variable {name} in ELF DWARF info")
         if die.value is None:
@@ -292,7 +350,9 @@ class ParsedElfFileWithOffset(ParsedElfFile):
         return FrameInfoProviderWithOffset(self.parsed_elf.frame_info, self.code_load_address)
 
 
-def read_elf(file_ifc, elf_file_path: str, load_address: int | None = None) -> ParsedElfFile:
+def read_elf(
+    file_ifc: FileAccessApi, elf_file_path: str, load_address: int | None = None, require_debug_symbols: bool = True
+) -> ParsedElfFile:
     """
     Reads the ELF file and returns a dictionary with the DWARF info
     """
@@ -300,7 +360,7 @@ def read_elf(file_ifc, elf_file_path: str, load_address: int | None = None) -> P
     f = file_ifc.get_binary(elf_file_path)
     elf = ELFFile(f)
 
-    if not elf.has_dwarf_info():
+    if require_debug_symbols and not elf.has_dwarf_info():
         raise ValueError(f"{elf_file_path} does not have DWARF info. Source file must be compiled with -g")
     parsed_elf = ParsedElfFile(elf, elf_file_path)
     if load_address is None:

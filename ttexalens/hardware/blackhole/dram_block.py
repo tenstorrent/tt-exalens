@@ -6,12 +6,13 @@ from functools import cache, cached_property
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
-from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
+from ttexalens.hardware.blackhole.baby_risc_debug import BlackholeBabyRiscDebug
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.memory_map import MemoryMapBlockInfo
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     DebugRegisterDescription,
@@ -21,8 +22,46 @@ from ttexalens.register_store import (
 )
 
 
-# TODO #432: Once signals are added, we can remove type hint
-debug_bus_signal_map: dict[str, DebugBusSignalDescription] = {}
+debug_bus_signal_map = {
+    "drisc_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=2 * 9 + 1, mask=0x3FFFFFFF),
+    "drisc_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x200),
+    "drisc_ex_id_rtr_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x40000000
+    ),
+    "drisc_id_ex_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x100),
+    "drisc_id_ex_rts_dup": DebugBusSignalDescription(  # Duplicate signal name
+        rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x80000000
+    ),
+    "drisc_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x80),
+    "drisc_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x20),
+    "drisc_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x1F),
+    "drisc_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=19, mask=0xFFFFFFFF),
+    "drisc_id_ex_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=19, mask=0x3FFFFFFF),
+    "drisc_id_rf_wr_flag": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x10000000),
+    "drisc_id_rf_wraddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x1F00000),
+    "drisc_id_rf_p1_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x40000),
+    "drisc_id_rf_p1_rdaddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7C00),
+    "drisc_id_rf_p0_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x100),
+    "drisc_id_rf_p0_rdaddr": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x1F),
+    "drisc_i_instrn_vld": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "drisc_i_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
+    "drisc_i_instrn_req_rtr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "drisc_(o_instrn_req_early&~o_instrn_req_cancel)": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x40000000
+    ),
+    "drisc_o_instrn_addr": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x3FFFFFFF),
+    "drisc_dbg_obs_mem_wren": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "drisc_dbg_obs_mem_rden": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x40000000),
+    "drisc_dbg_obs_mem_addr": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x3FFFFFFF),
+    "drisc_dbg_obs_cmt_vld": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x80000000),
+    "drisc_dbg_obs_cmt_pc": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x7FFFFFFF),
+}
+
+# Signal name mapping to (DaisySel, sig_sel)
+group_map: dict[str, tuple[int, int]] = {
+    "drisc_group_a": (7, 18),
+    "drisc_group_b": (7, 19),
+}
 
 register_map: dict[str, RegisterDescription] = {
     "RISCV_DEBUG_REG_PERF_CNT_INSTRN_THREAD0": DebugRegisterDescription(offset=0x00),
@@ -41,7 +80,7 @@ register_map: dict[str, RegisterDescription] = {
     "RISCV_DEBUG_REG_DBG_L1_MEM_REG0": DebugRegisterDescription(offset=0x048),
     "RISCV_DEBUG_REG_DBG_L1_MEM_REG1": DebugRegisterDescription(offset=0x04C),
     "RISCV_DEBUG_REG_DBG_L1_MEM_REG2": DebugRegisterDescription(offset=0x050),
-    "RISCV_DEBUG_REG_DBG_BUS_CTRL": DebugRegisterDescription(offset=0x054),
+    "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG": DebugRegisterDescription(offset=0x054),
     "RISCV_DEBUG_REG_CFGREG_RD_CNTL": DebugRegisterDescription(offset=0x58),  # Old name
     "RISCV_DEBUG_REG_TENSIX_CREG_READ": DebugRegisterDescription(offset=0x058),  # New name
     "RISCV_DEBUG_REG_DBG_RD_DATA": DebugRegisterDescription(offset=0x05C),
@@ -114,17 +153,17 @@ register_map: dict[str, RegisterDescription] = {
 def get_register_base_address_callable(noc_id: int) -> Callable[[RegisterDescription], DeviceAddress]:
     def get_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
         if isinstance(register_description, DebugRegisterDescription):
-            return DeviceAddress(private_address=0xFFB12000, noc_address=0xFFB12000)
+            return DeviceAddress(private_address=0xFFB12000, noc_address=0x100FFB12000)
         elif isinstance(register_description, RiscControlRegisterDescription):
-            return DeviceAddress(private_address=0xFFB14000, noc_address=0xFFB14000)
+            return DeviceAddress(private_address=0xFFB14000, noc_address=0x100FFB14000)
         elif noc_id == 0:
             return get_niu_register_base_address_callable(
-                DeviceAddress(private_address=0xFFB20000, noc_address=0xFFB20000)
+                DeviceAddress(private_address=0xFFB20000, noc_address=0x100FFB20000)
             )(register_description)
         else:
             assert noc_id == 1
             return get_niu_register_base_address_callable(
-                DeviceAddress(private_address=0xFFB30000, noc_address=0xFFB30000)
+                DeviceAddress(private_address=0xFFB30000, noc_address=0x100FFB30000)
             )(register_description)
 
     return get_register_base_address
@@ -136,21 +175,89 @@ register_store_noc0_initialization = RegisterStore.create_initialization(
 register_store_noc1_initialization = RegisterStore.create_initialization(
     [register_map, niu_register_map], get_register_base_address_callable(noc_id=1)
 )
+debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
 
 class BlackholeDramBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
-        super().__init__(location, block_type="dram", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self))
+        super().__init__(
+            location,
+            block_type="dram",
+            debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
+        )
 
         self.dram_bank = MemoryBlock(
-            # TODO #432: Check if this size is correct
-            size=2 * 1024 * 1024 * 1024 - 4 * 1024,
-            address=DeviceAddress(private_address=0x00001000, noc_address=0x00001000),
+            size=4 * 1024 * 1024 * 1024,
+            address=DeviceAddress(noc_address=0x00000000),
         )
 
         self.l1 = MemoryBlock(
-            size=4 * 1024,  # TODO #432: Check if this size is correct
-            address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000),
+            size=128 * 1024,
+            address=DeviceAddress(private_address=0x00000000, noc_address=0x2000000000),
+        )
+        self.tx_stream0_regs = MemoryBlock(
+            size=256,
+            address=DeviceAddress(private_address=0xFC000000, noc_address=0x100FC000000),
+        )
+        self.tx_stream1_regs = MemoryBlock(
+            size=256,
+            address=DeviceAddress(private_address=0xFC000100, noc_address=0x100FC000100),
+        )
+        self.tx_control_regs = MemoryBlock(
+            size=4 * 1024,
+            address=DeviceAddress(private_address=0xFC001000, noc_address=0x100FC001000),
+        )
+        self.gddr_mc_regs = MemoryBlock(
+            size=0x10000,
+            address=DeviceAddress(private_address=0xFC100000, noc_address=0x100FC100000),
+        )
+        self.gddr_control_regs = MemoryBlock(
+            size=0x100,
+            address=DeviceAddress(private_address=0xFC200000, noc_address=0x100FC200000),
+        )
+        self.ictrl_regs = MemoryBlock(
+            size=0x100,
+            address=DeviceAddress(private_address=0xFC300000, noc_address=0x100FC300000),
+        )
+        self.gddr_xbar0_regs = MemoryBlock(
+            size=0x1000,
+            address=DeviceAddress(private_address=0xFC301000, noc_address=0x100FC301000),
+        )
+        self.gddr_xbar1_regs = MemoryBlock(
+            size=0x1000,
+            address=DeviceAddress(private_address=0xFC302000, noc_address=0x100FC302000),
+        )
+        self.gddr_xbar2_regs = MemoryBlock(
+            size=0x1000,
+            address=DeviceAddress(private_address=0xFC303000, noc_address=0x100FC303000),
+        )
+        self.gddr_phy_regs = MemoryBlock(
+            size=0x20000,
+            address=DeviceAddress(private_address=0xFC400000, noc_address=0x100FC400000),
+        )
+        self.debug_regs = MemoryBlock(
+            size=0x1000,
+            address=DeviceAddress(private_address=0xFFB12000, noc_address=0x100FFB12000),
+        )
+        self.pic_regs = MemoryBlock(
+            size=0x1000,
+            address=DeviceAddress(private_address=0xFFB13000, noc_address=0x100FFB13000),
+        )
+        self.control_regs = MemoryBlock(
+            size=0x1000,
+            address=DeviceAddress(private_address=0xFFB14000, noc_address=0x100FFB14000),
+        )
+        self.noc0_regs = MemoryBlock(
+            size=0x10000,
+            address=DeviceAddress(private_address=0xFFB20000, noc_address=0x100FFB20000),
+        )
+        self.noc1_regs = MemoryBlock(
+            size=0x10000,
+            address=DeviceAddress(private_address=0xFFB30000, noc_address=0x100FFB30000),
+        )
+        self.noc_overlay = MemoryBlock(
+            size=0x10000,
+            address=DeviceAddress(private_address=0xFFB40000, noc_address=0x100FFB40000),
         )
 
         self.drisc = BabyRiscInfo(
@@ -176,6 +283,51 @@ class BlackholeDramBlock(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
+        self.noc_memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("dram_bank", self.dram_bank),
+                MemoryMapBlockInfo("l1", self.l1.just_noc_address()),
+                MemoryMapBlockInfo("tx_stream0_regs", self.tx_stream0_regs.just_noc_address()),
+                MemoryMapBlockInfo("tx_stream1_regs", self.tx_stream1_regs.just_noc_address()),
+                MemoryMapBlockInfo("tx_control_regs", self.tx_control_regs.just_noc_address()),
+                MemoryMapBlockInfo("gddr_mc_regs", self.gddr_mc_regs.just_noc_address()),
+                MemoryMapBlockInfo("gddr_control_regs", self.gddr_control_regs.just_noc_address()),
+                MemoryMapBlockInfo("ictrl_regs", self.ictrl_regs.just_noc_address()),
+                MemoryMapBlockInfo("gddr_xbar0_regs", self.gddr_xbar0_regs.just_noc_address()),
+                MemoryMapBlockInfo("gddr_xbar1_regs", self.gddr_xbar1_regs.just_noc_address()),
+                MemoryMapBlockInfo("gddr_xbar2_regs", self.gddr_xbar2_regs.just_noc_address()),
+                MemoryMapBlockInfo("gddr_phy_regs", self.gddr_phy_regs.just_noc_address()),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs.just_noc_address()),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs.just_noc_address()),
+                MemoryMapBlockInfo("control_regs", self.control_regs.just_noc_address()),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs.just_noc_address()),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs.just_noc_address()),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay.just_noc_address()),
+            ]
+        )
+
+        self.drisc.memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("tx_stream0_regs", self.tx_stream0_regs),
+                MemoryMapBlockInfo("tx_stream1_regs", self.tx_stream1_regs),
+                MemoryMapBlockInfo("tx_control_regs", self.tx_control_regs),
+                MemoryMapBlockInfo("gddr_mc_regs", self.gddr_mc_regs),
+                MemoryMapBlockInfo("gddr_control_regs", self.gddr_control_regs),
+                MemoryMapBlockInfo("ictrl_regs", self.ictrl_regs),
+                MemoryMapBlockInfo("gddr_xbar0_regs", self.gddr_xbar0_regs),
+                MemoryMapBlockInfo("gddr_xbar1_regs", self.gddr_xbar1_regs),
+                MemoryMapBlockInfo("gddr_xbar2_regs", self.gddr_xbar2_regs),
+                MemoryMapBlockInfo("gddr_phy_regs", self.gddr_phy_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("control_regs", self.control_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+            ]
+        )
+
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:
         return [
@@ -191,7 +343,5 @@ class BlackholeDramBlock(BlackholeNocBlock):
         assert neo_id is None, "NEO ID is not applicable for Blackhole device."
         risc_name = risc_name.lower()
         if risc_name == self.drisc.risc_name:
-            return BabyRiscDebug(
-                risc_info=self.drisc
-            )  # TODO: Once we have debug bus signals, we will create WormholeBabyRiscDebug instance
+            return BlackholeBabyRiscDebug(risc_info=self.drisc)
         raise ValueError(f"RISC debug for {risc_name} is not supported in Blackhole eth block.")

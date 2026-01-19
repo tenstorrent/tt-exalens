@@ -9,9 +9,7 @@ Usage:
 
 
 Arguments:
-    device-id         ID of the device [default: current active]
     noc-id            Identifier for the NOC (e.g. 0, 1) [default: both noc0 and noc1]
-    loc               Location identifier (e.g. 0-0) [default: current active]
     reg-names         Name of specific NOC register(s) to display, can be comma-separated
     reg-pattern       Pattern in wildcard format for finding registers (mutually exclusive with <reg-names>)
     max-regs          Limit --search output (default: 10, use --max "all" to print all matches)
@@ -37,11 +35,7 @@ Examples:
     noc register --search *_RD* --max all       # Show all registers that have "_RD" in their name
 """
 
-# Third-party imports
-from docopt import docopt
-
-# Local imports
-from ttexalens import command_parser, util
+from ttexalens import util
 from ttexalens.util import search
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
@@ -55,16 +49,15 @@ from ttexalens.register_store import (
 )
 from ttexalens.uistate import UIState
 from ttexalens.rich_formatters import formatter
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
-# Command metadata
-command_metadata = {
-    "short": "nc",
-    "long": "noc",
-    "type": "high-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc"],
-}
+command_metadata = CommandMetadata(
+    short_name="nc",
+    long_name="noc",
+    type="high-level",
+    description=__doc__,
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+)
 
 
 def is_noc_register_description(description: RegisterDescription) -> bool:
@@ -335,7 +328,7 @@ def display_grouped_data(
 ###############################################################################
 # Main Command Entry
 ###############################################################################
-def run(cmd_text: str, context: Context, ui_state: UIState) -> list:
+def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, str]]:
     """
     Main entry point for the NOC command.
 
@@ -347,11 +340,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list:
     Returns:
         Empty list (convention for command handlers)
     """
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
+    dopt = tt_docopt(command_metadata, cmd_text)
 
     # Parse and validate NOC ID
     if dopt.args["--noc"]:
@@ -370,8 +359,10 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list:
     simple_print = dopt.args["--simple"]
 
     # Iterate over selected devices, locations, and NOC identifiers
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
+    device: Device
+    loc: OnChipCoordinate
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             formatter.print_device_header(device, loc)
 
             if dopt.args["status"]:
@@ -395,10 +386,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list:
                     if len(reg_names) == 0:
                         print("No matches found.")
                         return []
-
                 else:
                     # Parse the comma-separated register names
-                    reg_names_str = dopt.args["<reg-names>"]
+                    reg_names_str: str = dopt.args["<reg-names>"]
                     reg_names = [name.strip() for name in reg_names_str.split(",")]
 
                 if dopt.args["--noc"]:

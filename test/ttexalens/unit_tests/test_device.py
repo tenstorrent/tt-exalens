@@ -5,7 +5,7 @@ import unittest
 from parameterized import parameterized_class
 
 
-from test.ttexalens.unit_tests.test_base import init_default_test_context
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens.context import Context
 
 
@@ -24,10 +24,10 @@ class TestDevice(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
 
     def setUp(self):
-        if self.device_id >= len(self.context.device_ids):
+        if self.device_id not in self.context.device_ids:
             self.skipTest(f"Device {self.device_id} not found!")
 
         self.device = self.context.devices[self.device_id]

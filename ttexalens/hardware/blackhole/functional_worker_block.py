@@ -10,7 +10,8 @@ from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.blackhole.baby_risc_debug import BlackholeBabyRiscDebug
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import debug_bus_signal_map
+from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
 from ttexalens.hardware.blackhole.functional_worker_registers import register_map
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
@@ -18,6 +19,7 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
+    TensixGeneralPurposeRegisterDescription,
     RegisterDescription,
     RegisterStore,
 )
@@ -27,6 +29,8 @@ def get_register_base_address_callable(noc_id: int) -> Callable[[RegisterDescrip
     def get_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
         if isinstance(register_description, ConfigurationRegisterDescription):
             return DeviceAddress(private_address=0xFFEF0000)
+        elif isinstance(register_description, TensixGeneralPurposeRegisterDescription):
+            return DeviceAddress(private_address=0xFFE00000)
         elif isinstance(register_description, DebugRegisterDescription):
             return DeviceAddress(private_address=0xFFB12000, noc_address=0xFFB12000)
         elif noc_id == 0:
@@ -48,17 +52,40 @@ register_store_noc0_initialization = RegisterStore.create_initialization(
 register_store_noc1_initialization = RegisterStore.create_initialization(
     [register_map, niu_register_map], get_register_base_address_callable(noc_id=1)
 )
+debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
 
 class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
         super().__init__(
-            location, block_type="functional_workers", debug_bus=DebugBusSignalStore(debug_bus_signal_map, self)
+            location,
+            block_type="functional_workers",
+            debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
         )
 
         self.l1 = MemoryBlock(
             size=1536 * 1024, address=DeviceAddress(private_address=0x00000000, noc_address=0x00000000)
         )
+        self.tdma_regs = MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFB11000))
+        self.debug_regs = MemoryBlock(
+            size=0x1000, address=DeviceAddress(private_address=0xFFB12000, noc_address=0xFFB12000)
+        )
+        self.pic_regs = MemoryBlock(
+            size=0x38, address=DeviceAddress(private_address=0xFFB13000, noc_address=0xFFB13000)
+        )
+        self.riscv_pcs = MemoryBlock(
+            size=0x14, address=DeviceAddress(private_address=0xFFB13138, noc_address=0xFFB13138)
+        )
+        self.noc0_regs = MemoryBlock(
+            size=0x10000, address=DeviceAddress(private_address=0xFFB20000, noc_address=0xFFB20000)
+        )
+        self.noc1_regs = MemoryBlock(
+            size=0x10000, address=DeviceAddress(private_address=0xFFB30000, noc_address=0xFFB30000)
+        )
+        self.noc_overlay = MemoryBlock(
+            size=0x40000, address=DeviceAddress(private_address=0xFFB40000, noc_address=0xFFB40000)
+        )
+
         # Dest size: 8 tiles, of 1024 4 bytes each
         self.dest = MemoryBlock(size=4 * 8 * 1024, address=DeviceAddress(private_address=0xFFBD8000))
 
@@ -172,6 +199,8 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
+        self._update_memory_maps()
+
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:
         return [
@@ -201,3 +230,248 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         elif risc_name == self.ncrisc.risc_name:
             return BlackholeBabyRiscDebug(risc_info=self.ncrisc)
         raise ValueError(f"RISC debug for {risc_name} is not supported in Blackhole functional worker block.")
+
+    def _update_memory_maps(self):
+        self.noc_memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+            ]
+        )
+
+        self.brisc.memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("data_private_memory", self.brisc.data_private_memory, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo(
+                    "t0_gprs", MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000))
+                ),
+                MemoryMapBlockInfo(
+                    "t1_gprs", MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00100))
+                ),
+                MemoryMapBlockInfo(
+                    "t2_gprs", MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00200))
+                ),
+                MemoryMapBlockInfo(
+                    "t0_instruction_buffer",
+                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
+                ),
+                MemoryMapBlockInfo(
+                    "t1_instruction_buffer",
+                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE50000)),
+                ),
+                MemoryMapBlockInfo(
+                    "t2_instruction_buffer",
+                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE60000)),
+                ),
+                MemoryMapBlockInfo(
+                    "pcbuf0", MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE80000))
+                ),
+                MemoryMapBlockInfo(
+                    "pcbuf1", MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE90000))
+                ),
+                MemoryMapBlockInfo(
+                    "pcbuf2", MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEA0000))
+                ),
+                MemoryMapBlockInfo(
+                    "mailboxes0", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000))
+                ),  # brisc
+                MemoryMapBlockInfo(
+                    "mailboxes1", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000))
+                ),  # trisc0
+                MemoryMapBlockInfo(
+                    "mailboxes2", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000))
+                ),  # trisc1
+                MemoryMapBlockInfo(
+                    "mailboxes3", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000))
+                ),  # trisc2
+                MemoryMapBlockInfo(
+                    "config_regs", MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000))
+                ),
+            ]
+        )
+
+        self.trisc0.memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("data_private_memory", self.trisc0.data_private_memory, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo(
+                    "mop_config", MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000))
+                ),  # T0 MOP extender configuration
+                MemoryMapBlockInfo("dest", self.dest),
+                MemoryMapBlockInfo(
+                    "t0_gprs", MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000))
+                ),
+                MemoryMapBlockInfo(
+                    "t0_instruction_buffer",
+                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
+                ),
+                MemoryMapBlockInfo("pcbuf", MemoryBlock(size=0x4, address=DeviceAddress(private_address=0xFFE80000))),
+                MemoryMapBlockInfo("ttsync", MemoryBlock(size=0x1C, address=DeviceAddress(private_address=0xFFE80004))),
+                MemoryMapBlockInfo(
+                    "semaphores", MemoryBlock(size=0xFFD0, address=DeviceAddress(private_address=0xFFE80020))
+                ),
+                MemoryMapBlockInfo(
+                    "mailboxes0", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000))
+                ),  # brisc
+                MemoryMapBlockInfo(
+                    "mailboxes1", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000))
+                ),  # trisc0
+                MemoryMapBlockInfo(
+                    "mailboxes2", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000))
+                ),  # trisc1
+                MemoryMapBlockInfo(
+                    "mailboxes3", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000))
+                ),  # trisc2
+                MemoryMapBlockInfo(
+                    "config_regs", MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000))
+                ),
+            ]
+        )
+
+        self.trisc1.memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("data_private_memory", self.trisc1.data_private_memory, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo(
+                    "mop_config", MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000))
+                ),  # T1 MOP extender configuration
+                MemoryMapBlockInfo("dest", self.dest),
+                MemoryMapBlockInfo(
+                    "t1_gprs", MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000))
+                ),
+                MemoryMapBlockInfo(
+                    "t1_instruction_buffer",
+                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
+                ),
+                MemoryMapBlockInfo("pcbuf", MemoryBlock(size=0x4, address=DeviceAddress(private_address=0xFFE80000))),
+                MemoryMapBlockInfo("ttsync", MemoryBlock(size=0x1C, address=DeviceAddress(private_address=0xFFE80004))),
+                MemoryMapBlockInfo(
+                    "semaphores", MemoryBlock(size=0xFFD0, address=DeviceAddress(private_address=0xFFE80020))
+                ),
+                MemoryMapBlockInfo(
+                    "mailboxes0", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000))
+                ),  # brisc
+                MemoryMapBlockInfo(
+                    "mailboxes1", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000))
+                ),  # trisc0
+                MemoryMapBlockInfo(
+                    "mailboxes2", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000))
+                ),  # trisc1
+                MemoryMapBlockInfo(
+                    "mailboxes3", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000))
+                ),  # trisc2
+                MemoryMapBlockInfo(
+                    "config_regs", MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000))
+                ),
+            ]
+        )
+
+        self.trisc2.memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo(
+                    "mop_config", MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000))
+                ),  # T2 MOP extender configuration
+                MemoryMapBlockInfo("dest", self.dest),
+                MemoryMapBlockInfo(
+                    "t2_gprs", MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000))
+                ),
+                MemoryMapBlockInfo(
+                    "t2_instruction_buffer",
+                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
+                ),
+                MemoryMapBlockInfo("pcbuf", MemoryBlock(size=0x4, address=DeviceAddress(private_address=0xFFE80000))),
+                MemoryMapBlockInfo("ttsync", MemoryBlock(size=0x1C, address=DeviceAddress(private_address=0xFFE80004))),
+                MemoryMapBlockInfo(
+                    "semaphores", MemoryBlock(size=0xFFD0, address=DeviceAddress(private_address=0xFFE80020))
+                ),
+                MemoryMapBlockInfo(
+                    "mailboxes0", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000))
+                ),  # brisc
+                MemoryMapBlockInfo(
+                    "mailboxes1", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000))
+                ),  # trisc0
+                MemoryMapBlockInfo(
+                    "mailboxes2", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000))
+                ),  # trisc1
+                MemoryMapBlockInfo(
+                    "mailboxes3", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000))
+                ),  # trisc2
+                MemoryMapBlockInfo(
+                    "config_regs", MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000))
+                ),
+            ]
+        )
+
+        self.ncrisc.memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("data_private_memory", self.ncrisc.data_private_memory, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+            ]
+        )

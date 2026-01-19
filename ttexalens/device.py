@@ -2,20 +2,23 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
 from abc import abstractmethod
+from dataclasses import dataclass
+import datetime
 from functools import cache, cached_property
+import tt_umd
 from typing import Iterable, Sequence
 
 from tabulate import tabulate
 from ttexalens.context import Context
+from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
-from ttexalens.object import TTObject
+from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
+from ttexalens.umd_device import UmdDevice
 from ttexalens import util as util
-from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
-from abc import abstractmethod
 
 
 class TensixInstructions:
@@ -64,7 +67,7 @@ class TensixInstructions:
 # device classes (e.g. WormholeDevice, BlackholeDevice). The create class method is used to create
 # a specific device.
 #
-class Device(TTObject):
+class Device:
     instructions: TensixInstructions
     DIE_X_TO_NOC_0_X: list[int] = []
     DIE_Y_TO_NOC_0_Y: list[int] = []
@@ -97,47 +100,133 @@ class Device(TTObject):
 
     # Class method to create a Device object given device architecture
     @staticmethod
-    def create(arch, device_id, cluster_desc, device_desc_path: str, context: Context):
-        if "wormhole" in arch.lower():
-            from ttexalens.hw.tensix.wormhole import wormhole
+    def create(device_id: int, context: Context):
+        umd_device = context.umd_api.get_device(device_id)
+        arch = umd_device.arch
+        match arch:
+            case tt_umd.ARCH.WORMHOLE_B0:
+                from ttexalens.hw.tensix.wormhole import wormhole
 
-            return wormhole.WormholeDevice(
-                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
-            )
-        if "blackhole" in arch.lower():
-            from ttexalens.hw.tensix.blackhole import blackhole
+                return wormhole.WormholeDevice(device_id, umd_device, context)
 
-            return blackhole.BlackholeDevice(
-                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
-            )
+            case tt_umd.ARCH.BLACKHOLE:
+                from ttexalens.hw.tensix.blackhole import blackhole
 
-        if "quasar" in arch.lower():
-            from ttexalens.hw.tensix.quasar import quasar
+                return blackhole.BlackholeDevice(device_id, umd_device, context)
 
-            return quasar.QuasarDevice(
-                id=device_id, arch=arch, cluster_desc=cluster_desc, device_desc_path=device_desc_path, context=context
-            )
+            case tt_umd.ARCH.QUASAR:
+                from ttexalens.hw.tensix.quasar import quasar
 
-        raise RuntimeError(f"Architecture {arch} is not supported")
+                return quasar.QuasarDevice(device_id, umd_device, context)
 
-    @cached_property
-    def yaml_file(self):
-        return util.YamlFile(self._context.server_ifc, self._device_desc_path)
+            case _:
+                raise RuntimeError(f"Architecture {arch} is not supported")
 
-    def __init__(self, id: int, arch: str, cluster_desc, device_desc_path: str, context: Context):
-        self._id: int = id
-        self._arch = arch
-        self._device_desc_path = device_desc_path
+    def __init__(self, id: int, umd_device: UmdDevice, context: Context):
+        self.id: int = id
+        self.unique_id = umd_device.unique_id
+        self._arch = umd_device.arch
         self._context = context
-        self._has_mmio = any(id in chip for chip in cluster_desc["chips_with_mmio"])
-        self._has_jtag = cluster_desc["io_device_type"] == "JTAG"
-        self.cluster_desc = cluster_desc
+        self._umd_device = umd_device
+        self._soc_descriptor = umd_device.soc_descriptor
+        self._has_jtag = umd_device.is_jtag_capable
+        self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
-        self.unique_id = self._context.server_ifc.get_device_unique_id(self._id)
+
+    @property
+    def board_type(self) -> tt_umd.BoardType:
+        return self._context.cluster_descriptor.get_board_type(self.id)
 
     @cached_property
-    def _firmware_version(self):
-        return util.FirmwareVersion(self._context.server_ifc.get_firmware_version(self._id))
+    def local_device(self) -> Device:
+        if self.is_local:
+            return self
+        local_tt_device = self._umd_device.get_local_tt_device()
+        for device in self._context.devices.values():
+            if device.is_local and device._umd_device.get_local_tt_device() == local_tt_device:
+                return device
+        raise RuntimeError("Local device not found in context devices")
+
+    @cached_property
+    def firmware_version(self):
+        noc_id = 1 if self._context.use_noc1 else 0
+        fw = self._umd_device.get_firmware_version(noc_id)
+        return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
+
+    # Get all remote devices that are connected to this local device
+    @cached_property
+    def remote_devices(self) -> list[Device]:
+        assert self.is_local, "Only local devices can get remote devices"
+        return [
+            device for device in self._context.devices.values() if not device.is_local and device.local_device == self
+        ]
+
+    def noc_read(
+        self,
+        location: OnChipCoordinate,
+        address: int,
+        size_bytes: int,
+        noc_id: int | None = None,
+        use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
+    ) -> bytes:
+        noc_x, noc_y = location._noc0_coord
+        if noc_id is None:
+            noc_id = 1 if self._context.use_noc1 else 0
+        if use_4B_mode is None:
+            use_4B_mode = self._context.use_4B_mode
+        if dma_threshold is None:
+            dma_threshold = self._context.dma_read_threshold
+        return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
+
+    def noc_read32(self, location: OnChipCoordinate, address: int, noc_id: int | None = None) -> int:
+        result = self.noc_read(location, address, 4, noc_id, True)
+        return int.from_bytes(result, byteorder="little")
+
+    def noc_write(
+        self,
+        location: OnChipCoordinate,
+        address: int,
+        data: bytes,
+        noc_id: int | None = None,
+        use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
+    ):
+        noc_x, noc_y = location._noc0_coord
+        if noc_id is None:
+            noc_id = 1 if self._context.use_noc1 else 0
+        if use_4B_mode is None:
+            use_4B_mode = self._context.use_4B_mode
+        if dma_threshold is None:
+            dma_threshold = self._context.dma_write_threshold
+        return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
+
+    def noc_write32(self, location: OnChipCoordinate, address: int, data: int, noc_id: int | None = None):
+        return self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True)
+
+    def bar0_read32(self, address: int) -> int:
+        return self._umd_device.bar0_read32(address)
+
+    def bar0_write32(self, address: int, data: int):
+        return self._umd_device.bar0_write32(address, data)
+
+    def arc_msg(
+        self,
+        noc_id: int,
+        msg_code: int,
+        wait_for_done: bool,
+        args: Sequence[int],
+        timeout: datetime.timedelta | float,
+    ):
+        return self._umd_device.arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
+
+    def read_arc_telemetry_entry(self, noc_id: int | None, telemetry_tag: int) -> int:
+        if noc_id is None:
+            noc_id = 1 if self._context.use_noc1 else 0
+        return self._umd_device.read_arc_telemetry_entry(noc_id, telemetry_tag)
+
+    def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
+        return self._umd_device.get_remote_transfer_eth_core()
 
     # Coordinate conversion functions (see coordinate.py for description of coordinate systems)
     def __noc_to_die(self, noc_loc, noc_id=0):
@@ -153,16 +242,16 @@ class Device(TTObject):
                 self._noc0_to_block_type[loc._noc0_coord] = block_type
 
         # Fill in coordinate maps from UMD coordinate manager
-        self._from_noc0 = {}
-        self._to_noc0 = {}
+        self._from_noc0: dict[tuple[tuple[int, int], str], tuple[tuple[int, int], str]] = {}
+        self._to_noc0: dict[tuple[tuple[int, int], str, str], tuple[int, int]] = {}
         umd_supported_coordinates = ["noc1", "logical", "translated"]
         unique_coordinates = ["noc1", "translated"]
         for noc0_location, block_type in self._noc0_to_block_type.items():
-            core_type = self.block_types[block_type]["core_type"]
+            core_type = self.block_types[block_type].core_type
             for coord_system in umd_supported_coordinates:
                 try:
-                    converted_location = self._context.server_ifc.convert_from_noc0(
-                        self._id, noc0_location[0], noc0_location[1], core_type, coord_system
+                    converted_location = self._umd_device.convert_from_noc0(
+                        noc0_location[0], noc0_location[1], core_type, coord_system
                     )
                     self._from_noc0[(noc0_location, coord_system)] = (converted_location, core_type)
                     self._to_noc0[(converted_location, coord_system, core_type)] = noc0_location
@@ -193,8 +282,8 @@ class Device(TTObject):
         except:
             try:
                 # Try to recover using UMD API
-                converted_location = self._context.server_ifc.convert_from_noc0(
-                    self._id, noc0_tuple[0], noc0_tuple[1], "router_only", coord_system
+                converted_location = self._umd_device.convert_from_noc0(
+                    noc0_tuple[0], noc0_tuple[1], "router_only", coord_system
                 )
                 return (converted_location, "router_only")
             except:
@@ -213,7 +302,7 @@ class Device(TTObject):
         pass
 
     @cache
-    def get_blocks(self, block_type="functional_workers"):
+    def get_blocks(self, block_type: str = "functional_workers") -> list[NocBlock]:
         """
         Returns all blocks of a given type
         """
@@ -233,12 +322,12 @@ class Device(TTObject):
 
     @cached_property
     def active_eth_block_locations(self) -> list[OnChipCoordinate]:
-        active_channels = []
-        for connection in self.cluster_desc["ethernet_connections"]:
-            for endpoint in connection:
-                if endpoint["chip"] == self._id:
-                    active_channels.append(endpoint["chan"])
-
+        active_channels: list[int] = []
+        for src_chip, channels in self._context.cluster_descriptor.get_ethernet_connections().items():
+            for src_chan, dest in channels.items():
+                dest_chip, dest_chan = dest
+                if dest_chip == self.id:
+                    active_channels.append(dest_chan)
         return [self.get_block_locations(block_type="eth")[chan] for chan in active_channels]
 
     @cached_property
@@ -259,7 +348,11 @@ class Device(TTObject):
         return [self.get_block(location) for location in self.idle_eth_block_locations]
 
     @abstractmethod
-    def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
+    def get_tensix_registers_description(self) -> TensixRegisterDescription:
+        pass
+
+    @abstractmethod
+    def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
         pass
 
     def get_block_locations(self, block_type="functional_workers") -> list[OnChipCoordinate]:
@@ -269,42 +362,59 @@ class Device(TTObject):
         return self._block_locations[block_type]
 
     @cached_property
-    def _block_locations(self):
+    def _block_locations(self) -> dict[str, list[OnChipCoordinate]]:
         """
         Returns locations of all blocks as dictionary of tuples (unchanged coordinates from YAML)
         """
         result: dict[str, list[OnChipCoordinate]] = {}
-        for block_type in self.block_types:
+        for block_name, block_type in self.block_types.items():
             locs = []
-            dev = self.yaml_file.root
+            core_type = tt_umd.CoreType[block_type.core_type.upper()]
+            if block_type.core_harvesting:
+                core_coords = self._soc_descriptor.get_harvested_cores(core_type, tt_umd.CoordSystem.NOC0)
+            else:
+                core_coords = self._soc_descriptor.get_cores(core_type, tt_umd.CoordSystem.NOC0)
 
-            for loc_or_list in dev[block_type]:
-                if type(loc_or_list) != str and isinstance(loc_or_list, Sequence):
-                    for loc in loc_or_list:
-                        locs.append(OnChipCoordinate.create(loc, self, "noc0"))
-                else:
-                    locs.append(OnChipCoordinate.create(loc_or_list, self, "noc0"))
-            result[block_type] = locs
+            for core_coord in core_coords:
+                locs.append(OnChipCoordinate(core_coord.x, core_coord.y, "noc0", self, block_type.core_type))
+            result[block_name] = locs
         return result
 
+    @dataclass
+    class BlockType:
+        symbol: str
+        desc: str
+        core_type: str
+        core_harvesting: bool
+        color: str
+
     block_types = {
-        "functional_workers": {
-            "symbol": ".",
-            "desc": "Functional worker",
-            "core_type": "tensix",
-            "color": util.CLR_GREEN,
-        },
-        "eth": {"symbol": "E", "desc": "Ethernet", "core_type": "eth", "color": util.CLR_YELLOW},
-        "arc": {"symbol": "A", "desc": "ARC", "core_type": "arc", "color": util.CLR_GREY},
-        "dram": {"symbol": "D", "desc": "DRAM", "core_type": "dram", "color": util.CLR_TEAL},
-        "pcie": {"symbol": "P", "desc": "PCIE", "core_type": "pcie", "color": util.CLR_GREY},
-        "router_only": {"symbol": " ", "desc": "Router only", "core_type": "router_only", "color": util.CLR_GREY},
-        "harvested_workers": {"symbol": "-", "desc": "Harvested", "core_type": "tensix", "color": util.CLR_RED},
-        "security": {"symbol": "S", "desc": "Security", "core_type": "security", "color": util.CLR_GREY},
-        "l2cpu": {"symbol": "C", "desc": "L2CPU", "core_type": "l2cpu", "color": util.CLR_GREY},
+        "functional_workers": BlockType(
+            symbol=".", desc="Functional worker", core_type="tensix", core_harvesting=False, color=util.CLR_GREEN
+        ),
+        "eth": BlockType(symbol="E", desc="Ethernet", core_type="eth", core_harvesting=False, color=util.CLR_YELLOW),
+        "harvested_eth": BlockType(
+            symbol="e", desc="Harvested Ethernet", core_type="eth", core_harvesting=True, color=util.CLR_RED
+        ),
+        "arc": BlockType(symbol="A", desc="ARC", core_type="arc", core_harvesting=False, color=util.CLR_GREY),
+        "dram": BlockType(symbol="D", desc="DRAM", core_type="dram", core_harvesting=False, color=util.CLR_TEAL),
+        "harvested_dram": BlockType(
+            symbol="d", desc="Harvested DRAM", core_type="dram", core_harvesting=True, color=util.CLR_RED
+        ),
+        "pcie": BlockType(symbol="P", desc="PCIE", core_type="pcie", core_harvesting=False, color=util.CLR_GREY),
+        "router_only": BlockType(
+            symbol=" ", desc="Router only", core_type="router_only", core_harvesting=False, color=util.CLR_GREY
+        ),
+        "harvested_workers": BlockType(
+            symbol="-", desc="Harvested", core_type="tensix", core_harvesting=True, color=util.CLR_RED
+        ),
+        "security": BlockType(
+            symbol="S", desc="Security", core_type="security", core_harvesting=False, color=util.CLR_GREY
+        ),
+        "l2cpu": BlockType(symbol="C", desc="L2CPU", core_type="l2cpu", core_harvesting=False, color=util.CLR_GREY),
     }
 
-    core_types = {v["core_type"] for v in block_types.values()}
+    core_types = {v.core_type for v in block_types.values()}
 
     def get_block_type(self, loc: OnChipCoordinate) -> str:
         """
@@ -316,7 +426,6 @@ class Device(TTObject):
     # show the device blocks ascii graphically. It will emphasize blocks with locations given by emphasize_loc_list
     # See coordinate.py for valid values of axis_coordinates
     def render(self, axis_coordinate="die", cell_renderer=None, legend=None):
-        dev = self.yaml_file.root
         rows: list[list[str]] = []
 
         # Retrieve all block locations
@@ -395,11 +504,7 @@ class Device(TTObject):
 
     # Detailed string representation of the device
     def __repr__(self):
-        return f"ID: {self.id()}, Arch: {self._arch}"
-
-    def pci_read_tile(self, x, y, z, reg_addr, msg_size, data_format):
-        noc_id = 1 if self._context.use_noc1 else 0
-        return self._context.server_ifc.pci_read_tile(noc_id, self._id, x, y, reg_addr, msg_size, data_format)
+        return f"ID: {self.id}, Arch: {self._arch}"
 
 
 # end of class Device

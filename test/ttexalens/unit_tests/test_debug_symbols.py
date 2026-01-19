@@ -4,9 +4,10 @@
 import unittest
 
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
-from test.ttexalens.unit_tests.test_base import init_default_test_context
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens.context import Context
-from ttexalens.elf import ElfVariable, MemoryAccess
+from ttexalens.elf import ElfVariable, ParsedElfFile
+from ttexalens.memory_access import MemoryAccess, RestrictedMemoryAccessError
 
 
 class MemoryAccessWrapper(MemoryAccess):
@@ -43,10 +44,12 @@ class MemoryAccessWrapper(MemoryAccess):
 class TestDebugSymbols(unittest.TestCase):
     context: Context  # TTExaLens context
     core_sim: RiscvCoreSimulator  # RISC-V core simulator instance
+    parsed_elf: ParsedElfFile
+    mem_access: MemoryAccessWrapper  # Wrapped memory access
 
     @classmethod
     def setUpClass(cls):
-        cls.context = init_default_test_context()
+        cls.context = init_cached_test_context()
         risc_debug = cls.context.devices[0].get_blocks()[0].all_riscs[0]
         cls.core_sim = RiscvCoreSimulator(
             cls.context,
@@ -58,7 +61,7 @@ class TestDebugSymbols(unittest.TestCase):
         cls.parsed_elf = cls.core_sim.parse_elf("globals_test.release")
 
         # Create the memory access wrapper
-        original_mem_access = MemoryAccess.get(risc_debug)
+        original_mem_access = MemoryAccess.create(risc_debug)
         cls.mem_access = MemoryAccessWrapper(original_mem_access)
 
         assert not cls.core_sim.is_in_reset()
@@ -68,6 +71,22 @@ class TestDebugSymbols(unittest.TestCase):
         cls.core_sim.set_reset(True)
 
     def verify_global_struct_low_level(self, g_global_struct):
+        self.assertEqual(0xAA, g_global_struct.base_field1.read_value())
+        self.assertEqual(0xBBBB, g_global_struct.base_field2.read_value())
+        self.assertEqual(0x04030201, g_global_struct.packed.read_value())
+        self.assertEqual(0x01, g_global_struct.v1.read_value())
+        self.assertEqual(0x02, g_global_struct.v2.read_value())
+        self.assertEqual(0x03, g_global_struct.v3.read_value())
+        self.assertEqual(0x04, g_global_struct.v4.read_value())
+
+        self.assertEqual(0xCC, g_global_struct.bs2_base_field1.read_value())
+        self.assertEqual(0xDDDD, g_global_struct.bs2_base_field2.read_value())
+        self.assertEqual(0x08070605, g_global_struct.bs2_packed.read_value())
+        self.assertEqual(0x05, g_global_struct.bs2_v1.read_value())
+        self.assertEqual(0x06, g_global_struct.bs2_v2.read_value())
+        self.assertEqual(0x07, g_global_struct.bs2_v3.read_value())
+        self.assertEqual(0x08, g_global_struct.bs2_v4.read_value())
+
         self.assertEqual(0x11223344, g_global_struct.a.read_value())
         self.assertEqual(0x5566778899AABBCC, g_global_struct.b.read_value())
         self.assertEqual(16, len(g_global_struct.c))
@@ -96,8 +115,35 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(0xAABBCCDD, g_global_struct.msg.packed.read_value())
         self.assertEqual(0xAA, g_global_struct.msg.signal.read_value())
         self.assertEqual(0x87654321, g_global_struct.msg.test2.read_value())
+        self.assertEqual(4, len(g_global_struct.uint_array))
+        self.assertEqual(0x11111111, g_global_struct.uint_array[0].read_value())
+        self.assertEqual(0x22222222, g_global_struct.uint_array[1].read_value())
+        self.assertEqual(0x33333333, g_global_struct.uint_array[2].read_value())
+        self.assertEqual(0x44444444, g_global_struct.uint_array[3].read_value())
+        self.assertNotEqual(0, g_global_struct.uint_pointer.read_value())
+        self.assertEqual(0x11111111, g_global_struct.uint_pointer.dereference().read_value())
+        self.assertEqual(0x11111111, g_global_struct.uint_pointer[0].read_value())
+        self.assertEqual(0x22222222, g_global_struct.uint_pointer[1].read_value())
+        self.assertEqual(2, g_global_struct.enum_class_field.read_value())
+        self.assertEqual(20, g_global_struct.enum_type_field.read_value())
 
     def verify_global_struct(self, g_global_struct):
+        self.assertEqual(0xAA, g_global_struct.base_field1)
+        self.assertEqual(0xBBBB, g_global_struct.base_field2)
+        self.assertEqual(0x04030201, g_global_struct.packed)
+        self.assertEqual(0x01, g_global_struct.v1)
+        self.assertEqual(0x02, g_global_struct.v2)
+        self.assertEqual(0x03, g_global_struct.v3)
+        self.assertEqual(0x04, g_global_struct.v4)
+
+        self.assertEqual(0xCC, g_global_struct.bs2_base_field1)
+        self.assertEqual(0xDDDD, g_global_struct.bs2_base_field2)
+        self.assertEqual(0x08070605, g_global_struct.bs2_packed)
+        self.assertEqual(0x05, g_global_struct.bs2_v1)
+        self.assertEqual(0x06, g_global_struct.bs2_v2)
+        self.assertEqual(0x07, g_global_struct.bs2_v3)
+        self.assertEqual(0x08, g_global_struct.bs2_v4)
+
         self.assertEqual(0x11223344, g_global_struct.a)
         self.assertEqual(0x5566778899AABBCC, g_global_struct.b)
         self.assertEqual([i for i in range(16)], g_global_struct.c)
@@ -118,6 +164,19 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(0xAABBCCDD, g_global_struct.msg.packed)
         self.assertEqual(0xAA, g_global_struct.msg.signal)
         self.assertEqual(0x87654321, g_global_struct.msg.test2)
+        self.assertEqual(4, len(g_global_struct.uint_array))
+        self.assertEqual(0x11111111, g_global_struct.uint_array[0])
+        self.assertEqual(0x22222222, g_global_struct.uint_array[1])
+        self.assertEqual(0x33333333, g_global_struct.uint_array[2])
+        self.assertEqual(0x44444444, g_global_struct.uint_array[3])
+        self.assertNotEqual(0, g_global_struct.uint_pointer)
+        self.assertEqual(0x11111111, g_global_struct.uint_pointer.dereference())
+        self.assertEqual(0x11111111, g_global_struct.uint_pointer[0])
+        self.assertEqual(0x22222222, g_global_struct.uint_pointer[1])
+        self.assertEqual(2, g_global_struct.enum_class_field)
+        self.assertEqual("EnumClass::VALUE_C", str(g_global_struct.enum_class_field))
+        self.assertEqual(20, g_global_struct.enum_type_field)
+        self.assertEqual("EnumType::TYPE_Y", str(g_global_struct.enum_type_field))
 
     def test_elf_variable_low_level(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
@@ -329,3 +388,148 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertRaises(Exception, g_global_struct.f.write_value, 0xFFFFFFFF)  # Overflow uint32 on float32
         self.assertRaises(Exception, g_global_struct.f.write_value, 3.4028235e38 * 2)  # Overflow float32
         self.assertRaises(Exception, g_global_struct.g.write_value, 0xFFFFFFFFFFFFFFFF)  # Overflow uint64 on float64
+        enum_value = self.parsed_elf.get_enum_value("EnumClass::VALUE_D")
+        assert enum_value is not None
+        self.assertEqual(enum_value, 3)
+        g_global_struct.enum_class_field.write_value(enum_value)
+        self.assertEqual(3, g_global_struct.enum_class_field)
+        self.assertEqual("EnumClass::VALUE_D", str(g_global_struct.enum_class_field))
+        g_global_struct.enum_class_field.write_value(2)  # Restore original value
+        self.assertRaises(
+            Exception, g_global_struct.enum_class_field.write_value, 0xFFFFFFFFFFFFFFFF
+        )  # Overflow uint64 on byte enum
+
+    def test_elf_variable_memory_access_errors(self):
+        """Test that all operators propagate memory access errors"""
+        g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
+
+        # invalid_memory_ptr points to 0xFFFF0000 which is outside L1/Data Private Memory
+        invalid_ptr = g_global_struct.invalid_memory_ptr
+
+        # Dereferencing should raise memory access error
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference().read_value())
+
+        # Test all comparison operators propagate memory errors
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() < 100)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 > invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() <= 100)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 >= invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() > 100)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 < invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() >= 100)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 <= invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() == 100)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 == invalid_ptr.dereference())
+        # Test all arithmetic operators propagate memory errors
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() + 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 + invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() - 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 - invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() * 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 * invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() / 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 / invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() // 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 // invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() % 10)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 % invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() ** 2)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 2 ** invalid_ptr.dereference())
+
+        # Test all bitwise operators propagate memory errors
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() & 0xFF)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 0xFF & invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() | 0xFF)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 0xFF | invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() ^ 0xFF)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 0xFF ^ invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() << 2)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 2 << invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() >> 2)
+        self.assertRaises(RestrictedMemoryAccessError, lambda: 2 >> invalid_ptr.dereference())
+
+        # Test all unary operators propagate memory errors
+        self.assertRaises(RestrictedMemoryAccessError, lambda: -invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: +invalid_ptr.dereference())
+        self.assertRaises(RestrictedMemoryAccessError, lambda: abs(invalid_ptr.dereference()))
+        self.assertRaises(RestrictedMemoryAccessError, lambda: ~invalid_ptr.dereference())
+
+    def test_elf_variable_type_errors(self):
+        """Test that all operators handle type incompatibility correctly"""
+        g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
+
+        # Test comparison operators with incompatible types
+        # __eq__ should return False for type mismatch
+        self.assertFalse(g_global_struct.a == [1, 2, 3])
+        self.assertFalse(g_global_struct.a == {"key": "value"})
+        self.assertFalse(g_global_struct.a == "string")
+
+        # __lt__ and __gt__ should raise TypeError when both operands return NotImplemented
+        self.assertRaises(TypeError, lambda: g_global_struct.a < [1, 2, 3])
+        self.assertRaises(TypeError, lambda: [1, 2, 3] > g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a > [1, 2, 3])
+        self.assertRaises(TypeError, lambda: [1, 2, 3] < g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a <= {"key": "value"})
+        self.assertRaises(TypeError, lambda: {"key": "value"} >= g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a >= {"key": "value"})
+        self.assertRaises(TypeError, lambda: {"key": "value"} <= g_global_struct.a)
+
+        # Test arithmetic operators with incompatible types
+        self.assertRaises(TypeError, lambda: g_global_struct.a + "string")
+        self.assertRaises(TypeError, lambda: "string" + g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a - [1, 2])
+        self.assertRaises(TypeError, lambda: [1, 2] - g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a * {"key": "value"})
+        self.assertRaises(TypeError, lambda: {"key": "value"} * g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a / "string")
+        self.assertRaises(TypeError, lambda: "string" / g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a // [1, 2])
+        self.assertRaises(TypeError, lambda: [1, 2] // g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a % {"key": "value"})
+        self.assertRaises(TypeError, lambda: {"key": "value"} % g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a ** "string")
+        self.assertRaises(TypeError, lambda: "string" ** g_global_struct.a)
+
+        # Test bitwise operators with incompatible types
+        self.assertRaises(TypeError, lambda: g_global_struct.a & "string")
+        self.assertRaises(TypeError, lambda: "string" & g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a | [1, 2])
+        self.assertRaises(TypeError, lambda: [1, 2] | g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a ^ {"key": "value"})
+        self.assertRaises(TypeError, lambda: {"key": "value"} ^ g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a << "string")
+        self.assertRaises(TypeError, lambda: "string" << g_global_struct.a)
+        self.assertRaises(TypeError, lambda: g_global_struct.a >> [1, 2])
+        self.assertRaises(TypeError, lambda: [1, 2] >> g_global_struct.a)
+
+        # Test bitwise operators with floats (should fail type check)
+        self.assertRaises(TypeError, lambda: g_global_struct.f & 0xFF)
+        self.assertRaises(TypeError, lambda: 0xFF & g_global_struct.f)
+        self.assertRaises(TypeError, lambda: g_global_struct.g | 0xFF)
+        self.assertRaises(TypeError, lambda: 0xFF | g_global_struct.g)
+        self.assertRaises(TypeError, lambda: g_global_struct.f ^ 0xFF)
+        self.assertRaises(TypeError, lambda: 0xFF ^ g_global_struct.f)
+        self.assertRaises(TypeError, lambda: g_global_struct.g << 2)
+        self.assertRaises(TypeError, lambda: 2 << g_global_struct.g)
+        self.assertRaises(TypeError, lambda: g_global_struct.f >> 2)
+        self.assertRaises(TypeError, lambda: 2 >> g_global_struct.f)
+
+        # Test unary invert with float (should raise TypeError)
+        self.assertRaises(TypeError, lambda: ~g_global_struct.f)
+        self.assertRaises(TypeError, lambda: ~g_global_struct.g)
+
+        # Test that wrong_type_ptr works with valid memory (type cast, not type error)
+        # wrong_type_ptr is InnerStruct* but points to uint32_t array
+        wrong_ptr = g_global_struct.wrong_type_ptr
+        dereferenced = wrong_ptr.dereference()
+
+        # Should be able to access (memory is valid), data is interpreted as InnerStruct
+        # InnerStruct has x (uint16_t) and y (uint16_t)
+        # uint_array[0] = 0x11111111, so x = 0x1111, y = 0x1111 (little-endian)
+        self.assertEqual(dereferenced.x, 0x1111)
+        self.assertEqual(dereferenced.y, 0x1111)
+
+        # Verify operators work with wrong type interpretation but valid memory
+        self.assertTrue(dereferenced.x < 0x2000)
+        self.assertEqual(dereferenced.x + 0x1000, 0x2111)
+        self.assertEqual(dereferenced.y & 0xFF00, 0x1100)

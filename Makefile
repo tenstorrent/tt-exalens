@@ -1,6 +1,5 @@
-CONFIG ?= Debug
-TT_UMD_BUILD_JTAG ?= OFF
-BUILD_DIR ?= build_$(shell echo $(CONFIG) | tr '[:upper:]' '[:lower:]') # build_debug or build_release
+BUILD_DIR ?= build
+DUMP_ELFS ?= OFF
 
 .PHONY: build
 build:
@@ -8,28 +7,21 @@ build:
 		cmake -B $(BUILD_DIR) -G Ninja \
 			-DCMAKE_C_COMPILER_LAUNCHER=ccache \
 			-DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-			-DCMAKE_BUILD_TYPE=$(CONFIG) \
-			-DTT_UMD_BUILD_JTAG=$(TT_UMD_BUILD_JTAG) \
+			-DDUMP_ELFS=$(DUMP_ELFS) \
 			-DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
 	else \
 		cmake -B $(BUILD_DIR) -G Ninja \
-			-DCMAKE_BUILD_TYPE=$(CONFIG) \
-			-DTT_UMD_BUILD_JTAG=$(TT_UMD_BUILD_JTAG) \
+			-DDUMP_ELFS=$(DUMP_ELFS) \
 			-DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
 	fi
 	@ninja -C $(BUILD_DIR)
 
-.PHONY: debug
-debug: CONFIG=Debug
-debug: build
-
-.PHONY: release
-release: CONFIG=Release
-release: build
+dump_elfs:
+	DUMP_ELFS=ON $(MAKE) build
 
 .PHONY: clean
 clean:
-	@rm -rf build build_debug build_release build_riscv
+	@rm -rf build
 
 .PHONY: test
 test:
@@ -42,19 +34,11 @@ test:
 .PHONY: mypy
 mypy:
 	@echo "Running mypy"
-	python3 -m mypy -p ttexalens
-
-.PHONY: wheel_develop
-wheel_develop:
-	@mkdir -p build_debug
-	@ln -sfn "$(abspath build_debug)" build
-	CONFIG=Debug pip wheel --no-deps --no-cache-dir . --wheel-dir build_debug/ttexalens_wheel
+	python3 -m mypy
 
 .PHONY: wheel
 wheel:
-	@mkdir -p build_release
-	@ln -sfn "$(abspath build_release)" build
-	STRIP_SYMBOLS=1 CONFIG=Release pip wheel --no-deps --no-cache-dir . --wheel-dir build_release/ttexalens_wheel
+	pip wheel --no-deps --no-cache-dir --extra-index-url https://test.pypi.org/simple/ . --wheel-dir build/ttexalens_wheel
 
 TTEXALENS_HOME ?= $(shell git rev-parse --show-toplevel)
 

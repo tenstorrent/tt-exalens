@@ -5,8 +5,7 @@
 import unittest
 from parameterized import parameterized_class
 from test.ttexalens.unit_tests.test_base import init_test_context
-from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.tt_exalens_lib import write_words_to_device
+from ttexalens import OnChipCoordinate, write_words_to_device
 
 
 @parameterized_class(

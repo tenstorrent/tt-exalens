@@ -46,7 +46,9 @@ from typing import TYPE_CHECKING
 from ttexalens.util import TTException
 
 if TYPE_CHECKING:
+    from ttexalens.context import Context
     from ttexalens.device import Device
+    from ttexalens.hardware.noc_block import NocBlock
 
 VALID_COORDINATE_TYPES = [
     "die",
@@ -120,19 +122,19 @@ class OnChipCoordinate:
             raise Exception("Unknown input coordinate system: " + input_type)
 
     @property
-    def context(self):
+    def context(self) -> Context:
         return self._device._context
 
     @property
-    def device(self):
+    def device(self) -> Device:
         return self._device
 
     @property
-    def device_id(self):
-        return self._device._id
+    def device_id(self) -> int:
+        return self._device.id
 
     @property
-    def noc_block(self):
+    def noc_block(self) -> NocBlock:
         return self.device.get_block(self)
 
     # This returns a tuple with the coordinates in the specified coordinate system.
@@ -185,7 +187,7 @@ class OnChipCoordinate:
     def vertical_axis_increasing_up(coord_type):
         return False
 
-    def to_str(self, output_type="noc0"):
+    def to_str(self, output_type="noc0") -> str:
         """
         Returns a tuple with the coordinates in the specified coordinate system.
         """
@@ -206,7 +208,7 @@ class OnChipCoordinate:
             return f"{output_tuple[0]},{output_tuple[1]}"
         return f"{output_tuple[0]}-{output_tuple[1]}"
 
-    def to_user_str(self):
+    def to_user_str(self) -> str:
         """
         Returns a string representation of the coordinate that is suitable for the user.
         """
@@ -243,7 +245,7 @@ class OnChipCoordinate:
         return self.to_str("logical")
 
     def __hash__(self):
-        return hash((self._noc0_coord, self._device._id))
+        return hash((self._noc0_coord, self._device.id))
 
     # The debug string representation also has the translated coordinate.
     def __repr__(self) -> str:
@@ -258,17 +260,17 @@ class OnChipCoordinate:
         return (self._noc0_coord == other._noc0_coord) and (self._device == other._device)
 
     def __lt__(self, other):
-        if self._device.id() == other._device.id():
+        if self._device.id == other._device.id:
             return self._noc0_coord < other._noc0_coord
         else:
-            return self._device.id() < other._device.id()
+            return self._device.id < other._device.id
 
     @staticmethod
-    def create(coord_str, device, coord_type=None):
+    def create(coord_str, device, coord_type=None) -> OnChipCoordinate:
         """
         Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
 
-        Parameters:
+        Args:
             coord_str (str): The string representation of the coordinate.
             device (Device): The device object representing the chip.
             coord_type (str, optional): The type of coordinate system used in the string.
@@ -286,7 +288,7 @@ class OnChipCoordinate:
             - DRAM channel format: The coordinate starts with "CH" followed by the channel number.
               Example: "CH1"
 
-        Note:
+        Notes:
             - If the coordinate format is X-Y or R,C, the coordinates will be converted to integers.
             - If the coordinate format is DRAM channel, the corresponding NOC0 coordinates will be used.
         """
@@ -321,3 +323,29 @@ class OnChipCoordinate:
         else:
             raise TTException("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
         return OnChipCoordinate(x, y, coord_type, device, core_type)
+
+    def noc_read(
+        self,
+        address: int,
+        size_bytes: int,
+        noc_id: int | None = None,
+        use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
+    ) -> bytes:
+        return self.device.noc_read(self, address, size_bytes, noc_id, use_4B_mode, dma_threshold)
+
+    def noc_read32(self, address: int, noc_id: int | None = None) -> int:
+        return self.device.noc_read32(self, address, noc_id)
+
+    def noc_write(
+        self,
+        address: int,
+        data: bytes,
+        noc_id: int | None = None,
+        use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
+    ):
+        return self.device.noc_write(self, address, data, noc_id, use_4B_mode, dma_threshold)
+
+    def noc_write32(self, address: int, data: int, noc_id: int | None = None):
+        return self.device.noc_write32(self, address, data, noc_id)

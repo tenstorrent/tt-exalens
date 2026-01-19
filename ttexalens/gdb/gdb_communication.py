@@ -1,10 +1,34 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from contextlib import closing
 import select
 import socket
+import threading
+from typing import IO
 from ttexalens.gdb.gdb_data import GdbThreadId
 from ttexalens import util as util
+
+
+# Global lock for thread-safe port finding
+_port_lock = threading.Lock()
+
+
+def find_available_port() -> int:
+    """
+    Find an available port for gdb_server in a thread-safe manner.
+    Returns:
+        An available port number
+    """
+    try:
+        with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s:
+            s.bind(("", 0))  # 0 → OS picks a free port
+            s.listen()
+            return int(s.getsockname()[1])
+    except (socket.error, OSError) as e:
+        # If we get here, no port was found
+        raise Exception(f"No available port found: {e}")
+
 
 # Simple class that wraps reading/writing to a socket
 class ClientSocket:
@@ -49,7 +73,7 @@ class ClientSocket:
 
 # Simple class that wraps listening and accepting connections
 class ServerSocket:
-    def __init__(self, port: int):
+    def __init__(self, port: int | None = None):
         self.port = port
         self.server: socket.socket | None = None
         self.connection: socket.socket | None = None
@@ -59,10 +83,13 @@ class ServerSocket:
 
     def start(self):
         if self.server is None:
-            self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.server.bind(("localhost", self.port))
-            self.server.listen(1)
+            with _port_lock:
+                if self.port is None:
+                    self.port = find_available_port()
+                self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                self.server.bind(("localhost", self.port))
+                self.server.listen(1)
 
     def accept(self, timeout: float | None = None):
         assert self.server is not None
@@ -92,10 +119,11 @@ GDB_ASCII_COMMA = ord(",")
 
 # This class is used to read messages from GDB
 class GdbInputStream:
-    def __init__(self, socket: ClientSocket):
+    def __init__(self, socket: ClientSocket, error_stream: IO[str] | None = None):
         self.socket = socket
         self.input_buffer = bytes()
         self.next_message = bytearray()
+        self.error_stream = error_stream
 
     def ensure_input_buffer(self, position: int = 0):
         # Check if input buffer is empty
@@ -125,7 +153,8 @@ class GdbInputStream:
         if self.input_buffer[0] != GDB_ASCII_DOLLAR:
             # Respond with ack error, discard input buffer and try to read next message
             util.ERROR(
-                f"GDB message parsing error: Unexpected character at start of message '{self.input_buffer[0:1].decode()}'"
+                f"GDB message parsing error: Unexpected character at start of message '{self.input_buffer[0:1].decode()}'",
+                file=self.error_stream,
             )
             self.socket.write(b"-")
             self.input_buffer = bytes()
@@ -180,7 +209,10 @@ class GdbInputStream:
 
         # Was checksum correct
         if not correct_checksum:
-            util.ERROR(f"GDB message parsing error: Unexpected checksum. expected: '{checksum1:X}{checksum2:X}'")
+            util.ERROR(
+                f"GDB message parsing error: Unexpected checksum. expected: '{checksum1:X}{checksum2:X}'",
+                file=self.error_stream,
+            )
             self.socket.write(b"-")
             return self.read()
         return GdbMessageParser(bytes(self.next_message))

@@ -17,11 +17,11 @@ class TTExaLensOutputVerifier:
 
     def verify_start(self, runner: "TTExaLensTestRunner", tester: unittest.TestCase):
         lines, prompt = runner.read_until_prompt()
+        assert prompt is not None
         self.verify_startup(lines, prompt, tester)
-        pass
 
     @abstractmethod
-    def is_prompt_line(self, line: str) -> str:
+    def is_prompt_line(self, line: str) -> bool:
         pass
 
     @abstractmethod
@@ -30,16 +30,16 @@ class TTExaLensOutputVerifier:
 
 
 class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
-    prompt_regex = r"^gdb:[^ ]+ device:\d+ loc:\d+-\d+ \(\d+, \d+\) > $"
+    prompt_regex = r"^(gdb:[^ ]+ )?([[]4B MODE[\]] )?noc:\d+ device:\d+ loc:\d+-\d+ \(\d+,\d+\) > $"
 
     def __init__(self):
         self.server_temp_path = ""
 
-    def is_prompt_line(self, line: str) -> str:
-        return re.match(self.prompt_regex, line)
+    def is_prompt_line(self, line: str) -> bool:
+        return re.match(self.prompt_regex, line) is not None
 
     def verify_startup(self, lines: list, prompt: str, tester: unittest.TestCase):
-        test_regex = []
+        test_regex: list[str] = []
         skip_regex = [
             r"Verbosity level: \d+",
             r"Output directory \(output_dir\) was not supplied and cannot be determined automatically\. Continuing with limited functionality\.\.\.",
@@ -69,14 +69,12 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
             # Report an unexpected line
             tester.fail(f"Unexpected line: {line}, expected {test_regex[id]}")
 
-        return True
-
 
 class TTExaLensTestRunner:
     def __init__(self, verifier: TTExaLensOutputVerifier):
         self.interpreter_path = sys.executable
         self.ttexalens_py_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "../..", "tt-exalens.py")
-        self.process: subprocess.Popen = None
+        self.process: subprocess.Popen | None = None
         self.verifier = verifier
 
     @property
@@ -87,6 +85,7 @@ class TTExaLensTestRunner:
 
     @property
     def returncode(self):
+        assert self.process is not None
         return self.process.returncode
 
     def invoke(self, args=None):
@@ -103,7 +102,8 @@ class TTExaLensTestRunner:
         self.invoke(args)
         self.verifier.verify_start(self, tester)
 
-    def readline(self, timeoutSeconds: float = 1):
+    def readline(self, timeoutSeconds: float = 5):
+        assert self.process is not None
         # Fast path for program that ended
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0)
         if len(rlist) == 0:
@@ -114,7 +114,7 @@ class TTExaLensTestRunner:
                 if not self.is_running:
                     return None
                 raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from TTExaLens")
-        line = rlist[0].readline()
+        line = rlist[0].readline()  # type: ignore
         if line.endswith("\n"):
             line = line[:-1]
         elif not line:
@@ -123,12 +123,13 @@ class TTExaLensTestRunner:
         return line
 
     def writeline(self, line):
+        assert self.process is not None and self.process.stdin is not None
         self.process.stdin.write(line)
         self.process.stdin.write("\n")
         self.process.stdin.flush()
 
-    def read_until_prompt(self, readline_timeout: float = 1):
-        lines = []
+    def read_until_prompt(self, readline_timeout: float = 5) -> tuple[list[str], str | None]:
+        lines: list[str] = []
         while True:
             line = self.readline(readline_timeout)
             if line is None:
@@ -137,11 +138,13 @@ class TTExaLensTestRunner:
                 return (lines, line)
             lines.append(line)
 
-    def wait(self, timeoutSeconds: float = None):
+    def wait(self, timeoutSeconds: float | None = None):
+        assert self.process is not None
         self.process.wait(timeoutSeconds)
 
     def kill(self):
         try:
+            assert self.process is not None
             self.process.kill()
             self.process.wait()
         except:
@@ -150,6 +153,7 @@ class TTExaLensTestRunner:
     def execute(self, args=None, input=None, timeout=None):
         try:
             self.invoke(args)
+            assert self.process is not None
             stdout, stderr = self.process.communicate(input, timeout)
             return stdout.splitlines(), stderr.splitlines()
         except Exception as e:
@@ -158,7 +162,6 @@ class TTExaLensTestRunner:
 
 
 class TestUmdTTExaLens(unittest.TestCase):
-    @unittest.skip("Disabling this test for the moment. Something not working in CI, investigation needed.")
     def test_startup_and_exit_just_return_code(self):
         runner = TTExaLensTestRunner(UmdTTExaLensOutputVerifier())
         runner.start(self)

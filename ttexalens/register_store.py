@@ -10,7 +10,6 @@ import re
 from typing import TYPE_CHECKING, Callable
 
 from ttexalens.context import Context
-from ttexalens.tt_exalens_lib import read_word_from_device, write_words_to_device
 from ttexalens.pack_unpack_regfile import TensixDataFormat
 
 if TYPE_CHECKING:
@@ -82,10 +81,10 @@ class RegisterDescription:
         return self.base_address.private_address + self.offset
 
     @property
-    def raw_address(self) -> int | None:
-        if self.base_address is None or self.base_address.raw_address is None:
+    def bar0_address(self) -> int | None:
+        if self.base_address is None or self.base_address.bar0_address is None:
             return None
-        return self.base_address.raw_address + self.offset
+        return self.base_address.bar0_address + self.offset
 
     @property
     def noc_id(self) -> int | None:
@@ -119,6 +118,16 @@ class ConfigurationRegisterDescription(RegisterDescription):
 
     def __post_init__(self):
         self.offset = self.offset + self.index * 4
+
+
+@dataclass
+class TensixGeneralPurposeRegisterDescription(RegisterDescription):
+    index: int = 0
+    thread_id: int = 0
+
+    def __post_init__(self):
+        # Tensix has 64 4 byte general purpose registers per thread.
+        self.offset = self.offset + (self.index + self.thread_id * 64) * 4
 
 
 @dataclass
@@ -199,11 +208,11 @@ class RegisterStore:
             return self.registers[register_name]
         elif self.neo_id is None:
             raise ValueError(
-                f"Unknown register name '{register_name}' on {self.location.to_user_str()} for device {self.device._id}."
+                f"Unknown register name '{register_name}' on {self.location.to_user_str()} for device {self.device.id}."
             )
         else:
             raise ValueError(
-                f"Unknown register name '{register_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device._id}."
+                f"Unknown register name '{register_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device.id}."
             )
 
     def get_register_noc_address(self, register_name: str) -> int | None:
@@ -216,10 +225,10 @@ class RegisterStore:
         assert register.mask == 0xFFFFFFFF
         return register.private_address
 
-    def get_register_raw_address(self, register_name: str) -> int | None:
+    def get_register_bar0_address(self, register_name: str) -> int | None:
         register = self.get_register_description(register_name)
         assert register.mask == 0xFFFFFFFF
-        return register.raw_address
+        return register.bar0_address
 
     def parse_register_description(self, input_string: str) -> tuple[RegisterDescription, str]:
         # Check if the input string is a register name
@@ -283,21 +292,13 @@ class RegisterStore:
             if register.base_address is None:
                 register = register.clone(self._get_register_base_address(register))
 
-        if register.noc_address is not None:
-            value = read_word_from_device(
-                self.location, register.noc_address, self.device._id, self.context, register.noc_id
-            )
-        elif register.raw_address is not None:
-            value = self.context.server_ifc.pci_read32_raw(self.device._id, register.raw_address)
+        if register.bar0_address is not None:
+            value = self.device.bar0_read32(register.bar0_address)
+        elif register.noc_address is not None:
+            value = self.location.noc_read32(register.noc_address, register.noc_id)
         elif isinstance(register, ConfigurationRegisterDescription):
-            write_words_to_device(
-                self.location,
-                self._control_register_address,
-                register.index,
-                self.device._id,
-                self.context,
-            )
-            value = read_word_from_device(self.location, self._data_register_address, self.device._id, self.context)
+            self.location.noc_write32(self._control_register_address, register.index)
+            value = self.location.noc_read32(self._data_register_address)
         else:
             # Read using RISC core debugging hardware.
             risc_debug = self.device.get_block(self.location).get_default_risc_debug()
@@ -330,20 +331,16 @@ class RegisterStore:
                 f"Value must be greater than 0 and inside the mask 0x{register.mask:x}, but got {value} (0x{value:x})"
             )
 
-        if register.noc_address is not None:
+        if register.bar0_address is not None:
             if register.mask != 0xFFFFFFFF:
-                old_value = read_word_from_device(
-                    self.location, register.noc_address, self.device._id, self.context, register.noc_id
-                )
+                old_value = self.device.bar0_read32(register.bar0_address)
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            write_words_to_device(
-                self.location, register.noc_address, value, self.device._id, self.context, register.noc_id
-            )
-        elif register.raw_address is not None:
+            self.device.bar0_write32(register.bar0_address, value)
+        elif register.noc_address is not None:
             if register.mask != 0xFFFFFFFF:
-                old_value = self.context.server_ifc.pci_read32_raw(self.device._id, register.raw_address)
+                old_value = self.location.noc_read32(register.noc_address, register.noc_id)
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            self.context.server_ifc.pci_write32_raw(self.device._id, register.raw_address, value)
+            self.location.noc_write32(register.noc_address, value, register.noc_id)
         else:
             # Write using RISC core debugging hardware.
             risc_debug = self.device.get_block(self.location).get_default_risc_debug()

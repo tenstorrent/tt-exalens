@@ -1,23 +1,9 @@
 # tt_exalens_init
 
-## GLOBAL_CONTEXT
-
-`GLOBAL_CONTEXT` = **None** *(Context | None)*
-
-### Description
-
-GLOBAL_CONTEXT is a convenience variable to store fallback TTExaLens context object.
-If a library function needs context parameter but it isn't provided, it will use
-whatever is in GLOBAL_CONTEXT variable. This does not mean that TTExaLens context is
-a singleton, as it can be explicitly provided to library functions.
-
-
-
-
 ## init_ttexalens
 
 ```
-init_ttexalens(wanted_devices=None, init_jtag=False, use_noc1=False) -> Context
+init_ttexalens(init_jtag: bool = False, use_noc1: bool = False, use_4B_mode: bool = True, simulation_directory: str | None = None) -> Context
 ```
 
 
@@ -29,8 +15,10 @@ Interfacing device is local, through pybind.
 
 ### Args
 
-- `wanted_devices` *(list, optional)*: List of device IDs we want to connect to. If None, connect to all available devices.
-- `caching_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
+- `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
+- `use_noc1` *(bool)*: Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
+- `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
+- `simulation_directory` *(str, optional)*: If specified, starts the simulator from the given build output directory.
 
 
 ### Returns
@@ -42,7 +30,7 @@ Interfacing device is local, through pybind.
 ## init_ttexalens_remote
 
 ```
-init_ttexalens_remote(ip_address=localhost, port=5555) -> Context
+init_ttexalens_remote(ip_address: str = localhost, port: int = 5555, use_4B_mode: bool = True) -> Context
 ```
 
 
@@ -56,7 +44,7 @@ Interfacing device is done remotely through TTExaLens client.
 
 - `ip_address` *(str)*: IP address of the TTExaLens server. Default is 'localhost'.
 - `port` *(int)*: Port number of the TTExaLens server interface. Default is 5555.
-- `cache_path` *(str, optional)*: Path to the cache file to write. If None, caching is disabled.
+- `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
 
 
 ### Returns
@@ -65,38 +53,10 @@ Interfacing device is done remotely through TTExaLens client.
 
 
 
-## get_cluster_desc_yaml
-
-```
-get_cluster_desc_yaml(lens_ifc) -> util.YamlFile
-```
-
-
-### Description
-
-Get the runtime data and cluster description yamls through the TTExaLens interface.
-
-
-
-
-## load_context
-
-```
-load_context(server_ifc, use_noc1=False) -> Context
-```
-
-
-### Description
-
-Load the TTExaLens context object with specified parameters.
-
-
-
-
 ## set_active_context
 
 ```
-set_active_context(context) -> None
+set_active_context(context: Context | None)
 ```
 
 
@@ -117,20 +77,6 @@ Set the active TTExaLens context object.
 
 
 
-## locate_most_recent_build_output_dir
-
-```
-locate_most_recent_build_output_dir() -> str | None
-```
-
-
-### Description
-
-Try to find a default output directory.
-
-
-
-
 
 
 # tt_exalens_lib
@@ -138,7 +84,7 @@ Try to find a default output directory.
 ## check_context
 
 ```
-check_context(context=None) -> Context
+check_context(context: Context | None = None) -> Context
 ```
 
 
@@ -154,7 +100,7 @@ that the context can be reused in calls to other functions.
 ## convert_coordinate
 
 ```
-convert_coordinate(location, device_id=0, context=None) -> OnChipCoordinate
+convert_coordinate(location: str | OnChipCoordinate, device_id: int = 0, context: Context | None = None) -> OnChipCoordinate
 ```
 
 
@@ -180,7 +126,7 @@ If location is already OnChipCoordinate, it is returned as-is.
 ## read_word_from_device
 
 ```
-read_word_from_device(location, addr, device_id=0, context=None, noc_id=None) -> int
+read_word_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, context: Context | None = None, noc_id: int | None = None) -> int
 ```
 
 
@@ -196,6 +142,7 @@ Reads one four-byte word of data, from address 'addr' at specified location usin
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
 
 ### Returns
@@ -207,7 +154,7 @@ Reads one four-byte word of data, from address 'addr' at specified location usin
 ## read_words_from_device
 
 ```
-read_words_from_device(location, addr, device_id=0, word_count=1, context=None, noc_id=None) -> int
+read_words_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, word_count: int = 1, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None) -> list[int]
 ```
 
 
@@ -224,6 +171,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at specif
 - `word_count` *(int, default 1)*: Number of 4-byte words to read.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
 
 ### Returns
@@ -235,7 +183,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at specif
 ## read_from_device
 
 ```
-read_from_device(location, addr, device_id=0, num_bytes=4, context=None, noc_id=None) -> bytes
+read_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, num_bytes: int = 4, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None) -> bytes
 ```
 
 
@@ -263,7 +211,7 @@ Reads num_bytes of data starting from address 'addr' at specified location using
 ## write_words_to_device
 
 ```
-write_words_to_device(location, addr, data, device_id=0, context=None, noc_id=None) -> int
+write_words_to_device(location: str | OnChipCoordinate, addr: int, data: int | list[int], device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None)
 ```
 
 
@@ -280,18 +228,15 @@ Writes data word to address 'addr' at specified location using specified noc.
 - `device_id` *(int, default 0)*: ID number of device to write to.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
-
-### Returns
-
- *(int)*: If the execution is successful, return value should be 4 (number of bytes written).
 
 
 
 ## write_to_device
 
 ```
-write_to_device(location, addr, data, device_id=0, context=None, noc_id=None) -> int
+write_to_device(location: str | OnChipCoordinate, addr: int, data: list[int] | bytes, device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None)
 ```
 
 
@@ -308,18 +253,15 @@ Writes data to address 'addr' at specified location using specified noc.
 - `device_id` *(int, default 0)*: ID number of device to write to.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 
-
-### Returns
-
- *(int)*: If the execution is successful, return value should be number of bytes written.
 
 
 
 ## load_elf
 
 ```
-load_elf(elf_file, location, risc_name, neo_id=None, device_id=0, context=None) -> None
+load_elf(elf_file: str | ParsedElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, return_start_address: bool = False) -> None | int | list[int]
 ```
 
 
@@ -330,7 +272,7 @@ Loads the given ELF file into the specified RISC core. RISC core must be in rese
 
 ### Args
 
-- `elf_file` *(str)*: Path to the ELF file to run.
+- `elf_file` *(str | ParsedElfFile)*: ELF file to be loaded.
 - `location` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
 1. "all" to run the ELF on all cores;
 2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -347,7 +289,7 @@ Loads the given ELF file into the specified RISC core. RISC core must be in rese
 ## run_elf
 
 ```
-run_elf(elf_file, location, risc_name, neo_id=None, device_id=0, context=None) -> None
+run_elf(elf_file: str | ParsedElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -358,7 +300,7 @@ Loads the given ELF file into the specified RISC core and executes it. Similar t
 
 ### Args
 
-- `elf_file` *(str)*: Path to the ELF file to run.
+- `elf_file` *(str | ParsedElfFile)*: ELF file to be run.
 - `location` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
 1. "all" to run the ELF on all cores;
 2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -375,7 +317,7 @@ Loads the given ELF file into the specified RISC core and executes it. Similar t
 ## arc_msg
 
 ```
-arc_msg(device_id, msg_code, wait_for_done, arg0, arg1, timeout, context=None, noc_id=None) -> int
+arc_msg(device_id: int, msg_code: int, wait_for_done: bool, args: list[int], timeout: datetime.timedelta, context: Context | None = None, noc_id: int | None = None) -> list[int]
 ```
 
 
@@ -389,9 +331,8 @@ Sends an ARC message to the device.
 - `device_id` *(int)*: ID number of device to send message to.
 - `msg_code` *(int)*: Message code to send.
 - `wait_for_done` *(bool)*: If True, waits for the message to be processed.
-- `arg0` *(int)*: First argument to the message.
-- `arg1` *(int)*: Second argument to the message.
-- `timeout` *(int)*: Timeout in milliseconds.
+- `args` *(list[int])*: Arguments to the message.
+- `timeout` *(datetime.timedelta)*: Timeout.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 
@@ -405,7 +346,7 @@ Sends an ARC message to the device.
 ## read_arc_telemetry_entry
 
 ```
-read_arc_telemetry_entry(device_id, telemetry_tag, context=None) -> int
+read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: int | None = None) -> int
 ```
 
 
@@ -427,16 +368,16 @@ Reads an ARC telemetry entry from the device.
 
 
 
-## read_tensix_register
+## read_register
 
 ```
-read_tensix_register(location, register, noc_id=0, neo_id=None, device_id=0, context=None) -> int
+read_register(location: str | OnChipCoordinate, register, noc_id: int = 0, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> int
 ```
 
 
 ### Description
 
-Reads the value of a register from the tensix core.
+Reads the value of a register from the noc location.
 
 
 ### Args
@@ -456,16 +397,16 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 
 
 
-## write_tensix_register
+## write_register
 
 ```
-write_tensix_register(location, register, value, noc_id=0, neo_id=None, device_id=0, context=None) -> None
+write_register(location: str | OnChipCoordinate, register, value: int, noc_id: int = 0, neo_id: int | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
 ### Description
 
-Writes value to a register on the tensix core.
+Writes value to a register on the noc location.
 
 
 ### Args
@@ -485,7 +426,7 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 ## parse_elf
 
 ```
-parse_elf(elf_path, context=None) -> ParsedElfFile
+parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile
 ```
 
 
@@ -502,7 +443,7 @@ context (Context, optional): TTExaLens context object used for interaction with 
 ## top_callstack
 
 ```
-top_callstack(pc, elfs, offsets=None, context=None) -> list
+top_callstack(pc: int, elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile, offsets: int | None | list[int | None] = None, context: Context | None = None) -> list[CallstackEntry]
 ```
 
 
@@ -518,16 +459,18 @@ There is no stack walking, so the function will return the function at the given
 - `elfs` *(list[str] | str | list[ParsedElfFile] | ParsedElfFile)*: ELF files to be used for the callstack.
 - `offsets` *(list[int], int, optional)*: List of offsets for each ELF file. Default: None.
 - `context` *(Context)*: TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
-- `Returns`
-- `List`: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
+
+### Returns
+
+ *(List)*: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
 
 
 ## callstack
 
 ```
-callstack(location, elfs, offsets=None, risc_name=brisc, neo_id=None, max_depth=100, stop_on_main=True, device_id=0, context=None) -> list
+callstack(location: str | OnChipCoordinate, elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile, offsets: int | None | list[int | None] = None, risc_name: str = brisc, neo_id: int | None = None, max_depth: int = 100, stop_on_main: bool = True, device_id: int = 0, context: Context | None = None) -> list[CallstackEntry]
 ```
 
 
@@ -547,16 +490,18 @@ Retrieves the callstack of the specified RISC core for a given ELF.
 - `stop_on_main` *(bool)*: If True, stops at the main function. Default: True.
 - `device_id` *(int)*: ID of the device on which the kernel is run. Default: 0.
 - `context` *(Context)*: TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
-- `Returns`
-- `List`: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
+
+### Returns
+
+ *(List)*: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
 
 
 
 ## coverage
 
 ```
-coverage(location, elf, gcda_path, gcno_copy_path=None, device_id=0, context=None) -> None
+coverage(location: str | OnChipCoordinate, elf: str | ParsedElfFile, gcda_path: str, gcno_copy_path: str | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -580,7 +525,7 @@ Extract coverage data from the device.
 ## read_riscv_memory
 
 ```
-read_riscv_memory(location, addr, risc_name, neo_id=None, device_id=0, context=None) -> int
+read_riscv_memory(location: str | OnChipCoordinate, addr: int, risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> int
 ```
 
 
@@ -608,7 +553,7 @@ Reads a 32-bit word from the specified RISC-V core's private memory.
 ## write_riscv_memory
 
 ```
-write_riscv_memory(location, addr, value, risc_name, neo_id=None, device_id=0, context=None) -> None
+write_riscv_memory(location: str | OnChipCoordinate, addr: int, value: int, risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -645,31 +590,12 @@ This exception is thrown when a coordinate translation fails.
 
 This class represents a coordinate on the chip. It can be used to convert between the various
 coordinate systems we use.
-### __init__
-
-
-
-```
-__init__(self, x, y, input_type, device, core_type=any) -> None
-```
-Constructor for the Coordinate class.
-- `x` *(int)*: The x-coordinate value.
-- `y` *(int)*: The y-coordinate value.
-- `input_type` *(str)*: The input coordinate system type. One of the following:
-- `- noc0`: NOC routing coordinate for NOC 0. (X-Y). Also known as "physical" coordinate.
-- `- noc1`: NOC routing coordinate for NOC 1. (X-Y)
-- `- die`: Die coordinate, a location on the die grid. (X,Y)
-- `- logical`: Logical grid coordinate. Notation: qX,Y, where q represents first letter of the core type. If q is not present, it is considered as tensix core.
-- `- translated`: Translated NOC coordinate. (X-Y)
-- `device`: The device object used for coordinate conversion.
-- `core_type` *(str, optional)*: The core_type used for coordinate conversion. Some coordinate systems require core_type as third dimension. Defaults to "any".
-- If the device is not specified, coordinate conversion to other systems will not be possible.
 ### to
 
 
 
 ```
-to(self, output_type) -> None
+to(self, output_type)
 ```
 Returns a tuple with the coordinates in the specified coordinate system.
 - `output_type` *(str)*: The desired output coordinate system.
@@ -678,7 +604,7 @@ Returns a tuple with the coordinates in the specified coordinate system.
 
 
 ```
-to_str(self, output_type=noc0) -> None
+to_str(self, output_type = noc0) -> str
 ```
 Returns a tuple with the coordinates in the specified coordinate system.
 ### to_user_str
@@ -686,7 +612,7 @@ Returns a tuple with the coordinates in the specified coordinate system.
 
 
 ```
-to_user_str(self) -> None
+to_user_str(self) -> str
 ```
 Returns a string representation of the coordinate that is suitable for the user.
 ### change_device
@@ -694,7 +620,7 @@ Returns a string representation of the coordinate that is suitable for the user.
 
 
 ```
-change_device(self, device) -> None
+change_device(self, device)
 ```
 Returns coordinates for the specified device.
 - `device` *(Device)*: The device object representing the chip.
@@ -703,7 +629,110 @@ Returns coordinates for the specified device.
 
 
 ```
-create(coord_str, device, coord_type=None) -> None
+create(coord_str, device, coord_type = None) -> OnChipCoordinate
 ```
 Creates a coordinate object from a string. The string can be in any of the supported coordinate systems.
- *(OnChipCoordinate)*: The created coordinate object.
+- `coord_str` *(str)*: The string representation of the coordinate.
+- `device` *(Device)*: The device object representing the chip.
+- `coord_type` *(str, optional)*: The type of coordinate system used in the string.
+If not specified, it will be determined based on the separators used in the string.
+ *(OnChipCoordinate)*: The created coordinate object.- If the coordinate format is X-Y or R,C, the coordinates will be converted to integers.
+- If the coordinate format is DRAM channel, the corresponding NOC0 coordinates will be used.
+
+
+# context
+
+## Context
+
+
+
+
+
+# device
+
+## Device
+
+
+
+### get_block
+
+
+
+```
+get_block(self, location: OnChipCoordinate) -> NocBlock
+```
+Returns the NOC block at the given location
+### get_blocks
+
+
+
+```
+get_blocks(self, block_type: str = functional_workers) -> list[NocBlock]
+```
+Returns all blocks of a given type
+### get_block_locations
+
+
+
+```
+get_block_locations(self, block_type = functional_workers) -> list[OnChipCoordinate]
+```
+Returns locations of all blocks of a given type
+### get_block_type
+
+
+
+```
+get_block_type(self, loc: OnChipCoordinate) -> str
+```
+Returns the type of block at the given location
+
+
+# util
+
+## Verbosity
+
+
+
+### set
+
+
+
+```
+set(verbosity: int | Verbosity)
+```
+Set the verbosity level of messages shown.
+- `verbosity` *(int)*: Verbosity level.
+- `1`: ERROR
+- `2`: WARN
+- `3`: INFO
+- `4`: VERBOSE
+- `5`: DEBUG
+- `6`: TRACE
+### get
+
+
+
+```
+get() -> Verbosity
+```
+Get the verbosity level of messages shown.
+ *(int)*: Verbosity level.
+1: ERROR
+2: WARN
+3: INFO
+4: VERBOSE
+5: DEBUG
+6: TRACE### supports
+
+
+
+```
+supports(verbosity: Verbosity) -> bool
+```
+Check if the verbosity level is supported and should be printed.
+ *(bool)*: True if supported, False otherwise.## TTException
+
+
+
+## TTFatalException

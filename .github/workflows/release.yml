@@ -1,0 +1,95 @@
+name: "Release"
+
+on:
+  workflow_call:
+    inputs:
+      build-version:
+        description: "Version to release (e.g. '1.0.0'), if not provided will be read from VERSION file"
+        required: false
+        type: string
+        default: ""
+
+run-name: "Release by @${{ github.actor }} for ${{ github.ref_name }}"
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-release:
+    name: "Prepare Release"
+    strategy:
+      matrix:
+        ubuntu-version: [ "22.04" ]
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: ghcr.io/tenstorrent/tt-exalens/tt-exalens-ci-ubuntu-${{ matrix.ubuntu-version }}:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+
+    steps:
+      - name: "Checkout repository"
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: "Get version"
+        id: get-version
+        run: |
+          if [ -n "${{ inputs.build-version }}" ]; then
+            version="${{ inputs.build-version }}"
+          else
+            version=$(cat VERSION)
+          fi
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "Version is $version"
+
+      - name: "Build wheel"
+        run: |
+          make wheel
+
+      - name: "Upload wheel artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: ttexalens_wheel
+          path: build/ttexalens_wheel/*.whl
+
+  release:
+    needs: prepare-release
+    runs-on: ubuntu-latest
+    name: "Release"
+    steps:
+      - name: "Download wheel artifacts"
+        uses: actions/download-artifact@v4
+
+      - name: "List downloaded artifacts"
+        run: ls -R
+
+      - name: "Set release info"
+        id: set-release-info
+        run: |
+          VERSION="${{ needs.prepare-release.outputs.version }}"
+          if [ "$VERSION" = "latest" ]; then
+            echo "release-name=Latest Release - Development Build" >> $GITHUB_OUTPUT
+            echo "release-tag=latest" >> $GITHUB_OUTPUT
+            echo "generate-notes=false" >> $GITHUB_OUTPUT
+          else
+            echo "release-name=Release v$VERSION" >> $GITHUB_OUTPUT
+            echo "release-tag=v$VERSION" >> $GITHUB_OUTPUT
+            echo "generate-notes=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: "Create GitHub Release"
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.set-release-info.outputs.release-tag }}
+          name: ${{ steps.set-release-info.outputs.release-name }}
+          generate_release_notes: ${{ steps.set-release-info.outputs.generate-notes }}
+          prerelease: true
+          files: |
+            */*.whl
