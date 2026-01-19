@@ -155,18 +155,23 @@ def validate_noc_access_is_safe(location: OnChipCoordinate, addr: int, num_bytes
             memory_block_info.memory_block.address.noc_address is not None
         ), "Memory block found by NoC address must have a NoC address."
 
-        safe_to_access = memory_block_info.safe_to_write if is_write else memory_block_info.safe_to_read
-        if not safe_to_access:
-            raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write)
-
         if not memory_block_info.is_accessible:
             raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write)
 
         memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
         assert memory_block_end > curr_addr, "Memory block end must be greater than current address."
 
-        read_size = min(num_bytes - bytes_checked, memory_block_end - curr_addr)
-        bytes_checked += read_size
+        access_size = min(num_bytes - bytes_checked, memory_block_end - curr_addr)
+
+        if is_write:
+            safe_to_access = memory_block_info.is_safe_to_write(curr_addr, access_size)
+        else:
+            safe_to_access = memory_block_info.is_safe_to_read(curr_addr, access_size)
+
+        if not safe_to_access:
+            raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write)
+
+        bytes_checked += access_size
 
     return
 

@@ -279,7 +279,7 @@ class BlackholeEthBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
                 MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
                 MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
-                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs),
+                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs, safe_to_read=False),
             ]
         )
 
@@ -297,7 +297,7 @@ class BlackholeEthBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
                 MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
                 MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
-                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs),
+                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs, safe_to_read=False),
             ]
         )
 
@@ -315,7 +315,7 @@ class BlackholeEthBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
                 MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
                 MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
-                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs),
+                MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs, safe_to_read=False),
             ]
         )
 
