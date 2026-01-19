@@ -232,85 +232,10 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
         raise ValueError(f"RISC debug for {risc_name} is not supported in Wormhole functional worker block.")
 
     def _update_memory_maps(self):
-        # Reading some TDMA registers on Wormhole can brick the device and or host, so we disallow those reads.
-        forbidden_tdma_addresses = (
-            0xFFB11030,
-            0xFFB11070,
-            0xFFB110B0,
-            0xFFB110F0,
-            0xFFB11130,
-            0xFFB11170,
-            0xFFB111B0,
-            0xFFB111F0,
-            0xFFB11230,
-            0xFFB11270,
-            0xFFB112B0,
-            0xFFB112F0,
-            0xFFB11330,
-            0xFFB11370,
-            0xFFB113B0,
-            0xFFB113F0,
-            0xFFB11430,
-            0xFFB11470,
-            0xFFB114B0,
-            0xFFB114F0,
-            0xFFB11530,
-            0xFFB11570,
-            0xFFB115B0,
-            0xFFB115F0,
-            0xFFB11630,
-            0xFFB11670,
-            0xFFB116B0,
-            0xFFB116F0,
-            0xFFB11730,
-            0xFFB11770,
-            0xFFB117B0,
-            0xFFB117F0,
-            0xFFB11830,
-            0xFFB11870,
-            0xFFB118B0,
-            0xFFB118F0,
-            0xFFB11930,
-            0xFFB11970,
-            0xFFB119B0,
-            0xFFB119F0,
-            0xFFB11A30,
-            0xFFB11A70,
-            0xFFB11AB0,
-            0xFFB11AF0,
-            0xFFB11B30,
-            0xFFB11B70,
-            0xFFB11BB0,
-            0xFFB11BF0,
-            0xFFB11C30,
-            0xFFB11C70,
-            0xFFB11CB0,
-            0xFFB11CF0,
-            0xFFB11D30,
-            0xFFB11D70,
-            0xFFB11DB0,
-            0xFFB11DF0,
-            0xFFB11E30,
-            0xFFB11E70,
-            0xFFB11EB0,
-            0xFFB11EF0,
-            0xFFB11F30,
-            0xFFB11F70,
-            0xFFB11FB0,
-            0xFFB11FF0,
-        )
-
-        def tdma_read_check(address: int, num_bytes: int) -> bool:
-            read_end = address + num_bytes - 1
-            return not any(
-                address <= forbidden_addr + 3 and forbidden_addr <= read_end
-                for forbidden_addr in forbidden_tdma_addresses
-            )
-
         self.noc_memory_map.add_blocks(
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=tdma_read_check),
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
@@ -323,7 +248,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.brisc.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=tdma_read_check),
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
@@ -392,7 +317,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc0.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=tdma_read_check),
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
@@ -449,7 +374,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc1.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=tdma_read_check),
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
@@ -506,7 +431,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=tdma_read_check),
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
@@ -563,7 +488,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.ncrisc.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=tdma_read_check),
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
