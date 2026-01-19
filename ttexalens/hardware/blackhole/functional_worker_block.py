@@ -234,36 +234,36 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
     def _update_memory_maps(self):
         self.noc_memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
             ]
         )
 
         self.brisc.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("data_private_memory", self.brisc.data_private_memory, safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.brisc.data_private_memory, safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
                 MemoryMapBlockInfo(
                     "t0_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
@@ -353,26 +353,26 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
 
         self.trisc0.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("data_private_memory", self.trisc0.data_private_memory, safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.trisc0.data_private_memory, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
                     safe_to_read=True,
                     safe_to_write=False,
                 ),  # T0 MOP extender configuration
-                MemoryMapBlockInfo("dest", self.dest, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("dest", self.dest),
                 MemoryMapBlockInfo(
                     "t0_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
@@ -438,26 +438,26 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
 
         self.trisc1.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("data_private_memory", self.trisc1.data_private_memory, safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.trisc1.data_private_memory, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
                     safe_to_read=True,
                     safe_to_write=False,
                 ),  # T1 MOP extender configuration
-                MemoryMapBlockInfo("dest", self.dest, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("dest", self.dest),
                 MemoryMapBlockInfo(
                     "t1_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
@@ -523,26 +523,26 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
 
         self.trisc2.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
                     safe_to_read=True,
                     safe_to_write=False,
                 ),  # T2 MOP extender configuration
-                MemoryMapBlockInfo("dest", self.dest, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("dest", self.dest),
                 MemoryMapBlockInfo(
                     "t2_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
@@ -608,17 +608,17 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
 
         self.ncrisc.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("data_private_memory", self.ncrisc.data_private_memory, safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_read=True, safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.ncrisc.data_private_memory, safe_to_write=True, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_write=True, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
             ]
         )

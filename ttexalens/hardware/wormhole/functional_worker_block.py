@@ -234,360 +234,266 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
     def _update_memory_maps(self):
         self.noc_memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
             ]
         )
 
         self.brisc.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("data_private_memory", self.brisc.data_private_memory, safe_to_read=True, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.brisc.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
                 MemoryMapBlockInfo(
                     "t0_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "t1_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00100)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "t2_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00200)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "t0_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "t1_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE50000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "t2_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE60000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf0",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE80000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf1",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE90000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf2",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEA0000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "mailboxes0",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # brisc
                 MemoryMapBlockInfo(
                     "mailboxes1",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc0
                 MemoryMapBlockInfo(
                     "mailboxes2",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc1
                 MemoryMapBlockInfo(
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc2
                 MemoryMapBlockInfo(
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
             ]
         )
 
         self.trisc0.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("data_private_memory", self.trisc0.data_private_memory, safe_to_read=True, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.trisc0.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # T0 MOP extender configuration
                 MemoryMapBlockInfo(
                     "t0_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "t0_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf",
                     MemoryBlock(size=0x4, address=DeviceAddress(private_address=0xFFE80000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "ttsync",
                     MemoryBlock(size=0x1C, address=DeviceAddress(private_address=0xFFE80004)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "semaphores",
                     MemoryBlock(size=0xFFD0, address=DeviceAddress(private_address=0xFFE80020)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "mailboxes0",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # brisc
                 MemoryMapBlockInfo(
                     "mailboxes1",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc0
                 MemoryMapBlockInfo(
                     "mailboxes2",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc1
                 MemoryMapBlockInfo(
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc2
                 MemoryMapBlockInfo(
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
             ]
         )
 
         self.trisc1.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("data_private_memory", self.trisc1.data_private_memory, safe_to_read=True, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.trisc1.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # T1 MOP extender configuration
                 MemoryMapBlockInfo(
                     "t1_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "t1_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf",
                     MemoryBlock(size=0x4, address=DeviceAddress(private_address=0xFFE80000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "ttsync",
                     MemoryBlock(size=0x1C, address=DeviceAddress(private_address=0xFFE80004)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "semaphores",
                     MemoryBlock(size=0xFFD0, address=DeviceAddress(private_address=0xFFE80020)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "mailboxes0",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # brisc
                 MemoryMapBlockInfo(
                     "mailboxes1",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc0
                 MemoryMapBlockInfo(
                     "mailboxes2",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc1
                 MemoryMapBlockInfo(
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc2
                 MemoryMapBlockInfo(
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
             ]
         )
 
         self.trisc2.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, safe_to_read=True, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # T1 MOP extender configuration
                 MemoryMapBlockInfo(
                     "t2_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "t2_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf",
                     MemoryBlock(size=0x4, address=DeviceAddress(private_address=0xFFE80000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "ttsync",
                     MemoryBlock(size=0x1C, address=DeviceAddress(private_address=0xFFE80004)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "semaphores",
                     MemoryBlock(size=0xFFD0, address=DeviceAddress(private_address=0xFFE80020)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
                 MemoryMapBlockInfo(
                     "mailboxes0",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # brisc
                 MemoryMapBlockInfo(
                     "mailboxes1",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc0
                 MemoryMapBlockInfo(
                     "mailboxes2",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc1
                 MemoryMapBlockInfo(
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),  # trisc2
                 MemoryMapBlockInfo(
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                    safe_to_read=True,
-                    safe_to_write=False,
                 ),
             ]
         )
 
         self.ncrisc.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1, safe_to_read=True, safe_to_write=True),
-                MemoryMapBlockInfo("data_private_memory", self.ncrisc.data_private_memory, safe_to_read=True, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("pic_regs", self.pic_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc0_regs", self.noc0_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc1_regs", self.noc1_regs, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("noc_overlay", self.noc_overlay, safe_to_read=True, safe_to_write=False),
-                MemoryMapBlockInfo("code_private_memory", self.ncrisc.code_private_memory, safe_to_read=True, safe_to_write=False),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("data_private_memory", self.ncrisc.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("tdma_regs", self.tdma_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
+                MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
+                MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
+                MemoryMapBlockInfo("code_private_memory", self.ncrisc.code_private_memory),  # type: ignore[arg-type]
             ]
         )

@@ -13,9 +13,21 @@ from intervaltree import Interval, IntervalTree
 class MemoryMapBlockInfo:
     name: str
     memory_block: MemoryBlock
-    safe_to_read: bool
-    safe_to_write: bool
+    safe_to_read: Callable[[int, int], bool] | bool | None = None
+    safe_to_write: Callable[[int, int], bool] | bool | None = None
     access_check: Callable[[], bool] | None = None
+
+    @property
+    def is_safe_to_read(self, address: int, num_bytes: int) -> bool:
+        if callable(self.safe_to_read):
+            return self.safe_to_read(address, num_bytes)
+        return self.safe_to_read if self.safe_to_read is not None else True
+
+    @property
+    def is_safe_to_write(self, address: int, num_bytes: int) -> bool:
+        if callable(self.safe_to_write):
+            return self.safe_to_write(address, num_bytes)
+        return self.safe_to_write if self.safe_to_write is not None else False
 
     @property
     def is_accessible(self) -> bool:
