@@ -76,8 +76,8 @@ class MemoryMap:
         self,
         name: str,
         memory_block: MemoryBlock,
-        safe_to_read: bool,
-        safe_to_write: bool,
+        safe_to_read: Callable[[int, int], bool] | bool | None = None,
+        safe_to_write: Callable[[int, int], bool] | bool | None = None,
         access_check: Callable[[], bool] | None = None,
     ) -> None:
         self.add_block(
