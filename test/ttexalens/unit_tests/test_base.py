@@ -61,7 +61,7 @@ def get_core_location(core_desc: str, device: Device) -> OnChipCoordinate:
         eth_blocks = device.idle_eth_blocks
         core_index = int(core_desc[3:])
         if len(eth_blocks) > core_index:
-            return eth_blocks[core_index].location
+            return eth_blocks[len(eth_blocks) - 1 - core_index].location
         raise ValueError(f"ETH core {core_index} not available on this platform")
 
     elif core_desc.startswith("FW"):
