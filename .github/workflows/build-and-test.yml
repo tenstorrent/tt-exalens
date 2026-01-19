@@ -144,11 +144,15 @@ jobs:
           python3 -m unittest discover -v -t . -s test/app -p *test*.py
 
       - name: Run Python tests for ttexalens library (using NOC1)
+        # Disabling NOC1 tests on n300 board due to known bug causing host to reboot
+        if: ${{ matrix.runner-info.board != 'n300' }}
         run: |
           export TTEXALENS_TESTS_USE_NOC1=1
           python3 -m unittest discover -v -t . -s test/ttexalens -p *test*.py
 
       - name: Run Python tests for TTExaLens app (using NOC1)
+        # Disabling NOC1 tests on n300 board due to known bug causing host to reboot
+        if: ${{ matrix.runner-info.board != 'n300' }}
         run: |
           export TTEXALENS_TESTS_USE_NOC1=1
           python3 -m unittest discover -v -t . -s test/app -p *test*.py
