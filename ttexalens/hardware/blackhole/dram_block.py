@@ -291,12 +291,7 @@ class BlackholeDramBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("tx_stream1_regs", self.tx_stream1_regs.just_noc_address()),
                 MemoryMapBlockInfo("tx_control_regs", self.tx_control_regs.just_noc_address()),
                 MemoryMapBlockInfo("gddr_mc_regs", self.gddr_mc_regs.just_noc_address()),
-                MemoryMapBlockInfo(
-                    "gddr_control_regs",
-                    self.gddr_control_regs.just_noc_address(),
-                    safe_to_read=True,
-                    safe_to_write=False,
-                ),
+                MemoryMapBlockInfo("gddr_control_regs", self.gddr_control_regs.just_noc_address()),
                 MemoryMapBlockInfo("ictrl_regs", self.ictrl_regs.just_noc_address()),
                 MemoryMapBlockInfo("gddr_xbar0_regs", self.gddr_xbar0_regs.just_noc_address()),
                 MemoryMapBlockInfo("gddr_xbar1_regs", self.gddr_xbar1_regs.just_noc_address()),
