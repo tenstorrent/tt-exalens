@@ -962,8 +962,8 @@ class TestSafeAccess(unittest.TestCase):
 
         # Determine if there's actually a gap
         has_gap = (
-            next_block_info is None or next_block_info.memory_block.address.noc_address > block_end # type: ignore[operator]
-        ) 
+            next_block_info is None or next_block_info.memory_block.address.noc_address > block_end  # type: ignore[operator]
+        )
 
         # Case 1: There's a gap after this block (unmapped region)
         if has_gap:
