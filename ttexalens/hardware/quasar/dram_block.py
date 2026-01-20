@@ -5,6 +5,11 @@
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.quasar.noc_block import QuasarNocBlock
 
+# Empty implementation for simulator
+class QuasarDramBlockSim(QuasarNocBlock):
+    def __init__(self, location: OnChipCoordinate):
+        super().__init__(location, block_type="dram")
+
 
 class QuasarDramBlock(QuasarNocBlock):
     def __init__(self, location: OnChipCoordinate):

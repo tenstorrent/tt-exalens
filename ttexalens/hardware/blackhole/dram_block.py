@@ -177,6 +177,11 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 )
 debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
+# Empty implementation for simulator
+class BlackholeDramBlockSim(BlackholeNocBlock):
+    def __init__(self, location: OnChipCoordinate):
+        super().__init__(location, block_type="dram")
+
 
 class BlackholeDramBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):

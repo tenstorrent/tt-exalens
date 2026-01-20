@@ -6,7 +6,7 @@ import tt_umd
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.blackhole.arc_block import BlackholeArcBlock
-from ttexalens.hardware.blackhole.dram_block import BlackholeDramBlock
+from ttexalens.hardware.blackhole.dram_block import BlackholeDramBlock, BlackholeDramBlockSim
 from ttexalens.hardware.blackhole.eth_block import BlackholeEthBlock
 from ttexalens.hardware.blackhole.functional_worker_registers import tensix_registers_descriptions
 from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import tensix_debug_bus_description
@@ -55,7 +55,9 @@ class BlackholeDevice(Device):
         if block_type == "arc":
             return BlackholeArcBlock(location)
         elif block_type == "dram":
-            return BlackholeDramBlock(location)
+            return (
+                BlackholeDramBlock(location) if not self._umd_device.is_simulation else BlackholeDramBlockSim(location)
+            )
         elif block_type == "harvested_dram":
             return BlackholeHarvestedDramBlock(location)
         elif block_type == "eth":

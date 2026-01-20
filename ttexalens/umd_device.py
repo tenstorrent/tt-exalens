@@ -84,6 +84,10 @@ class UmdDevice:
     def is_jtag_capable(self) -> bool:
         return self._is_jtag_capable
 
+    @property
+    def is_simulation(self) -> bool:
+        return self._is_simulation
+
     def __select_noc_id(self, noc_id: int):
         from ttexalens.umd_api import UmdApi
 
