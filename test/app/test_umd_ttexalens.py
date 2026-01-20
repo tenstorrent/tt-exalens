@@ -93,6 +93,8 @@ class TTExaLensTestRunner:
         if not args is None:
             if not type(args) == list:
                 args = [args]
+        if os.getenv("TTEXALENS_TESTS_USE_NOC1", "0") == "1":
+            program_args.append("--use-noc1")
         self.process = subprocess.Popen(
             program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )

@@ -25,6 +25,10 @@ def init_default_test_context():
     global _cached_simulator_context
     global _cached_test_context
 
+    use_noc1 = False
+    if os.getenv("TTEXALENS_TESTS_USE_NOC1", "0") == "1":
+        use_noc1 = True
+
     if os.getenv("TTEXALENS_TESTS_REMOTE"):
         ip_address = os.getenv("TTEXALENS_TESTS_REMOTE_ADDRESS", "localhost")
         port = int(os.getenv("TTEXALENS_TESTS_REMOTE_PORT", "5555"))
@@ -33,10 +37,12 @@ def init_default_test_context():
         # Reuse cached simulator context to prevent multiple simulator processes
         if _cached_simulator_context is None:
             simulation_directory = os.getenv("TTEXALENS_SIMULATOR")
-            _cached_simulator_context = init_ttexalens(simulation_directory=simulation_directory, use_4B_mode=False)
+            _cached_simulator_context = init_ttexalens(
+                simulation_directory=simulation_directory, use_noc1=use_noc1, use_4B_mode=False
+            )
         return _cached_simulator_context
     else:
-        _cached_test_context = init_ttexalens(use_4B_mode=False)
+        _cached_test_context = init_ttexalens(use_noc1=use_noc1, use_4B_mode=False)
     return _cached_test_context
 
 
@@ -61,7 +67,7 @@ def get_core_location(core_desc: str, device: Device) -> OnChipCoordinate:
         eth_blocks = device.idle_eth_blocks
         core_index = int(core_desc[3:])
         if len(eth_blocks) > core_index:
-            return eth_blocks[core_index].location
+            return eth_blocks[len(eth_blocks) - 1 - core_index].location
         raise ValueError(f"ETH core {core_index} not available on this platform")
 
     elif core_desc.startswith("FW"):

@@ -112,7 +112,7 @@ class UmdDevice:
 
     def __read_from_device_reg(self, coord_x: int, coord_y: int, address: int, size: int, dma_threshold: int) -> bytes:
         # Check if we can use DMA read
-        if size >= dma_threshold and self._is_mmio_capable:
+        if size >= dma_threshold and self._is_mmio_capable and not self._is_simulation:
             return self.__device.dma_read_from_device(coord_x, coord_y, address, size)
 
         # TODO: Until UMD implements timeout exception, we measure time here
@@ -134,7 +134,7 @@ class UmdDevice:
 
     def __write_to_device_reg(self, coord_x: int, coord_y: int, address: int, data: bytes, dma_threshold: int):
         # Check if we can use DMA write
-        if len(data) >= dma_threshold and self._is_mmio_capable:
+        if len(data) >= dma_threshold and self._is_mmio_capable and not self._is_simulation:
             return self.__device.dma_write_to_device(coord_x, coord_y, address, data)
 
         # TODO: Until UMD implements timeout exception, we measure time here
