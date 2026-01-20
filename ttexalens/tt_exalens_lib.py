@@ -137,9 +137,6 @@ def validate_noc_access_is_safe(location: OnChipCoordinate, addr: int, num_bytes
         addr (int): Memory address to read from.
         num_bytes (int): Number of bytes to read.
         is_write (bool, optional): Whether the access is a write operation. Defaults to False which means a read operation.
-
-    Returns:
-        None
     """
 
     noc_block = location.noc_block
@@ -172,8 +169,6 @@ def validate_noc_access_is_safe(location: OnChipCoordinate, addr: int, num_bytes
             raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write)
 
         bytes_checked += access_size
-
-    return
 
 
 @trace_api
@@ -326,7 +321,7 @@ def write_words_to_device(
 
     if safe_mode:
         num_bytes = 4 if isinstance(data, int) else 4 * len(data)
-        validate_noc_access_is_safe(coordinate, addr, num_bytes, True)
+        validate_noc_access_is_safe(coordinate, addr, num_bytes, is_write=True)
 
     if isinstance(data, int):
         coordinate.noc_write32(addr, data, noc_id)
@@ -372,7 +367,7 @@ def write_to_device(
         raise TTException("Data to write must not be empty.")
 
     if safe_mode:
-        validate_noc_access_is_safe(coordinate, addr, len(data), True)
+        validate_noc_access_is_safe(coordinate, addr, len(data), is_write=True)
 
     coordinate.noc_write(addr, data, noc_id, use_4B_mode)
 
