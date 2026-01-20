@@ -785,38 +785,31 @@ class TestSafeAccess(unittest.TestCase):
                 is_safe_to_read = block_info.is_safe_to_read(noc_addr, size)
                 is_safe_to_write = block_info.is_safe_to_write(noc_addr, size)
 
-                # Determine test size (small enough to fit in block, min 4 bytes)
-                test_size = min(64, size // 2, size - 4) if size > 4 else 4
-                if test_size < 4:
-                    continue  # Skip tiny blocks
-
                 location_str = str(location)
 
-                # Use subTest for each location/block pair
-                with self.subTest(location=location_str, block=block_name):
-                    # Test 1: Access fully inside the block (test all blocks including inaccessible)
-                    self._test_access_inside_block(
-                        location_str, block_name, noc_addr, test_size, is_accessible, is_safe_to_read, is_safe_to_write
+                # Test 1: Access fully inside the block (test all blocks including inaccessible)
+                self._test_access_inside_block(
+                    location_str, block_name, noc_addr, size, is_accessible, is_safe_to_read, is_safe_to_write
+                )
+
+                # Only run spanning tests for accessible and readable blocks
+                if is_accessible and is_safe_to_read:
+                    # Test 2: Access spanning into another readable block
+                    self._test_access_spanning_readable(
+                        location_str, block_name, block_info, memory_map, is_safe_to_write
                     )
 
-                    # Only run spanning tests for accessible and readable blocks
-                    if is_accessible and is_safe_to_read:
-                        # Test 2: Access spanning into another readable block
-                        self._test_access_spanning_readable(
-                            location_str, block_name, block_info, memory_map, is_safe_to_write
-                        )
-
-                        # Test 3: Access spanning into unreadable/unknown region
-                        self._test_access_spanning_unreadable(
-                            location_str, block_name, noc_addr, size, is_safe_to_write, memory_map
-                        )
+                    # Test 3: Access spanning into unreadable/unknown region
+                    self._test_access_spanning_unreadable(
+                        location_str, block_name, noc_addr, size, is_safe_to_write, memory_map
+                    )
 
     def _test_access_inside_block(
         self,
         location: str,
         block_name: str,
         noc_addr: int,
-        test_size: int,
+        size: int,
         is_accessible: bool,
         is_safe_to_read: bool,
         is_safe_to_write: bool,
@@ -827,6 +820,13 @@ class TestSafeAccess(unittest.TestCase):
         if "data_private_memory" in block_name:
             use_4b_mode = True
 
+        # Determine test size (small enough to fit in block, min 4 bytes)
+        span_size = min(64, size // 2, size - 4)
+        if span_size < 4:
+            return  # Skip tiny blocks
+
+        start_addr = noc_addr + (size // 2) - 1
+
         # If block is not accessible, expect all accesses to fail
         if not is_accessible:
             # Test READ should fail
@@ -835,25 +835,27 @@ class TestSafeAccess(unittest.TestCase):
                 msg=f"Read from inaccessible block {block_name} at {location} should raise UnsafeAccessException",
             ):
                 lib.read_from_device(
-                    location, noc_addr, num_bytes=test_size, use_4B_mode=use_4b_mode, context=self.context
+                    location, start_addr, num_bytes=span_size, use_4B_mode=use_4b_mode, context=self.context
                 )
 
             # Test WRITE should fail
-            data = bytes([0xAB] * test_size)
+            data = bytes([0xAB] * span_size)
             with self.assertRaises(
                 UnsafeAccessException,
                 msg=f"Write to inaccessible block {block_name} at {location} should raise UnsafeAccessException",
             ):
-                lib.write_to_device(location, noc_addr, data, use_4B_mode=use_4b_mode, context=self.context)
+                lib.write_to_device(location, start_addr, data, use_4B_mode=use_4b_mode, context=self.context)
             return
 
         # Test READ for accessible blocks
         if is_safe_to_read:
             result = lib.read_from_device(
-                location, noc_addr, num_bytes=test_size, use_4B_mode=use_4b_mode, context=self.context
+                location, start_addr, num_bytes=span_size, use_4B_mode=use_4b_mode, context=self.context
             )
             self.assertEqual(
-                len(result), test_size, f"Read from {block_name} at {location} should return {test_size} bytes"
+                len(result),
+                span_size,
+                f"Read from {block_name} at {location} should return {span_size} bytes from address {start_addr}",
             )
         else:
             # Should raise exception
@@ -862,31 +864,33 @@ class TestSafeAccess(unittest.TestCase):
                 msg=f"Read from unsafe block {block_name} at {location} should raise UnsafeAccessException",
             ):
                 lib.read_from_device(
-                    location, noc_addr, num_bytes=test_size, use_4B_mode=use_4b_mode, context=self.context
+                    location, start_addr, num_bytes=span_size, use_4B_mode=use_4b_mode, context=self.context
                 )
 
         # Test WRITE
         if is_safe_to_write:
-            data = bytes([i % 256 for i in range(test_size)])
-            lib.write_to_device(location, noc_addr, data, use_4B_mode=use_4b_mode, context=self.context)
+            data = bytes([i % 256 for i in range(span_size)])
+            lib.write_to_device(location, start_addr, data, use_4B_mode=use_4b_mode, context=self.context)
 
             # Verify by reading back
             if is_safe_to_read:
                 result = lib.read_from_device(
-                    location, noc_addr, num_bytes=test_size, use_4B_mode=use_4b_mode, context=self.context
+                    location, start_addr, num_bytes=span_size, use_4B_mode=use_4b_mode, context=self.context
                 )
                 self.assertEqual(
-                    result, data, f"Read-back after write to {block_name} at {location} should match written data"
+                    result,
+                    data,
+                    f"Read-back after write to {block_name} at {location} should match written data at address {start_addr}",
                 )
         else:
             # Should raise exception
-            data = bytes([0xAB] * test_size)
+            data = bytes([0xAB] * span_size)
             with self.assertRaises(
                 UnsafeAccessException,
                 msg=f"Write to read-only block {block_name} at {location} should raise UnsafeAccessException",
             ):
                 lib.write_to_device(
-                    location, noc_addr, data, safe_mode=True, use_4B_mode=use_4b_mode, context=self.context
+                    location, start_addr, data, safe_mode=True, use_4B_mode=use_4b_mode, context=self.context
                 )
 
     def _test_access_spanning_readable(
