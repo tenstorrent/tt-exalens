@@ -757,7 +757,7 @@ class TestSafeAccess(unittest.TestCase):
             "eth",
         ]
 
-        for _, device in self.context.devices.items():
+        for device_id, device in self.context.devices.items():
             # Collect test locations from all block types
             test_locations = []
             for block_type in all_block_types:
@@ -793,23 +793,31 @@ class TestSafeAccess(unittest.TestCase):
 
                     # Test 1: Access fully inside the block (test all blocks including inaccessible)
                     self._test_access_inside_block(
-                        location_str, block_name, noc_addr, size, is_accessible, is_safe_to_read, is_safe_to_write
+                        device_id,
+                        location_str,
+                        block_name,
+                        noc_addr,
+                        size,
+                        is_accessible,
+                        is_safe_to_read,
+                        is_safe_to_write,
                     )
 
                     # Only run spanning tests for accessible and readable blocks
                     if is_accessible and is_safe_to_read:
                         # Test 2: Access spanning into another readable block
                         self._test_access_spanning_readable(
-                            location_str, block_name, block_info, memory_map, is_safe_to_write
+                            device_id, location_str, block_name, block_info, memory_map, is_safe_to_write
                         )
 
                         # Test 3: Access spanning into unreadable/unknown region
                         self._test_access_spanning_unreadable(
-                            location_str, block_name, noc_addr, size, is_safe_to_write, memory_map
+                            device_id, location_str, block_name, noc_addr, size, is_safe_to_write, memory_map
                         )
 
     def _test_access_inside_block(
         self,
+        device_id: int,
         location: str,
         block_name: str,
         noc_addr: int,
@@ -839,7 +847,12 @@ class TestSafeAccess(unittest.TestCase):
                 msg=f"Read from inaccessible block {block_name} at {location} should raise UnsafeAccessException",
             ):
                 lib.read_from_device(
-                    location, start_addr, num_bytes=span_size, use_4B_mode=use_4b_mode, context=self.context
+                    location,
+                    start_addr,
+                    device_id=device_id,
+                    num_bytes=span_size,
+                    use_4B_mode=use_4b_mode,
+                    context=self.context,
                 )
 
             # Test WRITE should fail
@@ -848,13 +861,20 @@ class TestSafeAccess(unittest.TestCase):
                 UnsafeAccessException,
                 msg=f"Write to inaccessible block {block_name} at {location} should raise UnsafeAccessException",
             ):
-                lib.write_to_device(location, start_addr, data, use_4B_mode=use_4b_mode, context=self.context)
+                lib.write_to_device(
+                    location, start_addr, data, device_id=device_id, use_4B_mode=use_4b_mode, context=self.context
+                )
             return
 
         # Test READ for accessible blocks
         if is_safe_to_read:
             result = lib.read_from_device(
-                location, start_addr, num_bytes=span_size, use_4B_mode=use_4b_mode, context=self.context
+                location,
+                start_addr,
+                device_id=device_id,
+                num_bytes=span_size,
+                use_4B_mode=use_4b_mode,
+                context=self.context,
             )
             self.assertEqual(
                 len(result),
@@ -868,18 +888,30 @@ class TestSafeAccess(unittest.TestCase):
                 msg=f"Read from unsafe block {block_name} at {location} should raise UnsafeAccessException",
             ):
                 lib.read_from_device(
-                    location, start_addr, num_bytes=span_size, use_4B_mode=use_4b_mode, context=self.context
+                    location,
+                    start_addr,
+                    device_id=device_id,
+                    num_bytes=span_size,
+                    use_4B_mode=use_4b_mode,
+                    context=self.context,
                 )
 
         # Test WRITE
         if is_safe_to_write:
             data = bytes([i % 256 for i in range(span_size)])
-            lib.write_to_device(location, start_addr, data, use_4B_mode=use_4b_mode, context=self.context)
+            lib.write_to_device(
+                location, start_addr, data, device_id=device_id, use_4B_mode=use_4b_mode, context=self.context
+            )
 
             # Verify by reading back
             if is_safe_to_read:
                 result = lib.read_from_device(
-                    location, start_addr, num_bytes=span_size, use_4B_mode=use_4b_mode, context=self.context
+                    location,
+                    start_addr,
+                    device_id=device_id,
+                    num_bytes=span_size,
+                    use_4B_mode=use_4b_mode,
+                    context=self.context,
                 )
                 self.assertEqual(
                     result,
@@ -894,11 +926,18 @@ class TestSafeAccess(unittest.TestCase):
                 msg=f"Write to read-only block {block_name} at {location} should raise UnsafeAccessException",
             ):
                 lib.write_to_device(
-                    location, start_addr, data, safe_mode=True, use_4B_mode=use_4b_mode, context=self.context
+                    location,
+                    start_addr,
+                    data,
+                    device_id=device_id,
+                    safe_mode=True,
+                    use_4B_mode=use_4b_mode,
+                    context=self.context,
                 )
 
     def _test_access_spanning_readable(
         self,
+        device_id: int,
         location: str,
         block_name: str,
         block_info: MemoryMapBlockInfo,
@@ -949,18 +988,32 @@ class TestSafeAccess(unittest.TestCase):
         # Test WRITE spanning two blocks
         if is_safe_to_write and next_is_safe_to_write:
             data = bytes([i % 256 for i in range(span_size)])
-            lib.write_to_device(location, start_addr, data, use_4B_mode=use_4b_mode, context=self.context)
+            lib.write_to_device(
+                location, start_addr, data, device_id=device_id, use_4B_mode=use_4b_mode, context=self.context
+            )
 
             # Verify by reading back if both are readable
             result = lib.read_from_device(
-                location, start_addr, num_bytes=span_size, use_4B_mode=use_4b_mode, context=self.context
+                location,
+                start_addr,
+                device_id=device_id,
+                num_bytes=span_size,
+                use_4B_mode=use_4b_mode,
+                context=self.context,
             )
             self.assertEqual(
                 result, data, f"Read-back after spanning write {block_name} -> {next_block_info.name} should match"
             )
 
     def _test_access_spanning_unreadable(
-        self, location: str, block_name: str, noc_addr: int, size: int, is_safe_to_write: bool, memory_map: MemoryMap
+        self,
+        device_id: int,
+        location: str,
+        block_name: str,
+        noc_addr: int,
+        size: int,
+        is_safe_to_write: bool,
+        memory_map: MemoryMap,
     ):
         """Test access spanning from this block into an unreadable/unmapped region."""
         block_end = noc_addr + size
@@ -984,7 +1037,9 @@ class TestSafeAccess(unittest.TestCase):
                 UnsafeAccessException,
                 msg=f"Read spanning {block_name} into unmapped gap at {location} should raise UnsafeAccessException",
             ):
-                lib.read_from_device(location, start_addr, num_bytes=span_size, context=self.context)
+                lib.read_from_device(
+                    location, start_addr, device_id=device_id, num_bytes=span_size, context=self.context
+                )
 
             # Write spanning into gap should fail (only test for writable blocks)
             if is_safe_to_write:
@@ -993,8 +1048,7 @@ class TestSafeAccess(unittest.TestCase):
                     UnsafeAccessException,
                     msg=f"Write spanning {block_name} into unmapped gap at {location} should raise UnsafeAccessException",
                 ):
-                    lib.write_to_device(location, start_addr, data, context=self.context)
-
+                    lib.write_to_device(location, start_addr, data, device_id=device_id, context=self.context)
         # Case 2: Next block is adjacent but not accessible or has incompatible permissions
         elif next_block_info is not None and next_block_info.memory_block.address.noc_address == block_end:
             next_noc_addr = next_block_info.memory_block.address.noc_address
@@ -1012,7 +1066,9 @@ class TestSafeAccess(unittest.TestCase):
                         UnsafeAccessException,
                         msg=f"Read spanning {block_name} into inaccessible/not safe to read {next_block_info.name} at {location} should raise UnsafeAccessException",
                     ):
-                        lib.read_from_device(location, start_addr, num_bytes=span_size, context=self.context)
+                        lib.read_from_device(
+                            location, start_addr, device_id=device_id, num_bytes=span_size, context=self.context
+                        )
 
             # Test spanning from writable to non-writable
             elif not next_is_safe_to_write:
@@ -1025,7 +1081,7 @@ class TestSafeAccess(unittest.TestCase):
                         UnsafeAccessException,
                         msg=f"Write spanning {block_name} (writable) into {next_block_info.name} (read-only) at {location} should raise UnsafeAccessException",
                     ):
-                        lib.write_to_device(location, start_addr, data, context=self.context)
+                        lib.write_to_device(location, start_addr, data, device_id=device_id, context=self.context)
 
 
 class TestRunElf(unittest.TestCase):
