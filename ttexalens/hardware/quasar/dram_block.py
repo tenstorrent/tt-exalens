@@ -8,5 +8,5 @@ from ttexalens.hardware.quasar.noc_block import QuasarNocBlock
 
 class QuasarDramBlock(QuasarNocBlock):
     def __init__(self, location: OnChipCoordinate):
-        # TODO: #123
+        # TODO: #865
         raise NotImplementedError(f"Quasar DRAM block is not implemented yet (location {location.to_user_str()}.).")
