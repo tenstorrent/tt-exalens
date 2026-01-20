@@ -779,6 +779,7 @@ class TestSafeAccess(unittest.TestCase):
 
             for block_name, block_info in blocks_with_noc:
                 noc_addr = block_info.memory_block.address.noc_address
+                assert noc_addr is not None, "NOC address should not be None here"
                 size = block_info.memory_block.size
                 is_accessible = block_info.is_accessible
                 is_safe_to_read = block_info.is_safe_to_read(noc_addr, size)
@@ -961,8 +962,8 @@ class TestSafeAccess(unittest.TestCase):
 
         # Determine if there's actually a gap
         has_gap = (
-            next_block_info is None or next_block_info.memory_block.address.noc_address > block_end
-        )  # type: ignore[operator]
+            next_block_info is None or next_block_info.memory_block.address.noc_address > block_end # type: ignore[operator]
+        ) 
 
         # Case 1: There's a gap after this block (unmapped region)
         if has_gap:
