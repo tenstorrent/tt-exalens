@@ -2,6 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from typing import cast
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.quasar.functional_neo_block import QuasarFunctionalNeoBlock
@@ -9,6 +10,7 @@ from ttexalens.hardware.quasar.functional_neo_block import QuasarFunctionalNeoBl
 
 class QuasarBabyRiscDebug(BabyRiscDebug):
     def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool = True):
+        self.neo_block = cast(QuasarFunctionalNeoBlock, getattr(self.noc_block, f"neo{self.risc_info.neo_id}"))
         super().__init__(risc_info, enable_asserts)
 
     def invalidate_instruction_cache(self):
@@ -25,14 +27,6 @@ class QuasarBabyRiscDebug(BabyRiscDebug):
         # Flush PC address to activate instruction cache (needed on Quasar)
         assert self.debug_hardware is not None
         self.debug_hardware.flush(pc)
-
-    @property
-    def neo_block(self) -> QuasarFunctionalNeoBlock:
-        neo = getattr(self.noc_block, f"neo{self.risc_info.neo_id}")
-        assert isinstance(
-            neo, QuasarFunctionalNeoBlock
-        ), f"NEO block with ID {self.risc_info.neo_id} is not a QuasarFunctionalNeoBlock."
-        return neo
 
     def read_gpr(self, register_index: int) -> int:
         if register_index != 32:
