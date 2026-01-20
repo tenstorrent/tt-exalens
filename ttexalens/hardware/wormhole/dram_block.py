@@ -52,33 +52,42 @@ class WormholeDramBlock(WormholeNocBlock):
 
         self.noc_memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("dram_bank", self.dram_bank),
+                MemoryMapBlockInfo("dram_bank", self.dram_bank, safe_to_write=True),
                 MemoryMapBlockInfo(
-                    "chan0_config_regs", MemoryBlock(size=0x40000, address=DeviceAddress(noc_address=0x100000000))
+                    "chan0_config_regs",
+                    MemoryBlock(size=0x40000, address=DeviceAddress(noc_address=0x100000000)),
                 ),
                 MemoryMapBlockInfo(
-                    "chan1_config_regs", MemoryBlock(size=0x40000, address=DeviceAddress(noc_address=0x100040000))
+                    "chan1_config_regs",
+                    MemoryBlock(size=0x40000, address=DeviceAddress(noc_address=0x100040000)),
                 ),
                 MemoryMapBlockInfo(
-                    "loc0_noc0_regs", MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x100080000))
+                    "loc0_noc0_regs",
+                    MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x100080000)),
                 ),
                 MemoryMapBlockInfo(
-                    "loc0_noc1_regs", MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x100088000))
+                    "loc0_noc1_regs",
+                    MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x100088000)),
                 ),
                 MemoryMapBlockInfo(
-                    "loc1_noc0_regs", MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x100090000))
+                    "loc1_noc0_regs",
+                    MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x100090000)),
                 ),
                 MemoryMapBlockInfo(
-                    "loc1_noc1_regs", MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x100098000))
+                    "loc1_noc1_regs",
+                    MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x100098000)),
                 ),
                 MemoryMapBlockInfo(
-                    "loc2_noc0_regs", MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x1000A0000))
+                    "loc2_noc0_regs",
+                    MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x1000A0000)),
                 ),
                 MemoryMapBlockInfo(
-                    "loc2_noc1_regs", MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x1000A8000))
+                    "loc2_noc1_regs",
+                    MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x1000A8000)),
                 ),
                 MemoryMapBlockInfo(
-                    "gddr_config_regs", MemoryBlock(size=0x18000, address=DeviceAddress(noc_address=0x1000B0000))
+                    "gddr_config_regs",
+                    MemoryBlock(size=0x18000, address=DeviceAddress(noc_address=0x1000B0000)),
                 ),
             ]
         )
