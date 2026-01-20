@@ -7,7 +7,7 @@ from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 
 
 class QuasarBabyRiscDebug(BabyRiscDebug):
-    def __init__(self, risc_info: BabyRiscInfo, neo_block: "QuasarFunctionalNeoBlock", enable_asserts: bool = True):
+    def __init__(self, risc_info: BabyRiscInfo, neo_block, enable_asserts: bool = True):
         self.neo_block = neo_block
         super().__init__(risc_info, enable_asserts)
 
