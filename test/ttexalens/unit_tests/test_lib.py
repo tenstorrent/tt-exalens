@@ -776,38 +776,39 @@ class TestSafeAccess(unittest.TestCase):
 
             for block_name, block_info in blocks_with_noc:
                 noc_addr = block_info.memory_block.address.noc_address
-                assert noc_addr is not None, "NOC address should not be None here"
                 size = block_info.memory_block.size
                 is_accessible = block_info.is_accessible
                 is_safe_to_read = block_info.is_safe_to_read(noc_addr, size)
                 is_safe_to_write = block_info.is_safe_to_write(noc_addr, size)
 
                 # Determine test size (small enough to fit in block, min 4 bytes)
-                test_size = min(64, size // 2, size - 4) 
+                test_size = min(64, size // 2, size - 4) if size > 4 else 4
                 if test_size < 4:
                     continue  # Skip tiny blocks
 
                 location_str = str(location)
 
-                # Test 1: Access fully inside the block
-                self._test_access_inside_block(
-                    location_str, block_name, noc_addr, test_size,
-                    is_accessible, is_safe_to_read, is_safe_to_write
-                )
-
-                # Only run spanning tests for accessible blocks
-                if is_accessible and is_safe_to_read:
-                    # Test 2: Access spanning into another readable block
-                    self._test_access_spanning_readable(
-                        location_str, block_name, block_info, memory_map,
-                        is_safe_to_write
+                # Use subTest for each location/block pair
+                with self.subTest(location=location_str, block=block_name):
+                    # Test 1: Access fully inside the block (test all blocks including inaccessible)
+                    self._test_access_inside_block(
+                        location_str, block_name, noc_addr, test_size,
+                        is_accessible, is_safe_to_read, is_safe_to_write
                     )
 
-                    # Test 3: Access spanning into unreadable/unknown region
-                    self._test_access_spanning_unreadable(
-                        location_str, block_name, noc_addr, size,
-                        is_safe_to_write, memory_map
-                    )
+                    # Only run spanning tests for accessible and readable blocks
+                    if is_accessible and is_safe_to_read:
+                        # Test 2: Access spanning into another readable block
+                        self._test_access_spanning_readable(
+                            location_str, block_name, block_info, memory_map,
+                            is_safe_to_write
+                        )
+
+                        # Test 3: Access spanning into unreadable/unknown region
+                        self._test_access_spanning_unreadable(
+                            location_str, block_name, noc_addr, size,
+                            is_safe_to_write, memory_map
+                        )
 
 
     def _test_access_inside_block(self, location: str, block_name: str,
