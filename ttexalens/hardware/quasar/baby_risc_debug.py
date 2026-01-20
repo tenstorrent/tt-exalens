@@ -29,9 +29,10 @@ class QuasarBabyRiscDebug(BabyRiscDebug):
     @property
     def neo_block(self) -> QuasarFunctionalNeoBlock:
         neo = getattr(self.noc_block, f"neo{self.risc_info.neo_id}")
-        assert isinstance(neo, QuasarFunctionalNeoBlock), f"NEO block with ID {self.risc_info.neo_id} is not a QuasarFunctionalNeoBlock."
+        assert isinstance(
+            neo, QuasarFunctionalNeoBlock
+        ), f"NEO block with ID {self.risc_info.neo_id} is not a QuasarFunctionalNeoBlock."
         return neo
-
 
     def read_gpr(self, register_index: int) -> int:
         if register_index != 32:
