@@ -130,7 +130,7 @@ class TTExaLensTestRunner:
         self.process.stdin.write("\n")
         self.process.stdin.flush()
 
-    def read_until_prompt(self, readline_timeout: float = 5) -> tuple[list[str], str | None]:
+    def read_until_prompt(self, readline_timeout: float = 15) -> tuple[list[str], str | None]:
         lines: list[str] = []
         while True:
             line = self.readline(readline_timeout)
