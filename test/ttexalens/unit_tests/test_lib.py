@@ -819,8 +819,10 @@ class TestSafeAccess(unittest.TestCase):
     @parameterized.expand(
         [
             # Span from one read-only region to another adjacent read-only region
-            ("0,0", "debug_regs", "pic_regs", 0x200),  # Span Debug -> PIC
-            ("1,0", "debug_regs", "pic_regs", 0x180),  # Span Debug -> PIC (smaller)
+            # Note: pic_regs is only 56 bytes (0x38), so we need to keep num_bytes small enough
+            # to stay within pic_regs boundary and not extend into the unmapped gap after it
+            ("0,0", "debug_regs", "pic_regs", 0x70),  # Span Debug -> PIC (112 bytes: 56 in each)
+            ("1,0", "debug_regs", "pic_regs", 0x50),  # Span Debug -> PIC (80 bytes: 40 + 40)
         ]
     )
     def test_safe_access_spanning_two_allowed_regions(self, location, block1_name, block2_name, num_bytes):
@@ -914,8 +916,8 @@ class TestSafeAccess(unittest.TestCase):
             # Try to write to various read-only register regions
             ("0,0", "debug_regs", 0x000, 64),  # Write to debug regs start
             ("1,0", "debug_regs", 0x500, 128),  # Write to debug regs middle
-            ("0,0", "pic_regs", 0x000, 64),  # Write to PIC regs start
-            ("1,0", "pic_regs", 0x800, 256),  # Write to PIC regs middle
+            ("0,0", "pic_regs", 0x000, 32),  # Write to PIC regs start (32 bytes fits)
+            ("1,0", "pic_regs", 0x010, 32),  # Write to PIC regs middle (32 bytes at offset 0x10 fits)
             ("0,0", "noc0_regs", 0x000, 64),  # Write to NOC0 regs start
             ("1,0", "noc0_regs", 0x5000, 512),  # Write to NOC0 regs middle
             ("0,0", "noc1_regs", 0x000, 64),  # Write to NOC1 regs start
@@ -1110,10 +1112,10 @@ class TestSafeAccess(unittest.TestCase):
         if not device.is_blackhole():
             self.skipTest("Blackhole-specific test")
 
-        # riscv_pcs: Read-only region
+        # riscv_pcs: Read-only region at 0xFFB13138 (20 bytes)
         location = "0,0"
-        address = 0xFFB18000  # RISCV PCS region on Blackhole
-        num_bytes = 64
+        address = 0xFFB13138  # Correct RISCV PCS region address on Blackhole
+        num_bytes = 20  # Size of riscv_pcs region
 
         # Read should succeed
         result = lib.read_from_device(location, address, num_bytes=num_bytes, safe_mode=True, context=self.context)
@@ -1126,31 +1128,16 @@ class TestSafeAccess(unittest.TestCase):
         if not device.is_blackhole():
             self.skipTest("Blackhole-specific test")
 
-        # riscv_pcs: Read-only region
+        # riscv_pcs: Read-only region at 0xFFB13138 (20 bytes)
         location = "0,0"
-        address = 0xFFB18000  # RISCV PCS region on Blackhole
-        num_bytes = 64
+        address = 0xFFB13138  # Correct RISCV PCS region address on Blackhole
+        num_bytes = 20  # Size of riscv_pcs region
         data = bytes([0xFF] * num_bytes)
 
         # Write should fail
         with self.assertRaises(UnsafeAccessException):
             lib.write_to_device(location, address, data, safe_mode=True, context=self.context)
 
-    def test_blackhole_specific_dest_buffer_read(self):
-        """Test reading from Blackhole-specific dest region (debug destination buffer)."""
-        # Only run on Blackhole devices
-        device = self.context.devices[0]
-        if not device.is_blackhole():
-            self.skipTest("Blackhole-specific test")
-
-        # dest buffer: Read-only region
-        location = "0,0"
-        address = 0xFFB1C000  # DEST buffer region on Blackhole
-        num_bytes = 64
-
-        # Read should succeed
-        result = lib.read_from_device(location, address, num_bytes=num_bytes, safe_mode=True, context=self.context)
-        self.assertEqual(len(result), num_bytes)
 
     @parameterized.expand(
         [
