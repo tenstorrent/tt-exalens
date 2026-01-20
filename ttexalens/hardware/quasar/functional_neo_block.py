@@ -189,11 +189,11 @@ class QuasarFunctionalNeoBlock:
     def get_risc_debug(self, risc_name: str) -> RiscDebug:
         risc_name = risc_name.lower()
         if risc_name == self.trisc0.risc_name:
-            return QuasarBabyRiscDebug(self.trisc0)
+            return QuasarBabyRiscDebug(self.trisc0, neo_block=self)
         elif risc_name == self.trisc1.risc_name:
-            return QuasarBabyRiscDebug(self.trisc1)
+            return QuasarBabyRiscDebug(self.trisc1, neo_block=self)
         elif risc_name == self.trisc2.risc_name:
-            return QuasarBabyRiscDebug(self.trisc2)
+            return QuasarBabyRiscDebug(self.trisc2, neo_block=self)
         elif risc_name == self.trisc3.risc_name:
-            return QuasarBabyRiscDebug(self.trisc3)
+            return QuasarBabyRiscDebug(self.trisc3, neo_block=self)
         raise ValueError(f"RISC with name {risc_name} not found in NEO {self.neo_id}.")
