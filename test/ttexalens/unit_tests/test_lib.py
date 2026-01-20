@@ -961,8 +961,6 @@ class TestSafeAccess(unittest.TestCase):
             data = bytes([0xAB] * 64)
             lib.write_to_device(location, noc_address, data, context=self.context)
 
-
-
     def test_blackhole_specific_riscv_pcs_read(self):
         """Test reading from Blackhole-specific riscv_pcs region (PC snapshot buffer)."""
         # Only run on Blackhole devices
@@ -996,7 +994,6 @@ class TestSafeAccess(unittest.TestCase):
         with self.assertRaises(UnsafeAccessException):
             lib.write_to_device(location, address, data, context=self.context)
 
-
     @parameterized.expand(
         [
             # Read words from allowed region
@@ -1024,13 +1021,9 @@ class TestSafeAccess(unittest.TestCase):
 
         if should_fail:
             with self.assertRaises(UnsafeAccessException):
-                lib.read_words_from_device(
-                    location, address, word_count=word_count, context=self.context
-                )
+                lib.read_words_from_device(location, address, word_count=word_count, context=self.context)
         else:
-            result = lib.read_words_from_device(
-                location, address, word_count=word_count, context=self.context
-            )
+            result = lib.read_words_from_device(location, address, word_count=word_count, context=self.context)
             self.assertEqual(len(result), word_count)
 
     @parameterized.expand(
