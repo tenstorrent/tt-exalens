@@ -6,10 +6,10 @@ from __future__ import annotations
 from functools import cache, cached_property
 from typing import Callable
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
-from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.quasar.baby_risc_debug import QuasarBabyRiscDebug
 from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import debug_bus_signal_map
 from ttexalens.hardware.quasar.functional_neo_registers import register_map
 from typing import TYPE_CHECKING
@@ -189,11 +189,11 @@ class QuasarFunctionalNeoBlock:
     def get_risc_debug(self, risc_name: str) -> RiscDebug:
         risc_name = risc_name.lower()
         if risc_name == self.trisc0.risc_name:
-            return BabyRiscDebug(self.trisc0)
+            return QuasarBabyRiscDebug(self.trisc0, neo_block=self)
         elif risc_name == self.trisc1.risc_name:
-            return BabyRiscDebug(self.trisc1)
+            return QuasarBabyRiscDebug(self.trisc1, neo_block=self)
         elif risc_name == self.trisc2.risc_name:
-            return BabyRiscDebug(self.trisc2)
+            return QuasarBabyRiscDebug(self.trisc2, neo_block=self)
         elif risc_name == self.trisc3.risc_name:
-            return BabyRiscDebug(self.trisc3)
+            return QuasarBabyRiscDebug(self.trisc3, neo_block=self)
         raise ValueError(f"RISC with name {risc_name} not found in NEO {self.neo_id}.")

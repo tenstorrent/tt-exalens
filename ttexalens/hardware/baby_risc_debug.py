@@ -566,6 +566,10 @@ class BabyRiscDebug(RiscDebug):
             value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
         write(address, value)
 
+    # Exposing the method for sub-classes to use.
+    def _write_register(self, register: str | RegisterDescription, value: int):
+        self.__write_register(register, value)
+
     @contextmanager
     def ensure_private_memory_access(self):
         self.assert_debug_hardware()
