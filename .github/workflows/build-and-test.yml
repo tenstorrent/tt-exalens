@@ -128,7 +128,7 @@ jobs:
           JOB_ID="${{ github.run_id }}_ubuntu_${{ inputs.ubuntu-version }}_${{ matrix.runner-info.arch }}_${{ matrix.runner-info.board }}"
           echo "test_report_path=report_${JOB_ID}.xml" >> "$GITHUB_OUTPUT"
 
-      - name: Run Python tests for ttexalens library
+      - name: Run Python tests for ttexalens library (using NOC0)
         run: |
           python3 -m xmlrunner discover -v -t . -s test/ttexalens -p '*test*.py' \
           --output-file ${{ steps.strings.outputs.test_report_path }}
@@ -139,8 +139,22 @@ jobs:
           name: test-reports-${{ inputs.ubuntu-version }}-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.board }}
           path: ${{ steps.strings.outputs.test_report_path }}
 
-      - name: Run Python tests for TTExaLens app
+      - name: Run Python tests for TTExaLens app (using NOC0)
         run: |
+          python3 -m unittest discover -v -t . -s test/app -p *test*.py
+
+      - name: Run Python tests for ttexalens library (using NOC1)
+        # Disabling NOC1 tests on n300 board due to known bug causing host to reboot
+        if: ${{ matrix.runner-info.board != 'n300' }}
+        run: |
+          export TTEXALENS_TESTS_USE_NOC1=1
+          python3 -m unittest discover -v -t . -s test/ttexalens -p *test*.py
+
+      - name: Run Python tests for TTExaLens app (using NOC1)
+        # Disabling NOC1 tests on n300 board due to known bug causing host to reboot
+        if: ${{ matrix.runner-info.board != 'n300' }}
+        run: |
+          export TTEXALENS_TESTS_USE_NOC1=1
           python3 -m unittest discover -v -t . -s test/app -p *test*.py
 
       - name: Install wheel
