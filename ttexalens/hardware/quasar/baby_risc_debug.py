@@ -19,8 +19,8 @@ class QuasarBabyRiscDebug(BabyRiscDebug):
         Invalidates the instruction cache of the RISC-V core.
         """
         register = self.register_store.get_register_description("RISCV_IC_INVALIDATE_InvalidateAll")
-        self._BabyRiscDebug__write_register(register, 0)
-        self._BabyRiscDebug__write_register(register, 1 << (3 - self.risc_info.risc_id))
+        self._write_register(register, 0)
+        self._write_register(register, 1 << (3 - self.risc_info.risc_id))
 
         # Flush PC address to activate instruction cache (needed on Quasar)
         assert self.debug_hardware is not None
@@ -28,7 +28,10 @@ class QuasarBabyRiscDebug(BabyRiscDebug):
 
     @property
     def neo_block(self) -> QuasarFunctionalNeoBlock:
-        return getattr(self.noc_block, f"neo{self.risc_info.neo_id}")
+        neo = getattr(self.noc_block, f"neo{self.risc_info.neo_id}")
+        assert isinstance(neo, QuasarFunctionalNeoBlock), f"NEO block with ID {self.risc_info.neo_id} is not a QuasarFunctionalNeoBlock."
+        return neo
+
 
     def read_gpr(self, register_index: int) -> int:
         if register_index != 32:
