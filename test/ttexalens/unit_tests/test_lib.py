@@ -770,6 +770,10 @@ class TestSafeAccess(unittest.TestCase):
             block = device.get_block(location)
             memory_map = block.noc_memory_map
 
+            if device.is_wormhole() and block.block_type == "dram" and self.context.use_noc1:
+                # Skip DRAM tests on wormhole devices when using NOC1 due to bug #tt-umd:1823
+                continue
+
             # Get all blocks with NOC addresses
             blocks_with_noc = [
                 (name, info)
