@@ -749,7 +749,6 @@ class TestSafeAccess(unittest.TestCase):
         3. Tests access spanning into adjacent readable blocks
         4. Tests access spanning into unreadable/unmapped regions (should fail)
         """
-        device = self.context.devices[0]
 
         # Get all block types
         all_block_types = [
@@ -758,55 +757,56 @@ class TestSafeAccess(unittest.TestCase):
             "eth",
         ]
 
-        # Collect test locations from all block types
-        test_locations = []
-        for block_type in all_block_types:
-            locations = device.get_block_locations(block_type=block_type)
-            # Take up to 2 locations per block type to keep test time reasonable
-            if len(locations) > 0:
-                test_locations.extend(locations[:2] if len(locations) >= 2 else locations)
+        for _, device in self.context.devices.items():
+            # Collect test locations from all block types
+            test_locations = []
+            for block_type in all_block_types:
+                locations = device.get_block_locations(block_type=block_type)
+                # Take up to 2 locations per block type to keep test time reasonable
+                if len(locations) > 0:
+                    test_locations.extend(locations[:2] if len(locations) >= 2 else locations)
 
-        for location in test_locations:
-            block = device.get_block(location)
-            memory_map = block.noc_memory_map
+            for location in test_locations:
+                block = device.get_block(location)
+                memory_map = block.noc_memory_map
 
-            if device.is_wormhole() and block.block_type == "dram" and self.context.use_noc1:
-                # Skip DRAM tests on wormhole devices when using NOC1 due to bug #tt-umd:1823
-                continue
+                if device.is_wormhole() and block.block_type == "dram" and self.context.use_noc1:
+                    # Skip DRAM tests on wormhole devices when using NOC1 due to bug #tt-umd:1823
+                    continue
 
-            # Get all blocks with NOC addresses
-            blocks_with_noc = [
-                (name, info)
-                for name, info in memory_map._blocks_info.items()
-                if info.memory_block.address.noc_address is not None
-            ]
+                # Get all blocks with NOC addresses
+                blocks_with_noc = [
+                    (name, info)
+                    for name, info in memory_map._blocks_info.items()
+                    if info.memory_block.address.noc_address is not None
+                ]
 
-            for block_name, block_info in blocks_with_noc:
-                noc_addr = block_info.memory_block.address.noc_address
-                assert noc_addr is not None, "NOC address should not be None here"
-                size = block_info.memory_block.size
-                is_accessible = block_info.is_accessible
-                is_safe_to_read = block_info.is_safe_to_read(noc_addr, size)
-                is_safe_to_write = block_info.is_safe_to_write(noc_addr, size)
+                for block_name, block_info in blocks_with_noc:
+                    noc_addr = block_info.memory_block.address.noc_address
+                    assert noc_addr is not None, "NOC address should not be None here"
+                    size = block_info.memory_block.size
+                    is_accessible = block_info.is_accessible
+                    is_safe_to_read = block_info.is_safe_to_read(noc_addr, size)
+                    is_safe_to_write = block_info.is_safe_to_write(noc_addr, size)
 
-                location_str = str(location)
+                    location_str = str(location)
 
-                # Test 1: Access fully inside the block (test all blocks including inaccessible)
-                self._test_access_inside_block(
-                    location_str, block_name, noc_addr, size, is_accessible, is_safe_to_read, is_safe_to_write
-                )
-
-                # Only run spanning tests for accessible and readable blocks
-                if is_accessible and is_safe_to_read:
-                    # Test 2: Access spanning into another readable block
-                    self._test_access_spanning_readable(
-                        location_str, block_name, block_info, memory_map, is_safe_to_write
+                    # Test 1: Access fully inside the block (test all blocks including inaccessible)
+                    self._test_access_inside_block(
+                        location_str, block_name, noc_addr, size, is_accessible, is_safe_to_read, is_safe_to_write
                     )
 
-                    # Test 3: Access spanning into unreadable/unknown region
-                    self._test_access_spanning_unreadable(
-                        location_str, block_name, noc_addr, size, is_safe_to_write, memory_map
-                    )
+                    # Only run spanning tests for accessible and readable blocks
+                    if is_accessible and is_safe_to_read:
+                        # Test 2: Access spanning into another readable block
+                        self._test_access_spanning_readable(
+                            location_str, block_name, block_info, memory_map, is_safe_to_write
+                        )
+
+                        # Test 3: Access spanning into unreadable/unknown region
+                        self._test_access_spanning_unreadable(
+                            location_str, block_name, noc_addr, size, is_safe_to_write, memory_map
+                        )
 
     def _test_access_inside_block(
         self,
