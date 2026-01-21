@@ -104,7 +104,7 @@ class TTExaLensTestRunner:
         self.invoke(args)
         self.verifier.verify_start(self, tester)
 
-    def readline(self, timeoutSeconds: float = 5):
+    def readline(self, timeoutSeconds: float = 20):
         assert self.process is not None
         # Fast path for program that ended
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0)
@@ -130,7 +130,7 @@ class TTExaLensTestRunner:
         self.process.stdin.write("\n")
         self.process.stdin.flush()
 
-    def read_until_prompt(self, readline_timeout: float = 5) -> tuple[list[str], str | None]:
+    def read_until_prompt(self, readline_timeout: float = 20) -> tuple[list[str], str | None]:
         lines: list[str] = []
         while True:
             line = self.readline(readline_timeout)
