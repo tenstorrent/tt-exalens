@@ -211,6 +211,7 @@ class BlackholeDramBlockSim(BlackholeNocBlock):
             ]
         )
 
+
 class BlackholeDramBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
         super().__init__(
