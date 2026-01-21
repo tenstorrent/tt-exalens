@@ -13,6 +13,9 @@ from parameterized import parameterized, parameterized_class
 from test.ttexalens.unit_tests.test_base import get_parsed_elf_file, init_cached_test_context
 import ttexalens as lib
 from ttexalens import util
+from ttexalens.elf.parsed import ParsedElfFile
+from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
+from ttexalens.tt_exalens_lib import UnsafeAccessException
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
@@ -726,6 +729,361 @@ class TestReadWrite(unittest.TestCase):
             )
 
 
+class TestSafeAccess(unittest.TestCase):
+    context: Context
+
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_cached_test_context()
+
+    def setUp(self):
+        self.assertIsNotNone(self.context)
+        self.assertIsInstance(self.context, Context)
+
+    def test_comprehensive_block_access(self):
+        """Comprehensive test that validates safe access patterns for all blocks on all devices.
+
+        This test:
+        1. Iterates through all devices and all block types
+        2. Tests read/write access fully inside each block based on safety flags
+        3. Tests access spanning into adjacent readable blocks
+        4. Tests access spanning into unreadable/unmapped regions (should fail)
+        """
+
+        # Get all block types
+        all_block_types = [
+            "functional_workers",
+            "dram",
+            "eth",
+        ]
+
+        for device_id, device in self.context.devices.items():
+            # Collect test locations from all block types
+            test_locations = []
+            for block_type in all_block_types:
+                locations = device.get_block_locations(block_type=block_type)
+                # Take up to 2 locations per block type to keep test time reasonable
+                if len(locations) > 0:
+                    test_locations.extend(locations[:2] if len(locations) >= 2 else locations)
+
+            for location in test_locations:
+                block = device.get_block(location)
+                memory_map = block.noc_memory_map
+
+                if device.is_wormhole() and block.block_type == "dram" and self.context.use_noc1:
+                    # Skip DRAM tests on wormhole devices when using NOC1 due to bug #tt-umd:1823
+                    continue
+
+                # Get all blocks with NOC addresses
+                blocks_with_noc = [
+                    (name, info)
+                    for name, info in memory_map._blocks_info.items()
+                    if info.memory_block.address.noc_address is not None
+                ]
+
+                for block_name, block_info in blocks_with_noc:
+                    noc_addr = block_info.memory_block.address.noc_address
+                    assert noc_addr is not None, "NOC address should not be None here"
+                    size = block_info.memory_block.size
+                    is_accessible = block_info.is_accessible
+                    is_safe_to_read = block_info.is_safe_to_read(noc_addr, size)
+                    is_safe_to_write = block_info.is_safe_to_write(noc_addr, size)
+
+                    location_str = str(location)
+
+                    # Test 1: Access fully inside the block (test all blocks including inaccessible)
+                    self._test_access_inside_block(
+                        device_id,
+                        location_str,
+                        block_name,
+                        noc_addr,
+                        size,
+                        is_accessible,
+                        is_safe_to_read,
+                        is_safe_to_write,
+                    )
+
+                    # Only run spanning tests for accessible and readable blocks
+                    if is_accessible and is_safe_to_read:
+                        # Test 2: Access spanning into another readable block
+                        self._test_access_spanning_readable(
+                            device_id, location_str, block_name, block_info, memory_map, is_safe_to_write
+                        )
+
+                        # Test 3: Access spanning into unreadable/unknown region
+                        self._test_access_spanning_unreadable(
+                            device_id, location_str, block_name, noc_addr, size, is_safe_to_write, memory_map
+                        )
+
+    def _test_access_inside_block(
+        self,
+        device_id: int,
+        location: str,
+        block_name: str,
+        noc_addr: int,
+        size: int,
+        is_accessible: bool,
+        is_safe_to_read: bool,
+        is_safe_to_write: bool,
+    ):
+        """Test access fully inside a block."""
+        # Determine if we need use_4B_mode=True (for RISC private memory)
+        use_4b_mode = None
+        if "data_private_memory" in block_name:
+            use_4b_mode = True
+
+        # Determine test size (small enough to fit in block, min 4 bytes)
+        span_size = min(64, size // 2, size - 4)
+        if span_size < 4:
+            return  # Skip tiny blocks
+
+        start_addr = noc_addr + (size // 2) - 1
+
+        # If block is not accessible, expect all accesses to fail
+        if not is_accessible:
+            # Test READ should fail
+            with self.assertRaises(
+                UnsafeAccessException,
+                msg=f"Read from inaccessible block {block_name} at {location} should raise UnsafeAccessException",
+            ):
+                lib.read_from_device(
+                    location,
+                    start_addr,
+                    device_id=device_id,
+                    num_bytes=span_size,
+                    use_4B_mode=use_4b_mode,
+                    context=self.context,
+                )
+
+            # Test WRITE should fail
+            data = bytes([0xAB] * span_size)
+            with self.assertRaises(
+                UnsafeAccessException,
+                msg=f"Write to inaccessible block {block_name} at {location} should raise UnsafeAccessException",
+            ):
+                lib.write_to_device(
+                    location, start_addr, data, device_id=device_id, use_4B_mode=use_4b_mode, context=self.context
+                )
+            return
+
+        # Test READ for accessible blocks
+        if is_safe_to_read:
+            result = lib.read_from_device(
+                location,
+                start_addr,
+                device_id=device_id,
+                num_bytes=span_size,
+                use_4B_mode=use_4b_mode,
+                context=self.context,
+            )
+            self.assertEqual(
+                len(result),
+                span_size,
+                f"Read from {block_name} at {location} should return {span_size} bytes from address {start_addr}",
+            )
+        else:
+            # Should raise exception
+            with self.assertRaises(
+                UnsafeAccessException,
+                msg=f"Read from unsafe block {block_name} at {location} should raise UnsafeAccessException",
+            ):
+                lib.read_from_device(
+                    location,
+                    start_addr,
+                    device_id=device_id,
+                    num_bytes=span_size,
+                    use_4B_mode=use_4b_mode,
+                    context=self.context,
+                )
+
+        # Test WRITE
+        if is_safe_to_write:
+            data = bytes([i % 256 for i in range(span_size)])
+            lib.write_to_device(
+                location, start_addr, data, device_id=device_id, use_4B_mode=use_4b_mode, context=self.context
+            )
+
+            # Verify by reading back
+            if is_safe_to_read:
+                result = lib.read_from_device(
+                    location,
+                    start_addr,
+                    device_id=device_id,
+                    num_bytes=span_size,
+                    use_4B_mode=use_4b_mode,
+                    context=self.context,
+                )
+                self.assertEqual(
+                    result,
+                    data,
+                    f"Read-back after write to {block_name} at {location} should match written data at address {start_addr}",
+                )
+        else:
+            # Should raise exception
+            data = bytes([0xAB] * span_size)
+            with self.assertRaises(
+                UnsafeAccessException,
+                msg=f"Write to read-only block {block_name} at {location} should raise UnsafeAccessException",
+            ):
+                lib.write_to_device(
+                    location,
+                    start_addr,
+                    data,
+                    device_id=device_id,
+                    safe_mode=True,
+                    use_4B_mode=use_4b_mode,
+                    context=self.context,
+                )
+
+    def _test_access_spanning_readable(
+        self,
+        device_id: int,
+        location: str,
+        block_name: str,
+        block_info: MemoryMapBlockInfo,
+        memory_map: MemoryMap,
+        is_safe_to_write: bool,
+    ):
+        """Test access spanning from this block into an adjacent readable block."""
+        noc_addr = block_info.memory_block.address.noc_address
+        assert noc_addr is not None, "NOC address should not be None here"
+        size = block_info.memory_block.size
+        block_end = noc_addr + size
+
+        # Find the next block (if any)
+        next_block_info = memory_map.find_next_by_noc_address(block_end)
+        if next_block_info is None:
+            return  # No next block
+
+        next_noc_addr = next_block_info.memory_block.address.noc_address
+        assert next_noc_addr is not None, "NOC address should not be None here"
+        next_is_accessible = next_block_info.is_accessible
+        next_is_safe_to_read = next_block_info.is_safe_to_read(next_noc_addr, 4)
+        next_is_safe_to_write = next_block_info.is_safe_to_write(next_noc_addr, 4)
+
+        # Check if blocks are adjacent (no gap), accessible, and readable
+        if next_noc_addr != block_end or not next_is_accessible or not next_is_safe_to_read:
+            return
+
+        # Calculate span size (half in each block)
+        span_size = min(32, size // 2, next_block_info.memory_block.size // 2)
+        if span_size < 8:
+            return  # Too small to span meaningfully
+
+        start_addr = block_end - span_size // 2
+
+        # Determine if we need use_4B_mode=True
+        use_4b_mode = None
+        if "data_private_memory" in block_name or "data_private_memory" in next_block_info.name:
+            use_4b_mode = True
+
+        # Test READ spanning two blocks
+        result = lib.read_from_device(
+            location, start_addr, num_bytes=span_size, use_4B_mode=use_4b_mode, context=self.context
+        )
+        self.assertEqual(
+            len(result), span_size, f"Read spanning {block_name} -> {next_block_info.name} at {location} should succeed"
+        )
+
+        # Test WRITE spanning two blocks
+        if is_safe_to_write and next_is_safe_to_write:
+            data = bytes([i % 256 for i in range(span_size)])
+            lib.write_to_device(
+                location, start_addr, data, device_id=device_id, use_4B_mode=use_4b_mode, context=self.context
+            )
+
+            # Verify by reading back if both are readable
+            result = lib.read_from_device(
+                location,
+                start_addr,
+                device_id=device_id,
+                num_bytes=span_size,
+                use_4B_mode=use_4b_mode,
+                context=self.context,
+            )
+            self.assertEqual(
+                result, data, f"Read-back after spanning write {block_name} -> {next_block_info.name} should match"
+            )
+
+    def _test_access_spanning_unreadable(
+        self,
+        device_id: int,
+        location: str,
+        block_name: str,
+        noc_addr: int,
+        size: int,
+        is_safe_to_write: bool,
+        memory_map: MemoryMap,
+    ):
+        """Test access spanning from this block into an unreadable/unmapped region."""
+        block_end = noc_addr + size
+
+        # Find the next block (if any) - use block_end - 1 to find blocks that start at or after block_end
+        next_block_info = memory_map.find_next_by_noc_address(block_end - 1)
+
+        # Determine if there's actually a gap
+        has_gap = (
+            next_block_info is None or next_block_info.memory_block.address.noc_address > block_end  # type: ignore[operator]
+        )
+
+        # Case 1: There's a gap after this block (unmapped region)
+        if has_gap:
+            # Try to read/write spanning into the gap
+            span_size = min(64, size // 2) if size > 8 else 8
+            start_addr = block_end - span_size // 2
+
+            # Read spanning into gap should fail (only test for readable blocks)
+            with self.assertRaises(
+                UnsafeAccessException,
+                msg=f"Read spanning {block_name} into unmapped gap at {location} should raise UnsafeAccessException",
+            ):
+                lib.read_from_device(
+                    location, start_addr, device_id=device_id, num_bytes=span_size, context=self.context
+                )
+
+            # Write spanning into gap should fail (only test for writable blocks)
+            if is_safe_to_write:
+                data = bytes([0xCC] * span_size)
+                with self.assertRaises(
+                    UnsafeAccessException,
+                    msg=f"Write spanning {block_name} into unmapped gap at {location} should raise UnsafeAccessException",
+                ):
+                    lib.write_to_device(location, start_addr, data, device_id=device_id, context=self.context)
+        # Case 2: Next block is adjacent but not accessible or has incompatible permissions
+        elif next_block_info is not None and next_block_info.memory_block.address.noc_address == block_end:
+            next_noc_addr = next_block_info.memory_block.address.noc_address
+            next_is_accessible = next_block_info.is_accessible
+            next_is_safe_to_read = next_block_info.is_safe_to_read(next_noc_addr, 4)
+            next_is_safe_to_write = next_block_info.is_safe_to_write(next_noc_addr, 4)
+
+            # Test spanning into inaccessible block
+            if not next_is_accessible or not next_is_safe_to_read:
+                span_size = min(32, size // 2, next_block_info.memory_block.size // 2)
+                if span_size >= 8:
+                    start_addr = block_end - span_size // 2
+
+                    with self.assertRaises(
+                        UnsafeAccessException,
+                        msg=f"Read spanning {block_name} into inaccessible/not safe to read {next_block_info.name} at {location} should raise UnsafeAccessException",
+                    ):
+                        lib.read_from_device(
+                            location, start_addr, device_id=device_id, num_bytes=span_size, context=self.context
+                        )
+
+            # Test spanning from writable to non-writable
+            elif not next_is_safe_to_write:
+                span_size = min(32, size // 2, next_block_info.memory_block.size // 2)
+                if span_size >= 8:
+                    start_addr = block_end - span_size // 2
+                    data = bytes([0xDD] * span_size)
+
+                    with self.assertRaises(
+                        UnsafeAccessException,
+                        msg=f"Write spanning {block_name} (writable) into {next_block_info.name} (read-only) at {location} should raise UnsafeAccessException",
+                    ):
+                        lib.write_to_device(location, start_addr, data, device_id=device_id, context=self.context)
+
+
 class TestRunElf(unittest.TestCase):
     context: Context
     device: Device
@@ -1118,15 +1476,26 @@ class TestCallStack(unittest.TestCase):
             if entry1.pc is not None and entry2.pc is not None:
                 self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
 
+    def set_recursion_count(self, elf: ParsedElfFile, count: int):
+        text_section = next((s for s in elf.sections if s.name == ".text"), None)
+        assert text_section is not None
+
+        address = text_section.address + text_section.size
+        lib.write_words_to_device(self.location, address, count)
+
     CALLSTACK_ELFS = ["callstack.debug", "callstack.release", "callstack.coverage"]
     RECURSION_COUNT = [1, 10, 40]
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack_with_parsing(self, elf_name: str, recursion_count: int):
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
+
+        mem_access = MemoryAccess.create(self.risc_debug)
+        x = parsed_elf.get_global("g_MAILBOX", mem_access)
+
         callstack: list[CallstackEntry] = lib.callstack(
             self.location, parsed_elf, None, self.risc_name, None, 100, True
         )
@@ -1145,9 +1514,9 @@ class TestCallStack(unittest.TestCase):
         # No need to test multiple versions here, they are tested in test_callstack_with_parsing. Here we just test that callstack works with elf path.
         elf_name = "callstack.release"
         recursion_count = 1
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
         self.assertEqual(len(callstack), recursion_count + 3)
@@ -1163,9 +1532,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_namespace(self, elf_name):
-        lib.write_words_to_device(self.location, 0x64000, 0)
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
             self.location, parsed_elf, None, self.risc_name, None, 100, True
@@ -1179,11 +1548,11 @@ class TestCallStack(unittest.TestCase):
         )
         self.compare_callstacks(callstack, gdb_callstack)
 
-    @parameterized.expand(RECURSION_COUNT)
+    @parameterized.expand([(x,) for x in RECURSION_COUNT])
     def test_top_callstack_with_parsing(self, recursion_count: int):
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.debug")
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
@@ -1194,9 +1563,9 @@ class TestCallStack(unittest.TestCase):
     def test_top_callstack(self):
         # No need to test multiple versions here, they are tested in test_top_callstack_with_parsing. Here we just test that top_callstack works with elf path.
         recursion_count = 1
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.debug")
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)
@@ -1206,9 +1575,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand([(1, 1)])
     def test_top_callstack_optimized(self, recursion_count: int, expected_f1_on_callstack_count: int):
-        lib.write_words_to_device(self.location, 0x64000, recursion_count)
         elf_path = self.get_elf_path("callstack.release")
         parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         with self.risc_debug.ensure_halted():
             pc = self.risc_debug.read_gpr(32)

@@ -13,7 +13,19 @@ from intervaltree import Interval, IntervalTree
 class MemoryMapBlockInfo:
     name: str
     memory_block: MemoryBlock
+    safe_to_read: Callable[[int, int], bool] | bool | None = None
+    safe_to_write: Callable[[int, int], bool] | bool | None = None
     access_check: Callable[[], bool] | None = None
+
+    def is_safe_to_read(self, address: int, num_bytes: int) -> bool:
+        if callable(self.safe_to_read):
+            return self.safe_to_read(address, num_bytes)
+        return self.safe_to_read if self.safe_to_read is not None else True
+
+    def is_safe_to_write(self, address: int, num_bytes: int) -> bool:
+        if callable(self.safe_to_write):
+            return self.safe_to_write(address, num_bytes)
+        return self.safe_to_write if self.safe_to_write is not None else False
 
     @property
     def is_accessible(self) -> bool:
@@ -60,8 +72,19 @@ class MemoryMap:
         for block_info in blocks:
             self.add_block(block_info)
 
-    def map_block(self, name: str, memory_block: MemoryBlock, access_check: Callable[[], bool] | None = None) -> None:
-        self.add_block(MemoryMapBlockInfo(name, memory_block, access_check))
+    def map_block(
+        self,
+        name: str,
+        memory_block: MemoryBlock,
+        safe_to_read: Callable[[int, int], bool] | bool | None = None,
+        safe_to_write: Callable[[int, int], bool] | bool | None = None,
+        access_check: Callable[[], bool] | None = None,
+    ) -> None:
+        self.add_block(
+            MemoryMapBlockInfo(
+                name, memory_block, safe_to_read=safe_to_read, safe_to_write=safe_to_write, access_check=access_check
+            )
+        )
 
     def find_by_noc_address(self, noc_address: int) -> MemoryMapBlockInfo | None:
         return MemoryMap._find_by_address(noc_address, self._noc_addresses)

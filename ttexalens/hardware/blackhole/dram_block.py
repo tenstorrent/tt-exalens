@@ -319,8 +319,8 @@ class BlackholeDramBlock(BlackholeNocBlock):
 
         self.noc_memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("dram_bank", self.dram_bank),
-                MemoryMapBlockInfo("l1", self.l1.just_noc_address()),
+                MemoryMapBlockInfo("dram_bank", self.dram_bank, safe_to_write=True),
+                MemoryMapBlockInfo("l1", self.l1.just_noc_address(), safe_to_write=True),
                 MemoryMapBlockInfo("tx_stream0_regs", self.tx_stream0_regs.just_noc_address()),
                 MemoryMapBlockInfo("tx_stream1_regs", self.tx_stream1_regs.just_noc_address()),
                 MemoryMapBlockInfo("tx_control_regs", self.tx_control_regs.just_noc_address()),
@@ -329,8 +329,8 @@ class BlackholeDramBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("ictrl_regs", self.ictrl_regs.just_noc_address()),
                 MemoryMapBlockInfo("gddr_xbar0_regs", self.gddr_xbar0_regs.just_noc_address()),
                 MemoryMapBlockInfo("gddr_xbar1_regs", self.gddr_xbar1_regs.just_noc_address()),
-                MemoryMapBlockInfo("gddr_xbar2_regs", self.gddr_xbar2_regs.just_noc_address()),
-                MemoryMapBlockInfo("gddr_phy_regs", self.gddr_phy_regs.just_noc_address()),
+                MemoryMapBlockInfo("gddr_xbar2_regs", self.gddr_xbar2_regs.just_noc_address(), safe_to_read=False),
+                MemoryMapBlockInfo("gddr_phy_regs", self.gddr_phy_regs.just_noc_address(), safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs.just_noc_address()),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs.just_noc_address()),
                 MemoryMapBlockInfo("control_regs", self.control_regs.just_noc_address()),
@@ -342,7 +342,7 @@ class BlackholeDramBlock(BlackholeNocBlock):
 
         self.drisc.memory_map.add_blocks(
             [
-                MemoryMapBlockInfo("l1", self.l1),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("tx_stream0_regs", self.tx_stream0_regs),
                 MemoryMapBlockInfo("tx_stream1_regs", self.tx_stream1_regs),
                 MemoryMapBlockInfo("tx_control_regs", self.tx_control_regs),
@@ -351,8 +351,8 @@ class BlackholeDramBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("ictrl_regs", self.ictrl_regs),
                 MemoryMapBlockInfo("gddr_xbar0_regs", self.gddr_xbar0_regs),
                 MemoryMapBlockInfo("gddr_xbar1_regs", self.gddr_xbar1_regs),
-                MemoryMapBlockInfo("gddr_xbar2_regs", self.gddr_xbar2_regs),
-                MemoryMapBlockInfo("gddr_phy_regs", self.gddr_phy_regs),
+                MemoryMapBlockInfo("gddr_xbar2_regs", self.gddr_xbar2_regs, safe_to_read=False),
+                MemoryMapBlockInfo("gddr_phy_regs", self.gddr_phy_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("control_regs", self.control_regs),

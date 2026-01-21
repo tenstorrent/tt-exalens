@@ -67,6 +67,7 @@ SECTIONS
   l1_data_noinit (NOLOAD) :
   {
     *(l1_data_noinit)
+    __firmware_end = .;
   } > REGION_CODE
   . = ALIGN(16);
   PROVIDE (__etext = .);
