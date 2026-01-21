@@ -782,6 +782,9 @@ class TestSafeAccess(unittest.TestCase):
                 ]
 
                 for block_name, block_info in blocks_with_noc:
+                    # Skip L1 on DRAM on Blackhole devices due to bug #tt-umd:1873
+                    if device.is_blackhole() and block_name == "l1" and block.block_type == "dram":
+                        continue
                     noc_addr = block_info.memory_block.address.noc_address
                     assert noc_addr is not None, "NOC address should not be None here"
                     size = block_info.memory_block.size
@@ -1591,20 +1594,26 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("abcd", "build/riscv-src/blackhole/callstack.brisc.elf"),  # Invalid location string
+            ("abcd", "build/riscv-src/blackhole/callstack.debug.brisc.elf"),  # Invalid location string
             ("0,0", "invalid_elf_path"),  # Invalid elf path
             (
                 "0,0",
-                ["build/riscv-src/blackhole/callstack.brisc.elf", "invalid_elf_path"],
+                ["build/riscv-src/blackhole/callstack.debug.brisc.elf", "invalid_elf_path"],
             ),  # One of elf paths is invalid
             (
                 "0,0",
-                ["build/riscv-src/blackhole/callstack.brisc.elf"],
+                ["build/riscv-src/blackhole/callstack.debug.brisc.elf"],
                 [0, 1],
             ),  # Length of elf_paths and offsets is different
-            ("0,0", "build/riscv-src/blackhole/callstack.brisc.elf", 0, "invalid"),  # Invalid risc_name
-            ("0,0", "build/riscv-src/blackhole/callstack.brisc.elf", 0, "brisc", -1),  # Invalid max_depth (too low)
-            ("0,0", "build/riscv-src/blackhole/callstack.brisc.elf", 0, "brisc", 1, -1),  # Invalid device_id
+            ("0,0", "build/riscv-src/blackhole/callstack.debug.brisc.elf", 0, "invalid"),  # Invalid risc_name
+            (
+                "0,0",
+                "build/riscv-src/blackhole/callstack.debug.brisc.elf",
+                0,
+                "brisc",
+                -1,
+            ),  # Invalid max_depth (too low)
+            ("0,0", "build/riscv-src/blackhole/callstack.debug.brisc.elf", 0, "brisc", 1, -1),  # Invalid device_id
         ]
     )
     def test_callstack_invalid(self, location, elf_paths, offsets=None, risc_name="brisc", max_depth=100, device_id=0):
