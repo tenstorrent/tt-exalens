@@ -5,7 +5,6 @@ import os
 
 from ttexalens.umd_api import UmdApi, local_init
 from ttexalens.server import FileAccessApi, connect_to_server
-from ttexalens import util as util
 from ttexalens.context import Context
 
 """

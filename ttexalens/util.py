@@ -177,26 +177,7 @@ DEC_FORMAT = 'f"{d}"'
 HEX_FORMAT = 'f"0x{d:08x}"'
 DEC_AND_HEX_FORMAT = 'f"{d} (0x{d:08x})"'
 
-from ttexalens.exceptions import (
-    CoordinateError,
-    DocumentationError,
-    ElfDataLossError,
-    ElfError,
-    ElfLookupError,
-    ElfTypeError,
-    GdbCommunicationError,
-    GdbError,
-    GdbProtocolError,
-    MemoryAccessError,
-    MemoryConfigurationError,
-    ReadOnlyMemoryAccessError,
-    ServerError,
-    TTFatalException,
-    TTException,
-    TTTimeoutError,
-    TTUsageError,
-)
-
+from ttexalens.exceptions import TTFatalException
 
 # Colorized messages
 def NULL_PRINT(s):
