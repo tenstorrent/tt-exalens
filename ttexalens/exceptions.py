@@ -203,7 +203,11 @@ class RiscHaltError(TTException):
     """
 
     def __init__(self, risc_name: str, location: "OnChipCoordinate"):
-        super().__init__(f"Failed to halt {risc_name} core at {location.to_user_str()} on device {location.device_id}")
+        self.risc_name = risc_name
+        self.location = location
+
+    def __str__(self):
+        return f"RiscHaltError: Failed to halt RISC core {self.risc_name} at {self.location.to_user_str()}."
 
 
 # We create a fatal exception that must terminate the program
