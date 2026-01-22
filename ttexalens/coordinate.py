@@ -43,7 +43,7 @@ The following coordinate systems are available to represent a grid location on t
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from ttexalens.util import TTException
+from ttexalens import util
 
 if TYPE_CHECKING:
     from ttexalens.context import Context
@@ -62,7 +62,7 @@ VALID_COORDINATE_TYPES = [
 ]
 
 
-class CoordinateTranslationError(Exception):
+class CoordinateTranslationError(util.CoordinateError):
     """
     This exception is thrown when a coordinate translation fails.
     """
@@ -119,7 +119,7 @@ class OnChipCoordinate:
         elif input_type == "translated":
             self._noc0_coord = self._device.to_noc0((x, y), "translated", core_type)
         else:
-            raise Exception("Unknown input coordinate system: " + input_type)
+            raise CoordinateTranslationError("Unknown input coordinate system: " + input_type)
 
     @property
     def context(self) -> Context:
@@ -167,11 +167,11 @@ class OnChipCoordinate:
             if coord[1] == core_type:
                 return coord[0]
             else:
-                raise Exception(
+                raise CoordinateTranslationError(
                     f"Coordinate (noc0 {self._noc0_coord[0]}-{self._noc0_coord[1]}: {coord[1]}) is not supported in coordinate sub-system {output_type}"
                 )
         else:
-            raise Exception("Unknown output coordinate system: " + output_type)
+            raise CoordinateTranslationError("Unknown output coordinate system: " + output_type)
 
     # Which axis is used to advance in the horizontal direction when rendering the chip
     # For X-Y coordinates, this is the X, for R,C coordinates, this is the C.
@@ -321,7 +321,7 @@ class OnChipCoordinate:
             core_type = "dram"
             coord_type = "logical"
         else:
-            raise TTException("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
+            raise util.CoordinateError("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
         return OnChipCoordinate(x, y, coord_type, device, core_type)
 
     def noc_read(

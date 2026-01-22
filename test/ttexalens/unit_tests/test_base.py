@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import os
-from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device, Context
+from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device, Context, util
 from ttexalens.elf import ParsedElfFile
 
 
@@ -85,7 +85,7 @@ def get_core_location(core_desc: str, device: Device) -> OnChipCoordinate:
 
     try:
         return OnChipCoordinate.create(core_desc, device=device)
-    except:
+    except (ValueError, util.CoordinateError):
         raise ValueError(f"Unknown core description {core_desc}")
 
 

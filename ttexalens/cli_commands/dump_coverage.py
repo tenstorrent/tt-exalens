@@ -56,7 +56,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
                 if gcno_path:
                     util.VERBOSE(gcno_path)
                 util.VERBOSE(gcda_path)
-            except Exception as e:
+            except (util.TTException, ValueError, OSError) as e:
                 util.ERROR(f"dump-coverage: {e}")
 
     return []

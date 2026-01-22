@@ -191,9 +191,9 @@ class ElfLoader:
                             util.VERBOSE(
                                 f"Section {section.name} loaded successfully to address 0x{address:08x}. Size: {len(section.data)} bytes"
                             )
-        except Exception as e:
+        except (util.TTException, ValueError, OSError) as e:
             util.ERROR(e)
-            raise util.TTException(f"Error loading elf file {elf_path}")
+            raise util.TTException(f"Error loading elf file {elf_path}") from e
 
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address

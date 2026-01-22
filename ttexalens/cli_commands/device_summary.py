@@ -68,7 +68,7 @@ def get_riscv_run_status(device: Device, loc: OnChipCoordinate) -> str:
             for risc in riscs:
                 status_str += "-" if risc.is_in_reset() else "R"
             return status_str
-    except:
+    except (util.TTException, AttributeError):
         pass
     return device.get_block_type(loc)
 
@@ -152,12 +152,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                         x = data & 0x3F
                         y = (data >> 6) & 0x3F
                         cell_contents_str.append(color_block(f"{x:02}-{y:02}", block_type))
-                    except:
+                    except (util.TTException, KeyError, ValueError):
                         cell_contents_str.append("")
                 elif ct in VALID_COORDINATE_TYPES:
                     try:
                         coord_str = loc.to_str(ct)
-                    except Exception as e:
+                    except util.CoordinateError:
                         coord_str = "N/A"
                     cell_contents_str.append(color_block(coord_str, block_type))
                 else:

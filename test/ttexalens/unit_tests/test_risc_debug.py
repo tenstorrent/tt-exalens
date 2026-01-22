@@ -7,7 +7,7 @@ from parameterized import parameterized_class, parameterized
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
-from ttexalens import Context, write_to_device
+from ttexalens import Context, write_to_device, util
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebugWatchpointState, get_register_index
 from ttexalens.elf_loader import ElfLoader
@@ -562,7 +562,7 @@ class TestDebugging(unittest.TestCase):
                 iteration = iteration + 1
                 if iteration > 1000:
                     break
-            except Exception as e:
+            except util.TTException:
                 # print pc
                 self.core_sim.set_reset(True)
                 return

@@ -1200,7 +1200,7 @@ class TestRunElf(unittest.TestCase):
         # Step 2: Write 0x1234 to the mailbox to resume operation.
         try:
             mailbox.write_value(0x1234)
-        except Exception as e:
+        except util.TTException as e:
             if e.args[0].startswith("Failed to continue"):
                 # We are expecting this to assert as here, the core will halt istself by calling halt()
                 pass
@@ -1244,7 +1244,7 @@ class TestRunElf(unittest.TestCase):
 
             try:
                 rdbg.cont()
-            except Exception as e:
+            except util.TTException as e:
                 if e.args[0].startswith("Failed to continue"):
                     # We are expecting this to assert as here, the core will hit a breakpoint
                     pass

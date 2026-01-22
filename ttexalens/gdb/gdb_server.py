@@ -104,7 +104,7 @@ class GdbServer(threading.Thread):
                 if not risc_debug.is_in_reset():
                     try:
                         elf_path = self.context.get_risc_elf_path(risc_debug.risc_location)
-                    except:
+                    except util.TTException:
                         # If we are running without full functionality, we will not have elf files available
                         elf_path = None
 
@@ -150,9 +150,9 @@ class GdbServer(threading.Thread):
                 self.should_ack = True
                 try:
                     self.process_client(client)
-                except Exception as e:
+                except util.GdbError as e:
                     # Just log exceptions and continue with next client
-                    util.ERROR(f"Unhandled exception in GDB implementation: {e}", file=self.error_stream)
+                    util.ERROR(f"GDB error: {e}", file=self.error_stream)
                 client.close()
                 self.is_connected = False
                 if self.on_disconnected is not None:
@@ -177,11 +177,11 @@ class GdbServer(threading.Thread):
                         util.VERBOSE(f"sent response to GDB: +")
                     try:
                         util.VERBOSE(f"sent response to GDB: {writer.data.decode()}")
-                    except:
+                    except UnicodeDecodeError:
                         # We ignore error if we cannot decode message
                         pass
                     writer.send()
-            except Exception as e:
+            except util.GdbError as e:
                 client.write(b"-")
                 util.VERBOSE(f"sent response to GDB: -")
                 util.ERROR(f"GDB exception: {e}", file=self.error_stream)
@@ -199,7 +199,7 @@ class GdbServer(threading.Thread):
 
         try:
             util.VERBOSE(f"processing GDB message: {parser.data.decode()}")
-        except:
+        except UnicodeDecodeError:
             # We ignore error if we cannot decode message
             pass
 
@@ -630,7 +630,7 @@ class GdbServer(threading.Thread):
                     writer.append_hex(process.virtual_core_id)
                     writer.append(b";")
                     self.current_process = process
-                except Exception as e:
+                except util.TTException as e:
                     util.ERROR(f"++ exception while halting: {e}", file=self.error_stream)
                     writer.clear()
                     writer.append(b"E01")
@@ -970,7 +970,7 @@ class GdbServer(threading.Thread):
                     except RestrictedMemoryAccessError as e:
                         util.ERROR(str(e), file=self.error_stream)
                         writer.append(b"E04")  # restricted memory access
-            except:
+            except (TypeError, ValueError):
                 writer.append(b"E03")
         elif parser.parse(b"z0,"):  # Remove a software breakpoint at address of type kind.
             # ‘z0,addr,kind’

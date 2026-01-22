@@ -13,7 +13,7 @@ from ttexalens.elf import ParsedElfFile, ParsedElfFileWithOffset, ElfVariable, E
 from ttexalens.hardware.risc_info import RiscInfo
 
 
-class RiscHaltError(Exception):
+class RiscHaltError(util.TTException):
     """
     Raised when we failed to halt RISC core.
     """

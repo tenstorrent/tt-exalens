@@ -7,6 +7,7 @@ import inspect
 import io
 import Pyro5.api
 import Pyro5.configure
+import Pyro5.errors
 import serpent
 import threading
 from typing import TYPE_CHECKING
@@ -224,9 +225,9 @@ def start_server(port: int, context: Context):
         server.start()
         util.INFO(f"ttexalens-server listening on port {port}")
         return server
-    except Exception as e:
+    except (Pyro5.errors.PyroError, OSError, util.TTException) as e:
         print(f"Error starting ttexalens-server: {e}")
-        raise util.TTFatalException("Could not start ttexalens-server.")
+        raise util.ServerError("Could not start ttexalens-server.")
 
 
 class FileAccessApiWrapper:
@@ -273,5 +274,5 @@ def connect_to_server(server_host="localhost", port=5555) -> tuple[UmdApi, FileA
 
         # Return connected APIs
         return umd_api, file_api
-    except:
-        raise util.TTFatalException("Failed to connect to TTExaLens server.")
+    except (Pyro5.errors.PyroError, OSError, util.TTException) as e:
+        raise util.ServerError("Failed to connect to TTExaLens server.") from e

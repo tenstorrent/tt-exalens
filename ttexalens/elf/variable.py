@@ -10,6 +10,7 @@ from ttexalens.memory_access import (
     MemoryAccess,
     CachedReadMemoryAccess,
 )
+from ttexalens import util
 
 if TYPE_CHECKING:
     from ttexalens.elf.die import ElfDie
@@ -44,7 +45,7 @@ class ElfVariable:
         if child_die is None or offset is None:
             assert self.__type_die.path is not None
             member_path = self.__type_die.path + "::" + member_name
-            raise Exception(f"ERROR: Cannot find {member_path}")
+            raise util.ElfLookupError(f"Cannot find {member_path}")
         assert self.__address is not None and child_die.address is not None
         return ElfVariable(child_die.resolved_type, self.__address + child_die.address + offset, self.__mem_access)
 
@@ -95,7 +96,7 @@ class ElfVariable:
         # Handle integer keys for array/pointer indexing
         if isinstance(key, int):
             if not self.__type_die.tag_is("array_type") and not self.__type_die.tag_is("pointer_type"):
-                raise Exception(f"ERROR: {self.__type_die.name} is not an array or pointer")
+                raise util.ElfTypeError(f"{self.__type_die.name} is not an array or pointer")
 
             if self.__type_die.tag_is("pointer_type"):
                 array_element_type = self.__type_die.dereference_type
@@ -121,7 +122,7 @@ class ElfVariable:
         Return the number of elements in the array
         """
         if not self.__type_die.tag_is("array_type"):
-            raise Exception(f"ERROR: {self.__type_die.name} is not an array")
+            raise util.ElfTypeError(f"{self.__type_die.name} is not an array")
 
         # For arrays, calculate total number of elements in the first dimension
         for child in self.__type_die.iter_children():
@@ -130,7 +131,7 @@ class ElfVariable:
                 return upper_bound + 1  # Return first dimension size
 
         # If no upper bound found, this might be a flexible array member
-        raise Exception(f"ERROR: Cannot determine length of array {self.__type_die.name}")
+        raise util.ElfTypeError(f"Cannot determine length of array {self.__type_die.name}")
 
     def __iter__(self):
         """
@@ -157,7 +158,7 @@ class ElfVariable:
         Dereference a pointer variable and return the pointed-to variable.
         """
         if not self.__type_die.tag_is("pointer_type"):
-            raise Exception(f"ERROR: {self.__type_die.name} is not a pointer type")
+            raise util.ElfTypeError(f"{self.__type_die.name} is not a pointer type")
         assert self.__type_die.size is not None
         assert self.__type_die.dereference_type is not None
         address_bytes = self.__mem_access.read(self.__address, self.__type_die.size)
@@ -168,7 +169,7 @@ class ElfVariable:
         # Check that type_die is a basic type
         type = self.__type_die
         if not type.tag_is("base_type") and not type.tag_is("pointer_type") and not type.tag_is("enumeration_type"):
-            raise Exception(f"ERROR: {type.name} is not a base type or pointer type")
+            raise util.ElfTypeError(f"{type.name} is not a base type or pointer type")
 
         # If it is an enumeration type, treat it as its underlying base type
         while type.tag_is("enumeration_type") and type.resolved_type != type:
@@ -194,7 +195,7 @@ class ElfVariable:
         # Check that type_die is a basic type
         type = self.__type_die
         if not type.tag_is("base_type") and not type.tag_is("enumeration_type"):
-            raise Exception(f"ERROR: {type.name} is not a base type")
+            raise util.ElfTypeError(f"{type.name} is not a base type")
 
         # If it is an enumeration type, treat it as its underlying base type
         while type.tag_is("enumeration_type"):
@@ -210,7 +211,7 @@ class ElfVariable:
                 # Verify no data loss
                 unpacked_value = struct.unpack("f", value_bytes)[0]
                 if unpacked_value != value:
-                    raise Exception(f"ERROR: Data loss when writing float value {value} to variable")
+                    raise util.ElfDataLossError(f"Data loss when writing float value {value} to variable")
         elif type.name == "double":
             value_bytes = struct.pack("d", value)
             if len(value_bytes) > type.size:
@@ -219,7 +220,7 @@ class ElfVariable:
                 # Verify no data loss
                 unpacked_value = struct.unpack("d", value_bytes)[0]
                 if unpacked_value != value:
-                    raise Exception(f"ERROR: Data loss when writing double value {value} to variable")
+                    raise util.ElfDataLossError(f"Data loss when writing double value {value} to variable")
         elif type.name == "bool":
             value_bytes = (1 if value else 0).to_bytes(type.size, byteorder="little")
         else:
@@ -228,7 +229,7 @@ class ElfVariable:
                 # Verify no data loss
                 unpacked_value = int.from_bytes(value_bytes, byteorder="little")
                 if unpacked_value != value:
-                    raise Exception(f"ERROR: Data loss when writing integer value {value} to variable")
+                    raise util.ElfDataLossError(f"Data loss when writing integer value {value} to variable")
 
         # Write the value to memory
         self.__mem_access.write(self.__address, value_bytes)
@@ -521,7 +522,7 @@ class ElfVariable:
             elif isinstance(value, float):
                 if value.is_integer():
                     return int(value)
-        except:
+        except util.TTException:
             pass
         raise TypeError(f"ElfVariable '{self}' cannot be used as an index")
 
@@ -537,7 +538,7 @@ class ElfVariable:
                     if entry.value == value and entry.path is not None:
                         return str(entry.path)
             return str(value)
-        except Exception:
+        except util.TTException:
             # If get_value() fails (e.g., not a base type), fall back to __repr__
             return self.__repr__()
 
@@ -553,13 +554,13 @@ class ElfVariable:
         # Try to get the value for additional context
         try:
             value_info = f", value={self.read_value()!r}"
-        except Exception:
+        except util.TTException:
             value_info = ""
 
         # Try to get the length for arrays
         try:
             length_info = f", length={len(self)}"
-        except Exception:
+        except util.TTException:
             length_info = ""
 
         return (
@@ -570,7 +571,7 @@ class ElfVariable:
     def __hash__(self):
         try:
             return hash(self.read_value())
-        except Exception:
+        except util.TTException:
             return hash((self.__type_die.offset, self.__address))
 
     def __format__(self, format_spec: str) -> str:
@@ -581,7 +582,7 @@ class ElfVariable:
         try:
             value = self.read_value()
             return format(value, format_spec)
-        except Exception:
+        except util.TTException:
             # If get_value() fails, fall back to default string representation
             return str(self)
 

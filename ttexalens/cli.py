@@ -124,7 +124,7 @@ def import_commands(reload: bool = False) -> list[CommandMetadata]:
             continue
         try:
             cmd_module = importlib.import_module(module_path)
-        except Exception as e:
+        except (ImportError, SyntaxError, util.TTException) as e:
             # Print call stack
             util.notify_exception(type(e), e, e.__traceback__)
             continue
@@ -321,13 +321,13 @@ def main_loop(args, context: Context):
                     pass
                 else:
                     raise
-            except Exception as e:
+            except util.TTException as e:
                 if args["--test"]:  # Always raise in test mode
                     util.ERROR("CLI option --test is set. Raising exception to exit.")
                     raise
                 else:
                     util.notify_exception(type(e), e, e.__traceback__)
-                if have_non_interactive_commands or type(e) == util.TTFatalException:
+                if have_non_interactive_commands or isinstance(e, util.TTFatalException):
                     # In non-interactive mode and on fatal excepions, we re-raise to exit the program
                     raise
             except DocoptExit as e:
@@ -340,11 +340,11 @@ def main_loop(args, context: Context):
         # Do best effort cleanup before exiting
         try:
             ui_state.stop_server()
-        except:
+        except util.TTException:
             pass
         try:
             ui_state.stop_gdb()
-        except:
+        except util.TTException:
             pass
 
 
@@ -379,7 +379,7 @@ def main():
     try:
         verbosity = int(args["--verbosity"])
         util.Verbosity.set(verbosity)
-    except:
+    except (ValueError, TypeError):
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 

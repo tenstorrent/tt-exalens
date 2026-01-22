@@ -3,6 +3,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import subprocess, re, os
+from ttexalens import util
 
 # We limit what each example can output to avoid spamming the user
 MAX_OUTPUT_LINES = 20  # Max number of lines to show for each example
@@ -71,9 +72,9 @@ def execute_ttexalens_command(command):
                 filtered_output.append(trim_line_and_append_elipsis(line, MAX_CHARACTERS_PER_LINE))
             if f"Executing command: {interesting_command}" in line:
                 capture = True
-        except Exception as e:
+        except (TypeError, ValueError, AttributeError) as e:
             print(f"Error parsing line: {line}")
-            raise e
+            raise util.DocumentationError(f"Error parsing line: {line}") from e
 
     if result["returncode"] != 0:
         return ""
