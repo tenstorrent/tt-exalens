@@ -60,10 +60,10 @@ except ModuleNotFoundError as e:
 from ttexalens import init_ttexalens, init_ttexalens_remote
 from ttexalens.server import start_server
 from ttexalens import util as util
-from ttexalens.exceptions import TTException, TTFatalException
+from ttexalens.exceptions import CommandParsingException, TTException, TTFatalException
 from ttexalens.context import Context
 from ttexalens.uistate import UIState
-from ttexalens.command_parser import tt_docopt, CommandMetadata, find_command, CommandParsingException
+from ttexalens.command_parser import tt_docopt, CommandMetadata, find_command
 from ttexalens.gdb.gdb_client import get_gdb_client_path
 
 

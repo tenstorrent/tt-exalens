@@ -8,54 +8,14 @@ from typing import TYPE_CHECKING
 
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.exceptions import (
-    MemoryAccessError,
     MemoryConfigurationError,
     ReadOnlyMemoryAccessError,
+    RestrictedMemoryAccessError,
 )
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation
-
-
-class RestrictedMemoryAccessError(MemoryAccessError):
-    """
-    Raised when attempting to access memory outside of allowed regions
-    (e.g., outside L1 or data private memory when restricted_access for them is is enabled).
-    """
-
-    def __init__(self, access_start: int, access_end: int, location: OnChipCoordinate | RiscLocation):
-        """
-        Args:
-            access_start: Starting address of the attempted access
-            access_end: Ending address of the attempted access (inclusive)
-            location: Location of the RISC or on-chip memory where the access was attempted
-        """
-
-        from ttexalens.coordinate import OnChipCoordinate
-
-        self.access_start = access_start
-        self.access_end = access_end
-        if isinstance(location, OnChipCoordinate):
-            self.risc_name = None
-            self.neo_id = None
-            self.location = location
-        else:
-            self.risc_name = location.risc_name
-            self.neo_id = location.neo_id
-            self.location = location.location
-
-    def __str__(self) -> str:
-        """Generate error message lazily when the exception is converted to string."""
-
-        msg = f"Restricted access: Address range [0x{self.access_start:08x}, 0x{self.access_end:08x}] is outside allowed memory regions."
-        if self.risc_name:
-            if self.neo_id is not None:
-                return f"RISC '{self.risc_name}' (Neo ID {self.neo_id}) at {self.location.to_user_str()}, {msg}"
-            else:
-                return f"RISC '{self.risc_name}' at {self.location.to_user_str()}, {msg}"
-
-        return f"{self.location.to_user_str()}, {msg}"
 
 
 class MemoryAccess(ABC):

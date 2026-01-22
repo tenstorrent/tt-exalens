@@ -14,7 +14,8 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.elf import read_elf, ParsedElfFile
 from ttexalens.hardware.risc_debug import CallstackEntry
-from ttexalens.util import TTException, Verbosity, TRACE
+from ttexalens.exceptions import TTException, UnsafeAccessException
+from ttexalens.util import Verbosity, TRACE
 from ttexalens.memory_access import MemoryAccess
 
 # Parameter name to formatter function mapping for trace_api decorator
@@ -102,30 +103,6 @@ def convert_coordinate(
         device = validate_device_id(device_id, context)
         return OnChipCoordinate.create(location, device)
     return location
-
-
-class UnsafeAccessException(TTException):
-    """Exception raised when an unsafe memory access violation is detected."""
-
-    def __init__(
-        self,
-        location: OnChipCoordinate,
-        original_addr: int,
-        num_bytes: int,
-        violating_addr: int,
-        is_write: bool = False,
-    ):
-        self.location = location
-        self.original_addr = original_addr
-        self.num_bytes = num_bytes
-        self.violating_addr = violating_addr
-        self.is_write = is_write
-
-    def __str__(self) -> str:
-        """Generate error message lazily when the exception is converted to string."""
-
-        msg = f"Attempted to {'write to' if self.is_write else 'read from'} address range [0x{self.original_addr:08x}, 0x{self.original_addr + self.num_bytes - 1:08x}]."
-        return f"{self.location.to_user_str()}, unsafe access at address 0x{self.violating_addr:08x}. {msg}"
 
 
 def validate_noc_access_is_safe(location: OnChipCoordinate, addr: int, num_bytes: int, is_write: bool = False) -> None:
