@@ -224,7 +224,10 @@ class ElfVariable:
         elif type.name == "bool":
             value_bytes = (1 if value else 0).to_bytes(type.size, byteorder="little")
         else:
-            value_bytes = int(value).to_bytes(type.size, byteorder="little")
+            try:
+                value_bytes = int(value).to_bytes(type.size, byteorder="little")
+            except OverflowError as e:
+                raise util.ElfDataLossError(f"Data loss when writing integer value {value} to variable") from e
             if check_data_loss:
                 # Verify no data loss
                 unpacked_value = int.from_bytes(value_bytes, byteorder="little")
