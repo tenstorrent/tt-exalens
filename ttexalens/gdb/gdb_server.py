@@ -20,6 +20,7 @@ from ttexalens.gdb.gdb_data import GdbProcess, GdbThreadId
 from ttexalens.gdb.gdb_file_server import GdbFileServer
 from ttexalens.context import Context
 from ttexalens import util as util
+from ttexalens.exceptions import GdbError, TTException
 from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.memory_access import RestrictedMemoryAccessError
 
@@ -104,7 +105,7 @@ class GdbServer(threading.Thread):
                 if not risc_debug.is_in_reset():
                     try:
                         elf_path = self.context.get_risc_elf_path(risc_debug.risc_location)
-                    except util.TTException:
+                    except TTException:
                         # If we are running without full functionality, we will not have elf files available
                         elf_path = None
 
@@ -150,7 +151,7 @@ class GdbServer(threading.Thread):
                 self.should_ack = True
                 try:
                     self.process_client(client)
-                except util.GdbError as e:
+                except GdbError as e:
                     # Just log exceptions and continue with next client
                     util.ERROR(f"GDB error: {e}", file=self.error_stream)
                 client.close()
@@ -181,7 +182,7 @@ class GdbServer(threading.Thread):
                         # We ignore error if we cannot decode message
                         pass
                     writer.send()
-            except util.GdbError as e:
+            except GdbError as e:
                 client.write(b"-")
                 util.VERBOSE(f"sent response to GDB: -")
                 util.ERROR(f"GDB exception: {e}", file=self.error_stream)
@@ -630,7 +631,7 @@ class GdbServer(threading.Thread):
                     writer.append_hex(process.virtual_core_id)
                     writer.append(b";")
                     self.current_process = process
-                except util.TTException as e:
+                except TTException as e:
                     util.ERROR(f"++ exception while halting: {e}", file=self.error_stream)
                     writer.clear()
                     writer.append(b"E01")

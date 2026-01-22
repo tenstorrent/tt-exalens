@@ -7,13 +7,14 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any, Generator
 from ttexalens import util
+from ttexalens.exceptions import TTException
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.elf import ParsedElfFile, ParsedElfFileWithOffset, ElfVariable, ElfDie, FrameInspection
 from ttexalens.hardware.risc_info import RiscInfo
 
 
-class RiscHaltError(util.TTException):
+class RiscHaltError(TTException):
     """
     Raised when we failed to halt RISC core.
     """

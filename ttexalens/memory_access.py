@@ -7,14 +7,18 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens import util
+from ttexalens.exceptions import (
+    MemoryAccessError,
+    MemoryConfigurationError,
+    ReadOnlyMemoryAccessError,
+)
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation
 
 
-class RestrictedMemoryAccessError(util.MemoryAccessError):
+class RestrictedMemoryAccessError(MemoryAccessError):
     """
     Raised when attempting to access memory outside of allowed regions
     (e.g., outside L1 or data private memory when restricted_access for them is is enabled).
@@ -113,9 +117,9 @@ class L1MemoryAccess(MemoryAccess):
         self._location = location
         l1 = location.noc_block.noc_memory_map.find_by_name("l1")
         if l1 is None:
-            raise util.MemoryConfigurationError(f"Could not find L1 memory block at location {location}")
+            raise MemoryConfigurationError(f"Could not find L1 memory block at location {location}")
         if l1.memory_block.address.noc_address is None:
-            raise util.MemoryConfigurationError(f"Found L1 memory block without NOC address at location {location}")
+            raise MemoryConfigurationError(f"Found L1 memory block without NOC address at location {location}")
 
         self.base_address = l1.memory_block.address.noc_address
         self.size = l1.memory_block.size
@@ -152,7 +156,7 @@ class FixedMemoryAccess(MemoryAccess):
         return self._data[address : address + size_bytes]
 
     def write(self, address: int, data: bytes) -> None:
-        raise util.ReadOnlyMemoryAccessError("FixedMemoryAccess is read-only")
+        raise ReadOnlyMemoryAccessError("FixedMemoryAccess is read-only")
 
 
 class RiscDebugMemoryAccess(MemoryAccess):

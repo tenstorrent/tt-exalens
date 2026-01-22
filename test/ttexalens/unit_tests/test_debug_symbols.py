@@ -7,7 +7,7 @@ from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens.context import Context
 from ttexalens.elf import ElfVariable, ParsedElfFile
-from ttexalens import util
+from ttexalens.exceptions import ElfDataLossError
 from ttexalens.memory_access import MemoryAccess, RestrictedMemoryAccessError
 
 
@@ -385,13 +385,11 @@ class TestDebugSymbols(unittest.TestCase):
         g_global_struct.a.write_value(0xDEADBEEF)
         self.assertEqual(0xDEADBEEF, g_global_struct.a)
         g_global_struct.a.write_value(0x11223344)  # Restore original value
-        self.assertRaises(util.ElfDataLossError, g_global_struct.a.write_value, 2.5)  # Rounding with float
+        self.assertRaises(ElfDataLossError, g_global_struct.a.write_value, 2.5)  # Rounding with float
+        self.assertRaises(ElfDataLossError, g_global_struct.f.write_value, 0xFFFFFFFF)  # Overflow uint32 on float32
+        self.assertRaises(ElfDataLossError, g_global_struct.f.write_value, 3.4028235e38 * 2)  # Overflow float32
         self.assertRaises(
-            util.ElfDataLossError, g_global_struct.f.write_value, 0xFFFFFFFF
-        )  # Overflow uint32 on float32
-        self.assertRaises(util.ElfDataLossError, g_global_struct.f.write_value, 3.4028235e38 * 2)  # Overflow float32
-        self.assertRaises(
-            util.ElfDataLossError, g_global_struct.g.write_value, 0xFFFFFFFFFFFFFFFF
+            ElfDataLossError, g_global_struct.g.write_value, 0xFFFFFFFFFFFFFFFF
         )  # Overflow uint64 on float64
         enum_value = self.parsed_elf.get_enum_value("EnumClass::VALUE_D")
         assert enum_value is not None
@@ -401,7 +399,7 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual("EnumClass::VALUE_D", str(g_global_struct.enum_class_field))
         g_global_struct.enum_class_field.write_value(2)  # Restore original value
         self.assertRaises(
-            util.ElfDataLossError, g_global_struct.enum_class_field.write_value, 0xFFFFFFFFFFFFFFFF
+            ElfDataLossError, g_global_struct.enum_class_field.write_value, 0xFFFFFFFFFFFFFFFF
         )  # Overflow uint64 on byte enum
 
     def test_elf_variable_memory_access_errors(self):

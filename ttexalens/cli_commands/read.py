@@ -30,6 +30,7 @@ from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
+from ttexalens.exceptions import TTException
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
@@ -94,9 +95,9 @@ def execute_safe_read(
         # Find memory block containing the address
         memory_block_info = location.noc_block.noc_memory_map.find_by_noc_address(address)
         if not memory_block_info:
-            raise util.TTException(f"Address 0x{address:08X} is not in a known memory block for location {location}")
+            raise TTException(f"Address 0x{address:08X} is not in a known memory block for location {location}")
         if memory_block_info.memory_block.address.noc_address is None:
-            raise util.TTException(f"Memory block '{memory_block_info.name}' does not have a NOC address")
+            raise TTException(f"Memory block '{memory_block_info.name}' does not have a NOC address")
         memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
         read_size = min(bytes_to_read, memory_block_end - address)
         bytes = location.noc_read(address, read_size)
@@ -105,11 +106,11 @@ def execute_safe_read(
         risc_debug = location.noc_block.get_risc_debug(risc_name)
         memory_block_info = risc_debug.risc_info.memory_map.find_by_private_address(address)
         if not memory_block_info:
-            raise util.TTException(
+            raise TTException(
                 f"Address 0x{address:08X} is not in a known memory block for {risc_name} at location {location}"
             )
         if memory_block_info.memory_block.address.private_address is None:
-            raise util.TTException(f"Memory block '{memory_block_info.name}' does not have a private address")
+            raise TTException(f"Memory block '{memory_block_info.name}' does not have a private address")
         memory_block_end = memory_block_info.memory_block.address.private_address + memory_block_info.memory_block.size
         read_size = min(bytes_to_read, memory_block_end - address)
         if memory_block_info.memory_block.address.noc_address is not None:

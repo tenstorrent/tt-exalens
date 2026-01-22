@@ -31,6 +31,7 @@ Examples:
 """  # Note: Limit the above comment to 120 characters in width
 
 from ttexalens import util as util
+from ttexalens.exceptions import CoordinateError, TTException
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.coordinate import VALID_COORDINATE_TYPES, OnChipCoordinate
@@ -68,7 +69,7 @@ def get_riscv_run_status(device: Device, loc: OnChipCoordinate) -> str:
             for risc in riscs:
                 status_str += "-" if risc.is_in_reset() else "R"
             return status_str
-    except (util.TTException, AttributeError):
+    except (TTException, AttributeError):
         pass
     return device.get_block_type(loc)
 
@@ -152,16 +153,16 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                         x = data & 0x3F
                         y = (data >> 6) & 0x3F
                         cell_contents_str.append(color_block(f"{x:02}-{y:02}", block_type))
-                    except (util.TTException, KeyError, ValueError):
+                    except (TTException, KeyError, ValueError):
                         cell_contents_str.append("")
                 elif ct in VALID_COORDINATE_TYPES:
                     try:
                         coord_str = loc.to_str(ct)
-                    except util.CoordinateError:
+                    except CoordinateError:
                         coord_str = "N/A"
                     cell_contents_str.append(color_block(coord_str, block_type))
                 else:
-                    raise util.TTException(f"Invalid cell contents requested: '{ct}'")
+                    raise TTException(f"Invalid cell contents requested: '{ct}'")
             return ", ".join(cell_contents_str)
 
         print(

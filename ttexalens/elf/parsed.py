@@ -12,10 +12,10 @@ from functools import cache, cached_property
 import os
 from ttexalens.server import FileAccessApi
 import ttexalens.util as util
+from ttexalens.exceptions import ElfLookupError, ElfTypeError
 from ttexalens.elf.dwarf import ElfDwarf, ElfDwarfWithOffset
 from ttexalens.elf.frame import FrameInfoProvider, FrameInfoProviderWithOffset
 from ttexalens.elf.variable import ElfVariable
-from ttexalens import util
 from ttexalens.memory_access import MemoryAccess
 from typing import TYPE_CHECKING
 
@@ -251,10 +251,10 @@ class ParsedElfFile:
             # Fallback to full lookup
             die = self.variables.get(name) if allow_fallback else None
         if die is None:
-            raise util.ElfLookupError(f"Cannot find global variable {name} in ELF DWARF info")
+            raise ElfLookupError(f"Cannot find global variable {name} in ELF DWARF info")
         address = die.address
         if address is None:
-            raise util.ElfLookupError(f"Cannot find address of global variable {name} in ELF DWARF info")
+            raise ElfLookupError(f"Cannot find address of global variable {name} in ELF DWARF info")
         if die.value is not None and die.resolved_type.tag_is("pointer_type"):
             assert die.resolved_type.dereference_type is not None
             return ElfVariable(die.resolved_type.dereference_type, address, mem_access)
@@ -273,13 +273,13 @@ class ParsedElfFile:
             # Fallback to full lookup
             die = self.variables.get(name) if allow_fallback else None
         if die is None:
-            raise util.ElfLookupError(f"Cannot find constant variable {name} in ELF DWARF info")
+            raise ElfLookupError(f"Cannot find constant variable {name} in ELF DWARF info")
         if die.value is None:
-            raise util.ElfTypeError(f"Variable {name} is not constant in ELF DWARF info")
+            raise ElfTypeError(f"Variable {name} is not constant in ELF DWARF info")
         type_die = die.resolved_type
         value = die.value
         if not type_die.tag_is("base_type"):
-            raise util.ElfTypeError(f"Constant {name} is not a base type")
+            raise ElfTypeError(f"Constant {name} is not a base type")
 
         # If value is a list, convert to bytes
         if isinstance(value, list):

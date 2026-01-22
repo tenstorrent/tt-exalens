@@ -8,10 +8,10 @@ import threading
 import time
 from typing import Sequence
 import tt_umd
-from ttexalens import util
+from ttexalens.exceptions import TTException, TTTimeoutError
 
 
-class TimeoutDeviceRegisterError(util.TTTimeoutError):
+class TimeoutDeviceRegisterError(TTTimeoutError):
     def __init__(self, chip_id: int, coord: tt_umd.CoreCoord, address: int, size: int, is_read: bool, duration: float):
         self.chip_id = chip_id
         self.coord = coord
@@ -210,7 +210,7 @@ class UmdDevice:
             return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
             raise
-        except (RuntimeError, OSError, util.TTException):
+        except (RuntimeError, OSError, TTException):
             if self._is_simulation or self._is_mmio_capable:
                 raise
             self.__configure_working_active_eth()
@@ -268,7 +268,7 @@ class UmdDevice:
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
             raise
-        except (RuntimeError, OSError, util.TTException):
+        except (RuntimeError, OSError, TTException):
             if self._is_simulation or self._is_mmio_capable:
                 raise
             self.__configure_working_active_eth()
@@ -374,7 +374,7 @@ class UmdDevice:
 
         try:
             return do_read(telemetry_tag)
-        except (RuntimeError, OSError, util.TTException):
+        except (RuntimeError, OSError, TTException):
             if not self._is_mmio_capable:
                 raise
             # TODO: We should retry only if it was remote read error
@@ -391,7 +391,7 @@ class UmdDevice:
 
         try:
             firmware_version = do_read()
-        except (RuntimeError, OSError, util.TTException):
+        except (RuntimeError, OSError, TTException):
             if not self._is_mmio_capable:
                 raise
             # TODO: We should retry only if it was remote read error

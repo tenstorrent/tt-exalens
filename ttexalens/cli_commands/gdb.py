@@ -21,6 +21,7 @@ Examples:
 from ttexalens.context import Context
 from ttexalens.uistate import UIState
 from ttexalens import util as util
+from ttexalens.exceptions import TTException
 from ttexalens.command_parser import CommandMetadata, tt_docopt
 
 command_metadata = CommandMetadata(
@@ -36,7 +37,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         if dopt.args["<port>"] is None:
             try:
                 ui_state.start_gdb()
-            except util.TTException as e:
+            except TTException as e:
                 util.ERROR(f"Failed to start GDB server on an available port: {e}")
         else:
             try:

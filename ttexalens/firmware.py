@@ -8,6 +8,7 @@ This module is used to represent the firmware
 import time
 from ttexalens.elf import ParsedElfFile, read_elf
 from ttexalens import util as util
+from ttexalens.exceptions import TTException
 
 import re
 from fuzzywuzzy import process, fuzz
@@ -64,7 +65,7 @@ class ELF:
                 continue
             offset_var = var["offset"]
             if offset_var not in self.names[prefix].variables:
-                raise util.TTException(f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'")
+                raise TTException(f"Variable '{offset_var}' not found in ELF. Cannot add '{var_name}'")
             ov = self.names[prefix].variables[offset_var]
             addr = addr = ov.value if ov.value else ov.address
             resolved_type = self.names[prefix].types[var["type"]].resolved_type

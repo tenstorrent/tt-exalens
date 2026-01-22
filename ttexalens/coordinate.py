@@ -43,7 +43,7 @@ The following coordinate systems are available to represent a grid location on t
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from ttexalens import util
+from ttexalens.exceptions import CoordinateError
 
 if TYPE_CHECKING:
     from ttexalens.context import Context
@@ -62,7 +62,7 @@ VALID_COORDINATE_TYPES = [
 ]
 
 
-class CoordinateTranslationError(util.CoordinateError):
+class CoordinateTranslationError(CoordinateError):
     """
     This exception is thrown when a coordinate translation fails.
     """
@@ -321,7 +321,7 @@ class OnChipCoordinate:
             core_type = "dram"
             coord_type = "logical"
         else:
-            raise util.CoordinateError("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
+            raise CoordinateError("Unknown coordinate format: " + coord_str + ". Use either X-Y or R,C")
         return OnChipCoordinate(x, y, coord_type, device, core_type)
 
     def noc_read(
