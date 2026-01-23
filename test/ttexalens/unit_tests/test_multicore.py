@@ -54,6 +54,10 @@ class TestMulticore(unittest.TestCase):
             - Writes counter to mailbox
             - Jumps back to increment
         """
+
+        if not self.context.devices[0].is_wormhole():
+            self.skipTest("This is wormhole specific bug, so we test it only on wormhole.")
+
         # Constants
         MAILBOX_READ_ADDR = 0xFFEC1000
         MAILBOX_WRITE_ADDR = 0xFFEC0000
