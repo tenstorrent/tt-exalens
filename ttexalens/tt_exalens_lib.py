@@ -626,15 +626,16 @@ def write_register(
 
 
 @trace_api
-def parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile:
+def parse_elf(elf_path: str, context: Context | None = None, require_debug_symbols: bool = True) -> ParsedElfFile:
     """
     Reads the ELF file and returns a ParsedElfFile object.
     Args:
         elf_path (str): Path to the ELF file.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None
+        require_debug_symbols (bool, optional): Whether to require debug symbols in the ELF file. Default: True
     """
     context = check_context(context)
-    return read_elf(context.file_api, elf_path)
+    return read_elf(context.file_api, elf_path, require_debug_symbols=require_debug_symbols)
 
 
 @trace_api
