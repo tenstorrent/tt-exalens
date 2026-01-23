@@ -84,7 +84,7 @@ class UmdDevice:
             try:
                 self.__read_from_device_reg(tensix_translated_coord.x, tensix_translated_coord.y, 0, 4, 8)
                 return
-            except TimeoutDeviceRegisterError:
+            except RuntimeError:
                 continue
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
@@ -192,7 +192,7 @@ class UmdDevice:
             return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
             raise
-        except (RuntimeError, OSError, TTException):
+        except RuntimeError:
             if self._is_simulation or self._is_mmio_capable:
                 raise
             self.__configure_working_active_eth()
@@ -250,7 +250,7 @@ class UmdDevice:
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
             raise
-        except (RuntimeError, OSError, TTException):
+        except RuntimeError:
             if self._is_simulation or self._is_mmio_capable:
                 raise
             self.__configure_working_active_eth()
