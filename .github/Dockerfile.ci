@@ -35,7 +35,7 @@ RUN apt-get update && \
     rm -f /usr/lib/python3.*/EXTERNALLY-MANAGED
 
 # Install Python dependencies
-RUN uv pip install --no-cache-dir --system --index-strategy unsafe-best-match --extra-index-url https://test.pypi.org/simple/ -r requirements.txt && \
+RUN uv pip install --no-cache-dir --system -r requirements.txt && \
     uv pip install --no-cache-dir --system -r dev-requirements.txt && \
     uv pip install --no-cache-dir --system -r test_requirements.txt && \
     uv pip install --no-cache-dir --system wheel build setuptools

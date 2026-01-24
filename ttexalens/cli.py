@@ -51,9 +51,7 @@ except ModuleNotFoundError as e:
     import traceback
 
     traceback.print_exc()
-    print(
-        f"Try:\033[31m pip install --extra-index-url https://test.pypi.org/simple/ -r ttexalens/requirements.txt \033[0m"
-    )
+    print(f"Try:\033[31m pip install -r ttexalens/requirements.txt \033[0m")
     exit(1)
 
 
