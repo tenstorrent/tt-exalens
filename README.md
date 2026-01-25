@@ -8,7 +8,7 @@ A low level hardware debugger
 </div>
 <br/>
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/tenstorrent/tt-exalens)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/tenstorrent/tt-exalens) [![PyPI](https://img.shields.io/pypi/v/tt-exalens?color=green)](https://pypi.org/project/tt-exalens/)
 
 This is a low-level debugging tool for Tenstorrent hardware.
 It enables access to and communication with the device.
