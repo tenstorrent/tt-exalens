@@ -1,4 +1,4 @@
-tt-umd==0.9.0
+tt-umd==0.9.1
 deprecation>=2.1.0
 docopt>=0.6.2
 fastnumbers>=5.1.0

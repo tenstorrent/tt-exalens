@@ -20,11 +20,11 @@ It supports Wormhole and Blackhole devices.
 
 You can install latest published version with:
 ```
-pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens
+pip install tt-exalens
 ```
 Or specific version with:
 ```
-pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens=="x.y.z"
+pip install tt-exalens=="x.y.z"
 ```
 
 Alternatively, the wheel can be installed directly from GitHub with:
@@ -64,7 +64,7 @@ sudo apt install python3.10-venv
 Additional Python dependencies are listed in `ttexalens/requirements.txt` and can be installed with:
 
 ```bash
-pip install --extra-index-url https://test.pypi.org/simple/ -r ttexalens/requirements.txt
+pip install -r ttexalens/requirements.txt
 ```
 
 ### Building the library and the application
@@ -100,11 +100,11 @@ pip install git+https://github.com/tenstorrent/tt-exalens.git
 ```
 Alternatively, you can install latest published version with:
 ```
-pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens
+pip install tt-exalens
 ```
 Or specific version with:
 ```
-pip install --extra-index-url https://test.pypi.org/simple/ tt-exalens=="x.y.z"
+pip install tt-exalens=="x.y.z"
 ```
 
 Or you can simply run following in root directory:
