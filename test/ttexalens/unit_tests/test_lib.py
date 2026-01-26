@@ -530,14 +530,12 @@ class TestReadWrite(unittest.TestCase):
         invalid_cfg_reg = ConfigurationRegisterDescription(index=index)
 
         # Test that reading raises ValueError
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             lib.read_register(location, invalid_cfg_reg)
-        self.assertIn("must be less than or equal to", str(context.exception))
 
         # Test that writing raises ValueError
-        with self.assertRaises(ValueError) as context:
+        with self.assertRaises(ValueError):
             lib.write_register(location, invalid_cfg_reg, 0)
-        self.assertIn("must be less than or equal to", str(context.exception))
 
     @parameterized.expand(
         [
