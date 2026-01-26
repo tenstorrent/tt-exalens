@@ -291,42 +291,14 @@ class UmdDevice:
     ) -> bytes:
         """Reads data from address"""
         self.__select_noc_id(noc_id)
-
-        # TODO #124: Mitigation for UMD bug #77
-        if not self._is_mmio_capable:
-            result = bytearray()
-            for chunk_start in range(0, size, 1024):
-                chunk_size = min(1024, size - chunk_start)
-                result.extend(
-                    self.__read_from_device_reg_unaligned(
-                        noc0_x, noc0_y, address + chunk_start, chunk_size, use_4B_mode, dma_threshold
-                    )
-                )
-            return bytes(result)
         return self.__read_from_device_reg_unaligned(noc0_x, noc0_y, address, size, use_4B_mode, dma_threshold)
 
     def noc_write(
         self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
-    ) -> int:
+    ):
         """Writes data to address"""
         self.__select_noc_id(noc_id)
-        size = len(data)
-
-        # TODO #124: Mitigation for UMD bug #77
-        if not self._is_mmio_capable:
-            for chunk_start in range(0, size, 1024):
-                chunk_size = min(1024, size - chunk_start)
-                self.__write_to_device_reg_unaligned(
-                    noc0_x,
-                    noc0_y,
-                    address + chunk_start,
-                    data[chunk_start : chunk_start + chunk_size],
-                    use_4B_mode,
-                    dma_threshold,
-                )
-            return size
         self.__write_to_device_reg_unaligned(noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
-        return size
 
     def bar0_read32(self, address: int) -> int:
         """Reads 4 bytes from PCI address"""
