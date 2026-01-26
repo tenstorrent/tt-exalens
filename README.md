@@ -1,18 +1,16 @@
 <div align="center">
 <h1> TT-Lensium :tm: </h1>
 
-A low level hardware debugger
+A low-level hardware debugger
 
 <img src="./docs/images/tt_logo_stacked_color.png" alt="ttnn logo" height="100"/>
 
 </div>
 <br/>
 
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/tenstorrent/tt-exalens)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/tenstorrent/tt-exalens) [![PyPI](https://img.shields.io/pypi/v/tt-exalens?color=green)](https://pypi.org/project/tt-exalens/)
 
-This is a low-level debugging tool for Tenstorrent hardware.
-It enables access to and communication with the device.
-It supports Wormhole and Blackhole devices.
+A low-level debugging tool for Tenstorrent hardware that enables direct access to and communication with Wormhole and Blackhole devices.
 
 ---
 
@@ -27,111 +25,19 @@ Or specific version with:
 pip install tt-exalens=="x.y.z"
 ```
 
-Alternatively, the wheel can be installed directly from GitHub with:
+Alternatively, you can install the latest code from GitHub with:
 ```
 pip install git+https://github.com/tenstorrent/tt-exalens.git
 ```
 
-The CLI application can be run by invoking `tt-exalens` command after installing the wheel.
-
-## Building
-
-### Cloning repository and setting up the environment
-
-Clone the `tt-exalens` repository.
-
-### Requirements
-
-Project has been tested on Ubuntu 22.04.
-
-To build it, you need the following dependencies:
-
-- ninja-build,
-- cmake
-
-Install them with:
-
-```bash
-sudo apt install ninja-build cmake
-```
-
-Python 3.10 is the only supported version. Install it with:
-
-```bash
-sudo apt install python3.10-venv
-```
-
-Additional Python dependencies are listed in `ttexalens/requirements.txt` and can be installed with:
-
-```bash
-pip install -r ttexalens/requirements.txt
-```
-
-### Building the library and the application
-
-Once the dependencies are installed, building the project is straightforward and can be done by running:
-
-```
-make build
-```
-
-from the project's root directory.
-
-To verify that the build was successful, try running:
-
-```bash
-python tt-exalens.py
-```
-
-or
-
-```bash
-./tt-exalens.py
-```
-
-from the root directory.
-
-
-## Building and Installing Wheel
-
-The wheel can be installed from the [GitHub release](https://github.com/tenstorrent/tt-exalens/releases), built from source, or installed directly from GitHub with
-```
-pip install git+https://github.com/tenstorrent/tt-exalens.git
-```
-Alternatively, you can install latest published version with:
-```
-pip install tt-exalens
-```
-Or specific version with:
-```
-pip install tt-exalens=="x.y.z"
-```
-
-Or you can simply run following in root directory:
-```
-pip install .
-```
-
-Another option is to build the wheel from local source, run:
-```
-make wheel
-```
-in the root directory. Then install it using:
-```
-pip install build/ttexalens_wheel/<ttexalens_wheel>.whl
-```
-where `<ttexalens_wheel>` is an automatically generated filename for the build.
+The CLI application can be run by invoking the `tt-exalens` command after installing the wheel.
 
 ## Running the CLI application
 
-The CLI application can be run via the `tt-exalens.py` script or by invoking `tt-exalens` command after installing the wheel.
-It currently operates in *Limited* mode by default, with plans to support additional modes in the future.
-Limited mode allows basic communication with the device, such as reading/writing registers and memory, and running `.elf` files on RISC cores.
+The CLI application can be run via the `tt-exalens.py` script or by invoking the `tt-exalens` command after installing the wheel.
 
-The CLI application can target local or remote devices.
-For remote runs, a server instance is required and can be started using the same application.
-
-It’s also possible to cache session results and replay commands on a machine without Tenstorrent hardware.
+The application supports both local and remote device access.
+For remote connections, a server instance must be started using the same application.
 
 A GDB server can be launched, enabling stepping, breakpoints, and other debugging features via a GDB client.
 
@@ -139,58 +45,78 @@ For more usage information, refer to [the tutorial](./docs/ttexalens-app-tutoria
 
 ## Using library
 
-The application functionalities can also be accessed through the `ttexalens` Python library to create scripts that interact with Tenstorrent hardware.
+The application functionality is also available through the `ttexalens` Python library, enabling you to create custom scripts that interact with Tenstorrent hardware.
 
 For a quick start with the library, check out [the tutorial](docs/ttexalens-lib-tutorial.md).
 Full documentation is also available [here](docs/ttexalens-lib-docs.md).
 
 ## Development
 
-### Testing
+### Setting up environment
 
-#### Test dependencies
-
-Apart from the base dependencies, running tests requires additional Python packages:
-
-- `pytest`
-- `coverage`
-- `parameterized`
-
-and system libraries:
-
-- `libgtest-dev`
-- `libgmock-dev`
-
-Install the Python packages with:
-
-```bash
-pip install -r test/test_requirements.txt
-```
-
-#### Running tests
-
-It is currently possible to run tests locally, by running
-
-`make test`
-
-from the project root directory.
-
-### Updating documentation
-
-In order to update documentation virtual environment has to be created first by running the following command:
+The recommended way to manage dependencies is by creating a virtual environment with:
 
 ```bash
 ./scripts/create-venv.sh
 ```
 
-To activate created environment use
+To activate the created environment, use:
 
 ```bash
 .venv/bin/activate
 ```
 
+Alternatively, you can use your existing environment and just install dependencies with:
+
+```bash
+./scripts/install-deps.sh
+```
+
+### Testing
+
+#### Test requirements
+
+The following dependencies are required to build the necessary kernels:
+
+- ninja-build,
+- cmake
+- make
+
+#### Running tests
+
+The easiest way to run all tests locally is by using the `make` wrapper from the project root directory:
+
+```bash
+make test
+```
+
+This command will build dependencies, run all tests, create the wheel, and run wheel tests.
+
+If you don't need all of these steps, you can run them manually:
+
+```bash
+# Compile kernels that tests use
+make
+
+# Install runtime dependencies
+pip install -r ttexalens/requirements.txt
+
+# Install test dependencies
+pip install -r test/test_requirements.txt
+
+# Run library tests
+pytest test/ttexalens
+
+# Run CLI application tests
+pytest test/app
+```
+
+If you're developing with VSCode (or its derivatives), you can use the Testing extension. Install the `Python` extension to enumerate all tests within the `Testing` tab in the activity bar.
+
+### Updating documentation
+
 Library documentation is automatically generated from source code docstrings.
-To update the library docs, you need to run (while in created environment):
+To update the library documentation, run the following command in your development environment:
 
 `make docs`
 
@@ -203,7 +129,7 @@ For more advanced use cases, refer to the source code of the documentation gener
 
 We have defined various pre-commit hooks that check the code for formatting, licensing issues, etc.
 
-To install pre-commit , run the following command:
+To install pre-commit, run the following command:
 
 ```sh
 pip install pre-commit
@@ -225,52 +151,18 @@ pre-commit run --all-files
 
 For more information visit [pre-commit](https://pre-commit.com/)
 
-### Updating docker images
+#### mypy
 
-To update docker images used on CI and in development, you need to update Dockerfiles in `.github` directory and then run [`release-docker-images`](.github/workflows/release-docker-images.yaml) workflow.
-This can be done through GitHub CLI (see [here](https://github.com/cli/cli?tab=readme-ov-file#linux--bsd) how to install it) by using command
+We use [mypy](https://mypy.readthedocs.io) for static code analysis.
+
+You can use the `make` wrapper to execute it with:
 
 ```bash
-gh workflow run 116548537 --ref <your-branch-name>
+make mypy
 ```
 
-This will automatically generate new image releases and tag them as `latest`.
+Or run it directly from your development environment with:
 
----
-
-
-
-
-## Troubleshooting
-
-
-### python: command not found
-```
-test/wheel-test/wheel-test.sh: line 11: python: command not found
-make: *** [Makefile:182: test] Error 127
-```
-Fix:
-```
-alias python=python3
-```
-
-
-
-### ModuleNotFoundError: No module named 'ttexalens_pybind_unit_tests'
-
-This error might occur when trying to run unit tests:
-```
-Failed to import test module: test.ttexalens.pybind.test_bindings
-Traceback (most recent call last):
-  File "/usr/lib/python3.10/unittest/loader.py", line 436, in _find_test_path
-    module = self._get_module_from_name(name)
-  File "/usr/lib/python3.10/unittest/loader.py", line 377, in _get_module_from_name
-    __import__(name)
-  File "./test/ttexalens/pybind/test_bindings.py", line 17, in <module>
-    from ttexalens_pybind_unit_tests import set_ttexalens_test_implementation
-ModuleNotFoundError: No module named 'ttexalens_pybind_unit_tests'
-```
-To fix, just build the neccessary test library:
-```
-make build
+```bash
+mypy
 ```

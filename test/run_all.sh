@@ -27,10 +27,10 @@ big_echo "BUILDING TTEXALENS"
 make build
 
 big_echo "RUNNING PYTHON TTEXALENS TESTS"
-python3 -m unittest discover -v -t . -s test/ttexalens -p *test*.py
+python -m pytest -v ${BASE_TEST_DIR}/ttexalens
 
 big_echo "RUNNING PYTHON APP TESTS"
-python3 -m unittest discover -v -t . -s test/app -p *test*.py
+python -m pytest -v ${BASE_TEST_DIR}/app
 
 big_echo "RUNNING WHEEL TESTS"
 source ${BASE_TEST_DIR}/wheel/wheel-test.sh
