@@ -510,6 +510,35 @@ class TestReadWrite(unittest.TestCase):
 
     @parameterized.expand(
         [
+            ("0,0", 1),
+            ("1,1", 1),
+            ("0,0", -1),
+            ("1,1", -1),
+        ]
+    )
+    def test_cfg_register_index_out_of_bounds(self, location, delta):
+        """Test that reading/writing a configuration register with index beyond valid range raises ValueError."""
+
+        loc = OnChipCoordinate.create(location, device=self.context.devices[0])
+        register_store = self.context.devices[0].get_block(loc).get_register_store()
+
+        # Get the maximum valid config register index
+        max_index = register_store._max_config_register_index
+
+        # Create a ConfigurationRegisterDescription with an invalid index (too high)
+        index = max_index + delta if delta > 0 else delta
+        invalid_cfg_reg = ConfigurationRegisterDescription(index=index)
+
+        # Test that reading raises ValueError
+        with self.assertRaises(ValueError):
+            lib.read_register(location, invalid_cfg_reg)
+
+        # Test that writing raises ValueError
+        with self.assertRaises(ValueError):
+            lib.write_register(location, invalid_cfg_reg, 0)
+
+    @parameterized.expand(
+        [
             ("0,0", "brisc"),
             ("1,0", "brisc"),
             ("1,0", "brisc"),
