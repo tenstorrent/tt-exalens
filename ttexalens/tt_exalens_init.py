@@ -22,7 +22,7 @@ def init_ttexalens(
     use_noc1: bool = False,
     use_4B_mode: bool = True,
     simulation_directory: str | None = None,
-    noc_failover: bool = False,
+    noc_failover: bool = True,
 ) -> Context:
     """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
     Interfacing device is local, through pybind.
@@ -46,7 +46,7 @@ def init_ttexalens_remote(
     ip_address: str = "localhost",
     port: int = 5555,
     use_4B_mode: bool = True,
-    noc_failover: bool = False,
+    noc_failover: bool = True,
 ) -> Context:
     """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
     Interfacing device is done remotely through TTExaLens client.
@@ -70,7 +70,7 @@ def load_context(
     file_api: FileAccessApi,
     use_noc1: bool = False,
     use_4B_mode: bool = True,
-    noc_failover: bool = False,
+    noc_failover: bool = True,
 ) -> Context:
     """Load the TTExaLens context object with specified parameters."""
     context = Context(umd_api, file_api, use_noc1=use_noc1, use_4B_mode=use_4B_mode, noc_failover=noc_failover)

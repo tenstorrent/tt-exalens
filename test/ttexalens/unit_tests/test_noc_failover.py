@@ -56,6 +56,7 @@ class TestNocFailoverDisabled(unittest.TestCase):
     def test_noc_read_timeout_no_failover(self):
         """Test that timeout raises immediately when failover is disabled."""
         device = self.create_test_device()
+        initial_noc = device._active_noc
         self.mock_umd_device.noc_read.side_effect = create_timeout_error()
 
         with self.assertRaises(TimeoutDeviceRegisterError):
@@ -63,8 +64,8 @@ class TestNocFailoverDisabled(unittest.TestCase):
 
         # Should only try once (no failover)
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 1)
-        # Active NOC should still be primary
-        self.assertEqual(device._active_noc, device._primary_noc)
+        # Active NOC should still be initial NOC
+        self.assertEqual(device._active_noc, initial_noc)
         # Nothing marked as hung
         self.assertFalse(device._noc_hung[0])
         self.assertFalse(device._noc_hung[1])
@@ -72,6 +73,7 @@ class TestNocFailoverDisabled(unittest.TestCase):
     def test_noc_write_timeout_no_failover(self):
         """Test that write timeout raises immediately when failover is disabled."""
         device = self.create_test_device()
+        initial_noc = device._active_noc
         self.mock_umd_device.noc_write.side_effect = create_timeout_error(is_read=False)
 
         with self.assertRaises(TimeoutDeviceRegisterError):
@@ -79,8 +81,8 @@ class TestNocFailoverDisabled(unittest.TestCase):
 
         # Should only try once (no failover)
         self.assertEqual(self.mock_umd_device.noc_write.call_count, 1)
-        # Active NOC should still be primary
-        self.assertEqual(device._active_noc, device._primary_noc)
+        # Active NOC should still be initial NOC
+        self.assertEqual(device._active_noc, initial_noc)
 
 
 class TestNocFailoverEnabled(unittest.TestCase):
@@ -161,7 +163,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
         with self.assertRaises(NocUnavailableError) as ctx:
             device.noc_read(self.test_location, 0x1000, 4)
 
-        self.assertIn("NoC is broken", str(ctx.exception))
+        self.assertIn("all NOCs are hung", str(ctx.exception))
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 2)
 
         # Verify both NOCs marked as hung
@@ -197,17 +199,18 @@ class TestNocFailoverEnabled(unittest.TestCase):
             ("noc1", True, 1),
         ]
     )
-    def test_explicit_noc_id_no_failover(self, name, use_noc1, primary_noc):
+    def test_explicit_noc_id_no_failover(self, name, use_noc1, expected_noc):
         """Test that explicit noc_id doesn't trigger failover."""
         device = self._create_device(use_noc1)
         self.mock_umd_device.noc_read.side_effect = create_timeout_error()
 
         with self.assertRaises(TimeoutDeviceRegisterError):
-            device.noc_read(self.test_location, 0x1000, 4, noc_id=primary_noc)
+            device.noc_read(self.test_location, 0x1000, 4, noc_id=expected_noc)
 
         # Should only try once (no failover)
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 1)
-        self.assertEqual(device._active_noc, primary_noc)
+        # Active NOC should be unchanged
+        self.assertEqual(device._active_noc, expected_noc)
         self.assertFalse(device._noc_hung[0])
         self.assertFalse(device._noc_hung[1])
 

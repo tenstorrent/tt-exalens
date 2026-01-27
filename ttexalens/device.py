@@ -7,6 +7,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 import datetime
 from functools import cache, cached_property
+import threading
 import tt_umd
 from typing import Iterable, Sequence
 
@@ -139,31 +140,44 @@ class Device:
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 
-        self._primary_noc: int = 1 if context.use_noc1 else 0
-        self._active_noc: int = self._primary_noc
+        self._noc_state_lock = threading.Lock()
+        self._active_noc: int = 1 if context.use_noc1 else 0
         self._noc_hung: dict[int, bool] = {0: False, 1: False}
         self._noc_failover = context.noc_failover
 
     @property
     def noc_available(self) -> bool:
-        return not (self._noc_hung[0] and self._noc_hung[1])
+        with self._noc_state_lock:
+            return any(not hung for hung in self._noc_hung.values())
 
     def _select_noc(self) -> int:
-        if not self.noc_available:
-            raise NocUnavailableError(f"Device {self.id}: both NOCs are hung.")
+        with self._noc_state_lock:
+            # Check availability without re-acquiring lock
+            if not any(not hung for hung in self._noc_hung.values()):
+                raise NocUnavailableError(f"Device {self.id}: all NOCs are hung.")
 
         return self._active_noc
 
-    def _failover_noc(self) -> int:
-        self._noc_hung[self._active_noc] = True
-        new_noc = 1 - self._active_noc
-        if self._noc_hung[new_noc]:
-            raise NocUnavailableError(f"Device {self.id}: both NOCs are hung.")
+    def _failover_to_working_noc(self) -> int:
+        with self._noc_state_lock:
+            self._noc_hung[self._active_noc] = True
 
-        util.WARN(f"Device {self.id}: NOC{self._active_noc} hung, switching over to NOC{new_noc}.")
+            # Check availability without re-acquiring lock
+            if not any(not hung for hung in self._noc_hung.values()):
+                raise NocUnavailableError(f"Device {self.id}: all NOCs are hung.")
 
-        self._active_noc = new_noc
-        return new_noc
+            new_noc = next(noc for noc, hung in self._noc_hung.items() if not hung)
+            util.WARN(f"Device {self.id}: NOC{self._active_noc} hung, switching over to NOC{new_noc}.")
+
+            self._active_noc = new_noc
+            return new_noc
+
+    def _with_noc_failover(self, operation):
+        while True:
+            try:
+                return operation()
+            except TimeoutDeviceRegisterError:
+                self._failover_to_working_noc()  # Will raise NocUnavailableError when all NOCs exhausted
 
     @property
     def board_type(self) -> tt_umd.BoardType:
@@ -204,28 +218,22 @@ class Device:
     ) -> bytes:
         noc_x, noc_y = location._noc0_coord
 
-        explicit_noc = noc_id is not None
-        if noc_id is None:
-            noc_id = self._select_noc()
-
         if use_4B_mode is None:
             use_4B_mode = self._context.use_4B_mode
         if dma_threshold is None:
             dma_threshold = self._context.dma_read_threshold
 
-        try:
+        explicit_noc = noc_id is not None
+        if explicit_noc or not self._noc_failover:
+            noc_id = noc_id if noc_id is not None else self._select_noc()
             return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
-        except TimeoutDeviceRegisterError:
-            if explicit_noc or not self._noc_failover:
-                raise
 
-            try:
-                return self._umd_device.noc_read(
-                    self._failover_noc(), noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold
-                )
-            except TimeoutDeviceRegisterError:
-                self._noc_hung[self._active_noc] = True
-                raise NocUnavailableError(f"Device {self.id}: NoC is broken.")
+        def operation():
+            return self._umd_device.noc_read(
+                self._select_noc(), noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold
+            )
+
+        return self._with_noc_failover(operation)
 
     def noc_read32(self, location: OnChipCoordinate, address: int, noc_id: int | None = None) -> int:
         result = self.noc_read(location, address, 4, noc_id, True)
@@ -242,28 +250,22 @@ class Device:
     ):
         noc_x, noc_y = location._noc0_coord
 
-        explicit_noc = noc_id is not None
-        if noc_id is None:
-            noc_id = self._select_noc()
-
         if use_4B_mode is None:
             use_4B_mode = self._context.use_4B_mode
         if dma_threshold is None:
             dma_threshold = self._context.dma_write_threshold
 
-        try:
+        explicit_noc = noc_id is not None
+        if explicit_noc or not self._noc_failover:
+            noc_id = noc_id if noc_id is not None else self._select_noc()
             return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
-        except TimeoutDeviceRegisterError:
-            if explicit_noc or not self._noc_failover:
-                raise
 
-            try:
-                return self._umd_device.noc_write(
-                    self._failover_noc(), noc_x, noc_y, address, data, use_4B_mode, dma_threshold
-                )
-            except TimeoutDeviceRegisterError:
-                self._noc_hung[self._active_noc] = True
-                raise NocUnavailableError(f"Device {self.id}: NoC is broken.")
+        def operation():
+            return self._umd_device.noc_write(
+                self._select_noc(), noc_x, noc_y, address, data, use_4B_mode, dma_threshold
+            )
+
+        return self._with_noc_failover(operation)
 
     def noc_write32(self, location: OnChipCoordinate, address: int, data: int, noc_id: int | None = None):
         return self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True)
