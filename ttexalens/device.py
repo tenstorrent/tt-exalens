@@ -153,12 +153,28 @@ class Device:
             return any(not hung for hung in self._noc_hung.values())
 
     def _select_noc(self) -> int:
-        with self._noc_state_lock:
-            # Check availability without re-acquiring lock
-            if not any(not hung for hung in self._noc_hung.values()):
-                raise NocUnavailableError(f"Device {self.id}: all NOCs are hung.")
+        if not self.noc_available:
+            raise NocUnavailableError(f"Device {self.id}: all NOCs are hung.")
 
         return self._active_noc
+
+    def _is_problematic_dram(self, location: OnChipCoordinate, noc_id: int) -> bool:
+        """Check if this is a DRAM location that has known issues on NOC1. #tt-umd:1823"""
+        if noc_id != 1:
+            return False
+
+        try:
+            logical_coord, core_type = location.to("logical")
+            if core_type == "dram":
+                x, y = logical_coord
+                # DRAM channels 0 and 2 (d0,0 and d2,0) have issues on NOC1
+                if y == 0 and x in [0, 2]:
+                    return True
+        except Exception:
+            # If conversion fails, assume it's not a problematic location
+            pass
+
+        return False
 
     def _failover_to_working_noc(self) -> int:
         with self._noc_state_lock:
@@ -226,6 +242,14 @@ class Device:
             dma_threshold = self._context.dma_read_threshold
 
         explicit_noc = noc_id is not None
+
+        # Workaround for #tt-umd:1823
+        if not explicit_noc:
+            selected_noc = self._select_noc()
+            if self._is_problematic_dram(location, selected_noc):
+                # Use NOC0 instead and bypass failover
+                return self._umd_device.noc_read(0, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
+
         if explicit_noc or not self._noc_failover:
             noc_id = noc_id if noc_id is not None else self._select_noc()
             return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
@@ -258,6 +282,14 @@ class Device:
             dma_threshold = self._context.dma_write_threshold
 
         explicit_noc = noc_id is not None
+
+        # Workaround for #tt-umd:1823
+        if not explicit_noc:
+            selected_noc = self._select_noc()
+            if self._is_problematic_dram(location, selected_noc):
+                # Use NOC0 instead and bypass failover
+                return self._umd_device.noc_write(0, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
+
         if explicit_noc or not self._noc_failover:
             noc_id = noc_id if noc_id is not None else self._select_noc()
             return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
