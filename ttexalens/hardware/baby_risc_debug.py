@@ -683,7 +683,7 @@ class BabyRiscDebug(RiscDebug):
         debug_bus_pc_signal = self.debug_bus_pc_signal
         if debug_bus_pc_signal is not None and self.risc_info.noc_block.debug_bus is not None:
             pc = self.risc_info.noc_block.debug_bus.read_signal(debug_bus_pc_signal)
-            if self.risc_info.risc_name == "ncrisc" and pc & 0xF0000000 == 0x70000000:
+            if (self.risc_info.risc_name in ["ncrisc", "erisc"]) and pc & 0xF0000000 == 0x70000000:
                 pc = pc | 0x80000000  # Turn the topmost bit on as it was lost on debug bus
             return pc
 
