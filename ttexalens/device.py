@@ -144,6 +144,7 @@ class Device:
         self._noc_hung: dict[int, bool] = {0: False, 1: False}
         self._noc_failover = context.noc_failover
 
+    @property
     def noc_available(self) -> bool:
         return not (self._noc_hung[0] and self._noc_hung[1])
 

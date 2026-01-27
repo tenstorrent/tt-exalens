@@ -47,8 +47,10 @@ class TestNocFailoverDisabled(unittest.TestCase):
 
     def create_test_device(self):
         """Helper to create a test device with mocked dependencies."""
-        with patch.object(Device, "_init_coordinate_systems"):
-            device = Device(0, self.mock_umd_device, self.mock_context)
+        with patch.object(Device, "_init_coordinate_systems"), patch.object(Device, "get_block"), patch.object(
+            Device, "get_tensix_registers_description"
+        ), patch.object(Device, "get_tensix_debug_bus_description"):
+            device = Device(0, self.mock_umd_device, self.mock_context)  # type: ignore[abstract]
             return device
 
     def test_noc_read_timeout_no_failover(self):
@@ -265,8 +267,10 @@ class TestNocFailoverEnabled(unittest.TestCase):
         mock_context.dma_read_threshold = 24
         mock_context.dma_write_threshold = 56
 
-        with patch.object(Device, "_init_coordinate_systems"):
-            return Device(0, self.mock_umd_device, mock_context)
+        with patch.object(Device, "_init_coordinate_systems"), patch.object(Device, "get_block"), patch.object(
+            Device, "get_tensix_registers_description"
+        ), patch.object(Device, "get_tensix_debug_bus_description"):
+            return Device(0, self.mock_umd_device, mock_context)  # type: ignore[abstract]
 
 
 if __name__ == "__main__":
