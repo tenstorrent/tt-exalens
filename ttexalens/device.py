@@ -9,7 +9,7 @@ import datetime
 from functools import cache, cached_property
 import threading
 import tt_umd
-from typing import Iterable, Sequence
+from typing import Callable, Iterable, Sequence, TypeVar
 
 from tabulate import tabulate
 from ttexalens.context import Context
@@ -20,6 +20,8 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
 from ttexalens.umd_device import UmdDevice, TimeoutDeviceRegisterError
 from ttexalens import util as util
+
+T = TypeVar("T")
 
 
 class NocUnavailableError(util.TTException):
@@ -172,7 +174,7 @@ class Device:
             self._active_noc = new_noc
             return new_noc
 
-    def _with_noc_failover(self, operation):
+    def _with_noc_failover(self, operation: Callable[[], T]) -> T:
         while True:
             try:
                 return operation()
@@ -228,7 +230,7 @@ class Device:
             noc_id = noc_id if noc_id is not None else self._select_noc()
             return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
 
-        def operation():
+        def operation() -> bytes:
             return self._umd_device.noc_read(
                 self._select_noc(), noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold
             )
@@ -260,10 +262,8 @@ class Device:
             noc_id = noc_id if noc_id is not None else self._select_noc()
             return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
 
-        def operation():
-            return self._umd_device.noc_write(
-                self._select_noc(), noc_x, noc_y, address, data, use_4B_mode, dma_threshold
-            )
+        def operation() -> None:
+            self._umd_device.noc_write(self._select_noc(), noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
 
         return self._with_noc_failover(operation)
 
