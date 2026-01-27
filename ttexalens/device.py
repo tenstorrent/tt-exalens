@@ -155,15 +155,14 @@ class Device:
         return self._active_noc
 
     def _failover_noc(self) -> int:
+        self._noc_hung[self._active_noc] = True
         new_noc = 1 - self._active_noc
         if self._noc_hung[new_noc]:
             raise NocUnavailableError(f"Device {self.id}: both NOCs are hung.")
 
         util.WARN(f"Device {self.id}: NOC{self._active_noc} hung, switching over to NOC{new_noc}.")
 
-        self._noc_hung[self._active_noc] = True
         self._active_noc = new_noc
-
         return new_noc
 
     @property
