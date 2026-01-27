@@ -17,8 +17,14 @@ from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
-from ttexalens.umd_device import UmdDevice
+from ttexalens.umd_device import UmdDevice, TimeoutDeviceRegisterError
 from ttexalens import util as util
+
+
+class NocUnavailableError(util.TTException):
+    """Raised when no NOC is available for implicit device access."""
+
+    pass
 
 
 class TensixInstructions:
@@ -133,6 +139,32 @@ class Device:
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 
+        self._primary_noc: int = 1 if context.use_noc1 else 0
+        self._active_noc: int = self._primary_noc
+        self._noc_hung: dict[int, bool] = {0: False, 1: False}
+        self._noc_failover = context.noc_failover
+
+    def noc_available(self) -> bool:
+        return not (self._noc_hung[0] and self._noc_hung[1])
+
+    def _select_noc(self) -> int:
+        if not self.noc_available:
+            raise NocUnavailableError(f"Device {self.id}: both NOCs are hung.")
+
+        return self._active_noc
+
+    def _failover_noc(self) -> int:
+        new_noc = 1 - self._active_noc
+        if self._noc_hung[new_noc]:
+            raise NocUnavailableError(f"Device {self.id}: both NOCs are hung.")
+
+        util.WARN(f"Device {self.id}: NOC{self._active_noc} hung, switching over to NOC{new_noc}.")
+
+        self._noc_hung[self._active_noc] = True
+        self._active_noc = new_noc
+
+        return new_noc
+
     @property
     def board_type(self) -> tt_umd.BoardType:
         return self._context.cluster_descriptor.get_board_type(self.id)
@@ -149,7 +181,7 @@ class Device:
 
     @cached_property
     def firmware_version(self):
-        noc_id = 1 if self._context.use_noc1 else 0
+        noc_id = self._select_noc()
         fw = self._umd_device.get_firmware_version(noc_id)
         return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
 
@@ -171,13 +203,29 @@ class Device:
         dma_threshold: int | None = None,
     ) -> bytes:
         noc_x, noc_y = location._noc0_coord
+
+        explicit_noc = noc_id is not None
         if noc_id is None:
-            noc_id = 1 if self._context.use_noc1 else 0
+            noc_id = self._select_noc()
+
         if use_4B_mode is None:
             use_4B_mode = self._context.use_4B_mode
         if dma_threshold is None:
             dma_threshold = self._context.dma_read_threshold
-        return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
+
+        try:
+            return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
+        except TimeoutDeviceRegisterError:
+            if explicit_noc or not self._noc_failover:
+                raise
+
+            try:
+                return self._umd_device.noc_read(
+                    self._failover_noc(), noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold
+                )
+            except TimeoutDeviceRegisterError:
+                self._noc_hung[self._active_noc] = True
+                raise NocUnavailableError(f"Device {self.id}: NoC is broken.")
 
     def noc_read32(self, location: OnChipCoordinate, address: int, noc_id: int | None = None) -> int:
         result = self.noc_read(location, address, 4, noc_id, True)
@@ -193,13 +241,29 @@ class Device:
         dma_threshold: int | None = None,
     ):
         noc_x, noc_y = location._noc0_coord
+
+        explicit_noc = noc_id is not None
         if noc_id is None:
-            noc_id = 1 if self._context.use_noc1 else 0
+            noc_id = self._select_noc()
+
         if use_4B_mode is None:
             use_4B_mode = self._context.use_4B_mode
         if dma_threshold is None:
             dma_threshold = self._context.dma_write_threshold
-        return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
+
+        try:
+            return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
+        except TimeoutDeviceRegisterError:
+            if explicit_noc or not self._noc_failover:
+                raise
+
+            try:
+                return self._umd_device.noc_write(
+                    self._failover_noc(), noc_x, noc_y, address, data, use_4B_mode, dma_threshold
+                )
+            except TimeoutDeviceRegisterError:
+                self._noc_hung[self._active_noc] = True
+                raise NocUnavailableError(f"Device {self.id}: NoC is broken.")
 
     def noc_write32(self, location: OnChipCoordinate, address: int, data: int, noc_id: int | None = None):
         return self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True)
@@ -222,7 +286,7 @@ class Device:
 
     def read_arc_telemetry_entry(self, noc_id: int | None, telemetry_tag: int) -> int:
         if noc_id is None:
-            noc_id = 1 if self._context.use_noc1 else 0
+            noc_id = self._select_noc()
         return self._umd_device.read_arc_telemetry_entry(noc_id, telemetry_tag)
 
     def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
