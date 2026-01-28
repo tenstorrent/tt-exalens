@@ -38,7 +38,7 @@ mypy:
 
 .PHONY: wheel
 wheel:
-	pip wheel --no-deps --no-cache-dir --extra-index-url https://test.pypi.org/simple/ . --wheel-dir build/ttexalens_wheel
+	pip wheel --no-deps --no-cache-dir . --wheel-dir build/ttexalens_wheel
 
 TTEXALENS_HOME ?= $(shell git rev-parse --show-toplevel)
 

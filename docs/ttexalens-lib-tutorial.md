@@ -47,8 +47,7 @@ In the case of using cached ifc, it is only possible to rerun cached function ca
 This section demonstrates how to make a simple script using TTExaLens library. For a more complete overview of TTExaLens's abilities, check out [the full documentation](ttexalens-lib-docs.md).
 
 ```python
-from ttexalens.tt_exalens_init import init_ttexalens
-from ttexalens.tt_exalens_lib import write_to_device, read_words_from_device
+from ttexalens import init_ttexalens, write_to_device, read_words_from_device
 
 context = init_ttexalens()
 data = [1, 128, 18, 64]

@@ -197,8 +197,17 @@ class RegisterStore:
 
     @cached_property
     def _max_config_register_index(self) -> int:
-        # TODO: This should be determined by the device's memory map.
-        return 1000
+        block = self.location.noc_block
+        risc_debug = block.get_default_risc_debug()
+
+        config_regs = risc_debug.risc_info.memory_map.find_by_name("config_regs")
+        if config_regs is None:
+            raise ValueError(
+                f"Device {self.device.id} at location {self.location.to_user_str()} does not have config_regs memory block."
+            )
+
+        # Block size is in bytes, each register is 4 bytes.
+        return (config_regs.memory_block.size // 4) - 1
 
     def get_register_names(self) -> list[str]:
         return list(self.registers.keys())
