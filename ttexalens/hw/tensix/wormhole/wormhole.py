@@ -73,5 +73,52 @@ class WormholeDevice(Device):
     def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
         return tensix_debug_bus_description
 
+    def _is_problematic_dram_on_noc1(self, location: OnChipCoordinate) -> bool:
+        if self.active_noc != 1:
+            return False
+
+        try:
+            logical_coord, core_type = location.to("logical")
+            if core_type == "dram":
+                x, y = logical_coord
+                # DRAM channels 0 and 2 (d0,0 and d2,0) have issues on NOC1
+                if y == 0 and x in [0, 2]:
+                    return True
+        except Exception:
+            # If conversion fails, assume it's not a problematic location
+            pass
+
+        return False
+
+    def noc_read(
+        self,
+        location: OnChipCoordinate,
+        address: int,
+        size_bytes: int,
+        noc_id: int | None = None,
+        use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
+    ) -> bytes:
+        # Workaround for problematic DRAM locations on NOC1, #tt-umd:1823
+        if noc_id is None and self._is_problematic_dram_on_noc1(location):
+            noc_id = 0  # Force use of NOC0
+
+        return super().noc_read(location, address, size_bytes, noc_id, use_4B_mode, dma_threshold)
+
+    def noc_write(
+        self,
+        location: OnChipCoordinate,
+        address: int,
+        data: bytes,
+        noc_id: int | None = None,
+        use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
+    ):
+        # Workaround for problematic DRAM locations on NOC1, #tt-umd:1823
+        if noc_id is None and self._is_problematic_dram_on_noc1(location):
+            noc_id = 0  # Force use of NOC0
+
+        return super().noc_write(location, address, data, noc_id, use_4B_mode, dma_threshold)
+
 
 # end of class WormholeDevice
