@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.exceptions import (
+    MemoryAccessError,
     MemoryConfigurationError,
-    ReadOnlyMemoryAccessError,
     RestrictedMemoryAccessError,
 )
 
@@ -116,7 +116,7 @@ class FixedMemoryAccess(MemoryAccess):
         return self._data[address : address + size_bytes]
 
     def write(self, address: int, data: bytes) -> None:
-        raise ReadOnlyMemoryAccessError("FixedMemoryAccess is read-only")
+        raise MemoryAccessError("FixedMemoryAccess is read-only")
 
 
 class RiscDebugMemoryAccess(MemoryAccess):

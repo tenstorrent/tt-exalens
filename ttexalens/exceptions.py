@@ -10,26 +10,6 @@ class TTException(Exception):
     """Base exception for TTExaLens errors."""
 
 
-class TTUsageError(TTException):
-    """Raised for invalid user input or command usage."""
-
-
-class TTTimeoutError(TTException):
-    """Raised when an expected operation times out."""
-
-
-class MemoryAccessError(TTException):
-    """Raised for invalid or restricted memory access operations."""
-
-
-class MemoryConfigurationError(MemoryAccessError):
-    """Raised when required memory blocks or mappings are missing."""
-
-
-class ReadOnlyMemoryAccessError(MemoryAccessError):
-    """Raised when attempting to write to read-only memory access."""
-
-
 class CoordinateError(TTException):
     """Raised for coordinate parsing or translation errors."""
 
@@ -52,14 +32,6 @@ class ElfDataLossError(ElfError):
 
 class GdbError(TTException):
     """Raised for GDB server/client errors."""
-
-
-class GdbCommunicationError(GdbError):
-    """Raised for GDB transport/connection failures."""
-
-
-class GdbProtocolError(GdbError):
-    """Raised for GDB protocol parsing errors."""
 
 
 class ServerError(TTException):
@@ -97,6 +69,14 @@ class CoordinateTranslationError(CoordinateError):
 
     def __str__(self):
         return f"CoordinateTranslationError: {self.message}"
+
+
+class MemoryAccessError(TTException):
+    """Raised for invalid or restricted memory access operations."""
+
+
+class MemoryConfigurationError(MemoryAccessError):
+    """Raised when required memory blocks or mappings are missing."""
 
 
 class RestrictedMemoryAccessError(MemoryAccessError):
@@ -171,7 +151,7 @@ if TYPE_CHECKING:
     from ttexalens.hardware.risc_debug import RiscLocation
 
 
-class TimeoutDeviceRegisterError(TTTimeoutError):
+class TimeoutDeviceRegisterError(TTException):
     def __init__(
         self,
         chip_id: int,
