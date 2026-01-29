@@ -5,7 +5,7 @@
 from typing import Callable
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
-from ttexalens.util import TTException
+from ttexalens.exceptions import TTException
 
 
 class BlackholeBabyRiscDebug(BabyRiscDebug):

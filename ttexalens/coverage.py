@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.tt_exalens_lib import TTException
+from ttexalens.exceptions import TTException
 from ttexalens.elf import ParsedElfFile
 from ttexalens.memory_access import MemoryAccess
 

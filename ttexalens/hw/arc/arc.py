@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import tt_umd
 from ttexalens.context import Context
-from ttexalens.util import TTException
+from ttexalens.exceptions import TTException
 import re
 import os
 

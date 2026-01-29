@@ -602,7 +602,7 @@ class ElfDie:
                     const_value = int(const_value)
                     size = variable_type.size if variable_type.size is not None else 4
                     memory = const_value.to_bytes(size, byteorder="little")
-                except Exception:
+                except (TypeError, ValueError):
                     util.DEBUG("    Failed to convert constant value to integer")
                     return None
 
@@ -670,7 +670,7 @@ class ElfDie:
                     value = int(value)
                     size = variable_type.size if variable_type.size is not None else 4
                     memory = value.to_bytes(size, byteorder="little")
-                except Exception:
+                except (TypeError, ValueError):
                     return None
 
             # We explicitly set address to 0 to indicate that this is not an addressable variable

@@ -7,11 +7,13 @@ import inspect
 import io
 import Pyro5.api
 import Pyro5.configure
+import Pyro5.errors
 import serpent
 import threading
 from typing import TYPE_CHECKING
 from ttexalens import util as util
 import tt_umd
+from ttexalens.exceptions import ServerError, TTException, TTFatalException
 
 from ttexalens.umd_device import UmdDevice
 
@@ -56,7 +58,7 @@ class TTExaLensServer:
 
     def start(self):
         if self.daemon or self.thread:
-            raise util.TTFatalException("Server already started")
+            raise TTFatalException("Server already started")
         self.daemon = Pyro5.api.Daemon(port=self.port)
         umd_wrapper = self._wrap_object(self.umd_api)
         self.umd_registered_objects[id(self.umd_api)] = TTExaLensServer.UmdRegisteredObject("umd_api", self.umd_api)
@@ -224,9 +226,9 @@ def start_server(port: int, context: Context):
         server.start()
         util.INFO(f"ttexalens-server listening on port {port}")
         return server
-    except Exception as e:
+    except (Pyro5.errors.PyroError, OSError, TTException) as e:
         print(f"Error starting ttexalens-server: {e}")
-        raise util.TTFatalException("Could not start ttexalens-server.")
+        raise ServerError("Could not start ttexalens-server.")
 
 
 class FileAccessApiWrapper:
@@ -273,5 +275,5 @@ def connect_to_server(server_host="localhost", port=5555) -> tuple[UmdApi, FileA
 
         # Return connected APIs
         return umd_api, file_api
-    except:
-        raise util.TTFatalException("Failed to connect to TTExaLens server.")
+    except (Pyro5.errors.PyroError, OSError, TTException) as e:
+        raise ServerError("Failed to connect to TTExaLens server.") from e

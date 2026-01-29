@@ -6,6 +6,7 @@ A module containing utility functions and classes for documentation generation.
 """
 
 from abc import abstractmethod
+from ttexalens.exceptions import DocumentationError
 
 
 def INFO(text: str) -> None:
@@ -18,7 +19,7 @@ def WARNING(text: str) -> None:
 
 def ERROR(text: str) -> None:
     print(f"\033[1;31m{text}\033[0m")
-    raise Exception(text)
+    raise DocumentationError(text)
 
 
 class ElementPPrinter:

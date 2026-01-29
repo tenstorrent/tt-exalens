@@ -9,6 +9,7 @@ import select
 import unittest
 import subprocess
 import re
+from ttexalens.exceptions import TTException
 
 
 class TTExaLensOutputVerifier:
@@ -115,7 +116,7 @@ class TTExaLensTestRunner:
             if len(rlist) == 0:
                 if not self.is_running:
                     return None
-                raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from TTExaLens")
+                raise TTException(f"Hit timeout ({timeoutSeconds}s) while waiting for output from TTExaLens")
         line = rlist[0].readline()  # type: ignore
         if line.endswith("\n"):
             line = line[:-1]
@@ -149,7 +150,7 @@ class TTExaLensTestRunner:
             assert self.process is not None
             self.process.kill()
             self.process.wait()
-        except:
+        except (OSError, subprocess.SubprocessError):
             pass
 
     def execute(self, args=None, input=None, timeout=None):
@@ -158,7 +159,7 @@ class TTExaLensTestRunner:
             assert self.process is not None
             stdout, stderr = self.process.communicate(input, timeout)
             return stdout.splitlines(), stderr.splitlines()
-        except Exception as e:
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError, TTException) as e:
             self.kill()
             raise e
 

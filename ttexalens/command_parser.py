@@ -11,6 +11,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
+from ttexalens.exceptions import CommandParsingException
 
 
 class CommonCommandOptions(Enum):
@@ -50,22 +51,6 @@ class CommonCommandOptionMetadata:
     argument: str
     description: str | None = None
     for_each: Callable | None = None
-
-
-class CommandParsingException(Exception):
-    """Custom exception to wrap DocoptExit and SystemExit."""
-
-    def __init__(self, original_exception):
-        self.original_exception = original_exception
-        super().__init__(str(original_exception))  # Optional: Forward the message
-
-    def is_parsing_error(self):
-        """If exception is DocoptExit, some parsing error occured"""
-        return isinstance(self.original_exception, DocoptExit)
-
-    def is_help_message(self):
-        """If exception is SystemExit, h or help command is parsed. It is docopt behavior"""
-        return isinstance(self.original_exception, SystemExit)
 
 
 class tt_docopt:

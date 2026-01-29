@@ -6,7 +6,8 @@ from functools import cached_property
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
-from ttexalens.util import FirmwareVersion, TTException
+from ttexalens.util import FirmwareVersion
+from ttexalens.exceptions import TTException
 
 # For new firmware version (18.4 or higher) we have same telemetry tags for both wormhole and blackhole
 # We no longer support ARC telemetry for firmware versions 18.3 and lower
