@@ -112,6 +112,20 @@ class TestReadWrite(unittest.TestCase):
         ret = lib.read_from_device(location, address, num_bytes=len(data))
         self.assertEqual(ret, data)
 
+    def test_write_read_data_integrity(self):
+        location = "0,0"
+        num_of_words = 256  # 1024 bytes
+        pattern_words = 50  # 200 bytes
+        offset = 16
+        data = [0x12345678] * num_of_words  # Initial pattern to write
+        lib.write_words_to_device(location, 0, data)
+        self.assertEqual(lib.read_words_from_device(location, 0, word_count=num_of_words), data)
+        lib.write_words_to_device(
+            location, offset, [0xDEADBEEF] * pattern_words
+        )  # Overwrite part of the initial pattern
+        data[offset // 4 : offset // 4 + pattern_words] = [0xDEADBEEF] * pattern_words
+        self.assertEqual(lib.read_words_from_device(location, 0, word_count=num_of_words), data)
+
     def test_write_read_bytes_over_dma(self):
         """Test write bytes -- read bytes."""
         location_str = "1,0"
