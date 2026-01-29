@@ -273,19 +273,6 @@ class UmdDevice:
             self.__configure_working_active_eth()
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
 
-    def noc_read32(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, dma_threshold: int) -> int:
-        """Reads 4 bytes from address"""
-        self.__select_noc_id(noc_id)
-        result = self.__read_from_device_reg_unaligned(noc0_x, noc0_y, address, 4, True, dma_threshold)
-        return int.from_bytes(result, byteorder="little")
-
-    def noc_write32(self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: int, dma_threshold: int):
-        """Writes 4 bytes to address"""
-        self.__select_noc_id(noc_id)
-        self.__write_to_device_reg_unaligned(
-            noc0_x, noc0_y, address, data.to_bytes(4, byteorder="little"), True, dma_threshold
-        )
-
     def noc_read(
         self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool, dma_threshold: int
     ) -> bytes:
