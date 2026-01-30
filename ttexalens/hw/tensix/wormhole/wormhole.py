@@ -41,7 +41,9 @@ class WormholeDevice(Device):
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         super().__init__(id, umd_device, context)
         self.instructions = WormholeInstructions()
-        self._problematic_locations: dict[int, set[OnChipCoordinate]] = { # Per-NOC locations that can cause device hangs when accessed
+        self._problematic_locations: dict[
+            int, set[OnChipCoordinate]
+        ] = {  # Per-NOC locations that can cause device hangs when accessed
             1: {OnChipCoordinate.create("d0,0", self), OnChipCoordinate.create("d2,0", self)},
         }
 

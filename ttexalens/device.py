@@ -202,6 +202,7 @@ class Device:
             return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
 
         return self._with_noc_failover(noc_operation)
+
     # Get all remote devices that are connected to this local device
     @cached_property
     def remote_devices(self) -> list[Device]:
@@ -227,9 +228,7 @@ class Device:
             dma_threshold = self._context.dma_read_threshold
 
         def noc_operation(noc_id: int) -> bytes:
-            return self._umd_device.noc_read(
-                noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold
-            )
+            return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
 
         return self._with_noc_failover(noc_operation, noc_id)
 
