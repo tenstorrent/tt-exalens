@@ -170,11 +170,10 @@ class Device:
             return new_noc
 
     def _with_noc_failover(self, noc_operation: Callable[[int], T], noc_id: int | None = None) -> T:
-        explicit_noc = noc_id is not None
-        if explicit_noc or not self._context.noc_failover:
-            selected_noc = noc_id if explicit_noc else self._select_noc()
+        if noc_id is not None or not self._context.noc_failover:
+            selected_noc = noc_id if noc_id is not None else self._select_noc()
             return noc_operation(selected_noc)
-        
+
         while True:
             try:
                 selected_noc = self._select_noc()
