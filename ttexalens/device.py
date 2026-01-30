@@ -158,7 +158,7 @@ class Device:
             assert self.active_noc is not None, "When failing over, there must be an active NOC to failover from."
             self._noc_hung[self.active_noc] = True
 
-            # Check availability without re-acquiring lock
+            # Check availability
             new_noc = next((noc for noc, hung in self._noc_hung.items() if not hung), None)
             if new_noc is None:
                 self.active_noc = None
@@ -169,10 +169,16 @@ class Device:
             self.active_noc = new_noc
             return new_noc
 
-    def _with_noc_failover(self, operation: Callable[[], T]) -> T:
+    def _with_noc_failover(self, noc_operation: Callable[[int], T], noc_id: int | None = None) -> T:
+        explicit_noc = noc_id is not None
+        if explicit_noc or not self._context.noc_failover:
+            selected_noc = noc_id if explicit_noc else self._select_noc()
+            return noc_operation(selected_noc)
+        
         while True:
             try:
-                return operation()
+                selected_noc = self._select_noc()
+                return noc_operation(selected_noc)
             except TimeoutDeviceRegisterError:
                 self._failover_to_working_noc()  # Will raise NocUnavailableError when all NOCs exhausted
 
@@ -192,10 +198,11 @@ class Device:
 
     @cached_property
     def firmware_version(self):
-        noc_id = self._select_noc()
-        fw = self._umd_device.get_firmware_version(noc_id)
-        return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
+        def noc_operation(noc_id: int) -> util.FirmwareVersion:
+            fw = self._umd_device.get_firmware_version(noc_id)
+            return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
 
+        return self._with_noc_failover(noc_operation)
     # Get all remote devices that are connected to this local device
     @cached_property
     def remote_devices(self) -> list[Device]:
@@ -220,17 +227,12 @@ class Device:
         if dma_threshold is None:
             dma_threshold = self._context.dma_read_threshold
 
-        explicit_noc = noc_id is not None
-        if explicit_noc or not self._context.noc_failover:
-            noc_id = noc_id if noc_id is not None else self._select_noc()
-            return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
-
-        def operation() -> bytes:
+        def noc_operation(noc_id: int) -> bytes:
             return self._umd_device.noc_read(
-                self._select_noc(), noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold
+                noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold
             )
 
-        return self._with_noc_failover(operation)
+        return self._with_noc_failover(noc_operation, noc_id)
 
     def noc_read32(self, location: OnChipCoordinate, address: int, noc_id: int | None = None) -> int:
         result = self.noc_read(location, address, 4, noc_id, True)
@@ -252,15 +254,10 @@ class Device:
         if dma_threshold is None:
             dma_threshold = self._context.dma_write_threshold
 
-        explicit_noc = noc_id is not None
-        if explicit_noc or not self._context.noc_failover:
-            noc_id = noc_id if noc_id is not None else self._select_noc()
-            return self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
+        def noc_operation(noc_id: int) -> None:
+            self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
 
-        def operation() -> None:
-            self._umd_device.noc_write(self._select_noc(), noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
-
-        return self._with_noc_failover(operation)
+        return self._with_noc_failover(noc_operation, noc_id)
 
     def noc_write32(self, location: OnChipCoordinate, address: int, data: int, noc_id: int | None = None):
         return self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True)
@@ -282,9 +279,10 @@ class Device:
         return self._umd_device.arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
 
     def read_arc_telemetry_entry(self, noc_id: int | None, telemetry_tag: int) -> int:
-        if noc_id is None:
-            noc_id = self._select_noc()
-        return self._umd_device.read_arc_telemetry_entry(noc_id, telemetry_tag)
+        def noc_operation(noc_id: int) -> int:
+            return self._umd_device.read_arc_telemetry_entry(noc_id, telemetry_tag)
+
+        return self._with_noc_failover(noc_operation, noc_id)
 
     def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
         return self._umd_device.get_remote_transfer_eth_core()
