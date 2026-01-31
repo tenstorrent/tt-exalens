@@ -10,6 +10,7 @@ from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.quasar.functional_neo_block import QuasarFunctionalNeoBlock
 from ttexalens.hardware.quasar.noc_block import QuasarNocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
+from ttexalens.memory_map import MemoryMapBlockInfo
 from ttexalens.register_store import RegisterStore
 
 
@@ -47,6 +48,28 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             neo_id=3,
             neo_base_address=DeviceAddress(private_address=0x00800000, noc_address=0x01830000),
             risc_base_start_address=0x00030000,
+        )
+
+        self.noc_memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
+                MemoryMapBlockInfo("neo0.trisc0.data_private_memory", self.neo0.trisc0.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo0.trisc1.data_private_memory", self.neo0.trisc1.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo0.trisc2.data_private_memory", self.neo0.trisc2.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo0.trisc3.data_private_memory", self.neo0.trisc3.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo1.trisc0.data_private_memory", self.neo1.trisc0.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo1.trisc1.data_private_memory", self.neo1.trisc1.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo1.trisc2.data_private_memory", self.neo1.trisc2.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo1.trisc3.data_private_memory", self.neo1.trisc3.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo2.trisc0.data_private_memory", self.neo2.trisc0.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo2.trisc1.data_private_memory", self.neo2.trisc1.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo2.trisc2.data_private_memory", self.neo2.trisc2.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo2.trisc3.data_private_memory", self.neo2.trisc3.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo3.trisc0.data_private_memory", self.neo3.trisc0.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo3.trisc1.data_private_memory", self.neo3.trisc1.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo3.trisc2.data_private_memory", self.neo3.trisc2.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("neo3.trisc3.data_private_memory", self.neo3.trisc3.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+            ]
         )
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:

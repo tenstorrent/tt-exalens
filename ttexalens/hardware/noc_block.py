@@ -7,12 +7,15 @@ from abc import abstractmethod
 from functools import cache, cached_property
 from typing import TYPE_CHECKING
 
+from ttexalens.memory_map import MemoryMap
+
 if TYPE_CHECKING:
     from ttexalens.device import Device
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.debug_bus_signal_store import DebugBusSignalStore
     from ttexalens.hardware.risc_debug import RiscDebug
     from ttexalens.register_store import RegisterStore
+    from ttexalens.memory_map import MemoryMap
 
 
 class NocBlock:
@@ -20,6 +23,7 @@ class NocBlock:
         self.location = location
         self.block_type = block_type
         self.debug_bus = debug_bus
+        self.noc_memory_map: MemoryMap = MemoryMap()
 
     @property
     def device(self) -> Device:

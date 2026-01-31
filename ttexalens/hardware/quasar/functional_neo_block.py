@@ -6,10 +6,10 @@ from __future__ import annotations
 from functools import cache, cached_property
 from typing import Callable
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
-from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.quasar.baby_risc_debug import QuasarBabyRiscDebug
 from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import debug_bus_signal_map
 from ttexalens.hardware.quasar.functional_neo_registers import register_map
 from typing import TYPE_CHECKING
@@ -24,6 +24,9 @@ from ttexalens.register_store import (
 
 if TYPE_CHECKING:
     from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
+
+# TODO(#650) Once signals are grouped, we can remove type hint
+group_map: dict[str, tuple[int, int]] = {}
 
 
 def get_register_base_address_callable(
@@ -49,6 +52,9 @@ def get_register_base_address_callable(
     return get_register_base_address
 
 
+debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
+
+
 class QuasarFunctionalNeoBlock:
     def __init__(
         self,
@@ -62,7 +68,7 @@ class QuasarFunctionalNeoBlock:
 
         self.noc_block = noc_block
         self.neo_id = neo_id
-        self.debug_bus = DebugBusSignalStore(debug_bus_signal_map, noc_block, neo_id)
+        self.debug_bus = DebugBusSignalStore(debug_bus_signals_initialization, noc_block, neo_id)
         # TODO: This register initialization should be moved to global scope to avoid its calculation every time object is created
         # TODO: It should be done once Quasar is finalized and we know all about its hardware. For simulator we create only few of these blocks
         register_store_initialization = RegisterStore.create_initialization(
@@ -183,11 +189,11 @@ class QuasarFunctionalNeoBlock:
     def get_risc_debug(self, risc_name: str) -> RiscDebug:
         risc_name = risc_name.lower()
         if risc_name == self.trisc0.risc_name:
-            return BabyRiscDebug(self.trisc0)
+            return QuasarBabyRiscDebug(self.trisc0, neo_block=self)
         elif risc_name == self.trisc1.risc_name:
-            return BabyRiscDebug(self.trisc1)
+            return QuasarBabyRiscDebug(self.trisc1, neo_block=self)
         elif risc_name == self.trisc2.risc_name:
-            return BabyRiscDebug(self.trisc2)
+            return QuasarBabyRiscDebug(self.trisc2, neo_block=self)
         elif risc_name == self.trisc3.risc_name:
-            return BabyRiscDebug(self.trisc3)
+            return QuasarBabyRiscDebug(self.trisc3, neo_block=self)
         raise ValueError(f"RISC with name {risc_name} not found in NEO {self.neo_id}.")

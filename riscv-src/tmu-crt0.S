@@ -148,6 +148,11 @@ address_fix:
   mv      a1, sp
   mv      a2, zero
 
+  # Init coverage section so host knows it exists
+  #ifdef COVERAGE
+  call gcov_init
+  #endif
+
   call    main
 
   # Automatically dump gcda into L1 when main returns if built with coverage.

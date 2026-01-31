@@ -3,11 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 import io
 import os
+from ttexalens.context import Context
 
 
 class GdbFileServer:
-    def __init__(self, context):
-        self.opened_files: dict[int, io.BytesIO] = dict()
+    def __init__(self, context: Context):
+        self.opened_files: dict[int, io.BufferedIOBase] = dict()
         self._context = context
         self.next_fd = 1
 
@@ -21,7 +22,7 @@ class GdbFileServer:
 
     def open(self, filename: str, flags: int, mode: int) -> int | str:
         try:
-            content = self._context.server_ifc.get_binary(filename)
+            content = self._context.file_api.get_binary(filename)
             id = self.next_fd
 
             self.opened_files[id] = content

@@ -5,7 +5,10 @@
 // Simple program to test call stack printing
 #include <stdint.h>
 
-volatile uint32_t* g_MAILBOX = (volatile uint32_t*)0x64000;
+extern uint32_t* __firmware_end;
+
+volatile uint32_t* g_MAILBOX = (volatile uint32_t*)&__firmware_end;
+static volatile uint32_t g_MAILBOX_anchor __attribute__((used)) = (uint32_t)(uintptr_t)&g_MAILBOX;
 
 void halt() {
     // Halt core with ebreak
@@ -13,7 +16,8 @@ void halt() {
 }
 
 int f1(int a) {
-    if (a <= 1) {
+    constexpr int recursion_end = 1;
+    if (a <= recursion_end) {
         halt();
         return a;
     } else

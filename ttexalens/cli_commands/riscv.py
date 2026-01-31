@@ -44,28 +44,27 @@ Examples:
   riscv wchpt setw 0 0xc          # Set a write watchpoint
 """
 
-command_metadata = {
-    "short": "rv",
-    "type": "low-level",
-    "description": __doc__,
-    "context": ["limited", "metal"],
-    "common_option_names": ["--device", "--loc", "--risc"],
-}
-
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
 
-from ttexalens import command_parser
 from ttexalens import util as util
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
+
+command_metadata = CommandMetadata(
+    short_name="rv",
+    type="low-level",
+    description=__doc__,
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Risc],
+)
 
 
 def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, risc_name: str, args, was_all: bool):
     """
     Given a command trough args, run the corresponding RISC-V command
     """
-    where = f"{risc_name} {loc.to_str('logical')} [{device._id}]"
+    where = f"{risc_name} {loc.to_str('logical')} [{device.id}]"
 
     noc_block = device.get_block(loc)
     risc = noc_block.get_risc_debug(risc_name)
@@ -179,14 +178,13 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
             risc.set_reset_signal(False)
 
 
-def run(cmd_text, context, ui_state: UIState):
-    dopt = command_parser.tt_docopt(
-        command_metadata["description"],
-        argv=cmd_text.split()[1:],
-        common_option_names=command_metadata["common_option_names"],
-    )
-    for device in dopt.for_each("--device", context, ui_state):
-        for loc in dopt.for_each("--loc", context, ui_state, device=device):
-            for risc_name in dopt.for_each("--risc", context, ui_state, device=device, location=loc):
+def run(cmd_text: str, context: Context, ui_state: UIState):
+    dopt = tt_docopt(command_metadata, cmd_text)
+    device: Device
+    loc: OnChipCoordinate
+    risc_name: str
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
+            for risc_name in dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc):
                 run_riscv_command(context, device, loc, risc_name, dopt.args, was_all=dopt.args["-r"] == "all")
     return None

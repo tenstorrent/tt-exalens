@@ -11,7 +11,7 @@ OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv",
        "elf32-littleriscv")
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
-SEARCH_DIR("/opt/riscv32i/riscv32-tt-elf/lib");
+SEARCH_DIR("/opt/riscv32i/riscv-tt-elf/lib");
 
 MEMORY
 {
@@ -98,6 +98,7 @@ SECTIONS
   l1_data_noinit (NOLOAD) :
   {
     *(l1_data_noinit)
+    __firmware_end = .;
   } > REGION_CODE
   . = ALIGN(16);
   PROVIDE (__etext = .);

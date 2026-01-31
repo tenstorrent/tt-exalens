@@ -1,0 +1,58 @@
+name: "Release"
+
+on:
+  push:
+    branches:
+      - "main"
+    paths:
+      - "VERSION"
+
+run-name: "Release by @${{ github.actor }} for ${{ github.ref_name }}"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: "Build and release wheel of version specified in VERSION file"
+    uses: ./.github/workflows/release.yml
+
+  test-pypi-publish:
+    name: Upload release to Test PyPI
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    # Specifying a GitHub environment is optional, but strongly encouraged
+    environment: testpypi-release
+    permissions:
+      # IMPORTANT: this permission is mandatory for Trusted Publishing
+      id-token: write
+    steps:
+      - name: "Download wheel artifacts"
+        uses: actions/download-artifact@v4
+
+      - name: Publish package distributions to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: ttexalens_wheel
+
+  pypi-publish:
+    name: Upload release to PyPI
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    # Specifying a GitHub environment is optional, but strongly encouraged
+    environment:
+      name: Production PyPi release
+      url: https://pypi.org/p/tt-exalens
+    permissions:
+      # IMPORTANT: this permission is mandatory for Trusted Publishing
+      id-token: write
+    steps:
+      - name: "Download wheel artifacts"
+        uses: actions/download-artifact@v4
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: ttexalens_wheel
+          verbose: true

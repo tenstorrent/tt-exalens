@@ -3,12 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cache
+import tt_umd
 from ttexalens import util
+from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.noc_block import NocBlock
+from ttexalens.hardware.quasar.dram_block import QuasarDramBlock, QuasarDramBlockSim
 from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
-from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
+from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
+from ttexalens.umd_device import UmdDevice
 
 #
 # Device
@@ -24,8 +28,8 @@ class QuasarDevice(Device):
     NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
     NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
 
-    def __init__(self, id, arch, cluster_desc, device_desc_path, context):
-        super().__init__(id, arch, cluster_desc, device_desc_path, context)
+    def __init__(self, id: int, umd_device: UmdDevice, context: Context):
+        super().__init__(id, umd_device, context)
 
     def is_quasar(self) -> bool:
         return True
@@ -35,7 +39,12 @@ class QuasarDevice(Device):
         block_type = self.get_block_type(location)
         if block_type == "functional_workers":
             return QuasarFunctionalWorkerBlock(location)
+        elif block_type == "dram":
+            return QuasarDramBlock(location) if not self._umd_device.is_simulation else QuasarDramBlockSim(location)
         raise ValueError(f"Unsupported block type: {block_type}")
 
-    def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
-        raise NotImplementedError("Quasar does not have a Tensix configuration registers description yet.")
+    def get_tensix_registers_description(self) -> TensixRegisterDescription:
+        raise NotImplementedError("Quasar does not have a Tensix registers description yet.")
+
+    def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
+        raise NotImplementedError("Quasar does not have a Tensix debug bus description yet.")

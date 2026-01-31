@@ -1,4 +1,56 @@
 [build-system]
-# Minimum requirements for the build system to execute.
-requires = ["setuptools>=61.0", "nanobind", "typing-extensions"]
-build-backend = "setuptools.build_meta"
+requires = ["scikit-build-core>=0.5.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "tt-exalens"
+dynamic = ["version", "dependencies"]
+authors = [
+    { name = "Tenstorrent", email = "foundationsw-dbg@tenstorrent.com" }
+]
+description = "A low level hardware debugger"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+keywords = ["debugging", "tenstorrent"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Hardware",
+]
+
+[project.urls]
+"Homepage" = "https://tenstorrent.com"
+"Bug Reports" = "https://github.com/tenstorrent/tt-exalens/issues"
+"Source" = "https://github.com/tenstorrent/tt-exalens"
+"Documentation" = "https://github.com/tenstorrent/tt-exalens/blob/main/README.md"
+
+[project.scripts]
+tt-exalens = "ttexalens.cli:main"
+
+[tool.scikit-build]
+cmake.build-type = "Release"
+cmake.args = ["-DBUILD_PYTHON_WHEEL=ON", "-DSTRIP_SYMBOLS=ON"]
+wheel.install-dir = "ttexalens"
+wheel.packages = ["ttexalens"]
+wheel.py-api = "py3"
+wheel.platlib = false
+experimental = true
+# Install the python_wheel component for wheel packaging
+install.components = ["python_wheel"]
+
+[tool.scikit-build.metadata.version]
+provider = "scikit_build_core.metadata.regex"
+input = "VERSION"
+regex = "(?P<value>.*)"
+
+[tool.scikit-build.metadata.dependencies]
+provider = "pyproject_toml_parse_requirements"
+provider-path = "."

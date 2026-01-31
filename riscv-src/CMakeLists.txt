@@ -1,14 +1,16 @@
-cmake_minimum_required(VERSION 3.27)
-cmake_policy(VERSION 3.27)
+cmake_minimum_required(VERSION 3.22)
+cmake_policy(VERSION 3.22)
 
 project(RISCVProject LANGUAGES CXX ASM)
 
+option(DUMP_ELFS "Dump data using objdump and readelf" OFF)
+
 # Set toolchain and tools
 set(TOOL_PATH "${SFPI_RELEASE_PATH}/compiler/bin")
-set(GXX "${TOOL_PATH}/riscv32-tt-elf-g++")
-set(OBJDUMP "${TOOL_PATH}/riscv32-tt-elf-objdump")
-set(OBJCOPY "${TOOL_PATH}/riscv32-tt-elf-objcopy")
-set(READELF "${TOOL_PATH}/riscv32-tt-elf-readelf")
+set(GXX "${TOOL_PATH}/riscv-tt-elf-g++")
+set(OBJDUMP "${TOOL_PATH}/riscv-tt-elf-objdump")
+set(OBJCOPY "${TOOL_PATH}/riscv-tt-elf-objcopy")
+set(READELF "${TOOL_PATH}/riscv-tt-elf-readelf")
 
 # Compiler options for optimized builds
 set(OPTIMIZED_OPTIONS_ALL -O3 -mabi=ilp32 -std=c++17 -g -ffast-math -flto)
@@ -26,13 +28,13 @@ set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section -DCOVERAGE)
 
 # Define project paths: source files, ELFs, and object files
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
-set(RISCV_OUTPUT "${CMAKE_SOURCE_DIR}/build_riscv")
-set(RISCV_OBJECT "${CMAKE_BINARY_DIR}/obj/riscv-src")
+set(RISCV_OUTPUT "${CMAKE_SOURCE_DIR}/build/riscv-src")
+set(RISCV_OBJECT "${CMAKE_SOURCE_DIR}/build/riscv-src/obj")
 
 # Define architectures, applications, and cores
 set(RISCV_ARCHITECTURES "wormhole" "blackhole")
-set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc")
-set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "dprint")
+set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc" "erisc0" "erisc1")
+set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "edge_mem_test" "dprint")
 
 # Create the object file output directory
 file(MAKE_DIRECTORY ${RISCV_OBJECT})
@@ -130,25 +132,35 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
     add_custom_target("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" ALL
         DEPENDS ${OUTPUT_ELF})
 
-    add_custom_command(
-        OUTPUT ${OUTPUT_OBJDUMP} ${OUTPUT_DWARF}
-        COMMAND ${OBJDUMP} -d -s -S ${OUTPUT_ELF} > ${OUTPUT_OBJDUMP}
-        COMMAND ${OBJDUMP} -t ${OUTPUT_ELF} | sort >> ${OUTPUT_OBJDUMP}
-        COMMAND ${READELF} --debug-dump ${OUTPUT_ELF} > ${OUTPUT_DWARF}
-        DEPENDS ${OUTPUT_ELF}
-        COMMENT "Generating dump and disassembly for ${OUTPUT_ELF}"
-    )
+    if(DUMP_ELFS)
+        add_custom_command(
+            OUTPUT ${OUTPUT_OBJDUMP} ${OUTPUT_DWARF}
+            COMMAND ${OBJDUMP} -d -s -S ${OUTPUT_ELF} > ${OUTPUT_OBJDUMP}
+            COMMAND ${OBJDUMP} -t ${OUTPUT_ELF} | sort >> ${OUTPUT_OBJDUMP}
+            COMMAND ${READELF} --debug-dump ${OUTPUT_ELF} > ${OUTPUT_DWARF}
+            DEPENDS ${OUTPUT_ELF}
+            COMMENT "Generating dump and disassembly for ${OUTPUT_ELF}"
+        )
 
-    add_custom_target("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis" ALL
-        DEPENDS ${OUTPUT_OBJDUMP} ${OUTPUT_DWARF})
+        add_custom_target("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis" ALL
+            DEPENDS ${OUTPUT_OBJDUMP} ${OUTPUT_DWARF})
 
-    add_dependencies("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" "${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis")
+        add_dependencies("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" "${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis")
+    endif()
 endfunction()
 
 # Create targets for all architectures, applications, and cores
 foreach(CORE ${RISCV_CORES})
     foreach(APP ${RISCV_APPS})
         foreach(ARCH ${RISCV_ARCHITECTURES})
+            if (ARCH STREQUAL "blackhole" AND CORE MATCHES "^erisc$")
+                # Skip invalid combinations of blackhole architecture with erisc cores
+                continue()
+            endif()
+            if (ARCH STREQUAL "wormhole" AND (CORE MATCHES "^erisc0$" OR CORE MATCHES "^erisc1$"))
+                # Skip invalid combinations of wormhole architecture with erisc0 and erisc1 cores
+                continue()
+            endif()
             foreach(BUILD_TYPE debug release coverage)
                 create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE})
             endforeach()

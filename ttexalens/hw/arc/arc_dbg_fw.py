@@ -7,7 +7,7 @@ import os
 import time
 from ttexalens.context import Context
 from ttexalens.util import TTException
-from ttexalens.tt_exalens_lib_utils import check_context
+from ttexalens.tt_exalens_lib import check_context
 
 
 def arc_dbg_fw_get_buffer_start_addr():
@@ -44,7 +44,7 @@ def arc_dbg_fw_send_message(
     # // +-----------+-----------+-----------+-----------+
     context = check_context(context)
 
-    device = context.devices[device_id]
+    device = context.find_device_by_id(device_id)
     arc_register_store = device.arc_block.get_register_store()
 
     arc_register_store.write_register("ARC_RESET_SCRATCH3", arg0)
@@ -59,7 +59,7 @@ def arc_dbg_fw_check_msg_loop_running(device_id: int = 0, context: Context | Non
     """
     context = check_context(context)
 
-    device = context.devices[device_id]
+    device = context.find_device_by_id(device_id)
     arc_register_store = device.arc_block.get_register_store()
 
     arc_dbg_fw_send_message(0x88, 0, 0, device_id, context)

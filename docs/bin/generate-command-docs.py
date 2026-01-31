@@ -37,11 +37,12 @@ import sys, re, os, importlib.util
 from docopt import docopt
 
 # We need to import common options as they are sometimes injected into the docstrings
-from ttexalens.command_parser import tt_docopt
+from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
-OPTIONS = tt_docopt.OPTIONS
-for opt in OPTIONS.keys():
-    OPTIONS[opt]["arg"] = OPTIONS[opt].get("arg", "").replace("<", "\<").replace(">", "\>")
+OPTIONS = tt_docopt.COMMON_OPTIONS
+for opt in OPTIONS:
+    opt.argument = opt.argument.replace("<", "\<").replace(">", "\>")
+
 
 # We limit what each example can output to avoid spamming the user
 MAX_OUTPUT_LINES = 20  # Max number of lines to show for each example
@@ -52,7 +53,7 @@ from .doc_utils import SectionPPrinter, INFO, WARNING, ERROR
 
 
 class CmdParser:
-    def __init__(self, valid_sections: list = None, section_parsers: dict = None):
+    def __init__(self, valid_sections: list | None = None, section_parsers: dict | None = None):
         """The parser class for TTExaLens command docstrings.
 
         Args:
@@ -75,7 +76,7 @@ class CmdParser:
                 "Examples": self.parse_examples,
             }
 
-    def parse(self, cmd_doc: str, common_options: list = None) -> dict:
+    def parse(self, cmd_doc: str, common_options: list[CommonCommandOptions] | None = None) -> dict:
         result = {}
 
         # We expect each section to be separated by a blank line
@@ -121,20 +122,20 @@ class CmdParser:
 
         for line in lines[1:]:
             # Arguments are separated from their descriptions by multiple spaces
-            line = re.split(r"\s{2,}", line)
-            if len(line) > 1:
+            sline = re.split(r"\s{2,}", line)
+            if len(sline) > 1:
                 # We have both argument and description
-                arg = line[0]
-                result[arg] = {"description": line[1]}
+                arg = sline[0]
+                result[arg] = {"description": sline[1]}
             else:
                 # We only have the description, so we append it to the last argument
-                result[arg]["description"] += " " + line[0]
+                result[arg]["description"] += " " + sline[0]
 
         return result
 
     def parse_options(self, help: str) -> dict:
         # This function builds an option dictionary akin to one in the commands module
-        result = {}
+        result: dict = {}
         lines = [line.strip() for line in help.split("\n")]
 
         # Create a list of strings, where each string is an option with its description
@@ -212,14 +213,20 @@ class CmdParser:
 
         return result
 
-    def parse_common_options(self, common_options: list) -> dict:
+    def parse_common_options(self, common_options: list[CommonCommandOptions]) -> dict:
         # Common options are extracted from command metadata
         result = {}
         for option in common_options:
-            if option not in OPTIONS:
+            try:
+                metadata = tt_docopt.find_common_option_metadata(option)
+                result[option.value] = {
+                    "short": metadata.short_name,
+                    "arg": metadata.argument,
+                    "description": metadata.description,
+                }
+            except ValueError:
                 WARNING(f"Invalid option name: {option}. Skipping...")
                 continue
-            result[option] = OPTIONS[option]
 
         return result
 
@@ -246,7 +253,7 @@ class CmdPPrinter(SectionPPrinter):
         return self.eprinter.print_section(cmd_data["title"], result, 2)
 
 
-def get_module_metadata(module_path: os.PathLike) -> dict:
+def get_module_metadata(module_path: str) -> CommandMetadata:
     """
     Fetch a module from a given filepath and get its docstring and metadata.
 
@@ -259,45 +266,45 @@ def get_module_metadata(module_path: os.PathLike) -> dict:
     module_name = os.path.splitext(os.path.basename(module_path))[0]
 
     spec = importlib.util.spec_from_file_location(module_name, module_path)
-    if spec is None:
+    if spec is None or spec.loader is None:
         raise ImportError(f"Cannot find module at path: {module_path}")
 
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
 
-    return module.command_metadata
+    return module.command_metadata  # type: ignore
 
 
-def parse_source_file(input_file: os.PathLike, parser: CmdParser = CmdParser()) -> str:
+def parse_source_file(input_file: str, parser: CmdParser = CmdParser()) -> dict | None:
     INFO(f"Parsing {input_file}...")
-    result = {}
+    result: dict = {}
 
     cmd_metadata = get_module_metadata(input_file)
-    cmd_doc = cmd_metadata["description"]
+    cmd_doc = cmd_metadata.description if cmd_metadata.description else ""
 
-    if cmd_metadata["type"] == "dev":
+    if cmd_metadata.type is not None and cmd_metadata.type == "dev":
         WARNING(f"Skipping {input_file} as it is a dev command")
         return None
-    if "limited" not in cmd_metadata["context"]:
-        WARNING(f"Skipping {input_file} as it is not a limited command (context: {cmd_metadata['context']})")
+    if cmd_metadata.context is not None and "limited" not in cmd_metadata.context:
+        WARNING(f"Skipping {input_file} as it is not a limited command (context: {cmd_metadata.context})")
         return None
 
     # Add command name as title
     result["title"] = ""
     # Get the command name in long/short format, or long or short if only one is provided
-    if cmd_metadata.get("long"):
-        result["title"] += f"{cmd_metadata['long']}"
-    if cmd_metadata.get("short"):
-        if cmd_metadata.get("long"):
+    if cmd_metadata.long_name:
+        result["title"] += f"{cmd_metadata.long_name}"
+    if cmd_metadata.short_name:
+        if cmd_metadata.long_name:
             result["title"] += " / "
-        result["title"] += f"{cmd_metadata['short']}"
+        result["title"] += f"{cmd_metadata.short_name}"
 
-    result["docs"] = parser.parse(cmd_doc, cmd_metadata.get("common_option_names", None))
+    result["docs"] = parser.parse(cmd_doc, cmd_metadata.common_option_names)
 
     return result
 
 
-def parse_directory(root: os.PathLike, parser: CmdParser = CmdParser(), interactive: bool = False) -> str:
+def parse_directory(root: str, parser: CmdParser = CmdParser(), interactive: bool = False) -> list[dict]:
 
     result = []
     for file in sorted(os.listdir(root)):
@@ -328,7 +335,10 @@ if __name__ == "__main__":
         ERROR("Invalid input. Please provide a valid file or directory.")
         sys.exit(1)
     elif isfile:
-        parser_result = [parse_source_file(args["<input>"])]
+        parsed = parse_source_file(args["<input>"])
+        if parsed is None:
+            sys.exit(0)
+        parser_result = [parsed]
     elif isdir:
         parser_result = parse_directory(args["<input>"], interactive=args["--interactive"])
 

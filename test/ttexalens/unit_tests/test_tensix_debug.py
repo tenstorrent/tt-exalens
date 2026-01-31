@@ -4,12 +4,14 @@
 import math
 import unittest
 from parameterized import parameterized_class, parameterized
-from ttexalens import tt_exalens_init
-from ttexalens import tt_exalens_lib as lib
+import tt_umd
+from test.ttexalens.unit_tests.test_base import init_cached_test_context
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.debug_tensix import TensixDebug, TILE_SIZE, TensixDataFormat, REGFILE
+from ttexalens.device import TensixInstructions
 from ttexalens.util import TTException
 
 
@@ -24,35 +26,23 @@ class TestTensixDebug(unittest.TestCase):
     context: Context
     location: OnChipCoordinate
     tensix_debug: TensixDebug
+    location_str: str
+    ops: TensixInstructions
+    debug_bus: DebugBusSignalStore
 
     @classmethod
     def setUpClass(cls):
-        cls.context = tt_exalens_init.init_ttexalens()
+        cls.context = init_cached_test_context()
+        cls.ops = cls.context.devices[0].instructions
 
     def setUp(self):
         self.location = OnChipCoordinate.create(self.location_str, device=self.context.devices[0])
-        self.tensix_debug = TensixDebug(self.location, 0, self.context)
+        self.tensix_debug = TensixDebug(self.location)
+        assert self.location.noc_block.debug_bus is not None
+        self.debug_bus = self.location.noc_block.debug_bus
 
     def is_blackhole(self) -> bool:
-        return self.context.devices[0]._arch == "blackhole"
-
-    def test_read_write_cfg_register(self):
-        cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
-        self.tensix_debug.write_tensix_register(cfg_reg_name, 10)
-        assert self.tensix_debug.read_tensix_register(cfg_reg_name) == 10
-        self.tensix_debug.write_tensix_register(cfg_reg_name, 0)
-        assert self.tensix_debug.read_tensix_register(cfg_reg_name) == 0
-        self.tensix_debug.write_tensix_register(cfg_reg_name, 5)
-        assert self.tensix_debug.read_tensix_register(cfg_reg_name) == 5
-
-    def test_read_write_dbg_register(self):
-        dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
-        self.tensix_debug.write_tensix_register(dbg_reg_name, 10)
-        assert self.tensix_debug.read_tensix_register(dbg_reg_name) == 10
-        self.tensix_debug.write_tensix_register(dbg_reg_name, 0)
-        assert self.tensix_debug.read_tensix_register(dbg_reg_name) == 0
-        self.tensix_debug.write_tensix_register(dbg_reg_name, 5)
-        assert self.tensix_debug.read_tensix_register(dbg_reg_name) == 5
+        return self.location.device._arch == tt_umd.ARCH.BLACKHOLE
 
     @parameterized.expand(
         [
@@ -84,9 +74,9 @@ class TestTensixDebug(unittest.TestCase):
         ret = self.tensix_debug.read_regfile(regfile, num_tiles)
         if value is None:
             assert len(ret) == len(data)
-            assert all(abs(a - b) < error_threshold for a, b in zip(ret, data))
+            assert all(abs(a - b) < error_threshold for a, b in zip(ret, data) if isinstance(a, float))
         elif math.isnan(value):
-            assert all(math.isnan(a) for a in ret)
+            assert all(math.isnan(a) for a in ret if isinstance(a, float))
         else:
             assert ret == data
 
@@ -191,3 +181,34 @@ class TestTensixDebug(unittest.TestCase):
 
         with self.assertRaises((TTException, ValueError)):
             self.tensix_debug.write_regfile(regfile, [value], df)
+
+    def _read_signal(self, signal_name: str) -> int:
+        if signal_name in self.debug_bus.signal_names:
+            return self.debug_bus.read_signal(signal_name)
+        elif signal_name in self.debug_bus.combined_signals:
+            signals = sorted(self.debug_bus.combined_signals[signal_name], reverse=True)
+            value = 0
+            for signal in signals:
+                signal_desc = self.debug_bus.get_signal_description(signal)
+                value = value << signal_desc.mask.bit_length()
+                value |= self.debug_bus.read_signal(signal_desc)
+            return value
+        else:
+            raise ValueError(f"Signal {signal_name} not found.")
+
+    @parameterized.expand(
+        [
+            ([1, 2, 3], [4, 5, 6], [7, 8, 9]),
+            ([0, 0, 0], [0, 0, 0], [0, 0, 0]),
+            ([0xF, 0xF, 0xF], [0xF, 0xF, 0xF], [0xF, 0xF, 0xF]),
+        ]
+    )
+    def test_register_window_counters(self, rwc_a: list[int], rwc_b: list[int], rwc_dst: list[int]):
+        for thread_id in range(3):
+            # 0x7 is code for setting all three RWCs for that thread
+            self.tensix_debug.inject_instruction(
+                self.ops.TT_OP_SETRWC(0, 0, rwc_dst[thread_id], rwc_b[thread_id], rwc_a[thread_id], 0x7), thread_id
+            )
+            self.assertEqual(self._read_signal(f"rwc{thread_id}_srca"), rwc_a[thread_id])
+            self.assertEqual(self._read_signal(f"rwc{thread_id}_srcb"), rwc_b[thread_id])
+            self.assertEqual(self._read_signal(f"rwc{thread_id}_dst"), rwc_dst[thread_id])

@@ -28,7 +28,7 @@ typedef void (*gcov_merge_fn)(gcov_type *, gcov_unsigned_t);
 
 #define GCOV_WORD_SIZE 4
 #define GCOV_TAG_FUNCTION_LENGTH (3 * GCOV_WORD_SIZE)
-#define GCOV_VERSION 0x4232342a  // for GCC 12.4.0
+#define GCOV_VERSION 0x4235312A  // for GCC 15.1.0
 #define GCOV_TAG_FUNCTION ((gcov_unsigned_t)0x01000000)
 #define GCOV_TAG_COUNTER_BASE ((gcov_unsigned_t)0x01a10000)
 #define GCOV_DATA_MAGIC ((gcov_unsigned_t)0x67636461)

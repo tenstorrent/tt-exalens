@@ -2,17 +2,21 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from functools import cache
+import tt_umd
+from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
-from ttexalens.hardware.tensix_configuration_registers_description import TensixConfigurationRegistersDescription
+from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
 from ttexalens.hardware.wormhole.arc_block import WormholeArcBlock
 from ttexalens.hardware.wormhole.dram_block import WormholeDramBlock
 from ttexalens.hardware.wormhole.eth_block import WormholeEthBlock
-from ttexalens.hardware.wormhole.functional_worker_registers import configuration_registers_descriptions
+from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import tensix_debug_bus_description
+from ttexalens.hardware.wormhole.functional_worker_registers import tensix_registers_descriptions
 from ttexalens.hardware.wormhole.functional_worker_block import WormholeFunctionalWorkerBlock
 from ttexalens.hardware.wormhole.harvested_worker_block import WormholeHarvestedWorkerBlock
 from ttexalens.hardware.wormhole.pcie_block import WormholePcieBlock
 from ttexalens.hardware.wormhole.router_only_block import WormholeRouterOnlyBlock
+from ttexalens.umd_device import UmdDevice
 import ttexalens.util as util
 from ttexalens.device import TensixInstructions, Device
 
@@ -34,18 +38,8 @@ class WormholeDevice(Device):
     NOC_0_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_0_X)
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
 
-    EFUSE_PCI = 0x1FF42200
-    EFUSE_JTAG_AXI = 0x80042200
-    EFUSE_NOC = 0x880042200
-
-    def __init__(self, id, arch, cluster_desc, device_desc_path, context):
-        super().__init__(
-            id,
-            arch,
-            cluster_desc,
-            device_desc_path,
-            context,
-        )
+    def __init__(self, id: int, umd_device: UmdDevice, context: Context):
+        super().__init__(id, umd_device, context)
         self.instructions = WormholeInstructions()
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
@@ -73,8 +67,11 @@ class WormholeDevice(Device):
             return WormholeRouterOnlyBlock(location)
         raise ValueError(f"Unsupported block type: {block_type}")
 
-    def get_tensix_configuration_registers_description(self) -> TensixConfigurationRegistersDescription:
-        return configuration_registers_descriptions
+    def get_tensix_registers_description(self) -> TensixRegisterDescription:
+        return tensix_registers_descriptions
+
+    def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
+        return tensix_debug_bus_description
 
 
 # end of class WormholeDevice

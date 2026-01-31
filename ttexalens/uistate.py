@@ -13,12 +13,13 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from ttexalens.context import Context
 from ttexalens.gdb.gdb_server import GdbServer, ServerSocket
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.tt_exalens_server import TTExaLensServer, start_server
+from ttexalens.server import TTExaLensServer, start_server
 
 
 class TTExaLensCompleter(Completer):
     def __init__(self, context: Context):
-        self.commands = [cmd["long"] for cmd in context.commands] + [cmd["short"] for cmd in context.commands]
+        commands = [cmd.long_name for cmd in context.commands] + [cmd.short_name for cmd in context.commands]
+        self.commands = [c for c in commands if c is not None]
         self.context = context
 
     # Given a piece of a command, find all possible completions
@@ -72,7 +73,7 @@ class UIState:
 
         # Create prompt object.
         self.is_prompt_session = sys.stdin.isatty()
-        self.prompt_session: PromptSession | SimplePromptSession = (
+        self.prompt_session: PromptSession[str] | SimplePromptSession = (
             PromptSession(completer=TTExaLensCompleter(context)) if self.is_prompt_session else SimplePromptSession()
         )
 
@@ -92,7 +93,7 @@ class UIState:
             app = get_app()
             app.invalidate()
 
-    def start_gdb(self, port: int):
+    def start_gdb(self, port: int | None = None):
         if self.gdb_server is not None:
             self.gdb_server.stop()
         server = ServerSocket(port)
@@ -112,7 +113,7 @@ class UIState:
             self.ttexalens_server.stop()
         if port is None:
             port = 5555
-        self.ttexalens_server = start_server(port, self.context.server_ifc)
+        self.ttexalens_server = start_server(port, self.context)
 
     def stop_server(self):
         if self.ttexalens_server is not None:

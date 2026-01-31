@@ -1,7 +1,7 @@
-set(SFPI_DOWNLOAD_URL "https://github.com/tenstorrent/sfpi/releases/download/v6.11.1/sfpi-x86_64_Linux.txz")
-set(SFPI_MD5_HASH "14ade50b3fdf3fff5078195332edc15a")
-set(SFPI_LOCAL_FILE "${TTEXALENS_HOME}/build_riscv/sfpi-x86_64_Linux-v6.11.1.txz")
-set(SFPI_RELEASE_PATH "${TTEXALENS_HOME}/build_riscv/sfpi")
+set(SFPI_DOWNLOAD_URL "https://github.com/tenstorrent/sfpi/releases/download/7.7.0/sfpi_7.7.0_x86_64_debian.txz")
+set(SFPI_MD5_HASH "56ce59c0945264abc4e89159d0f6d4e8")
+set(SFPI_LOCAL_FILE "${TTEXALENS_HOME}/build/sfpi_7.7.0_x86_64_debian.txz")
+set(SFPI_RELEASE_PATH "${TTEXALENS_HOME}/build/sfpi")
 
 if(NOT EXISTS "${SFPI_LOCAL_FILE}")
     message(STATUS "Downloading sfpi release")
