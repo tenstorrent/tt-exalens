@@ -204,6 +204,15 @@ struct static_string {
         return arr;
     }
 
+    // Helper to create a compact array of the actual used size
+    template <std::size_t... Is>
+    constexpr std::array<char, sizeof...(Is)> to_compact_array_impl(std::index_sequence<Is...>) const {
+        return {{data[Is]...}};
+    }
+
+    // Returns an array sized exactly to fit the string content (size + 1 for null terminator)
+    constexpr auto to_compact_array() const { return to_compact_array_impl(std::make_index_sequence<size + 1>{}); }
+
     template <std::size_t M>
     constexpr bool check(const char (&expected)[M]) const {
         if (size != M - 1) return false;
@@ -215,6 +224,104 @@ struct static_string {
 
     constexpr const char* c_str() const { return data; }
 };
+
+// Helper to check if a character is a digit
+constexpr bool is_digit(char c) { return c >= '0' && c <= '9'; }
+
+// Helper struct to return both parsed value and new position
+struct ParseResult {
+    int value;
+    std::size_t new_pos;
+};
+
+// Helper to parse an integer from format string starting at position i
+// Returns the parsed value and the new position after the digits
+constexpr ParseResult parse_index(const char* format, std::size_t i, std::size_t format_len) {
+    int value = 0;
+    std::size_t pos = i;
+    while (pos < format_len && is_digit(format[pos])) {
+        value = value * 10 + (format[pos] - '0');
+        ++pos;
+    }
+    return ParseResult{value, pos};
+}
+
+// Helper to detect if format string uses indexed placeholders ({0}, {1}, etc.)
+// Returns true if ANY placeholder has an index
+template <std::size_t N>
+constexpr bool has_indexed_placeholders(const char (&format)[N]) {
+    for (std::size_t i = 0; i < N - 1; ++i) {
+        if (format[i] == '{' && i + 1 < N - 1) {
+            if (is_digit(format[i + 1])) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// Helper to check for mixed placeholder styles (both {} and {N})
+// This should fail validation per fmtlib rules
+template <std::size_t N>
+constexpr bool has_mixed_placeholders(const char (&format)[N]) {
+    bool found_indexed = false;
+    bool found_unindexed = false;
+
+    for (std::size_t i = 0; i < N - 1; ++i) {
+        if (format[i] == '{' && i + 1 < N - 1) {
+            if (is_digit(format[i + 1])) {
+                found_indexed = true;
+            } else if (format[i + 1] == '}') {
+                found_unindexed = true;
+            }
+            if (found_indexed && found_unindexed) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// Helper to validate that all arguments are referenced in indexed format
+// Returns true if all argument indices from 0 to arg_count-1 are used at least once
+template <std::size_t N>
+constexpr bool all_arguments_referenced(const char (&format)[N], std::size_t arg_count) {
+    if (arg_count == 0) return true;
+
+    // Track which arguments are referenced (up to 32 arguments)
+    bool referenced[32] = {};
+    if (arg_count > 32) return false;  // Limit for simplicity
+
+    for (std::size_t i = 0; i < N - 1; ++i) {
+        if (format[i] == '{' && i + 1 < N - 1 && is_digit(format[i + 1])) {
+            ParseResult result = parse_index(format, i + 1, N - 1);
+            if (result.value >= 0 && static_cast<std::size_t>(result.value) < arg_count) {
+                referenced[result.value] = true;
+            }
+        }
+    }
+
+    // Check that all arguments from 0 to arg_count-1 are referenced
+    for (std::size_t i = 0; i < arg_count; ++i) {
+        if (!referenced[i]) return false;
+    }
+    return true;
+}
+
+// Helper to find the maximum index used in format string
+template <std::size_t N>
+constexpr int get_max_index(const char (&format)[N]) {
+    int max_index = -1;
+    for (std::size_t i = 0; i < N - 1; ++i) {
+        if (format[i] == '{' && i + 1 < N - 1 && is_digit(format[i + 1])) {
+            ParseResult result = parse_index(format, i + 1, N - 1);
+            if (result.value > max_index) {
+                max_index = result.value;
+            }
+        }
+    }
+    return max_index;
+}
 
 // Helper to count placeholders in format string at compile time
 template <std::size_t N>
@@ -230,15 +337,21 @@ constexpr std::size_t count_placeholders(const char (&format)[N]) {
 }
 
 // Main function to update format string with type information
+// Supports both {} and {N} placeholder styles (fmtlib-compatible)
 template <std::size_t N, typename... Args>
 constexpr auto update_format_string(const char (&format)[N]) {
     constexpr std::size_t format_len = N - 1;  // Exclude null terminator
     constexpr std::size_t arg_count = sizeof...(Args);
 
-    // Note: Validation of placeholder count vs argument count should be done separately
-    // due to constexpr limitations with the RISC-V compiler
+    // Detect if we're using indexed placeholders
+    bool indexed = has_indexed_placeholders(format);
 
-    constexpr std::size_t result_len = format_len + sizeof...(Args);  // Each {} becomes {x}, so +1 per placeholder
+    // Calculate maximum result length:
+    // - Original format length
+    // - Each {} or {N} can add at most 2 extra characters (":X")
+    // - Assuming worst case of format_len/2 placeholders (every other char is {)
+    // Use a reasonable upper bound
+    constexpr std::size_t result_len = format_len + (format_len / 2 + 1) * 2;
 
     static_string<result_len> result;
 
@@ -246,16 +359,46 @@ constexpr auto update_format_string(const char (&format)[N]) {
     std::size_t type_index = 0;
 
     for (std::size_t i = 0; i < format_len; ++i) {
-        if (format[i] == '{' && i + 1 < format_len && format[i + 1] == '}') {
-            // Replace {} with {type_char}
+        if (format[i] == '{' && i + 1 < format_len) {
+            // Determine the argument index for this placeholder
+            int arg_index = -1;
+            std::size_t closing_brace_pos = i + 1;
+
+            if (indexed && is_digit(format[i + 1])) {
+                // Indexed placeholder: parse the explicit index
+                ParseResult parse_result = parse_index(format, i + 1, format_len);
+                arg_index = parse_result.value;
+                closing_brace_pos = parse_result.new_pos;
+            } else if (!indexed && format[i + 1] == '}') {
+                // Non-indexed placeholder: use auto-incrementing index
+                arg_index = type_index++;
+                closing_brace_pos = i + 1;
+            } else {
+                // Not a placeholder, just a regular '{' character
+                result.push_back(format[i]);
+                continue;
+            }
+
+            // Unified handling for both indexed and non-indexed: output {index:type}
             result.push_back('{');
-            if (type_index < sizeof...(Args)) {
-                result.push_back(type_chars[type_index++]);
+
+            // Output the index
+            if (arg_index >= 10) {
+                result.push_back('0' + (arg_index / 10));
+            }
+            result.push_back('0' + (arg_index % 10));
+
+            // Add colon and type character
+            result.push_back(':');
+            if (arg_index >= 0 && static_cast<std::size_t>(arg_index) < sizeof...(Args)) {
+                result.push_back(type_chars[arg_index]);
             } else {
                 result.push_back('?');  // Fallback for extra placeholders
             }
             result.push_back('}');
-            ++i;  // Skip the '}'
+
+            // Move past the closing brace
+            i = closing_brace_pos;
         } else {
             result.push_back(format[i]);
         }
@@ -439,8 +582,8 @@ constexpr std::size_t count_arguments(const Args&... args) {
 #define UPDATED_STRING_INDEX(var, format, ...)                                                                \
     {                                                                                                         \
         constexpr auto updated_format = dprint_detail::update_format_string_from_args(format, ##__VA_ARGS__); \
-        static const std::array<char, updated_format.size + 1> allocated_string                               \
-            __attribute__((section("dprint_strings"), used)) = updated_format.to_array();                     \
+        static const auto allocated_string __attribute__((section("dprint_strings"), used)) =                 \
+            updated_format.to_array();                                                                        \
         static const char* allocated_string_in_table __attribute__((section("dprint_strings_index"), used)) = \
             allocated_string.data();                                                                          \
     }                                                                                                         \
@@ -448,8 +591,23 @@ constexpr std::size_t count_arguments(const Args&... args) {
 
 #define DPRINT(format, ...)                                                                                            \
     {                                                                                                                  \
-        static_assert(dprint_detail::count_placeholders(format) == dprint_detail::count_arguments(__VA_ARGS__),        \
+        /* Validate placeholder format */                                                                              \
+        static_assert(!dprint_detail::has_mixed_placeholders(format),                                                  \
+                      "Cannot mix indexed ({0}) and non-indexed ({}) placeholders in the same format string");         \
+        /* For non-indexed placeholders, count must match argument count */                                            \
+        static_assert(dprint_detail::has_indexed_placeholders(format) ||                                               \
+                          dprint_detail::count_placeholders(format) == dprint_detail::count_arguments(__VA_ARGS__),    \
                       "Number of {} placeholders must match number of arguments");                                     \
+        /* For indexed placeholders, validate all arguments are referenced */                                          \
+        static_assert(                                                                                                 \
+            !dprint_detail::has_indexed_placeholders(format) ||                                                        \
+                dprint_detail::all_arguments_referenced(format, dprint_detail::count_arguments(__VA_ARGS__)),          \
+            "All arguments must be referenced when using indexed placeholders");                                       \
+        /* For indexed placeholders, validate no index exceeds argument count */                                       \
+        static_assert(                                                                                                 \
+            !dprint_detail::has_indexed_placeholders(format) ||                                                        \
+                dprint_detail::get_max_index(format) < static_cast<int>(dprint_detail::count_arguments(__VA_ARGS__)),  \
+            "Placeholder index exceeds number of arguments");                                                          \
         UPDATED_STRING_INDEX(dprint_format_index, format, __VA_ARGS__);                                                \
         using format_index_t = uint8_t;                                                                                \
         static_assert(dprint_format_index <= std::numeric_limits<format_index_t>::max(),                               \
