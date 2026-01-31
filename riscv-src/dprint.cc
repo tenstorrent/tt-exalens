@@ -37,6 +37,22 @@ void test_indexed_placeholders(int n) {
     DPRINT("Order: {1}, {0}\n", n, 5);
 }
 
+void test_escaped_braces(int n) {
+    // Test escaped braces (fmtlib-style: {{ and }} preserved in format, host interprets them)
+
+    // Test 1: Escaped braces around placeholder
+    DPRINT("{{n = {0}}}\n", n);  // Host interprets format to output: {n = VALUE}
+
+    // Test 2: Escaped closing braces only
+    DPRINT("n = {0}}}\n", n);  // Host interprets format to output: n = VALUE}
+
+    // Test 3: Escaped opening braces only
+    DPRINT("{{n = {0}\n", n);  // Host interprets format to output: {n = VALUE
+
+    // Test 4: Escaped braces that look like empty placeholder - should not trigger mixed validation error
+    DPRINT("{{}}, n = {0}\n", n);  // Host interprets format to output: {}, n = VALUE
+}
+
 void dprint_message_size_tests() {
     // Compile-time tests for calculate_dprint_message_size
     static_assert(dprint_detail::calculate_dprint_message_size<int>() == 4, "int should be 4 bytes");
@@ -216,6 +232,43 @@ void dprint_indexed_format_tests() {
     static_assert(dprint_detail::get_max_index("Max: {0} {2} {1}\n") == 2, "Max index should be 2");
 }
 
+void dprint_escaped_braces_tests() {
+    // Tests for escaped brace handling (fmtlib-style: {{ and }} are preserved in format string)
+
+    // Test 1: Escaped braces around placeholder - escape sequences preserved
+    constexpr auto escaped1 = dprint_detail::update_format_string_from_args("{{n = {0}}}\n", 42);
+    static_assert(escaped1.check("{{n = {0:d}}}\n"), "Should preserve {{ and }} in output");
+
+    // Test 2: Escaped closing braces only - escape sequences preserved
+    constexpr auto escaped2 = dprint_detail::update_format_string_from_args("n = {0}}}\n", 42);
+    static_assert(escaped2.check("n = {0:d}}}\n"), "Should preserve }} in output");
+
+    // Test 3: Escaped opening braces only - escape sequences preserved
+    constexpr auto escaped3 = dprint_detail::update_format_string_from_args("{{n = {0}\n", 42);
+    static_assert(escaped3.check("{{n = {0:d}\n"), "Should preserve {{ in output");
+
+    // Test 4: Multiple escaped braces - all escape sequences preserved
+    constexpr auto escaped4 = dprint_detail::update_format_string_from_args("{{{{value: {0}}}}}}\n", 42);
+    static_assert(escaped4.check("{{{{value: {0:d}}}}}}\n"), "Should preserve all {{ and }} in output");
+
+    // Test 5: Mixed escaped and placeholder braces - escape sequences preserved
+    constexpr auto escaped5 = dprint_detail::update_format_string_from_args("{{a}} = {0}, {{b}} = {1}\n", 1, 2);
+    static_assert(escaped5.check("{{a}} = {0:d}, {{b}} = {1:d}\n"), "Should preserve escaped braces in output");
+
+    // Test 6: Escaped braces that look like empty placeholder - escape sequences preserved
+    constexpr auto escaped6 = dprint_detail::update_format_string_from_args("{{}}, n = {0}\n", 42);
+    static_assert(escaped6.check("{{}}, n = {0:d}\n"), "Should preserve {{}} in output");
+
+    // Test 7: Verify that escaped braces don't trigger "mixed placeholders" validation error
+    // The {{}} should not be detected as a {} placeholder
+    static_assert(!dprint_detail::has_mixed_placeholders("{{}}, n = {0}\n"),
+                  "Escaped braces should not be detected as placeholders");
+    static_assert(!dprint_detail::has_indexed_placeholders("{{}}, text\n"),
+                  "Escaped braces should not affect indexed detection");
+    static_assert(dprint_detail::count_placeholders("{{}}, n = {}\n") == 1,
+                  "Escaped braces should not be counted as placeholders");
+}
+
 void dprint_indexed_format_failure_tests() {
     // These tests demonstrate format strings that should NOT compile
     // Uncomment any of these to verify they produce compile-time errors
@@ -231,11 +284,24 @@ void dprint_indexed_format_failure_tests() {
     // Failure 3: Not all arguments referenced
     // DPRINT("Unreferenced: n = {0}\n", 42, 5);
     // Expected error: "All arguments must be referenced when using indexed placeholders"
+
+    // Failure 4: Invalid opening brace (single { not followed by digit or })
+    // DPRINT("{n = {0}}}\n", 42);
+    // Expected error: Invalid format string - unescaped '{'
 }
 
 int main() {
+    // Run compile-time tests (these contain static_asserts)
+    dprint_message_size_tests();
+    dprint_format_validation_tests();
+    dprint_format_update_tests();
+    dprint_indexed_format_tests();
+    dprint_escaped_braces_tests();
+
+    // Run runtime tests
     some_function(5);
     test_indexed_placeholders(42);
+    test_escaped_braces(42);
     halt();
     return 0;
 }

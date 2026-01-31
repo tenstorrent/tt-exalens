@@ -246,16 +246,86 @@ constexpr ParseResult parse_index(const char* format, std::size_t i, std::size_t
     return ParseResult{value, pos};
 }
 
+// Token types for format string parsing
+enum class TokenType {
+    Placeholder,         // {} or {N}
+    EscapedOpenBrace,    // {{
+    EscapedCloseBrace,   // }}
+    InvalidPlaceholder,  // Invalid { sequence
+    RegularChar          // Any other character
+};
+
+// Result of parsing a single token from format string
+struct FormatToken {
+    TokenType type;
+    std::size_t end_pos;  // Position to continue parsing from (after this token)
+    bool is_indexed;      // true if {N}, false if {}
+    int index;            // The N in {N}, or -1 for {} or escape sequences
+};
+
+// Parse a single token from the format string at position i
+// This is the main tokenizer that handles all format string elements:
+// - Placeholders: {} and {N}
+// - Escape sequences: {{ and }}
+// - Regular characters
+template <std::size_t N>
+constexpr FormatToken parse_format_token(const char (&format)[N], std::size_t i) {
+    constexpr std::size_t format_len = N - 1;
+
+    if (i >= format_len) {
+        return FormatToken{TokenType::RegularChar, i + 1, false, -1};
+    }
+
+    char c = format[i];
+
+    // Check for escaped opening brace {{
+    if (c == '{' && i + 1 < format_len && format[i + 1] == '{') {
+        return FormatToken{TokenType::EscapedOpenBrace, i + 2, false, -1};
+    }
+
+    // Check for escaped closing brace }}
+    if (c == '}' && i + 1 < format_len && format[i + 1] == '}') {
+        return FormatToken{TokenType::EscapedCloseBrace, i + 2, false, -1};
+    }
+
+    // Check for placeholder {N} or {}
+    if (c == '{') {
+        if (i + 1 >= format_len) {
+            // '{' at end of string is invalid
+            return FormatToken{TokenType::InvalidPlaceholder, i + 1, false, -1};
+        }
+
+        if (is_digit(format[i + 1])) {
+            // Indexed placeholder {N}
+            ParseResult result = parse_index(format, i + 1, format_len);
+            if (result.new_pos < format_len && format[result.new_pos] == '}') {
+                return FormatToken{TokenType::Placeholder, result.new_pos + 1, true, result.value};
+            }
+            // Invalid: digit not followed by }
+            return FormatToken{TokenType::InvalidPlaceholder, i + 1, false, -1};
+        } else if (format[i + 1] == '}') {
+            // Non-indexed placeholder {}
+            return FormatToken{TokenType::Placeholder, i + 2, false, -1};
+        }
+
+        // Invalid: '{' not followed by '{', '}', or digit
+        return FormatToken{TokenType::InvalidPlaceholder, i + 1, false, -1};
+    }
+
+    // Regular character
+    return FormatToken{TokenType::RegularChar, i + 1, false, -1};
+}
+
 // Helper to detect if format string uses indexed placeholders ({0}, {1}, etc.)
 // Returns true if ANY placeholder has an index
 template <std::size_t N>
 constexpr bool has_indexed_placeholders(const char (&format)[N]) {
-    for (std::size_t i = 0; i < N - 1; ++i) {
-        if (format[i] == '{' && i + 1 < N - 1) {
-            if (is_digit(format[i + 1])) {
-                return true;
-            }
+    for (std::size_t i = 0; i < N - 1;) {
+        FormatToken token = parse_format_token(format, i);
+        if (token.type == TokenType::Placeholder && token.is_indexed) {
+            return true;
         }
+        i = token.end_pos;
     }
     return false;
 }
@@ -267,17 +337,19 @@ constexpr bool has_mixed_placeholders(const char (&format)[N]) {
     bool found_indexed = false;
     bool found_unindexed = false;
 
-    for (std::size_t i = 0; i < N - 1; ++i) {
-        if (format[i] == '{' && i + 1 < N - 1) {
-            if (is_digit(format[i + 1])) {
+    for (std::size_t i = 0; i < N - 1;) {
+        FormatToken token = parse_format_token(format, i);
+        if (token.type == TokenType::Placeholder) {
+            if (token.is_indexed) {
                 found_indexed = true;
-            } else if (format[i + 1] == '}') {
+            } else {
                 found_unindexed = true;
             }
             if (found_indexed && found_unindexed) {
                 return true;
             }
         }
+        i = token.end_pos;
     }
     return false;
 }
@@ -292,13 +364,14 @@ constexpr bool all_arguments_referenced(const char (&format)[N], std::size_t arg
     bool referenced[32] = {};
     if (arg_count > 32) return false;  // Limit for simplicity
 
-    for (std::size_t i = 0; i < N - 1; ++i) {
-        if (format[i] == '{' && i + 1 < N - 1 && is_digit(format[i + 1])) {
-            ParseResult result = parse_index(format, i + 1, N - 1);
-            if (result.value >= 0 && static_cast<std::size_t>(result.value) < arg_count) {
-                referenced[result.value] = true;
+    for (std::size_t i = 0; i < N - 1;) {
+        FormatToken token = parse_format_token(format, i);
+        if (token.type == TokenType::Placeholder && token.is_indexed) {
+            if (token.index >= 0 && static_cast<std::size_t>(token.index) < arg_count) {
+                referenced[token.index] = true;
             }
         }
+        i = token.end_pos;
     }
 
     // Check that all arguments from 0 to arg_count-1 are referenced
@@ -312,13 +385,14 @@ constexpr bool all_arguments_referenced(const char (&format)[N], std::size_t arg
 template <std::size_t N>
 constexpr int get_max_index(const char (&format)[N]) {
     int max_index = -1;
-    for (std::size_t i = 0; i < N - 1; ++i) {
-        if (format[i] == '{' && i + 1 < N - 1 && is_digit(format[i + 1])) {
-            ParseResult result = parse_index(format, i + 1, N - 1);
-            if (result.value > max_index) {
-                max_index = result.value;
+    for (std::size_t i = 0; i < N - 1;) {
+        FormatToken token = parse_format_token(format, i);
+        if (token.type == TokenType::Placeholder && token.is_indexed) {
+            if (token.index > max_index) {
+                max_index = token.index;
             }
         }
+        i = token.end_pos;
     }
     return max_index;
 }
@@ -327,13 +401,31 @@ constexpr int get_max_index(const char (&format)[N]) {
 template <std::size_t N>
 constexpr std::size_t count_placeholders(const char (&format)[N]) {
     std::size_t count = 0;
-    for (std::size_t i = 0; i < N - 1; ++i) {  // N-1 to exclude null terminator
-        if (format[i] == '{' && i + 1 < N - 1 && format[i + 1] == '}') {
+    for (std::size_t i = 0; i < N - 1;) {
+        FormatToken token = parse_format_token(format, i);
+        if (token.type == TokenType::Placeholder && !token.is_indexed) {
             ++count;
-            ++i;  // Skip the '}'
         }
+        i = token.end_pos;
     }
     return count;
+}
+
+// Helper to validate format string for invalid brace sequences
+// Returns true if format string is valid, false if it contains errors
+template <std::size_t N>
+constexpr bool is_valid_format_string(const char (&format)[N]) {
+    for (std::size_t i = 0; i < N - 1;) {
+        FormatToken token = parse_format_token(format, i);
+
+        // Check for invalid placeholder syntax
+        if (token.type == TokenType::InvalidPlaceholder) {
+            return false;
+        }
+
+        i = token.end_pos;
+    }
+    return true;
 }
 
 // Main function to update format string with type information
@@ -358,26 +450,20 @@ constexpr auto update_format_string(const char (&format)[N]) {
     constexpr char type_chars[] = {get_type_char<Args>()...};
     std::size_t type_index = 0;
 
-    for (std::size_t i = 0; i < format_len; ++i) {
-        if (format[i] == '{' && i + 1 < format_len) {
-            // Determine the argument index for this placeholder
-            int arg_index = -1;
-            std::size_t closing_brace_pos = i + 1;
+    for (std::size_t i = 0; i < format_len;) {
+        FormatToken token = parse_format_token(format, i);
 
-            if (indexed && is_digit(format[i + 1])) {
-                // Indexed placeholder: parse the explicit index
-                ParseResult parse_result = parse_index(format, i + 1, format_len);
-                arg_index = parse_result.value;
-                closing_brace_pos = parse_result.new_pos;
-            } else if (!indexed && format[i + 1] == '}') {
-                // Non-indexed placeholder: use auto-incrementing index
-                arg_index = type_index++;
-                closing_brace_pos = i + 1;
-            } else {
-                // Not a placeholder, just a regular '{' character
-                result.push_back(format[i]);
-                continue;
-            }
+        if (token.type == TokenType::EscapedOpenBrace) {
+            // Preserve escaped opening brace: {{
+            result.push_back('{');
+            result.push_back('{');
+        } else if (token.type == TokenType::EscapedCloseBrace) {
+            // Preserve escaped closing brace: }}
+            result.push_back('}');
+            result.push_back('}');
+        } else if (token.type == TokenType::Placeholder) {
+            // Determine the argument index for this placeholder
+            int arg_index = token.is_indexed ? token.index : type_index++;
 
             // Unified handling for both indexed and non-indexed: output {index:type}
             result.push_back('{');
@@ -396,12 +482,15 @@ constexpr auto update_format_string(const char (&format)[N]) {
                 result.push_back('?');  // Fallback for extra placeholders
             }
             result.push_back('}');
-
-            // Move past the closing brace
-            i = closing_brace_pos;
+        } else if (token.type == TokenType::InvalidPlaceholder) {
+            // Invalid placeholder - should be caught by validation, but copy as-is if we get here
+            result.push_back(format[i]);
         } else {
+            // Regular character
             result.push_back(format[i]);
         }
+
+        i = token.end_pos;
     }
 
     return result;
@@ -591,6 +680,9 @@ constexpr std::size_t count_arguments(const Args&... args) {
 
 #define DPRINT(format, ...)                                                                                            \
     {                                                                                                                  \
+        /* Validate format string syntax */                                                                            \
+        static_assert(dprint_detail::is_valid_format_string(format),                                                   \
+                      "Invalid format string: unescaped '{' must be followed by '{', '}', or a digit");                \
         /* Validate placeholder format */                                                                              \
         static_assert(!dprint_detail::has_mixed_placeholders(format),                                                  \
                       "Cannot mix indexed ({0}) and non-indexed ({}) placeholders in the same format string");         \
