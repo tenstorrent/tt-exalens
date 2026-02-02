@@ -142,44 +142,37 @@ class Device:
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 
-        self.active_noc: int | None = 1 if context.use_noc1 else 0
         self._noc_state_lock = threading.Lock()
-        self._noc_hung: dict[int, bool] = {0: False, 1: False}
+        # NOC queue used for failover, initialized based on context preference
+        # When an operation is attempted, the first NOC in the list is used. If it fails, it is moved to the back of the list
+        # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
+        self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
 
     def _select_noc(self) -> int:
         with self._noc_state_lock:
-            if self.active_noc is None:
-                raise NocUnavailableError(f"Device {self.id}: all NOCs are hung.")
+            return self._noc_to_use[0]
 
-            return self.active_noc
-
-    def _failover_to_working_noc(self) -> int:
+    def _failover_to_other_noc(self) -> int:
         with self._noc_state_lock:
-            assert self.active_noc is not None, "When failing over, there must be an active NOC to failover from."
-            self._noc_hung[self.active_noc] = True
+            last_used = self._noc_to_use.pop(0)
+            self._noc_to_use.append(last_used)
+            util.WARN(f"Device {self.id}: NOC{self._noc_to_use[-1]} hung, switching over to NOC{self._noc_to_use[0]}.")
 
-            # Check availability
-            new_noc = next((noc for noc, hung in self._noc_hung.items() if not hung), None)
-            if new_noc is None:
-                self.active_noc = None
-                raise NocUnavailableError(f"Device {self.id}: all NOCs are hung.")
-
-            util.WARN(f"Device {self.id}: NOC{self.active_noc} hung, switching over to NOC{new_noc}.")
-
-            self.active_noc = new_noc
-            return new_noc
+            return self._noc_to_use[0]
 
     def _with_noc_failover(self, noc_operation: Callable[[int], T], noc_id: int | None = None) -> T:
         if noc_id is not None or not self._context.noc_failover:
             selected_noc = noc_id if noc_id is not None else self._select_noc()
             return noc_operation(selected_noc)
 
+        first_used = self._select_noc()
         while True:
             try:
                 selected_noc = self._select_noc()
                 return noc_operation(selected_noc)
-            except TimeoutDeviceRegisterError:
-                self._failover_to_working_noc()  # Will raise NocUnavailableError when all NOCs exhausted
+            except TimeoutDeviceRegisterError as e:
+                if(first_used == self._failover_to_other_noc()):
+                    raise e # Raise when all NOCs are exhausted
 
     @property
     def board_type(self) -> tt_umd.BoardType:
