@@ -22,6 +22,10 @@ def create_timeout_error(chip_id=0, is_read=True):
 class TestNocFailoverDisabled(unittest.TestCase):
     """Test NOC behavior when failover is disabled."""
 
+    mock_context: Mock
+    mock_umd_device: Mock
+    test_location: Mock
+
     @classmethod
     def setUpClass(cls):
         """Set up mock objects once for all tests."""
@@ -100,6 +104,9 @@ class TestNocFailoverDisabled(unittest.TestCase):
 
 class TestNocFailoverEnabled(unittest.TestCase):
     """Test NOC failover behavior when enabled, for both NOC0 and NOC1 as primary."""
+
+    mock_umd_device: Mock
+    test_location: Mock
 
     @parameterized.expand(
         [
