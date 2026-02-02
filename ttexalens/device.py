@@ -147,8 +147,8 @@ class Device:
         if noc_id is not None or not self._context.noc_failover:
             selected_noc = noc_id if noc_id is not None else self._select_noc()
             return noc_operation(selected_noc)
-        
-        noc_queue = self._noc_to_use # reference, not a copy
+
+        noc_queue = self._noc_to_use  # reference, not a copy
         first_used = noc_queue[0]
 
         while True:
@@ -167,7 +167,7 @@ class Device:
                 util.WARN(f"Device {self.id}: NOC{failed_noc} hung, switching over to NOC{noc_queue[0]}.")
 
                 if noc_queue[0] == first_used:
-                    raise # Exhausted all NOCs, raise Timeout
+                    raise  # Exhausted all NOCs, raise Timeout
 
     @property
     def board_type(self) -> tt_umd.BoardType:
