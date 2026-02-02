@@ -112,7 +112,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
         ]
     )
     def test_noc_read_success_no_failover_triggered(
-        self, name, use_noc1, primary_noc, other_noc, primary_name, other_name
+        self, _name, use_noc1, primary_noc, _other_noc, _primary_name, _other_name
     ):
         """Test successful read doesn't trigger failover."""
         device = self._create_device(use_noc1)
@@ -131,7 +131,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
             ("noc1_to_noc0", True, 1, 0, "NOC1", "NOC0"),
         ]
     )
-    def test_noc_read_timeout_fails_over(self, name, use_noc1, primary_noc, other_noc, primary_name, other_name):
+    def test_noc_read_timeout_fails_over(self, _name, use_noc1, primary_noc, other_noc, _primary_name, _other_name):
         """Test that timeout on primary NOC triggers failover to other NOC."""
         device = self._create_device(use_noc1)
 
@@ -158,7 +158,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
             ("noc1", True),
         ]
     )
-    def test_noc_read_both_nocs_timeout(self, name, use_noc1):
+    def test_noc_read_both_nocs_timeout(self, _name, use_noc1):
         """Test that both NOCs timing out raises TimeoutDeviceRegisterError."""
         device = self._create_device(use_noc1)
 
@@ -180,7 +180,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
             ("noc1", True, 1, 0),
         ]
     )
-    def test_noc_write_timeout_fails_over(self, name, use_noc1, primary_noc, other_noc):
+    def test_noc_write_timeout_fails_over(self, _name, use_noc1, primary_noc, other_noc):
         """Test that write timeout triggers failover."""
         device = self._create_device(use_noc1)
 
@@ -200,7 +200,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
             ("noc1", True, 1),
         ]
     )
-    def test_explicit_noc_id_no_failover(self, name, use_noc1, expected_noc):
+    def test_explicit_noc_id_no_failover(self, _name, use_noc1, expected_noc):
         """Test that explicit noc_id doesn't trigger failover."""
         device = self._create_device(use_noc1)
         initial_noc_order = device._noc_to_use.copy()
@@ -220,7 +220,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
             ("noc1", True, 1, 0),
         ]
     )
-    def test_subsequent_reads_use_active_noc(self, name, use_noc1, primary_noc, other_noc):
+    def test_subsequent_reads_use_active_noc(self, _name, use_noc1, _primary_noc, other_noc):
         """Test that after failover, subsequent reads use the new active NOC."""
         device = self._create_device(use_noc1)
 

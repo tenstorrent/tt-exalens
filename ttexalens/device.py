@@ -7,7 +7,6 @@ from abc import abstractmethod
 from dataclasses import dataclass
 import datetime
 from functools import cache, cached_property
-import threading
 import tt_umd
 from typing import Callable, Iterable, Sequence, TypeVar
 
@@ -136,37 +135,39 @@ class Device:
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 
-        self._noc_state_lock = threading.Lock()
         # NOC queue used for failover, initialized based on context preference
         # When an operation is attempted, the first NOC in the list is used. If it fails, it is moved to the back of the list
         # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
         self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
 
     def _select_noc(self) -> int:
-        with self._noc_state_lock:
-            return self._noc_to_use[0]
-
-    def _failover_to_other_noc(self) -> int:
-        with self._noc_state_lock:
-            last_used = self._noc_to_use.pop(0)
-            self._noc_to_use.append(last_used)
-            util.WARN(f"Device {self.id}: NOC{self._noc_to_use[-1]} hung, switching over to NOC{self._noc_to_use[0]}.")
-
-            return self._noc_to_use[0]
+        return self._noc_to_use[0]
 
     def _with_noc_failover(self, noc_operation: Callable[[int], T], noc_id: int | None = None) -> T:
         if noc_id is not None or not self._context.noc_failover:
             selected_noc = noc_id if noc_id is not None else self._select_noc()
             return noc_operation(selected_noc)
+        
+        noc_queue = self._noc_to_use # reference, not a copy
+        first_used = noc_queue[0]
 
-        first_used = self._select_noc()
         while True:
             try:
-                selected_noc = self._select_noc()
-                return noc_operation(selected_noc)
-            except TimeoutDeviceRegisterError as e:
-                if first_used == self._failover_to_other_noc():
-                    raise e  # Raise when all NOCs are exhausted
+                selected_noc = noc_queue[0]
+                result = noc_operation(selected_noc)
+                if noc_queue is not self._noc_to_use:
+                    self._noc_to_use = noc_queue
+                return result
+            except TimeoutDeviceRegisterError:
+                if noc_queue is self._noc_to_use:
+                    noc_queue = self._noc_to_use.copy()
+
+                failed_noc = noc_queue.pop(0)
+                noc_queue.append(failed_noc)
+                util.WARN(f"Device {self.id}: NOC{failed_noc} hung, switching over to NOC{noc_queue[0]}.")
+
+                if noc_queue[0] == first_used:
+                    raise # Exhausted all NOCs, raise Timeout
 
     @property
     def board_type(self) -> tt_umd.BoardType:
