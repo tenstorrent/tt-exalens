@@ -140,12 +140,9 @@ class Device:
         # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
         self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
 
-    def _select_noc(self) -> int:
-        return self._noc_to_use[0]
-
     def _with_noc_failover(self, noc_operation: Callable[[int], T], noc_id: int | None = None) -> T:
         if noc_id is not None or not self._context.noc_failover:
-            selected_noc = noc_id if noc_id is not None else self._select_noc()
+            selected_noc = noc_id if noc_id is not None else self._noc_to_use[0]
             return noc_operation(selected_noc)
 
         noc_queue = self._noc_to_use  # reference, not a copy
@@ -155,11 +152,11 @@ class Device:
             try:
                 selected_noc = noc_queue[0]
                 result = noc_operation(selected_noc)
-                if noc_queue is not self._noc_to_use:
+                if selected_noc != first_used:
                     self._noc_to_use = noc_queue
                 return result
             except TimeoutDeviceRegisterError:
-                if noc_queue is self._noc_to_use:
+                if selected_noc == first_used:
                     noc_queue = self._noc_to_use.copy()
 
                 failed_noc = noc_queue.pop(0)
