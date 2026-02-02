@@ -107,13 +107,11 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("noc0", False, 0, 1, "NOC0", "NOC1"),
-            ("noc1", True, 1, 0, "NOC1", "NOC0"),
+            ("noc0", False, 0),
+            ("noc1", True, 1),
         ]
     )
-    def test_noc_read_success_no_failover_triggered(
-        self, _name, use_noc1, primary_noc, _other_noc, _primary_name, _other_name
-    ):
+    def test_noc_read_success_no_failover_triggered(self, _name, use_noc1, primary_noc):
         """Test successful read doesn't trigger failover."""
         device = self._create_device(use_noc1)
         self.mock_umd_device.noc_read.return_value = b"\x00\x01\x02\x03"
@@ -127,11 +125,11 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("noc0_to_noc1", False, 0, 1, "NOC0", "NOC1"),
-            ("noc1_to_noc0", True, 1, 0, "NOC1", "NOC0"),
+            ("noc0_to_noc1", False, 0, 1),
+            ("noc1_to_noc0", True, 1, 0),
         ]
     )
-    def test_noc_read_timeout_fails_over(self, _name, use_noc1, primary_noc, other_noc, _primary_name, _other_name):
+    def test_noc_read_timeout_fails_over(self, _name, use_noc1, primary_noc, other_noc):
         """Test that timeout on primary NOC triggers failover to other NOC."""
         device = self._create_device(use_noc1)
 
