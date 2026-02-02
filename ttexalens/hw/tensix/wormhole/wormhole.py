@@ -41,6 +41,11 @@ class WormholeDevice(Device):
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         super().__init__(id, umd_device, context)
         self.instructions = WormholeInstructions()
+        self._problematic_locations: dict[
+            int, set[OnChipCoordinate]
+        ] = {  # Per-NOC locations that can cause device hangs when accessed
+            1: {OnChipCoordinate.create("d0,0", self), OnChipCoordinate.create("d2,0", self)},
+        }
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16
@@ -72,6 +77,36 @@ class WormholeDevice(Device):
 
     def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
         return tensix_debug_bus_description
+
+    def noc_read(
+        self,
+        location: OnChipCoordinate,
+        address: int,
+        size_bytes: int,
+        noc_id: int | None = None,
+        use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
+    ) -> bytes:
+        # Workaround for problematic DRAM locations on NOC1, #tt-umd:1823
+        if noc_id is None and location in self._problematic_locations.get(1, set()):
+            noc_id = 0  # Force use of NOC0
+
+        return super().noc_read(location, address, size_bytes, noc_id, use_4B_mode, dma_threshold)
+
+    def noc_write(
+        self,
+        location: OnChipCoordinate,
+        address: int,
+        data: bytes,
+        noc_id: int | None = None,
+        use_4B_mode: bool | None = None,
+        dma_threshold: int | None = None,
+    ):
+        # Workaround for problematic DRAM locations on NOC1, #tt-umd:1823
+        if noc_id is None and location in self._problematic_locations.get(1, set()):
+            noc_id = 0  # Force use of NOC0
+
+        return super().noc_write(location, address, data, noc_id, use_4B_mode, dma_threshold)
 
 
 # end of class WormholeDevice

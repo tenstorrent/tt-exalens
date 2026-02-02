@@ -30,6 +30,7 @@ class Context:
         use_4B_mode=True,
         dma_read_threshold: int = 24,  # Measured thresholds for DMA vs NOC transfers on WH
         dma_write_threshold: int = 56,  # Measured thresholds for DMA vs NOC transfers on WH
+        noc_failover: bool = True,
     ):
         self.umd_api = umd_api
         self.file_api = file_api
@@ -38,6 +39,8 @@ class Context:
         self.use_4B_mode: bool = use_4B_mode
         self.dma_read_threshold: int = dma_read_threshold
         self.dma_write_threshold: int = dma_write_threshold
+        self.noc_failover = noc_failover
+
         self.commands: list[CommandMetadata] = []
         self.loaded_elfs: dict[RiscLocation, str] = {}
 
