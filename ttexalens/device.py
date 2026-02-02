@@ -24,12 +24,6 @@ from ttexalens import util as util
 T = TypeVar("T")
 
 
-class NocUnavailableError(util.TTException):
-    """Raised when no NOC is available for implicit device access."""
-
-    pass
-
-
 class TensixInstructions:
     def __init__(self, ops):
         for func_name in dir(ops):
