@@ -171,8 +171,8 @@ class Device:
                 selected_noc = self._select_noc()
                 return noc_operation(selected_noc)
             except TimeoutDeviceRegisterError as e:
-                if(first_used == self._failover_to_other_noc()):
-                    raise e # Raise when all NOCs are exhausted
+                if first_used == self._failover_to_other_noc():
+                    raise e  # Raise when all NOCs are exhausted
 
     @property
     def board_type(self) -> tt_umd.BoardType:
