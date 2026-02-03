@@ -58,9 +58,10 @@ except ModuleNotFoundError as e:
 from ttexalens import init_ttexalens, init_ttexalens_remote
 from ttexalens.server import start_server
 from ttexalens import util as util
+from ttexalens.exceptions import CommandParsingException, TTException, TTFatalException
 from ttexalens.context import Context
 from ttexalens.uistate import UIState
-from ttexalens.command_parser import tt_docopt, CommandMetadata, find_command, CommandParsingException
+from ttexalens.command_parser import tt_docopt, CommandMetadata, find_command
 from ttexalens.gdb.gdb_client import get_gdb_client_path
 
 
@@ -122,7 +123,7 @@ def import_commands(reload: bool = False) -> list[CommandMetadata]:
             continue
         try:
             cmd_module = importlib.import_module(module_path)
-        except Exception as e:
+        except (ImportError, SyntaxError, TTException) as e:
             # Print call stack
             util.notify_exception(type(e), e, e.__traceback__)
             continue
@@ -270,7 +271,7 @@ def main_loop(args, context: Context):
                         if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
                             cmd_raw = navigation_suggestions[cmd_int]["cmd"]
                         else:
-                            raise util.TTException(f"Invalid speed dial number: {cmd_int}")
+                            raise TTException(f"Invalid speed dial number: {cmd_int}")
 
                     cmd = cmd_raw.split()
                     if len(cmd) > 0:
@@ -319,13 +320,13 @@ def main_loop(args, context: Context):
                     pass
                 else:
                     raise
-            except Exception as e:
+            except TTException as e:
                 if args["--test"]:  # Always raise in test mode
                     util.ERROR("CLI option --test is set. Raising exception to exit.")
                     raise
                 else:
                     util.notify_exception(type(e), e, e.__traceback__)
-                if have_non_interactive_commands or type(e) == util.TTFatalException:
+                if have_non_interactive_commands or isinstance(e, TTFatalException):
                     # In non-interactive mode and on fatal excepions, we re-raise to exit the program
                     raise
             except DocoptExit as e:
@@ -338,11 +339,11 @@ def main_loop(args, context: Context):
         # Do best effort cleanup before exiting
         try:
             ui_state.stop_server()
-        except:
+        except TTException:
             pass
         try:
             ui_state.stop_gdb()
-        except:
+        except TTException:
             pass
 
 
@@ -377,7 +378,7 @@ def main():
     try:
         verbosity = int(args["--verbosity"])
         util.Verbosity.set(verbosity)
-    except:
+    except (ValueError, TypeError):
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 

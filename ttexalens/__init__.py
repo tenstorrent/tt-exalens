@@ -27,7 +27,8 @@ from .tt_exalens_lib import (
 from .coordinate import CoordinateTranslationError, OnChipCoordinate
 from .context import Context
 from .device import Device
-from .util import TTException, TTFatalException, Verbosity
+from .exceptions import TTException, TTFatalException
+from .util import Verbosity
 
 __all__ = [
     # context.py

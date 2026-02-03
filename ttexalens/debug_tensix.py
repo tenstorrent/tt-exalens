@@ -7,7 +7,8 @@ import struct
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
-from ttexalens.util import WARN, TTException
+from ttexalens.util import WARN
+from ttexalens.exceptions import TTException
 from ttexalens.device import Device
 from ttexalens.pack_unpack_regfile import (
     unpack_data,

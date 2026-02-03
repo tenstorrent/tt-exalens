@@ -177,16 +177,7 @@ DEC_FORMAT = 'f"{d}"'
 HEX_FORMAT = 'f"0x{d:08x}"'
 DEC_AND_HEX_FORMAT = 'f"{d} (0x{d:08x})"'
 
-
-class TTException(Exception):
-    pass
-
-
-# We create a fatal exception that must terminate the program
-# All other exceptions might get caught and the program might continue
-class TTFatalException(Exception):
-    pass
-
+from ttexalens.exceptions import TTFatalException
 
 # Colorized messages
 def NULL_PRINT(s):
@@ -920,7 +911,7 @@ def is_port_available(port):
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(("0.0.0.0", port))
         result = True
-    except:
+    except OSError:
         pass
     sock.close()
     return result
@@ -1022,7 +1013,7 @@ def search(strings: list[str], pattern: str = "*", max: str | int = "all") -> li
             n = int(max)
             if n <= 0:
                 raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max}')
-    except:
+    except (TypeError, ValueError):
         raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max}')
     if max is None:
         n = 10

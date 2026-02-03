@@ -8,6 +8,7 @@ import threading
 from typing import IO
 from ttexalens.gdb.gdb_data import GdbThreadId
 from ttexalens import util as util
+from ttexalens.exceptions import GdbError
 
 
 # Global lock for thread-safe port finding
@@ -27,7 +28,7 @@ def find_available_port() -> int:
             return int(s.getsockname()[1])
     except (socket.error, OSError) as e:
         # If we get here, no port was found
-        raise Exception(f"No available port found: {e}")
+        raise GdbError(f"No available port found: {e}")
 
 
 # Simple class that wraps reading/writing to a socket
@@ -43,7 +44,7 @@ class ClientSocket:
         if self.socket is not None:
             try:
                 self.socket.close()
-            except:
+            except OSError:
                 # Ignore exception
                 pass
             self.socket = None
@@ -97,7 +98,7 @@ class ServerSocket:
         try:
             self.connection, _ = self.server.accept()
             return ClientSocket(self.connection)
-        except:
+        except (OSError, socket.timeout):
             return None
 
     def close(self):
@@ -180,7 +181,7 @@ class GdbInputStream:
             elif next_char == GDB_ASCII_ESCAPE_CHAR:
                 should_escape = True
             elif next_char == GDB_ASCII_STAR:
-                raise Exception("GDB message parsing error: RLE is not supported")
+                raise GdbError("GDB message parsing error: RLE is not supported")
             elif next_char == GDB_ASCII_HASH:
                 position += 1
                 break

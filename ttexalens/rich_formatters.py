@@ -183,13 +183,13 @@ class RichFormatter:
             try:
                 int_value = int(raw_value)
                 return f"0x{int_value:08x}"
-            except Exception:
+            except (TypeError, ValueError):
                 return str(raw_value)
         elif format_type == "binary":
             try:
                 int_value = int(raw_value)
                 return f"0b{int_value:b}"
-            except Exception:
+            except (TypeError, ValueError):
                 return str(raw_value)
         else:
             return str(raw_value)

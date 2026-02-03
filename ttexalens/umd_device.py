@@ -8,24 +8,7 @@ import threading
 import time
 from typing import Sequence
 import tt_umd
-
-
-class TimeoutDeviceRegisterError(Exception):
-    def __init__(self, chip_id: int, coord: tt_umd.CoreCoord, address: int, size: int, is_read: bool, duration: float):
-        self.chip_id = chip_id
-        self.coord = coord
-        self.address = address
-        self.size = size
-        self.is_read = is_read
-        self.duration = duration
-
-    def __str__(self):
-        operation = "read" if self.is_read else "write"
-        return (
-            f"TimeoutDeviceRegisterError: Timeout during {operation} operation on device {self.chip_id}, "
-            f"coord ({self.coord.x}, {self.coord.y}, {self.coord.core_type}), address {hex(self.address)}, "
-            f"size {self.size} bytes after {self.duration:.4f} seconds."
-        )
+from ttexalens.exceptions import TTException, TimeoutDeviceRegisterError
 
 
 class UmdDevice:
@@ -46,9 +29,9 @@ class UmdDevice:
         self._arch = device.get_arch()
         self._is_mmio_capable = not device.is_remote()
         try:
-            # TODO #833: It can happen that device doesn't have device type info initialized correctly, so we catch any exception here
+            # TODO #833: It can happen that device doesn't have device type info initialized correctly.
             self._is_jtag_capable = device.get_communication_device_type() == tt_umd.IODeviceType.JTAG
-        except:
+        except (RuntimeError, AttributeError):
             self._is_jtag_capable = False
         self._soc_descriptor = soc_descriptor if soc_descriptor is not None else tt_umd.SocDescriptor(device)
         self._device_id = device_id
@@ -101,7 +84,7 @@ class UmdDevice:
             try:
                 self.__read_from_device_reg(tensix_translated_coord.x, tensix_translated_coord.y, 0, 4, 8)
                 return
-            except:
+            except RuntimeError:
                 continue
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
@@ -209,7 +192,7 @@ class UmdDevice:
             return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
             raise
-        except:
+        except RuntimeError:
             if self._is_simulation or self._is_mmio_capable:
                 raise
             self.__configure_working_active_eth()
@@ -267,7 +250,7 @@ class UmdDevice:
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
             raise
-        except:
+        except RuntimeError:
             if self._is_simulation or self._is_mmio_capable:
                 raise
             self.__configure_working_active_eth()
@@ -332,7 +315,7 @@ class UmdDevice:
 
         try:
             return do_read(telemetry_tag)
-        except:
+        except (RuntimeError, OSError, TTException):
             if not self._is_mmio_capable:
                 raise
             # TODO: We should retry only if it was remote read error
@@ -349,7 +332,7 @@ class UmdDevice:
 
         try:
             firmware_version = do_read()
-        except:
+        except (RuntimeError, OSError, TTException):
             if not self._is_mmio_capable:
                 raise
             # TODO: We should retry only if it was remote read error

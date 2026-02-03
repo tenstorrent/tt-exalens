@@ -36,6 +36,7 @@ from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_words_from_device, read_word_from_device
 from ttexalens import util as util
+from ttexalens.exceptions import TTException
 from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
 
 command_metadata = CommandMetadata(
@@ -57,7 +58,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     word_count = int(args["<word-count>"]) if args["<word-count>"] else 0
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
-        raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
+        raise TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
     addr_arg = args["<addr>"]
     size_bytes_arg = 4
     try:
