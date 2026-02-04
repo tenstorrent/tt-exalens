@@ -55,11 +55,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     if repeat <= 0:
         util.WARN("Repeat count must be a positive integer, defaulting to 1")
         repeat = 1
-    if unsafe < 1:
-        util.WARN("Unsafe count must be a positive integer, defaulting to 0")
-        is_safe = True
-    else:
-        is_safe = False
+
+    is_safe = unsafe < 1
+
+    if not is_safe:
+        util.WARN("Unsafe writes have been enabled")
 
     current_device_id = ui_state.current_device_id
     current_device = context.devices[current_device_id]
