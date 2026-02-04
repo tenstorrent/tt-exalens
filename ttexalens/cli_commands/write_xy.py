@@ -51,7 +51,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     data = int(args["<data>"], 0)
     repeat = int(args["--repeat"]) if args["--repeat"] else 1
     unsafe = int(args["--unsafe"])
-    
+
     if repeat <= 0:
         util.WARN("Repeat count must be a positive integer, defaulting to 1")
         repeat = 1
