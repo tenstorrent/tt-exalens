@@ -107,12 +107,12 @@ class Device:
         arch = umd_device.arch
         match arch:
             case tt_umd.ARCH.WORMHOLE_B0:
-                from ttexalens.hw.tensix.wormhole import wormhole
+                from ttexalens.hardware.wormhole.device import WormholeDevice
 
-                return wormhole.WormholeDevice(device_id, umd_device, context)
+                return WormholeDevice(device_id, umd_device, context)
 
             case tt_umd.ARCH.BLACKHOLE:
-                from ttexalens.hardware.blackhole.blackhole_device import BlackholeDevice
+                from ttexalens.hardware.blackhole.device import BlackholeDevice
 
                 return BlackholeDevice(device_id, umd_device, context)
 
