@@ -26,7 +26,7 @@ from ttexalens.device import TensixInstructions, Device
 
 class BlackholeInstructions(TensixInstructions):
     def __init__(self):
-        import ttexalens.hw.tensix.blackhole.blackhole_ops as ops
+        import ttexalens.hardware.blackhole.tensix_ops as ops
 
         super().__init__(ops)
 
