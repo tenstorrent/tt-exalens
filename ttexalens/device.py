@@ -112,9 +112,9 @@ class Device:
                 return wormhole.WormholeDevice(device_id, umd_device, context)
 
             case tt_umd.ARCH.BLACKHOLE:
-                from ttexalens.hw.tensix.blackhole import blackhole
+                from ttexalens.hardware.blackhole.blackhole_device import BlackholeDevice
 
-                return blackhole.BlackholeDevice(device_id, umd_device, context)
+                return BlackholeDevice(device_id, umd_device, context)
 
             case tt_umd.ARCH.QUASAR:
                 from ttexalens.hw.tensix.quasar import quasar
