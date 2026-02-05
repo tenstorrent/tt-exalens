@@ -117,9 +117,9 @@ class Device:
                 return BlackholeDevice(device_id, umd_device, context)
 
             case tt_umd.ARCH.QUASAR:
-                from ttexalens.hw.tensix.quasar import quasar
+                from ttexalens.hardware.quasar.device import QuasarDevice
 
-                return quasar.QuasarDevice(device_id, umd_device, context)
+                return QuasarDevice(device_id, umd_device, context)
 
             case _:
                 raise RuntimeError(f"Architecture {arch} is not supported")
