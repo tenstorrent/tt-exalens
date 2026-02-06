@@ -512,17 +512,14 @@ class ElfVariable:
         Allow ElfVariable to be used as an index in sequences (lists, tuples, etc.)
         This enables usage like: a[elf_var] instead of a[elf_var.value()]
         """
-        try:
-            value = self.read_value()
-            if isinstance(value, int):
-                return value
-            elif isinstance(value, bool):
-                return int(value)  # Convert bool to int (True -> 1, False -> 0)
-            elif isinstance(value, float):
-                if value.is_integer():
-                    return int(value)
-        except:
-            pass
+        value = self.read_value()
+        if isinstance(value, int):
+            return value
+        elif isinstance(value, bool):
+            return int(value)  # Convert bool to int (True -> 1, False -> 0)
+        elif isinstance(value, float):
+            if value.is_integer():
+                return int(value)
         raise TypeError(f"ElfVariable '{self}' cannot be used as an index")
 
     def __str__(self) -> str:
