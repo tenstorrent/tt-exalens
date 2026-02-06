@@ -25,7 +25,6 @@ from ttexalens.memory_access import MemoryAccess
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.risc_debug import CallstackEntry, RiscDebug
 
-from ttexalens.hw.arc.arc import load_arc_fw
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
@@ -1421,9 +1420,9 @@ class TestARC(unittest.TestCase):
         TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024
 
         for device_id in self.context.device_ids:
-            load_arc_fw(self.fw_file_path, 2, device_id, context=self.context)
             device = self.context.devices[device_id]
             arc = device.arc_block
+            arc.load_arc_fw(self.fw_file_path, 2)
             scratch2 = arc.get_register_store().read_register("ARC_RESET_SCRATCH2")
             assert scratch2 == 0xBEBACECA
 

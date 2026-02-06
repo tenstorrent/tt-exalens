@@ -23,7 +23,7 @@ from ttexalens.device import TensixInstructions, Device
 
 class WormholeInstructions(TensixInstructions):
     def __init__(self):
-        import ttexalens.hw.tensix.wormhole.wormhole_ops as ops
+        import ttexalens.hardware.wormhole.tensix_ops as ops
 
         super().__init__(ops)
 

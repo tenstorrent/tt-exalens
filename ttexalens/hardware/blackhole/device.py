@@ -2,7 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from functools import cache
-import tt_umd
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.blackhole.arc_block import BlackholeArcBlock
@@ -27,7 +26,7 @@ from ttexalens.device import TensixInstructions, Device
 
 class BlackholeInstructions(TensixInstructions):
     def __init__(self):
-        import ttexalens.hw.tensix.blackhole.blackhole_ops as ops
+        import ttexalens.hardware.blackhole.tensix_ops as ops
 
         super().__init__(ops)
 
