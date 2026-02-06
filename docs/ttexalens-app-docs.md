@@ -1984,7 +1984,7 @@ Value of register DebugRegisterDescription(base_address=DeviceAddress(private_ad
 ### Usage
 
 ```
-wxy <core-loc> <addr> <data> [--repeat <repeat>]
+wxy <core-loc> <addr> <data> [--repeat <repeat>] [ --unsafe ]
 ```
 
 
@@ -2003,6 +2003,7 @@ Writes data word to address 'addr' at noc0 location x-y of the current chip.
 ### Options
 
 - `--repeat` = **\<repeat\>**: Number of times to repeat the write. Default: 1
+- `--unsafe`: Experts mode, allow reading everything (bypass safety checks).
 
 
 ### Examples

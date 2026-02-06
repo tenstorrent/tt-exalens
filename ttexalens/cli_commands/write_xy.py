@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  wxy <core-loc> <addr> <data> [--repeat <repeat>]
+  wxy <core-loc> <addr> <data> [--repeat <repeat>] [--unsafe]
 
 Description:
   Writes data word to address 'addr' at noc0 location x-y of the current chip.
@@ -50,16 +50,23 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     addr = int(args["<addr>"], 0)
     data = int(args["<data>"], 0)
     repeat = int(args["--repeat"]) if args["--repeat"] else 1
+    unsafe = int(args["--unsafe"])
+
     if repeat <= 0:
         util.WARN("Repeat count must be a positive integer, defaulting to 1")
         repeat = 1
+
+    is_safe = unsafe < 1
+
+    if not is_safe:
+        util.WARN("Unsafe writes have been enabled")
 
     current_device_id = ui_state.current_device_id
     current_device = context.devices[current_device_id]
     core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
 
     for _ in range(repeat):
-        write_words_to_device(core_loc, addr, data, ui_state.current_device_id, context)
+        write_words_to_device(core_loc, addr, data, ui_state.current_device_id, context, None, safe_mode=is_safe)
 
         print_a_write(core_loc_str, addr, data)
         addr += 4
