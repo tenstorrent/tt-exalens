@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 import unittest
 
+import tt_umd
+
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens.context import Context
@@ -42,19 +44,14 @@ class MemoryAccessWrapper(MemoryAccess):
         self.total_bytes_written = 0
 
 
-class _DummyCoord:
-    def __init__(self, x: int = 0, y: int = 0, core_type: str = "dummy"):
-        self.x = x
-        self.y = y
-        self.core_type = core_type
-
-
 class TimeoutMemoryAccess(MemoryAccess):
+    _coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
+
     def read(self, address: int, size_bytes: int) -> bytes:
-        raise TimeoutDeviceRegisterError(0, _DummyCoord(), address, size_bytes, True, 0.0)
+        raise TimeoutDeviceRegisterError(0, self._coord, address, size_bytes, True, 0.0)
 
     def write(self, address: int, data: bytes) -> None:
-        raise TimeoutDeviceRegisterError(0, _DummyCoord(), address, len(data), False, 0.0)
+        raise TimeoutDeviceRegisterError(0, self._coord, address, len(data), False, 0.0)
 
 
 class TestDebugSymbols(unittest.TestCase):
