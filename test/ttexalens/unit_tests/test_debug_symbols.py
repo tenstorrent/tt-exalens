@@ -8,6 +8,7 @@ from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens.context import Context
 from ttexalens.elf import ElfVariable, ParsedElfFile
 from ttexalens.memory_access import MemoryAccess, RestrictedMemoryAccessError
+from ttexalens.umd_device import TimeoutDeviceRegisterError
 
 
 class MemoryAccessWrapper(MemoryAccess):
@@ -39,6 +40,21 @@ class MemoryAccessWrapper(MemoryAccess):
         self.total_bytes_read = 0
         self.write_count = 0
         self.total_bytes_written = 0
+
+
+class _DummyCoord:
+    def __init__(self, x: int = 0, y: int = 0, core_type: str = "dummy"):
+        self.x = x
+        self.y = y
+        self.core_type = core_type
+
+
+class TimeoutMemoryAccess(MemoryAccess):
+    def read(self, address: int, size_bytes: int) -> bytes:
+        raise TimeoutDeviceRegisterError(0, _DummyCoord(), address, size_bytes, True, 0.0)
+
+    def write(self, address: int, data: bytes) -> None:
+        raise TimeoutDeviceRegisterError(0, _DummyCoord(), address, len(data), False, 0.0)
 
 
 class TestDebugSymbols(unittest.TestCase):
@@ -453,6 +469,20 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertRaises(RestrictedMemoryAccessError, lambda: +invalid_ptr.dereference())
         self.assertRaises(RestrictedMemoryAccessError, lambda: abs(invalid_ptr.dereference()))
         self.assertRaises(RestrictedMemoryAccessError, lambda: ~invalid_ptr.dereference())
+
+    def test_elf_variable_timeout_errors_propagate(self):
+        variable_die = self.parsed_elf.variables["g_global_struct"]
+        assert variable_die.address is not None
+        timeout_mem_access = TimeoutMemoryAccess()
+        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, timeout_mem_access)
+        g_global_struct_a = g_global_struct.a
+
+        self.assertRaises(TimeoutDeviceRegisterError, g_global_struct_a.read_value)
+        self.assertRaises(TimeoutDeviceRegisterError, lambda: str(g_global_struct_a))
+        self.assertRaises(TimeoutDeviceRegisterError, lambda: repr(g_global_struct_a))
+        self.assertRaises(TimeoutDeviceRegisterError, lambda: hash(g_global_struct_a))
+        self.assertRaises(TimeoutDeviceRegisterError, lambda: format(g_global_struct_a, "x"))
+        self.assertRaises(TimeoutDeviceRegisterError, lambda: [0, 1][g_global_struct_a])
 
     def test_elf_variable_type_errors(self):
         """Test that all operators handle type incompatibility correctly"""
