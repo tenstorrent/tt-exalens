@@ -1,16 +1,21 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from typing import Callable
 import unittest
 
 import tt_umd
 
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
+from ttexalens import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.elf import ElfVariable, ParsedElfFile
+from ttexalens.hardware.risc_debug import RiscHaltError
 from ttexalens.memory_access import MemoryAccess, RestrictedMemoryAccessError
 from ttexalens.umd_device import TimeoutDeviceRegisterError
+
+from parameterized import parameterized
 
 
 class MemoryAccessWrapper(MemoryAccess):
@@ -52,6 +57,18 @@ class TimeoutMemoryAccess(MemoryAccess):
 
     def write(self, address: int, data: bytes) -> None:
         raise TimeoutDeviceRegisterError(0, self._coord, address, len(data), False, 0.0)
+
+
+class RiscHaltErrorMemoryAccess(MemoryAccess):
+    _device = init_cached_test_context().devices[0]
+    _risc_name = "dummy risc"
+    _location = OnChipCoordinate.create("0,0", _device)
+
+    def read(self, address: int, size_bytes: int) -> bytes:
+        raise RiscHaltError(self._risc_name, self._location)
+
+    def write(self, address: int, data: bytes) -> None:
+        raise RiscHaltError(self._risc_name, self._location)
 
 
 class TestDebugSymbols(unittest.TestCase):
@@ -412,74 +429,80 @@ class TestDebugSymbols(unittest.TestCase):
             Exception, g_global_struct.enum_class_field.write_value, 0xFFFFFFFFFFFFFFFF
         )  # Overflow uint64 on byte enum
 
-    def test_elf_variable_memory_access_errors(self):
-        """Test that all operators propagate memory access errors"""
-        g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
-
-        # invalid_memory_ptr points to 0xFFFF0000 which is outside L1/Data Private Memory
-        invalid_ptr = g_global_struct.invalid_memory_ptr
+    @parameterized.expand(
+        [
+            (RestrictedMemoryAccessError, lambda self: self.mem_access),
+            (TimeoutDeviceRegisterError, lambda _: TimeoutMemoryAccess()),
+            (RiscHaltError, lambda _: RiscHaltErrorMemoryAccess()),
+        ]
+    )
+    def test_elf_variable_error_handling(self, expected_error: Exception, mem_access_factory: Callable):
+        mem_access = mem_access_factory(self)
+        g_global_struct = self.parsed_elf.get_global("g_global_struct", mem_access)
+        g_global_struct_var = (
+            g_global_struct.invalid_memory_ptr.dereference()
+            if expected_error == RestrictedMemoryAccessError
+            else g_global_struct.a
+        )
 
         # Dereferencing should raise memory access error
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference().read_value())
+        self.assertRaises(expected_error, lambda: g_global_struct_var.read_value())
 
         # Test all comparison operators propagate memory errors
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() < 100)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 > invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() <= 100)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 >= invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() > 100)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 < invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() >= 100)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 <= invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() == 100)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 100 == invalid_ptr.dereference())
+        self.assertRaises(expected_error, lambda: g_global_struct_var < 100)
+        self.assertRaises(expected_error, lambda: 100 > g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var <= 100)
+        self.assertRaises(expected_error, lambda: 100 >= g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var > 100)
+        self.assertRaises(expected_error, lambda: 100 < g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var >= 100)
+        self.assertRaises(expected_error, lambda: 100 <= g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var == 100)
+        self.assertRaises(expected_error, lambda: 100 == g_global_struct_var)
         # Test all arithmetic operators propagate memory errors
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() + 10)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 + invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() - 10)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 - invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() * 10)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 * invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() / 10)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 / invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() // 10)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 // invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() % 10)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 10 % invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() ** 2)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 2 ** invalid_ptr.dereference())
+        self.assertRaises(expected_error, lambda: g_global_struct_var + 10)
+        self.assertRaises(expected_error, lambda: 10 + g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var - 10)
+        self.assertRaises(expected_error, lambda: 10 - g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var * 10)
+        self.assertRaises(expected_error, lambda: 10 * g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var / 10)
+        self.assertRaises(expected_error, lambda: 10 / g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var // 10)
+        self.assertRaises(expected_error, lambda: 10 // g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var % 10)
+        self.assertRaises(expected_error, lambda: 10 % g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var**2)
+        self.assertRaises(expected_error, lambda: 2**g_global_struct_var)
 
         # Test all bitwise operators propagate memory errors
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() & 0xFF)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 0xFF & invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() | 0xFF)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 0xFF | invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() ^ 0xFF)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 0xFF ^ invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() << 2)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 2 << invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: invalid_ptr.dereference() >> 2)
-        self.assertRaises(RestrictedMemoryAccessError, lambda: 2 >> invalid_ptr.dereference())
+        self.assertRaises(expected_error, lambda: g_global_struct_var & 0xFF)
+        self.assertRaises(expected_error, lambda: 0xFF & g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var | 0xFF)
+        self.assertRaises(expected_error, lambda: 0xFF | g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var ^ 0xFF)
+        self.assertRaises(expected_error, lambda: 0xFF ^ g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var << 2)
+        self.assertRaises(expected_error, lambda: 2 << g_global_struct_var)
+        self.assertRaises(expected_error, lambda: g_global_struct_var >> 2)
+        self.assertRaises(expected_error, lambda: 2 >> g_global_struct_var)
 
         # Test all unary operators propagate memory errors
-        self.assertRaises(RestrictedMemoryAccessError, lambda: -invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: +invalid_ptr.dereference())
-        self.assertRaises(RestrictedMemoryAccessError, lambda: abs(invalid_ptr.dereference()))
-        self.assertRaises(RestrictedMemoryAccessError, lambda: ~invalid_ptr.dereference())
+        self.assertRaises(expected_error, lambda: -g_global_struct_var)
+        self.assertRaises(expected_error, lambda: +g_global_struct_var)
+        self.assertRaises(expected_error, lambda: abs(g_global_struct_var))
+        self.assertRaises(expected_error, lambda: ~g_global_struct_var)
 
-    def test_elf_variable_timeout_errors_propagate(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
-        timeout_mem_access = TimeoutMemoryAccess()
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, timeout_mem_access)
-        g_global_struct_a = g_global_struct.a
+        self.assertRaises(expected_error, lambda: [0, 1][g_global_struct_var])
+        if expected_error != RestrictedMemoryAccessError:
+            self.assertRaises(expected_error, lambda: g_global_struct.c.as_value_list())
 
-        self.assertRaises(TimeoutDeviceRegisterError, g_global_struct_a.read_value)
-        self.assertRaises(TimeoutDeviceRegisterError, lambda: str(g_global_struct_a))
-        self.assertRaises(TimeoutDeviceRegisterError, lambda: repr(g_global_struct_a))
-        self.assertRaises(TimeoutDeviceRegisterError, lambda: hash(g_global_struct_a))
-        self.assertRaises(TimeoutDeviceRegisterError, lambda: format(g_global_struct_a, "x"))
-        self.assertRaises(TimeoutDeviceRegisterError, lambda: [0, 1][g_global_struct_a])
+        # These methods all have fallback, but for Timeout error we should not swallow the error
+        if expected_error == TimeoutDeviceRegisterError:
+            self.assertRaises(expected_error, lambda: str(g_global_struct_var))
+            self.assertRaises(expected_error, lambda: repr(g_global_struct_var))
+            self.assertRaises(expected_error, lambda: hash(g_global_struct_var))
+            self.assertRaises(expected_error, lambda: format(g_global_struct_var, "x"))
 
     def test_elf_variable_type_errors(self):
         """Test that all operators handle type incompatibility correctly"""
