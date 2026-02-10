@@ -9,7 +9,9 @@ from typing import TYPE_CHECKING
 from ttexalens.memory_access import (
     MemoryAccess,
     CachedReadMemoryAccess,
+    RestrictedMemoryAccessError,
 )
+from ttexalens.umd_device import TimeoutDeviceRegisterError
 
 if TYPE_CHECKING:
     from ttexalens.elf.die import ElfDie
@@ -512,14 +514,21 @@ class ElfVariable:
         Allow ElfVariable to be used as an index in sequences (lists, tuples, etc.)
         This enables usage like: a[elf_var] instead of a[elf_var.value()]
         """
-        value = self.read_value()
-        if isinstance(value, int):
-            return value
-        elif isinstance(value, bool):
-            return int(value)  # Convert bool to int (True -> 1, False -> 0)
-        elif isinstance(value, float):
-            if value.is_integer():
-                return int(value)
+        from ttexalens.hardware.risc_debug import RiscHaltError
+
+        try:
+            value = self.read_value()
+            if isinstance(value, int):
+                return value
+            elif isinstance(value, bool):
+                return int(value)  # Convert bool to int (True -> 1, False -> 0)
+            elif isinstance(value, float):
+                if value.is_integer():
+                    return int(value)
+        except (TimeoutDeviceRegisterError, RiscHaltError, RestrictedMemoryAccessError):
+            raise
+        except Exception:
+            raise TypeError(f"ElfVariable '{self}' cannot be used as an index")
         raise TypeError(f"ElfVariable '{self}' cannot be used as an index")
 
     def __str__(self) -> str:
@@ -534,6 +543,8 @@ class ElfVariable:
                     if entry.value == value and entry.path is not None:
                         return str(entry.path)
             return str(value)
+        except TimeoutDeviceRegisterError:
+            raise
         except Exception:
             # If get_value() fails (e.g., not a base type), fall back to __repr__
             return self.__repr__()
@@ -550,6 +561,8 @@ class ElfVariable:
         # Try to get the value for additional context
         try:
             value_info = f", value={self.read_value()!r}"
+        except TimeoutDeviceRegisterError:
+            raise
         except Exception:
             value_info = ""
 
@@ -567,6 +580,8 @@ class ElfVariable:
     def __hash__(self):
         try:
             return hash(self.read_value())
+        except TimeoutDeviceRegisterError:
+            raise
         except Exception:
             return hash((self.__type_die.offset, self.__address))
 
@@ -578,6 +593,8 @@ class ElfVariable:
         try:
             value = self.read_value()
             return format(value, format_spec)
+        except TimeoutDeviceRegisterError:
+            raise
         except Exception:
             # If get_value() fails, fall back to default string representation
             return str(self)
