@@ -16,6 +16,8 @@ Options:
                          logical, noc0, noc1, translated, die - show coordinate
                          noc0_id - show the NOC0 node ID (x-y) for the block
                          noc1_id - show the NOC1 node ID (x-y) for the block
+                         noc0_logical_id - show the NOC0 logical node ID (x-y) for the block
+                         noc1_logical_id - show the NOC1 logical node ID (x-y) for the block
 
 Description:
   Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
@@ -143,12 +145,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                 elif ct == "riscv":
                     text = get_riscv_run_status(device, loc)
                     cell_contents_str.append(color_block(text, block_type))
-                elif ct == "noc0_id" or ct == "noc1_id":
+                elif ct == "noc0_id" or ct == "noc1_id" or ct == "noc0_logical_id" or ct == "noc1_logical_id":
                     try:
-                        noc_id = 0 if ct == "noc0_id" else 1
+                        noc_id = 0 if ct == "noc0_id" or ct == "noc0_logical_id" else 1
                         block = device.get_block(loc)
                         register_store = block.get_register_store(noc_id=noc_id)
-                        data = register_store.read_register("NOC_NODE_ID")
+                        data = register_store.read_register("NOC_ID_LOGICAL" if "logical" in ct else "NOC_NODE_ID")
                         x = data & 0x3F
                         y = (data >> 6) & 0x3F
                         cell_contents_str.append(color_block(f"{x:02}-{y:02}", block_type))
