@@ -34,7 +34,7 @@ set(RISCV_OBJECT "${CMAKE_SOURCE_DIR}/build/riscv-src/obj")
 # Define architectures, applications, and cores
 set(RISCV_ARCHITECTURES "wormhole" "blackhole")
 set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc" "erisc0" "erisc1")
-set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "edge_mem_test")
+set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "edge_mem_test" "frame_unwinding_test" "frame_unwinding_test_cfi_asm")
 
 # Create the object file output directory
 file(MAKE_DIRECTORY ${RISCV_OBJECT})
@@ -83,9 +83,16 @@ add_riscv_object("${RISCV_OBJECT}/tmu-crt0.coverage.o" "${RISCV_SOURCE}/tmu-crt0
 
 # Add C++ compile target
 foreach(app ${RISCV_APPS})
-    add_riscv_object("${RISCV_OBJECT}/${app}.debug.o" "${RISCV_SOURCE}/${app}.cc" "debug")
-    add_riscv_object("${RISCV_OBJECT}/${app}.release.o" "${RISCV_SOURCE}/${app}.cc" "release")
-    add_riscv_object("${RISCV_OBJECT}/${app}.coverage.o" "${RISCV_SOURCE}/${app}.cc" "coverage")
+    # Detect assembly files by "_asm" substring in app name
+    if(app MATCHES "_asm")
+        set(SOURCE_EXT "S")
+    else()
+        set(SOURCE_EXT "cc")
+    endif()
+
+    add_riscv_object("${RISCV_OBJECT}/${app}.debug.o" "${RISCV_SOURCE}/${app}.${SOURCE_EXT}" "debug")
+    add_riscv_object("${RISCV_OBJECT}/${app}.release.o" "${RISCV_SOURCE}/${app}.${SOURCE_EXT}" "release")
+    add_riscv_object("${RISCV_OBJECT}/${app}.coverage.o" "${RISCV_SOURCE}/${app}.${SOURCE_EXT}" "coverage")
 endforeach()
 
 # Define function to create targets for a specific architecture, application, and core
