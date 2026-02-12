@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import os
+import atexit
 
 from ttexalens.umd_api import UmdApi, local_init
 from ttexalens.server import FileAccessApi, connect_to_server
@@ -93,3 +94,18 @@ def set_active_context(context: Context | None) -> None:
     """
     global GLOBAL_CONTEXT
     GLOBAL_CONTEXT = context
+
+
+def _cleanup_global_context():
+    """
+    Clears the global context reference to allow C++ destructors
+    to run before the nanobind runtime shuts down.
+    """
+    global GLOBAL_CONTEXT
+    if GLOBAL_CONTEXT is not None:
+        # Dropping this reference allows the RefCount to hit 0
+        GLOBAL_CONTEXT = None
+
+
+# Register the cleanup to run automatically on script exit
+atexit.register(_cleanup_global_context)
