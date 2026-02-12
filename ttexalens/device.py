@@ -161,10 +161,11 @@ class Device:
 
                 failed_noc = noc_queue.pop(0)
                 noc_queue.append(failed_noc)
-                util.WARN(f"Device {self.id}: NOC{failed_noc} hung, switching over to NOC{noc_queue[0]}.")
 
                 if noc_queue[0] == first_used:
                     raise  # Exhausted all NOCs, raise Timeout
+
+                util.WARN(f"Device {self.id}: NOC{failed_noc} hung, switching over to NOC{noc_queue[0]}.")
 
     @property
     def board_type(self) -> tt_umd.BoardType:

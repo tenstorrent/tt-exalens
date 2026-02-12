@@ -30,7 +30,7 @@ class Context:
         use_4B_mode=True,
         dma_read_threshold: int = 24,  # Measured thresholds for DMA vs NOC transfers on WH
         dma_write_threshold: int = 56,  # Measured thresholds for DMA vs NOC transfers on WH
-        noc_failover: bool = True,
+        noc_failover: bool = False,
     ):
         self.umd_api = umd_api
         self.file_api = file_api
