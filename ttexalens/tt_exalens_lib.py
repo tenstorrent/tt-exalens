@@ -925,6 +925,7 @@ def get_tensix_state(device: Device, location: OnChipCoordinate, l1_address: int
     assert noc_block.block_type == "functional_workers", "Tensix state can only be retrieved from a tensix block."
     register_store = noc_block.get_register_store()
     debug_bus = noc_block.debug_bus
+    assert debug_bus is not None, "Debug bus is not available for the given location."
 
     alu = [
         {key: register_store.read_register(register) for key, register in tensix_reg_desc.alu_config[i].items()}
