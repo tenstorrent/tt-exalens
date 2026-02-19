@@ -85,11 +85,13 @@ class UmdApi:
                 tt_umd.logging.set_level(tt_umd.logging.Level.Error)
 
             discovery_options = tt_umd.TopologyDiscoveryOptions()
-            discovery_options.io_device_type = tt_umd.IODeviceType.PCIe if not init_jtag else tt_umd.IODeviceType.JTAG
-            # TODO: discovery_options.no_wait_for_eth_training = True
+            discovery_options.no_wait_for_eth_training = True
             discovery_options.no_eth_firmware_strictness = True
             discovery_options.predict_eth_fw_version = True
-            self.cluster_descriptor, devices = tt_umd.TopologyDiscovery.discover(discovery_options)
+            self.cluster_descriptor, devices = tt_umd.TopologyDiscovery.discover(
+                discovery_options,
+                tt_umd.IODeviceType.PCIe if not init_jtag else tt_umd.IODeviceType.JTAG,
+            )
 
             if len(self.cluster_descriptor.get_all_chips()) == 0:
                 raise RuntimeError("No Tenstorrent devices were detected on this system.")
