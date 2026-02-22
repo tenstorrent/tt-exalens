@@ -6,16 +6,16 @@ Usage:
   parse-debug-bus-json <json-path> [<groups>] [-d <device>] [-l <loc>]
 
 Arguments:
-  <json-path>      Path to debug_bus_signals.json.
+  <json-path>      Path to json file containing debug bus signal groups.
   <groups>         Comma-separated group names to print. [default: all]
 
 Description:
-  Loads debug_bus_signals.json and prints group values for the selected device/location.
+  Loads json file containing debug bus signal groups and prints group values for the selected device/location.
 
 Examples:
-  parse-debug-bus-json ./debug_bus_signals.json
-  parse-debug-bus-json ./debug_bus_signals.json brisc_group_a,rwc_status_signals
-  parse-debug-bus-json ./debug_bus_signals.json -d 0 -l 0,0
+  parse-debug-bus-json ./debug_bus_signal_groups.json
+  parse-debug-bus-json ./debug_bus_signal_groups.json brisc_group_a,rwc_status_signals
+  parse-debug-bus-json ./debug_bus_signal_groups.json -d 0 -l 0,0
 """
 
 from __future__ import annotations
@@ -44,11 +44,15 @@ def _load_debug_bus_json(json_path: str) -> dict:
         return json.load(handle)
 
 
-def _parse_groups_arg(groups_arg: str) -> list[str]:
+def _parse_groups_arg(groups: dict[str, str], groups_arg: str) -> dict[str, str]:
     groups_arg = groups_arg.strip()
+    selected_group_names = []
     if not groups_arg or groups_arg.lower() == "all":
-        return ["all"]
-    return [group.strip() for group in groups_arg.split(",") if group.strip()]
+        selected_group_names = sorted(groups.keys())
+    else:
+        for pattern in groups_arg.split(","):
+            selected_group_names.extend(util.search(groups.keys(), pattern.strip()))
+    return {name: groups[name] for name in sorted(groups.keys()) if name in selected_group_names}
 
 
 def _get_location_key(loc: OnChipCoordinate) -> str:
@@ -70,7 +74,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     json_path = dopt.args["<json-path>"]
     groups_arg = dopt.args["<groups>"] or "all"
-    groups_filter = _parse_groups_arg(groups_arg)
 
     try:
         data = _load_debug_bus_json(json_path)
@@ -98,17 +101,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                 continue
             loc_data = data[device_key][block_type][loc_key]
 
-            debug_bus_signals = loc_data.get("debug_bus_signals", {})
-            if not debug_bus_signals:
+            debug_bus_signal_groups = loc_data.get("debug_bus_signal_groups", {})
+            if not debug_bus_signal_groups:
                 util.WARN(f"No debug_bus_signals found for {device_key} {loc_key}.")
                 continue
 
-            if "all" in groups_filter:
-                selected_groups = dict(sorted(debug_bus_signals.items()))
-            else:
-                selected_groups = {
-                    name: debug_bus_signals[name] for name in sorted(debug_bus_signals) if name in groups_filter
-                }
+            selected_groups = _parse_groups_arg(debug_bus_signal_groups, groups_arg)
 
             if not selected_groups:
                 util.WARN(f"No matching groups for {device_key} {loc_key}.")
