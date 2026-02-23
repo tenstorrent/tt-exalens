@@ -75,17 +75,17 @@ class RiscvCoreSimulator:
     def write_data_checked(self, addr: int, data: int | list[int]):
         """Write data to memory and verify it was written correctly."""
         if isinstance(data, int):
-            write_words_to_device(self.location, addr, data)
+            write_words_to_device(self.location, addr, data, safe_mode=False)
             assert self.read_data(addr) == data, f"Data verification failed at address {addr:x}"
         else:
             byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-            write_to_device(self.location, addr, byte_data)
-            read_data = read_from_device(self.location, addr, num_bytes=len(byte_data))
+            write_to_device(self.location, addr, byte_data, safe_mode=False)
+            read_data = read_from_device(self.location, addr, num_bytes=len(byte_data), safe_mode=False)
             assert read_data == byte_data, f"Data verification failed at address {addr:x}"
 
     def read_data(self, addr: int) -> int:
         """Read data from memory at specified address."""
-        return read_word_from_device(self.location, addr)
+        return read_word_from_device(self.location, addr, safe_mode=False)
 
     def set_reset(self, reset: bool):
         """Set or clear reset signal."""

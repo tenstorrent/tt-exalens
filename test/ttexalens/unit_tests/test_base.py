@@ -38,11 +38,11 @@ def init_default_test_context():
         if _cached_simulator_context is None:
             simulation_directory = os.getenv("TTEXALENS_SIMULATOR")
             _cached_simulator_context = init_ttexalens(
-                simulation_directory=simulation_directory, use_noc1=use_noc1, use_4B_mode=False, noc_failover=False
+                simulation_directory=simulation_directory, use_noc1=use_noc1, use_4B_mode=False, noc_failover=False, safe_mode=False
             )
         return _cached_simulator_context
     else:
-        _cached_test_context = init_ttexalens(use_noc1=use_noc1, use_4B_mode=False, noc_failover=False)
+        _cached_test_context = init_ttexalens(use_noc1=use_noc1, use_4B_mode=False, noc_failover=False, safe_mode=False)
     return _cached_test_context
 
 
@@ -56,7 +56,7 @@ def init_cached_test_context():
 def init_test_context(use_noc1: bool = False):
     if use_noc1:
         assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing for NOC1 not supported"
-        return init_ttexalens(use_noc1=True, use_4B_mode=False, noc_failover=False)
+        return init_ttexalens(use_noc1=True, use_4B_mode=False, noc_failover=False, safe_mode=False)
     else:
         return init_default_test_context()
 

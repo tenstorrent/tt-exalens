@@ -24,6 +24,7 @@ def init_ttexalens(
     use_4B_mode: bool = True,
     simulation_directory: str | None = None,
     noc_failover: bool = True,
+    safe_mode: bool = True,
 ) -> Context:
     """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
     Interfacing device is local, through pybind.
@@ -33,6 +34,7 @@ def init_ttexalens(
         use_noc1 (bool): Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
         use_4B_mode (bool): Whether to use 4B mode for communication with the device. Default is True.
         simulation_directory (str, optional): If specified, starts the simulator from the given build output directory.
+        safe_mode (bool): Whether to enable safe mode for memory access. Default is True.
 
     Returns:
         Context: TTExaLens context object.
@@ -40,7 +42,7 @@ def init_ttexalens(
 
     umd_api = local_init(init_jtag, use_noc1, simulation_directory)
 
-    return load_context(umd_api, FileAccessApi(), use_noc1, use_4B_mode, noc_failover=noc_failover)
+    return load_context(umd_api, FileAccessApi(), use_noc1, use_4B_mode, noc_failover=noc_failover, safe_mode=safe_mode)
 
 
 def init_ttexalens_remote(
@@ -48,6 +50,7 @@ def init_ttexalens_remote(
     port: int = 5555,
     use_4B_mode: bool = True,
     noc_failover: bool = True,
+    safe_mode: bool = True,
 ) -> Context:
     """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
     Interfacing device is done remotely through TTExaLens client.
@@ -56,6 +59,7 @@ def init_ttexalens_remote(
             ip_address (str): IP address of the TTExaLens server. Default is 'localhost'.
             port (int): Port number of the TTExaLens server interface. Default is 5555.
             use_4B_mode (bool): Whether to use 4B mode for communication with the device. Default is True.
+            safe_mode (bool): Whether to enable safe mode for memory access. Default is True.
 
     Returns:
             Context: TTExaLens context object.
@@ -63,7 +67,7 @@ def init_ttexalens_remote(
 
     umd_api, file_api = connect_to_server(ip_address, port)
 
-    return load_context(umd_api, file_api, use_4B_mode=use_4B_mode, noc_failover=noc_failover)
+    return load_context(umd_api, file_api, use_4B_mode=use_4B_mode, noc_failover=noc_failover, safe_mode=safe_mode)
 
 
 def load_context(
@@ -72,9 +76,10 @@ def load_context(
     use_noc1: bool = False,
     use_4B_mode: bool = True,
     noc_failover: bool = True,
+    safe_mode: bool = True,
 ) -> Context:
     """Load the TTExaLens context object with specified parameters."""
-    context = Context(umd_api, file_api, use_noc1=use_noc1, use_4B_mode=use_4B_mode, noc_failover=noc_failover)
+    context = Context(umd_api, file_api, use_noc1=use_noc1, use_4B_mode=use_4B_mode, noc_failover=noc_failover, safe_mode=safe_mode)
 
     global GLOBAL_CONTEXT
     GLOBAL_CONTEXT = context

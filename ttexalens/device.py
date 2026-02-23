@@ -23,6 +23,35 @@ from ttexalens import util as util
 T = TypeVar("T")
 
 
+class UnsafeAccessException(util.TTException):
+    """Exception raised when an unsafe memory access violation is detected."""
+
+    def __init__(
+        self,
+        location: OnChipCoordinate,
+        original_addr: int,
+        num_bytes: int,
+        violating_addr: int,
+        is_write: bool = False,
+        reason: str | None = None,
+    ):
+        self.location = location
+        self.original_addr = original_addr
+        self.num_bytes = num_bytes
+        self.violating_addr = violating_addr
+        self.is_write = is_write
+        self.reason = reason
+        
+    def __str__(self) -> str:
+        """Generate error message lazily when the exception is converted to string."""
+
+        msg = f"Attempted to {'write to' if self.is_write else 'read from'} address range [0x{self.original_addr:08x}, 0x{self.original_addr + self.num_bytes - 1:08x}]."
+        if self.reason:
+            msg += f" Reason: {self.reason}"
+
+        return f"{self.location.to_user_str()}, unsafe access at address 0x{self.violating_addr:08x}. {msg}"
+
+
 class TensixInstructions:
     def __init__(self, ops):
         for func_name in dir(ops):
@@ -197,6 +226,51 @@ class Device:
             device for device in self._context.devices.values() if not device.is_local and device.local_device == self
         ]
 
+    def _validate_noc_access_is_safe(self, location: OnChipCoordinate, addr: int, num_bytes: int, is_write: bool = False) -> None:
+        """
+        Validates that a NOC read or write operation is safe by checking if the address range is within known and accessible memory blocks.
+
+        Args:
+            location (OnChipCoordinate): OnChipCoordinate object representing the location on chip.
+            addr (int): Memory address to read from.
+            num_bytes (int): Number of bytes to read.
+            is_write (bool, optional): Whether the access is a write operation. Defaults to False which means a read operation.
+        """
+
+        noc_block = location.noc_block
+        noc_memory_map = noc_block.noc_memory_map
+
+        bytes_checked = 0
+        while bytes_checked < num_bytes:
+            curr_addr = addr + bytes_checked
+            memory_block_info = noc_memory_map.find_by_noc_address(curr_addr)
+            if not memory_block_info:
+                raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write)
+            assert (
+                memory_block_info.memory_block.address.noc_address is not None
+            ), "Memory block found by NoC address must have a NoC address."
+
+            if not memory_block_info.is_accessible:
+                raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write)
+
+            memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
+            assert memory_block_end > curr_addr, "Memory block end must be greater than current address."
+
+            access_size = min(num_bytes - bytes_checked, memory_block_end - curr_addr)
+
+            if is_write:
+                safe_to_access = memory_block_info.is_safe_to_write(curr_addr, access_size)
+            else:
+                safe_to_access = memory_block_info.is_safe_to_read(curr_addr, access_size)
+
+            if not safe_to_access:
+                if self.is_blackhole() and "data_private_memory" in memory_block_info.name:
+                    raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write, reason="Risc data private memory is marked unsafe due to potential blackhole hardware bug, see tt-exalens:#907/#908.")
+                else:
+                    raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write) 
+
+            bytes_checked += access_size
+
     def noc_read(
         self,
         location: OnChipCoordinate,
@@ -205,6 +279,7 @@ class Device:
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
+        safe_mode: bool | None = None,
     ) -> bytes:
         noc_x, noc_y = location._noc0_coord
 
@@ -212,14 +287,19 @@ class Device:
             use_4B_mode = self._context.use_4B_mode
         if dma_threshold is None:
             dma_threshold = self._context.dma_read_threshold
+        if safe_mode is None:
+            safe_mode = self._context.safe_mode
+
+        if safe_mode:
+            self._validate_noc_access_is_safe(location, address, size_bytes, is_write=False)
 
         def noc_operation(noc_id: int) -> bytes:
             return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
 
         return self._with_noc_failover(noc_operation, noc_id)
 
-    def noc_read32(self, location: OnChipCoordinate, address: int, noc_id: int | None = None) -> int:
-        result = self.noc_read(location, address, 4, noc_id, True)
+    def noc_read32(self, location: OnChipCoordinate, address: int, noc_id: int | None = None, safe_mode: bool | None = None) -> int:
+        result = self.noc_read(location, address, 4, noc_id, True, safe_mode=safe_mode)
         return int.from_bytes(result, byteorder="little")
 
     def noc_write(
@@ -230,6 +310,7 @@ class Device:
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
+        safe_mode: bool | None = None,
     ):
         noc_x, noc_y = location._noc0_coord
 
@@ -237,14 +318,19 @@ class Device:
             use_4B_mode = self._context.use_4B_mode
         if dma_threshold is None:
             dma_threshold = self._context.dma_write_threshold
+        if safe_mode is None:
+            safe_mode = self._context.safe_mode
+
+        if safe_mode:
+            self._validate_noc_access_is_safe(location, address, len(data), is_write=True)
 
         def noc_operation(noc_id: int) -> None:
             self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
 
         return self._with_noc_failover(noc_operation, noc_id)
 
-    def noc_write32(self, location: OnChipCoordinate, address: int, data: int, noc_id: int | None = None):
-        return self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True)
+    def noc_write32(self, location: OnChipCoordinate, address: int, data: int, noc_id: int | None = None, safe_mode: bool | None = None):
+        return self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True, safe_mode=safe_mode)
 
     def bar0_read32(self, address: int) -> int:
         return self._umd_device.bar0_read32(address)
