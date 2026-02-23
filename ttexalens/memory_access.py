@@ -182,7 +182,7 @@ class RiscDebugMemoryAccess(MemoryAccess):
             return self._risc_debug.read_memory_bytes(address, size_bytes)
 
     def write(self, address: int, data: bytes) -> None:
-        self.validate_access(address, len(data), True)
+        self.validate_access(address, len(data))
 
         if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
@@ -190,7 +190,7 @@ class RiscDebugMemoryAccess(MemoryAccess):
         else:
             self._risc_debug.write_memory_bytes(address, data)
 
-    def validate_access(self, address: int, size_bytes: int, is_write: bool = False) -> None:
+    def validate_access(self, address: int, size_bytes: int) -> None:
         if self._restricted_access:
             l1: MemoryBlock = self._risc_debug.get_l1()
             assert l1.address.private_address is not None, "L1 memory block has no private address"
