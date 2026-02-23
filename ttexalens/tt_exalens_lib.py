@@ -909,19 +909,27 @@ class TensixState:
     address_counters: dict[str, int]
 
 
-def get_tensix_state(device: Device, location: OnChipCoordinate, l1_address: int | None = None) -> TensixState:
+def get_tensix_state(
+    location: str | OnChipCoordinate,
+    l1_address: int | None = None,
+    device_id: int = 0,
+    context: Context | None = None,
+) -> TensixState:
     """
     Gets the tensix state for the given device and location.
     Args:
-        device: Device to get the tensix state for.
-        location: Location to get the tensix state for.
-        l1_address: L1 address to get the tensix state for.
+        location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+        l1_address (int, optional): L1 address to use for reading debug bus signals atomically. If None, debug bus signals are read unsafely.
+        device_id (int, default 0):	ID number of device to read from.
+        context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
     Returns:
         TensixState: Tensix state for the given device and location.
     """
+    coordinate = convert_coordinate(location, device_id, context)
+    device = coordinate.device
     tensix_reg_desc = device.get_tensix_registers_description()
     tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
-    noc_block = device.get_block(location)
+    noc_block = coordinate.noc_block
     assert noc_block.block_type == "functional_workers", "Tensix state can only be retrieved from a tensix block."
     register_store = noc_block.get_register_store()
     debug_bus = noc_block.debug_bus
