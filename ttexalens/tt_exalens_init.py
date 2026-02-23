@@ -79,7 +79,9 @@ def load_context(
     safe_mode: bool = True,
 ) -> Context:
     """Load the TTExaLens context object with specified parameters."""
-    context = Context(umd_api, file_api, use_noc1=use_noc1, use_4B_mode=use_4B_mode, noc_failover=noc_failover, safe_mode=safe_mode)
+    context = Context(
+        umd_api, file_api, use_noc1=use_noc1, use_4B_mode=use_4B_mode, noc_failover=noc_failover, safe_mode=safe_mode
+    )
 
     global GLOBAL_CONTEXT
     GLOBAL_CONTEXT = context

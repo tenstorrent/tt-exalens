@@ -382,11 +382,11 @@ def main():
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 
-    use_4B_mode=False if args["--disable-4B-mode"] else True
-    safe_mode=False if args["--unsafe-mode"] else True
-    use_noc1=args["--use-noc1"]
-    simulation_directory=args["-s"]
-    init_jtag=args["--jtag"]
+    use_4B_mode = False if args["--disable-4B-mode"] else True
+    safe_mode = False if args["--unsafe-mode"] else True
+    use_noc1 = args["--use-noc1"]
+    simulation_directory = args["-s"]
+    init_jtag = args["--jtag"]
 
     # Try to start the server. If already running, exit with error.
     if args["--server"]:

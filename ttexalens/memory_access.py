@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation
     from ttexalens.device import UnsafeAccessException
 
+
 class RestrictedMemoryAccessError(Exception):
     """
     Raised when attempting to access memory outside of allowed regions
@@ -212,6 +213,8 @@ class RiscDebugMemoryAccess(MemoryAccess):
                 raise RestrictedMemoryAccessError(
                     access_start=address, access_end=address_end, location=self._risc_debug.risc_location.location
                 )
+
+
 class CachedReadMemoryAccess(MemoryAccess):
     """
     MemoryAccess implementation that serves reads from a cached byte range when

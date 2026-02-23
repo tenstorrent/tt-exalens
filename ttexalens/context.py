@@ -40,7 +40,7 @@ class Context:
         self.use_4B_mode: bool = use_4B_mode
         self.dma_read_threshold: int = dma_read_threshold
         self.dma_write_threshold: int = dma_write_threshold
-        
+
         self.noc_failover = noc_failover
         self.safe_mode = safe_mode
 

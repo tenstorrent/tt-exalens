@@ -41,7 +41,7 @@ class UnsafeAccessException(util.TTException):
         self.violating_addr = violating_addr
         self.is_write = is_write
         self.reason = reason
-        
+
     def __str__(self) -> str:
         """Generate error message lazily when the exception is converted to string."""
 
@@ -226,7 +226,9 @@ class Device:
             device for device in self._context.devices.values() if not device.is_local and device.local_device == self
         ]
 
-    def _validate_noc_access_is_safe(self, location: OnChipCoordinate, addr: int, num_bytes: int, is_write: bool = False) -> None:
+    def _validate_noc_access_is_safe(
+        self, location: OnChipCoordinate, addr: int, num_bytes: int, is_write: bool = False
+    ) -> None:
         """
         Validates that a NOC read or write operation is safe by checking if the address range is within known and accessible memory blocks.
 
@@ -265,9 +267,16 @@ class Device:
 
             if not safe_to_access:
                 if self.is_blackhole() and "data_private_memory" in memory_block_info.name:
-                    raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write, reason="Risc data private memory is marked unsafe due to potential blackhole hardware bug, see tt-exalens:#907/#908.")
+                    raise UnsafeAccessException(
+                        location,
+                        addr,
+                        num_bytes,
+                        curr_addr,
+                        is_write,
+                        reason="Risc data private memory is marked unsafe due to potential blackhole hardware bug, see tt-exalens:#907/#908.",
+                    )
                 else:
-                    raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write) 
+                    raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write)
 
             bytes_checked += access_size
 
@@ -298,7 +307,9 @@ class Device:
 
         return self._with_noc_failover(noc_operation, noc_id)
 
-    def noc_read32(self, location: OnChipCoordinate, address: int, noc_id: int | None = None, safe_mode: bool | None = None) -> int:
+    def noc_read32(
+        self, location: OnChipCoordinate, address: int, noc_id: int | None = None, safe_mode: bool | None = None
+    ) -> int:
         result = self.noc_read(location, address, 4, noc_id, True, safe_mode=safe_mode)
         return int.from_bytes(result, byteorder="little")
 
@@ -329,8 +340,17 @@ class Device:
 
         return self._with_noc_failover(noc_operation, noc_id)
 
-    def noc_write32(self, location: OnChipCoordinate, address: int, data: int, noc_id: int | None = None, safe_mode: bool | None = None):
-        return self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True, safe_mode=safe_mode)
+    def noc_write32(
+        self,
+        location: OnChipCoordinate,
+        address: int,
+        data: int,
+        noc_id: int | None = None,
+        safe_mode: bool | None = None,
+    ):
+        return self.noc_write(
+            location, address, data.to_bytes(4, byteorder="little"), noc_id, True, safe_mode=safe_mode
+        )
 
     def bar0_read32(self, address: int) -> int:
         return self._umd_device.bar0_read32(address)

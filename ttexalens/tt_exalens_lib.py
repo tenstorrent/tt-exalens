@@ -243,7 +243,6 @@ def write_words_to_device(
     noc_id = check_noc_id(noc_id, coordinate.context)
     use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
 
-
     if isinstance(data, int):
         coordinate.noc_write32(addr, data, noc_id, safe_mode)
     else:

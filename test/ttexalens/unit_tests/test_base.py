@@ -38,7 +38,11 @@ def init_default_test_context():
         if _cached_simulator_context is None:
             simulation_directory = os.getenv("TTEXALENS_SIMULATOR")
             _cached_simulator_context = init_ttexalens(
-                simulation_directory=simulation_directory, use_noc1=use_noc1, use_4B_mode=False, noc_failover=False, safe_mode=False
+                simulation_directory=simulation_directory,
+                use_noc1=use_noc1,
+                use_4B_mode=False,
+                noc_failover=False,
+                safe_mode=False,
             )
         return _cached_simulator_context
     else:
