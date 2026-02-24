@@ -588,6 +588,10 @@ Writes a 32-bit word to the specified RISC-V core's private memory.
 
 
 
+## TensixState
+
+
+
 
 
 # coordinate
