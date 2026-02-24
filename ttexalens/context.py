@@ -52,7 +52,7 @@ class Context:
     def use_noc1(self, value: bool):
         if value == self._use_noc1:
             return
-        
+
         self._use_noc1 = value
         for device in self.devices.values():
             device.switch_noc(int(value))
