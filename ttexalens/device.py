@@ -141,6 +141,7 @@ class Device:
         self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
 
     def switch_noc(self, noc_id: int):
+        assert noc_id in self._noc_to_use, f"NOC{noc_id} is not in the known NOC list {self._noc_to_use}"
         self._noc_to_use.remove(noc_id)
         self._noc_to_use.insert(0, noc_id)
 
