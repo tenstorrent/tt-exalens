@@ -633,7 +633,11 @@ class TestReadWrite(unittest.TestCase):
         ]
     )
     def test_unaligned_read_private_memory(self, loc_str: str, risc_name: str):
-        location = OnChipCoordinate.create(loc_str, device=self.context.devices[0])
+        device = self.context.devices[0]
+        if device.is_blackhole() and risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+    
+        location = OnChipCoordinate.create(loc_str, device)
         risc_debug = location._device.get_block(location).get_risc_debug(risc_name)
         with risc_debug.ensure_private_memory_access():
             private_memory = risc_debug.get_data_private_memory()
@@ -685,7 +689,11 @@ class TestReadWrite(unittest.TestCase):
         ]
     )
     def test_unaligned_write_private_memory(self, loc_str: str, risc_name: str):
-        location = OnChipCoordinate.create(loc_str, device=self.context.devices[0])
+        device = self.context.devices[0]
+        if device.is_blackhole() and risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        location = OnChipCoordinate.create(loc_str, device)
         risc_debug = location._device.get_block(location).get_risc_debug(risc_name)
         with risc_debug.ensure_private_memory_access():
             private_memory = risc_debug.get_data_private_memory()
@@ -1537,6 +1545,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack_with_parsing(self, elf_name: str, recursion_count: int):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
         self.set_recursion_count(parsed_elf, recursion_count)
@@ -1581,6 +1592,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_namespace(self, elf_name):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+    
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
         self.set_recursion_count(parsed_elf, 0)
