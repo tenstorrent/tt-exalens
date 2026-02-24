@@ -34,7 +34,7 @@ brxy 0,0 0x0 1
 ```
 Output:
 ```
-1-2 (0,0) : 0x00000000 (4 total bytes)
+1-1 (0,0) : 0x00000000 (4 total bytes)
 (l1) : 0x00000000 (4 bytes)
 0x00000000:  ffb00537
 ```
@@ -44,7 +44,7 @@ brxy 0,0 0x0 16
 ```
 Output:
 ```
-1-2 (0,0) : 0x00000000 (64 total bytes)
+1-1 (0,0) : 0x00000000 (64 total bytes)
 (l1) : 0x00000000 (64 bytes)
 0x00000000:  ffb00537  ffb00637  01860613  00052703
 0x00000010:  00060793  00e62023  0007a703  ffc78793
@@ -57,7 +57,7 @@ brxy 0,0 0x0 32 --format i8
 ```
 Output:
 ```
-1-2 (0,0) : 0x00000000 (128 total bytes)
+1-1 (0,0) : 0x00000000 (128 total bytes)
 (l1) : 0x00000000 (128 bytes)
 0x00000000:  55   5    176  255  55   6    176  255  19   6    134  1    3    39   5    0
 0x00000010:  147  7    6    0    35   32   230  0    3    167  7    0    147  135  199  255
@@ -104,10 +104,10 @@ Output:
 ```
 0-0 (d0,0) : 0x00000000 (64 total bytes)
 (dram_bank) : 0x00000000 (64 bytes)
-0x00000000:  bfac8332  cafeefac  baf9caf9  dab0cab0
-0x00000010:  bad0fab0  feedbeef  23deeef1  993f8dca
-0x00000020:  bfac8332  cafeefac  baf9caf9  dab0cab0
-0x00000030:  bad0fab0  feedbeef  23deeef1  993f8dca
+0x00000000:  000000fb  55555555  55555555  55555555
+0x00000010:  55555555  55555555  55555555  55555555
+0x00000020:  55555555  55555555  55555555  55555555
+0x00000030:  55555555  55555555  55555555  55555555
 ```
 
 
@@ -366,6 +366,7 @@ Output:
 │ Name                 │ Value │
 ├──────────────────────┼───────┤
 │ brisc_dbg_obs_cmt_pc │ 0x0   │
+│ brisc_pc             │ 0x0   │
 ╰──────────────────────┴───────╯
 
 ```
@@ -632,7 +633,7 @@ ALU
 ┌───────────────────┬──────────────────────────┐
 │ ALU CONFIG        │ VALUES                   │
 ├───────────────────┼──────────────────────────┤
-│ Fpu_srnd_en       │ False                    │
+│ Fpu_srnd_en       │ True                     │
 │ Gasket_srnd_en    │ False                    │
 │ Packer_srnd_en    │ False                    │
 │ Padding           │ 0                        │
@@ -660,7 +661,7 @@ ALU
 ┌───────────────────┬──────────────────────────┐
 │ ALU CONFIG        │ VALUES                   │
 ├───────────────────┼──────────────────────────┤
-│ Fpu_srnd_en       │ False                    │
+│ Fpu_srnd_en       │ True                     │
 │ Gasket_srnd_en    │ False                    │
 │ Packer_srnd_en    │ False                    │
 │ Padding           │ 0                        │
@@ -688,7 +689,7 @@ ALU
 ┌───────────────────┬──────────────────────────┐
 │ ALU CONFIG        │ VALUES                   │
 ├───────────────────┼──────────────────────────┤
-│ Fpu_srnd_en       │ False                    │
+│ Fpu_srnd_en       │ True                     │
 │ Gasket_srnd_en    │ False                    │
 │ Packer_srnd_en    │ False                    │
 │ Padding           │ 0                        │
@@ -716,7 +717,7 @@ ALU
 ┌───────────────────┬──────────────────────────┐
 │ ALU CONFIG        │ VALUES                   │
 ├───────────────────┼──────────────────────────┤
-│ Fpu_srnd_en       │ False                    │
+│ Fpu_srnd_en       │ True                     │
 │ Gasket_srnd_en    │ False                    │
 │ Packer_srnd_en    │ False                    │
 │ Padding           │ 0                        │
@@ -744,7 +745,7 @@ ALU
 ┌───────────────────┬──────────────────────────┐
 │ ALU CONFIG        │ VALUES                   │
 ├───────────────────┼──────────────────────────┤
-│ Fpu_srnd_en       │ False                    │
+│ Fpu_srnd_en       │ True                     │
 │ Gasket_srnd_en    │ False                    │
 │ Packer_srnd_en    │ False                    │
 │ Padding           │ 0                        │
@@ -772,7 +773,7 @@ ALU
 ┌───────────────────┬──────────────────────────┐
 │ ALU CONFIG        │ VALUES                   │
 ├───────────────────┼──────────────────────────┤
-│ Fpu_srnd_en       │ False                    │
+│ Fpu_srnd_en       │ True                     │
 │ Gasket_srnd_en    │ False                    │
 │ Packer_srnd_en    │ False                    │
 │ Padding           │ 0                        │
@@ -796,24 +797,24 @@ Output:
 ```
 Tensix registers for location 0,0 on device 0
 PACKER
-┌──────────────────────────┬──────────┐
-│ COUNTERS                 │ VALUES   │
-├──────────────────────────┼──────────┤
-│ pack_per_xy_plane        │ 0        │
-│ pack_reads_per_xy_plane  │ 0        │
-│ pack_xys_per_til         │ 0        │
-│ pack_yz_transposed       │ False    │
-│ pack_per_xy_plane_offset │ 0        │
-└──────────────────────────┴──────────┘
-┌─────────────────────────────────────┬──────────────────────────┐
-│ PACK CONFIG                         │ VALUES                   │
-├─────────────────────────────────────┼──────────────────────────┤
-│ row_ptr_section_size                │ 0                        │
-│ exp_section_size                    │ 0                        │
-│ l1_dest_addr                        │ 0x0                      │
-│ uncompress                          │ False                    │
-│ add_l1_dest_addr_offset             │ False                    │
-│ disable_pack_zero_flag              │ False                    │
+┌──────────────────────────┬──────────────┬──────────────┬──────────────┬──────────────┐
+│ COUNTERS                 │ REG_ID = 1   │ REG_ID = 2   │ REG_ID = 3   │ REG_ID = 4   │
+├──────────────────────────┼──────────────┼──────────────┼──────────────┼──────────────┤
+│ pack_per_xy_plane        │ 0            │ 0            │ 0            │ 0            │
+│ pack_reads_per_xy_plane  │ 0            │ 0            │ 0            │ 0            │
+│ pack_xys_per_til         │ 0            │ 0            │ 0            │ 0            │
+│ pack_yz_transposed       │ False        │ False        │ False        │ False        │
+│ pack_per_xy_plane_offset │ 0            │ 0            │ 0            │ 0            │
+└──────────────────────────┴──────────────┴──────────────┴──────────────┴──────────────┘
+┌────────────────────────────────────┬──────────────────────────┬──────────────────────────┬──────────────────────────┬───────────...
+│ PACK CONFIG                        │ REG_ID = 1               │ REG_ID = 2               │ REG_ID = 3               │ REG_ID = 4...
+├────────────────────────────────────┼──────────────────────────┼──────────────────────────┼──────────────────────────┼───────────...
+│ row_ptr_section_size               │ 0                        │ 0                        │ 0                        │ 0         ...
+│ exp_section_size                   │ 0                        │ 0                        │ 0                        │ 0         ...
+│ l1_dest_addr                       │ 0x0                      │ 0x0                      │ 0x0                      │ 0x0       ...
+│ uncompress                         │ False                    │ False                    │ False                    │ False     ...
+│ add_l1_dest_addr_offset            │ False                    │ False                    │ False                    │ False     ...
+│ reserved_0                         │ 0                        │ 0                        │ 0                        │ 0         ...
 ...
 ```
 Prints unpacker's configuration registers for current device and core
@@ -1377,7 +1378,7 @@ noc status -d 0 -l 0,0
 ```
 Output:
 ```
-==== Device 0 - Location: 1-2
+==== Device 0 - Location: 1-1
 NOC0 Status Registers
               Transaction Counters (Sent)                              Transaction Counters (Received)               
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
@@ -1405,7 +1406,7 @@ noc status -s
 ```
 Output:
 ```
-==== Device 0 - Location: 1-2
+==== Device 0 - Location: 1-1
 NOC0 Status Registers
               Transaction Counters (Sent)               
                                                         
@@ -1438,7 +1439,7 @@ Output:
 ╭─────────────────────┬────────────┬────────────╮
 │ Name                │ Address    │ Value      │
 ├─────────────────────┼────────────┼────────────┤
-│ NIU_MST_RD_REQ_SENT │ 0xffb20214 │ 0x00000001 │
+│ NIU_MST_RD_REQ_SENT │ 0xffb20214 │ 0x00000000 │
 ╰─────────────────────┴────────────┴────────────╯
 
                  NOC1 Registers                  
@@ -1460,8 +1461,8 @@ Output:
 ╭───────────────────────────────┬────────────┬────────────╮
 │ Name                          │ Address    │ Value      │
 ├───────────────────────────────┼────────────┼────────────┤
-│ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00000009 │
-│ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000001 │
+│ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00000000 │
+│ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000000 │
 ╰───────────────────────────────┴────────────┴────────────╯
 
                       NOC1 Registers                       
@@ -1499,6 +1500,7 @@ Output:
 │ Name                          │ Address    │ Value      │
 ├───────────────────────────────┼────────────┼────────────┤
 │ NIU_MST_RD_RESP_RECEIVED      │ 0xffb30208 │ 0x00000000 │
+│ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb3020c │ 0x00000000 │
 ...
 ```
 
@@ -1843,7 +1845,7 @@ reg dbg(0x54)
 Output:
 ```
 Value of register DebugRegisterDescription(base_address=DeviceAddress(private_address=4289798144, noc_address=4289798144, bar0_add...
-570884107
+537329674
 ```
 Prints names of first 10 registers that start with PACK
 ```
@@ -1857,11 +1859,11 @@ PACK_CONFIG01_exp_section_size
 PACK_CONFIG01_l1_dest_addr
 PACK_CONFIG01_uncompress
 PACK_CONFIG01_add_l1_dest_addr_offset
-PACK_CONFIG01_disable_pack_zero_flag
 PACK_CONFIG01_reserved_0
 PACK_CONFIG01_out_data_format
 PACK_CONFIG01_in_data_format
-PACK_CONFIG01_dis_shared_exp_assembler
+PACK_CONFIG01_reserved_1
+PACK_CONFIG01_src_if_sel
 Hit printing limit. To see more results, increase the --max value.
 ```
 Prints names of first 5 registers that start with ALU
@@ -1896,6 +1898,12 @@ ALU_FORMAT_SPEC_REG1_SrcB
 ALU_FORMAT_SPEC_REG2_Dstacc
 PACK_CONFIG01_out_data_format
 PACK_CONFIG01_in_data_format
+PACK_CONFIG08_out_data_format
+PACK_CONFIG08_in_data_format
+PACK_CONFIG11_out_data_format
+PACK_CONFIG11_in_data_format
+PACK_CONFIG18_out_data_format
+PACK_CONFIG18_in_data_format
 ```
 Prints register with name UNPACK_CONFIG0_out_data_format
 ```
@@ -1922,7 +1930,7 @@ reg dbg(0x54) --type INT_VALUE
 Output:
 ```
 Value of register DebugRegisterDescription(base_address=DeviceAddress(private_address=4289798144, noc_address=4289798144, bar0_add...
-570884107
+537329674
 ```
 Writes 18 to debug register with address 0x54
 ```
