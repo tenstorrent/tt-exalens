@@ -749,8 +749,3 @@ Check if the verbosity level is supported and should be printed.
 
 
 ## TTFatalException
-
-
-
-
-

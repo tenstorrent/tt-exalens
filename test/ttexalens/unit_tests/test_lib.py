@@ -636,7 +636,7 @@ class TestReadWrite(unittest.TestCase):
         device = self.context.devices[0]
         if device.is_blackhole() and risc_name == "trisc2":
             self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
-    
+
         location = OnChipCoordinate.create(loc_str, device)
         risc_debug = location._device.get_block(location).get_risc_debug(risc_name)
         with risc_debug.ensure_private_memory_access():
@@ -1594,7 +1594,7 @@ class TestCallStack(unittest.TestCase):
     def test_callstack_namespace(self, elf_name):
         if self.device.is_blackhole() and self.risc_name == "trisc2":
             self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
-    
+
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
         self.set_recursion_count(parsed_elf, 0)
