@@ -930,77 +930,47 @@ def get_tensix_state(
     tensix_reg_desc = device.get_tensix_registers_description()
     tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
     noc_block = coordinate.noc_block
-    assert noc_block.block_type == "functional_workers", "Tensix state can only be retrieved from a tensix block."
+    if noc_block.block_type != "functional_workers":
+        raise ValueError(f"Tensix state can only be retrieved from a tensix block. Got {noc_block.block_type} block.")
     register_store = noc_block.get_register_store()
     debug_bus = noc_block.debug_bus
     assert debug_bus is not None, "Debug bus is not available for the given location."
 
-    alu = [
-        {key: register_store.read_register(register) for key, register in tensix_reg_desc.alu_config[i].items()}
-        for i in range(len(tensix_reg_desc.alu_config))
-    ]
-    unpack_config = [
-        {key: register_store.read_register(register) for key, register in tensix_reg_desc.unpack_config[i].items()}
-        for i in range(len(tensix_reg_desc.unpack_config))
-    ]
-    unpack_tile_descriptor = [
-        {
-            key: register_store.read_register(register)
-            for key, register in tensix_reg_desc.unpack_tile_descriptor[i].items()
+    def _read_register_group(group: list[dict[str, str]]) -> list[dict[str, int]]:
+        return [
+            {key: register_store.read_register(register) for key, register in group[i].items()}
+            for i in range(len(group))
+        ]
+
+    from ttexalens.debug_bus_signal_store import SignalGroupSample
+
+    def _read_signal_groups(groups: list[str], group_reader: Callable[[str], SignalGroupSample]) -> dict[str, int]:
+        groups_sample = {signal_group: group_reader(signal_group) for signal_group in groups}
+        return {
+            signal_name: group_data[signal_name]
+            for group_data in groups_sample.values()
+            for signal_name in group_data.keys()
         }
-        for i in range(len(tensix_reg_desc.unpack_tile_descriptor))
-    ]
-    pack_config = [
-        {key: register_store.read_register(register) for key, register in tensix_reg_desc.pack_config[i].items()}
-        for i in range(len(tensix_reg_desc.pack_config))
-    ]
-    relu_config = [
-        {key: register_store.read_register(register) for key, register in tensix_reg_desc.relu_config[i].items()}
-        for i in range(len(tensix_reg_desc.relu_config))
-    ]
-    pack_dest_rd_ctrl = [
-        {key: register_store.read_register(register) for key, register in tensix_reg_desc.pack_dest_rd_ctrl[i].items()}
-        for i in range(len(tensix_reg_desc.pack_dest_rd_ctrl))
-    ]
-    pack_edge_offset = [
-        {key: register_store.read_register(register) for key, register in tensix_reg_desc.pack_edge_offset[i].items()}
-        for i in range(len(tensix_reg_desc.pack_edge_offset))
-    ]
-    pack_counters = [
-        {key: register_store.read_register(register) for key, register in tensix_reg_desc.pack_counters[i].items()}
-        for i in range(len(tensix_reg_desc.pack_counters))
-    ]
-    pack_strides = [
-        {key: register_store.read_register(register) for key, register in tensix_reg_desc.pack_strides[i].items()}
-        for i in range(len(tensix_reg_desc.pack_strides))
-    ]
-    gpr = [
-        {
-            key: register_store.read_register(register)
-            for key, register in tensix_reg_desc.general_purpose_registers[thread_id].items()
-        }
-        for thread_id in range(3)
-    ]
+
+    alu = _read_register_group(tensix_reg_desc.alu_config)
+    unpack_config = _read_register_group(tensix_reg_desc.unpack_config)
+    unpack_tile_descriptor = _read_register_group(tensix_reg_desc.unpack_tile_descriptor)
+    pack_config = _read_register_group(tensix_reg_desc.pack_config)
+    relu_config = _read_register_group(tensix_reg_desc.relu_config)
+    pack_dest_rd_ctrl = _read_register_group(tensix_reg_desc.pack_dest_rd_ctrl)
+    pack_edge_offset = _read_register_group(tensix_reg_desc.pack_edge_offset)
+    pack_counters = _read_register_group(tensix_reg_desc.pack_counters)
+    pack_strides = _read_register_group(tensix_reg_desc.pack_strides)
+    gpr = _read_register_group(tensix_reg_desc.general_purpose_registers)
     group_reader = (
         lambda signal_group: debug_bus.read_signal_group(signal_group, l1_address)
         if l1_address is not None
         else debug_bus.read_signal_group_unsafe(signal_group)
     )
-    if l1_address is not None:
-        util.WARN("No L1 address provided. Disabling atomic group reading ADC and RWC groups.")
-    rwc_groups = {
-        signal_group: group_reader(signal_group)
-        for signal_group in tensix_debug_bus_desc.register_window_counter_groups
-    }
-    rwc = {
-        signal_name: group_data[signal_name] for group_data in rwc_groups.values() for signal_name in group_data.keys()
-    }
-    adc_groups = {
-        signal_group: group_reader(signal_group) for signal_group in tensix_debug_bus_desc.address_counter_groups
-    }
-    adc = {
-        signal_name: group_data[signal_name] for group_data in adc_groups.values() for signal_name in group_data.keys()
-    }
+    if l1_address is None:
+        util.DEBUG("No L1 address provided. Disabling atomic group reading ADC and RWC groups.")
+    rwc = _read_signal_groups(tensix_debug_bus_desc.register_window_counter_groups, group_reader)
+    adc = _read_signal_groups(tensix_debug_bus_desc.address_counter_groups, group_reader)
     return TensixState(
         alu_config=alu,
         unpack_config=unpack_config,

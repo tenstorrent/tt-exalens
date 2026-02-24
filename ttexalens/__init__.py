@@ -23,6 +23,7 @@ from .tt_exalens_lib import (
     write_riscv_memory,
     write_to_device,
     write_words_to_device,
+    TensixState,
 )
 from .coordinate import CoordinateTranslationError, OnChipCoordinate
 from .context import Context
@@ -56,6 +57,7 @@ __all__ = [
     "read_register",
     "read_riscv_memory",
     "run_elf",
+    "TensixState",
     "top_callstack",
     "write_register",
     "write_riscv_memory",
