@@ -252,10 +252,10 @@ class BabyRiscDebugHardware:
 
     def __write(self, address: int, data: int):
         util.TRACE(f"{self._get_reg_name_for_address(address)} <- WR   0x{data:08x}")
-        self.risc_info.noc_block.location.noc_write32(address, data, safe_mode=False)
+        self.risc_info.noc_block.location.noc_write32(address, data)
 
     def __read(self, address: int) -> int:
-        data = self.risc_info.noc_block.location.noc_read32(address, safe_mode=False)
+        data = self.risc_info.noc_block.location.noc_read32(address)
         util.TRACE(f"{self._get_reg_name_for_address(address)} -> RD == 0x{data:08x}")
         return data
 
@@ -497,10 +497,10 @@ class BabyRiscDebug(RiscDebug):
         return self.device._context
 
     def __write(self, addr, data):
-        self.location.noc_write32(addr, data, safe_mode=False)
+        self.location.noc_write32(addr, data)
 
     def __read(self, addr) -> int:
-        return self.location.noc_read32(addr, safe_mode=False)
+        return self.location.noc_read32(addr)
 
     def is_in_reset(self) -> bool:
         reset_reg = self.__read(self.RISC_DBG_SOFT_RESET0)

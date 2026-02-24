@@ -185,7 +185,7 @@ def read_from_device(
     context: Context | None = None,
     noc_id: int | None = None,
     use_4B_mode: bool | None = None,
-    safe_mode: bool = True,
+    safe_mode: bool | None = None,
 ) -> bytes:
     """
     Reads num_bytes of data starting from address 'addr' at specified location using specified noc.
@@ -222,7 +222,7 @@ def write_words_to_device(
     context: Context | None = None,
     noc_id: int | None = None,
     use_4B_mode: bool | None = None,
-    safe_mode: bool = True,
+    safe_mode: bool | None = None,
 ):
     """
     Writes data word to address 'addr' at specified location using specified noc.
@@ -259,7 +259,7 @@ def write_to_device(
     context: Context | None = None,
     noc_id: int | None = None,
     use_4B_mode: bool | None = None,
-    safe_mode: bool = True,
+    safe_mode: bool | None = None,
 ):
     """
     Writes data to address 'addr' at specified location using specified noc.
