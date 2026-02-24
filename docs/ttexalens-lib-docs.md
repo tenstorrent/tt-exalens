@@ -3,7 +3,7 @@
 ## init_ttexalens
 
 ```
-init_ttexalens(init_jtag: bool = False, use_noc1: bool = False, use_4B_mode: bool = True, simulation_directory: str | None = None) -> Context
+init_ttexalens(init_jtag: bool = False, use_noc1: bool = False, use_4B_mode: bool = True, simulation_directory: str | None = None, noc_failover: bool = True) -> Context
 ```
 
 
@@ -30,7 +30,7 @@ Interfacing device is local, through pybind.
 ## init_ttexalens_remote
 
 ```
-init_ttexalens_remote(ip_address: str = localhost, port: int = 5555, use_4B_mode: bool = True) -> Context
+init_ttexalens_remote(ip_address: str = localhost, port: int = 5555, use_4B_mode: bool = True, noc_failover: bool = True) -> Context
 ```
 
 
@@ -434,7 +434,7 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 ## parse_elf
 
 ```
-parse_elf(elf_path: str, context: Context | None = None) -> ParsedElfFile
+parse_elf(elf_path: str, context: Context | None = None, require_debug_symbols: bool = True) -> ParsedElfFile
 ```
 
 
@@ -444,6 +444,7 @@ Reads the ELF file and returns a ParsedElfFile object.
 Args:
 elf_path (str): Path to the ELF file.
 context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None
+require_debug_symbols (bool, optional): Whether to require debug symbols in the ELF file. Default: True
 
 
 
@@ -580,6 +581,10 @@ Writes a 32-bit word to the specified RISC-V core's private memory.
 - `device_id` *(int)*: ID number of device to read from. Default 0.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 
+
+
+
+## TensixState
 
 
 
