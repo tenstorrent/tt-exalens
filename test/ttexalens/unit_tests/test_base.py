@@ -57,7 +57,7 @@ def init_cached_test_context():
     return _cached_test_context
 
 
-def init_test_context(use_noc1: bool = False, safe_mode: bool = False) -> Context:
+def init_test_context(use_noc1: bool = False, safe_mode: bool = False):
     if use_noc1:
         assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing for NOC1 not supported"
         return init_ttexalens(use_noc1=True, use_4B_mode=False, noc_failover=False, safe_mode=safe_mode)
