@@ -960,8 +960,8 @@ class TestSafeAccess(unittest.TestCase):
                 location, start_addr, data, device_id=device_id, use_4B_mode=use_4b_mode, context=self.context
             )
 
-            # Verify by reading back
-            if is_safe_to_read:
+            # Verify by reading back (skip debug registers block - they don't guarantee read-back of written values)
+            if is_safe_to_read and block_name != "debug_regs":
                 result = lib.read_from_device(
                     location,
                     start_addr,
