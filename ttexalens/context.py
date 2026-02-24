@@ -35,14 +35,27 @@ class Context:
         self.umd_api = umd_api
         self.file_api = file_api
         self.short_name = short_name
-        self.use_noc1 = use_noc1
         self.use_4B_mode: bool = use_4B_mode
         self.dma_read_threshold: int = dma_read_threshold
         self.dma_write_threshold: int = dma_write_threshold
         self.noc_failover = noc_failover
+        self._use_noc1 = use_noc1
 
         self.commands: list[CommandMetadata] = []
         self.loaded_elfs: dict[RiscLocation, str] = {}
+
+    @property
+    def use_noc1(self) -> bool:
+        return self._use_noc1
+
+    @use_noc1.setter
+    def use_noc1(self, value: bool):
+        if value == self._use_noc1:
+            return
+        
+        self._use_noc1 = value
+        for device in self.devices.values():
+            device.switch_noc(int(value))
 
     def assign_commands(self, commands: list[CommandMetadata]):
         self.commands = []

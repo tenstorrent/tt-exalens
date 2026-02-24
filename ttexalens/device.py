@@ -140,6 +140,10 @@ class Device:
         # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
         self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
 
+    def switch_noc(self, noc_id: int):
+        self._noc_to_use.remove(noc_id)
+        self._noc_to_use.insert(0, noc_id)
+
     def _with_noc_failover(self, noc_operation: Callable[[int], T], noc_id: int | None = None) -> T:
         if noc_id is not None or not self._context.noc_failover:
             selected_noc = noc_id if noc_id is not None else self._noc_to_use[0]
