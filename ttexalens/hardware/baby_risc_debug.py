@@ -701,6 +701,7 @@ class BabyRiscDebug(RiscDebug):
         self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"), safe_mode=safe_mode)
 
     def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
+        safe_mode = safe_mode if safe_mode is not None else self.device._context.safe_mode
         if safe_mode:
             self._validate_safe_access(address, size_bytes)
 
@@ -723,6 +724,7 @@ class BabyRiscDebug(RiscDebug):
         return bytes(result[address - aligned_start : address - aligned_start + size_bytes])
 
     def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None) -> None:
+        safe_mode = safe_mode if safe_mode is not None else self.device._context.safe_mode
         if safe_mode:
             self._validate_safe_access(address, len(data))
     
