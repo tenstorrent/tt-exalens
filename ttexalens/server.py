@@ -184,6 +184,13 @@ def umd_type_to_dict(obj):
             "minor": obj.minor,
             "patch": obj.patch,
         }
+    if isinstance(obj, tt_umd.FirmwareBundleVersion):
+        return {
+            "__class__": "tt_umd.tt_umd.FirmwareBundleVersion",
+            "major": obj.major,
+            "minor": obj.minor,
+            "patch": obj.patch,
+        }
     raise TypeError(f"Cannot serialize type {type(obj)}")
 
 
