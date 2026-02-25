@@ -152,7 +152,8 @@ UMD_SERIALIZABLE_TYPES = {
     tt_umd.CoordSystem,
     tt_umd.tt_xy_pair,
     tt_umd.CoreCoord,
-    tt_umd.semver_t,
+    tt_umd.SemVer,
+    tt_umd.FirmwareBundleVersion,
     tt_umd.TelemetryTag,
     tt_umd.DramTrainingStatus,
 }
@@ -176,9 +177,16 @@ def umd_type_to_dict(obj):
             "x": obj.x,
             "y": obj.y,
         }
-    if isinstance(obj, tt_umd.semver_t):
+    if isinstance(obj, tt_umd.SemVer):
         return {
-            "__class__": "tt_umd.tt_umd.semver_t",
+            "__class__": "tt_umd.tt_umd.SemVer",
+            "major": obj.major,
+            "minor": obj.minor,
+            "patch": obj.patch,
+        }
+    if isinstance(obj, tt_umd.FirmwareBundleVersion):
+        return {
+            "__class__": "tt_umd.tt_umd.FirmwareBundleVersion",
             "major": obj.major,
             "minor": obj.minor,
             "patch": obj.patch,
@@ -201,11 +209,16 @@ def umd_type_from_dict(cls, data):
             x = data["x"]
             y = data["y"]
             return tt_umd.tt_xy_pair(x, y)
-        if type == tt_umd.semver_t:
+        if type == tt_umd.SemVer:
             major = data["major"]
             minor = data["minor"]
             patch = data["patch"]
-            return tt_umd.semver_t(major, minor, patch)
+            return tt_umd.SemVer(major, minor, patch)
+        if type == tt_umd.FirmwareBundleVersion:
+            major = data["major"]
+            minor = data["minor"]
+            patch = data["patch"]
+            return tt_umd.FirmwareBundleVersion(major, minor, patch)
     return data
 
 
