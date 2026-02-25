@@ -45,7 +45,7 @@ class Context:
         self.loaded_elfs: dict[RiscLocation, str] = {}
 
     @property
-    def use_noc1(self) -> bool:
+    def use_noc1(self):
         return self._use_noc1
 
     @use_noc1.setter
