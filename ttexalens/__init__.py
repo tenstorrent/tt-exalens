@@ -29,6 +29,10 @@ from .coordinate import CoordinateTranslationError, OnChipCoordinate
 from .context import Context
 from .device import Device
 from .util import TTException, TTFatalException, Verbosity
+from .memory_access import RestrictedMemoryAccessError
+from .device import UnsafeAccessException
+from .umd_device import TimeoutDeviceRegisterError
+
 
 __all__ = [
     # context.py
@@ -67,4 +71,7 @@ __all__ = [
     "TTException",
     "TTFatalException",
     "Verbosity",
+    "RestrictedMemoryAccessError",
+    "UnsafeAccessException",
+    "TimeoutDeviceRegisterError",
 ]

@@ -689,14 +689,21 @@ class BabyRiscDebug(RiscDebug):
 
         with self.ensure_halted():
             return self.read_gpr(32)
+        
+    def _validate_safe_access(self, address: int, size_bytes: int):
+        """ Safety validations to be added. tt-exalens:#913 """
+        pass
 
-    def read_memory(self, address: int) -> int:
-        return int.from_bytes(self.read_memory_bytes(address, 4), byteorder="little")
+    def read_memory(self, address: int, safe_mode: bool | None = None) -> int:
+        return int.from_bytes(self.read_memory_bytes(address, 4, safe_mode=safe_mode), byteorder="little")
 
-    def write_memory(self, address: int, data: int) -> None:
-        self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"))
+    def write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
+        self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"), safe_mode=safe_mode)
 
-    def read_memory_bytes(self, address: int, size_bytes: int) -> bytes:
+    def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
+        if safe_mode:
+            self._validate_safe_access(address, size_bytes)
+
         if self.enable_asserts:
             self.assert_not_in_reset()
         self.assert_debug_hardware()
@@ -715,7 +722,10 @@ class BabyRiscDebug(RiscDebug):
 
         return bytes(result[address - aligned_start : address - aligned_start + size_bytes])
 
-    def write_memory_bytes(self, address: int, data: bytes) -> None:
+    def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None) -> None:
+        if safe_mode:
+            self._validate_safe_access(address, len(data))
+    
         if self.enable_asserts:
             self.assert_not_in_reset()
         self.assert_debug_hardware()

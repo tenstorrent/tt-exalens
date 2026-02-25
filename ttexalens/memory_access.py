@@ -89,10 +89,10 @@ class MemoryAccess(ABC):
 
     @staticmethod
     def create(
-        risc_debug: RiscDebug, ensure_halted_access: bool = True, restricted_access: bool = True
+        risc_debug: RiscDebug, ensure_halted_access: bool = True, restricted_access: bool = True, safe_mode: bool | None = None
     ) -> "MemoryAccess":
         return RiscDebugMemoryAccess(
-            risc_debug, ensure_halted_access=ensure_halted_access, restricted_access=restricted_access
+            risc_debug, ensure_halted_access=ensure_halted_access, restricted_access=restricted_access, safe_mode=safe_mode
         )
 
     @staticmethod
@@ -165,30 +165,33 @@ class RiscDebugMemoryAccess(MemoryAccess):
       * restrict accesses to L1/DataPrivate regions only, rejecting any
         address outside those MemoryBlocks to avoid accidental global
         or invalid accesses.
+      * apply additional safety checks to prevent access to known unsafe 
+        memory regions (if safe_mode is enabled).
     """
 
-    def __init__(self, risc_debug: RiscDebug, ensure_halted_access: bool = True, restricted_access: bool = True):
+    def __init__(self, risc_debug: RiscDebug, ensure_halted_access: bool = True, restricted_access: bool = True, safe_mode: bool | None = None):
         self._risc_debug = risc_debug
         self._ensure_halted_access = ensure_halted_access  # will ensure the RISC will be halted for memory access
         self._restricted_access = restricted_access  # restrict access to only L1 and Data Private Memory
+        self._safe_mode = safe_mode # additional safety checks to prevent access to known unsafe memory regions
 
     def read(self, address: int, size_bytes: int) -> bytes:
         self.validate_access(address, size_bytes)
 
         if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
-                return self._risc_debug.read_memory_bytes(address, size_bytes)
+                return self._risc_debug.read_memory_bytes(address, size_bytes, safe_mode=self._safe_mode)
         else:
-            return self._risc_debug.read_memory_bytes(address, size_bytes)
+            return self._risc_debug.read_memory_bytes(address, size_bytes, safe_mode=self._safe_mode)
 
     def write(self, address: int, data: bytes) -> None:
         self.validate_access(address, len(data))
 
         if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
-                self._risc_debug.write_memory_bytes(address, data)
+                self._risc_debug.write_memory_bytes(address, data, safe_mode=self._safe_mode)
         else:
-            self._risc_debug.write_memory_bytes(address, data)
+            self._risc_debug.write_memory_bytes(address, data, safe_mode=self._safe_mode)
 
     def validate_access(self, address: int, size_bytes: int) -> None:
         if self._restricted_access:

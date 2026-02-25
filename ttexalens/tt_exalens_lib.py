@@ -731,6 +731,7 @@ def read_riscv_memory(
     neo_id: int | None = None,
     device_id: int = 0,
     context: Context | None = None,
+    safe_mode: bool | None = None,
 ) -> int:
 
     """
@@ -743,6 +744,7 @@ def read_riscv_memory(
         neo_id (int | None, optional): NEO ID of the RISC-V core.
         device_id (int): ID number of device to read from. Default 0.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
 
     Returns:
         int: Data read from the device.
@@ -765,7 +767,7 @@ def read_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    return MemoryAccess.create(risc_debug).read_word(addr)
+    return MemoryAccess.create(risc_debug, safe_mode=safe_mode).read_word(addr)
 
 
 @trace_api
@@ -777,6 +779,7 @@ def write_riscv_memory(
     neo_id: int | None = None,
     device_id: int = 0,
     context: Context | None = None,
+    safe_mode: bool | None = None,
 ) -> None:
     """
     Writes a 32-bit word to the specified RISC-V core's private memory.
@@ -789,6 +792,7 @@ def write_riscv_memory(
         neo_id (int | None, optional): NEO ID of the RISC-V core.
         device_id (int): ID number of device to read from. Default 0.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
     """
 
     coordinate = convert_coordinate(location, device_id, context)
@@ -811,7 +815,7 @@ def write_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    MemoryAccess.create(risc_debug).write_word(addr, value)
+    MemoryAccess.create(risc_debug, safe_mode=safe_mode).write_word(addr, value)
 
 
 @dataclass

@@ -24,13 +24,13 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             assert self.noc_block.debug_bus is not None, "Debug bus is not initialized."
             return int(self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc"))
 
-    def read_memory_bytes(self, address: int, size_bytes: int):
+    def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
         self.assert_trisc2_address(address)
-        return super().read_memory_bytes(address, size_bytes)
+        return super().read_memory_bytes(address, size_bytes, safe_mode=safe_mode)
 
-    def write_memory_bytes(self, address: int, data: bytes):
+    def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None):
         self.assert_trisc2_address(address)
-        super().write_memory_bytes(address, data)
+        super().write_memory_bytes(address, data, safe_mode=safe_mode)
 
     def assert_trisc2_address(self, address: int):
         if self.risc_info.risc_name == "trisc2" and address % 16 > 4:

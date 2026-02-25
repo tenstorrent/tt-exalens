@@ -378,18 +378,18 @@ class TestReadWrite(unittest.TestCase):
         """Test writing and reading tensix registers"""
 
         # Storing the original value of the register
-        original_value = lib.read_register(location, register, safe_mode=False)
+        original_value = lib.read_register(location, register)
 
         # Writing a value to the register and reading it back
-        lib.write_register(location, register, value, safe_mode=False)
-        ret = lib.read_register(location, register, safe_mode=False)
+        lib.write_register(location, register, value)
+        ret = lib.read_register(location, register)
 
         # Checking if the value was written and read correctly
         self.assertEqual(ret, value)
 
         # Writing the original value back to the register and reading it
-        lib.write_register(location, register, original_value, safe_mode=False)
-        ret = lib.read_register(location, register, safe_mode=False)
+        lib.write_register(location, register, original_value)
+        ret = lib.read_register(location, register)
 
         # Checking if read value is equal to the original value
         self.assertEqual(ret, original_value)
@@ -410,27 +410,27 @@ class TestReadWrite(unittest.TestCase):
         "Test writing and reading tensix registers with name"
 
         # Reading original values of registers
-        original_val_desc = lib.read_register(location, register_description, safe_mode=False)
-        original_val_name = lib.read_register(location, register_name, safe_mode=False)
+        original_val_desc = lib.read_register(location, register_description)
+        original_val_name = lib.read_register(location, register_name)
 
         # Checking if values are equal
         self.assertEqual(original_val_desc, original_val_name)
 
         # Writing a value to the register given by description
-        lib.write_register(location, register_description, 1, safe_mode=False)
+        lib.write_register(location, register_description, 1)
 
         # Reading values from both registers
-        val_desc = lib.read_register(location, register_description, safe_mode=False)
-        val_name = lib.read_register(location, register_name, safe_mode=False)
+        val_desc = lib.read_register(location, register_description)
+        val_name = lib.read_register(location, register_name)
 
         # Checking if writing to description register affects the name register (making sure they are the same)
         self.assertEqual(val_desc, val_name)
 
         # Wrting original value back
-        lib.write_register(location, register_name, original_val_name, safe_mode=False)
+        lib.write_register(location, register_name, original_val_name)
 
-        val_desc = lib.read_register(location, register_description, safe_mode=False)
-        val_name = lib.read_register(location, register_name, safe_mode=False)
+        val_desc = lib.read_register(location, register_description)
+        val_name = lib.read_register(location, register_name)
 
         # Checking if original values are restored
         self.assertEqual(val_name, original_val_name)
@@ -477,20 +477,20 @@ class TestReadWrite(unittest.TestCase):
         cfg_reg_name = "ALU_FORMAT_SPEC_REG2_Dstacc"
 
         # Store original value
-        original_value = lib.read_register(location, cfg_reg_name, safe_mode=False)
+        original_value = lib.read_register(location, cfg_reg_name)
 
         # Test writing and reading different values
-        lib.write_register(location, cfg_reg_name, 10, safe_mode=False)
-        assert lib.read_register(location, cfg_reg_name, safe_mode=False) == 10
+        lib.write_register(location, cfg_reg_name, 10)
+        assert lib.read_register(location, cfg_reg_name) == 10
 
-        lib.write_register(location, cfg_reg_name, 0, safe_mode=False)
-        assert lib.read_register(location, cfg_reg_name, safe_mode=False) == 0
+        lib.write_register(location, cfg_reg_name, 0)
+        assert lib.read_register(location, cfg_reg_name) == 0
 
-        lib.write_register(location, cfg_reg_name, 5, safe_mode=False)
-        assert lib.read_register(location, cfg_reg_name, safe_mode=False) == 5
+        lib.write_register(location, cfg_reg_name, 5)
+        assert lib.read_register(location, cfg_reg_name) == 5
 
         # Restore original value
-        lib.write_register(location, cfg_reg_name, original_value, safe_mode=False)
+        lib.write_register(location, cfg_reg_name, original_value)
 
     @parameterized.expand(
         [
@@ -505,20 +505,20 @@ class TestReadWrite(unittest.TestCase):
         dbg_reg_name = "RISCV_DEBUG_REG_CFGREG_RD_CNTL"
 
         # Store original value
-        original_value = lib.read_register(location, dbg_reg_name, safe_mode=False)
+        original_value = lib.read_register(location, dbg_reg_name)
 
         # Test writing and reading different values
-        lib.write_register(location, dbg_reg_name, 10, safe_mode=False)
-        assert lib.read_register(location, dbg_reg_name, safe_mode=False) == 10
+        lib.write_register(location, dbg_reg_name, 10)
+        assert lib.read_register(location, dbg_reg_name) == 10
 
-        lib.write_register(location, dbg_reg_name, 0, safe_mode=False)
-        assert lib.read_register(location, dbg_reg_name, safe_mode=False) == 0
+        lib.write_register(location, dbg_reg_name, 0)
+        assert lib.read_register(location, dbg_reg_name) == 0
 
-        lib.write_register(location, dbg_reg_name, 5, safe_mode=False)
-        assert lib.read_register(location, dbg_reg_name, safe_mode=False) == 5
+        lib.write_register(location, dbg_reg_name, 5)
+        assert lib.read_register(location, dbg_reg_name) == 5
 
         # Restore original value
-        lib.write_register(location, dbg_reg_name, original_value, safe_mode=False)
+        lib.write_register(location, dbg_reg_name, original_value)
 
     @parameterized.expand(
         [
