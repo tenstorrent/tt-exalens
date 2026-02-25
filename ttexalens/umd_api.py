@@ -85,7 +85,6 @@ class UmdApi:
                 tt_umd.logging.set_level(tt_umd.logging.Level.Error)
 
             discovery_options = tt_umd.TopologyDiscoveryOptions()
-            discovery_options.io_device_type = tt_umd.IODeviceType.PCIe if not init_jtag else tt_umd.IODeviceType.JTAG
             # TODO: discovery_options.no_wait_for_eth_training = True
             # TODO: discovery_options.no_eth_firmware_strictness = True
             discovery_options.predict_eth_fw_version = True
