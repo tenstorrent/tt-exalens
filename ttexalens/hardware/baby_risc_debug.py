@@ -689,9 +689,9 @@ class BabyRiscDebug(RiscDebug):
 
         with self.ensure_halted():
             return self.read_gpr(32)
-        
+
     def _validate_safe_access(self, address: int, size_bytes: int):
-        """ Safety validations to be added. tt-exalens:#913 """
+        """Safety validations to be added. tt-exalens:#913"""
         pass
 
     def read_memory(self, address: int, safe_mode: bool | None = None) -> int:
@@ -727,7 +727,7 @@ class BabyRiscDebug(RiscDebug):
         safe_mode = safe_mode if safe_mode is not None else self.device._context.safe_mode
         if safe_mode:
             self._validate_safe_access(address, len(data))
-    
+
         if self.enable_asserts:
             self.assert_not_in_reset()
         self.assert_debug_hardware()
