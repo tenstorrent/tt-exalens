@@ -140,6 +140,10 @@ class Device:
         # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
         self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
 
+    @property
+    def active_noc(self) -> int:
+        return self._noc_to_use[0]
+    
     def switch_noc(self, noc_id: int):
         assert noc_id in self._noc_to_use, f"NOC{noc_id} is not in the known NOC list {self._noc_to_use}"
         self._noc_to_use.remove(noc_id)
@@ -168,6 +172,7 @@ class Device:
                 noc_queue.append(failed_noc)
 
                 if noc_queue[0] == first_used:
+                    util.ERROR(f"Device {self.id}: All NOCs hung. Raising exception.")
                     raise  # Exhausted all NOCs, raise Timeout
 
                 util.WARN(f"Device {self.id}: NOC{failed_noc} hung, switching over to NOC{noc_queue[0]}.")
@@ -520,6 +525,7 @@ class Device:
             ver_range = range(ui_ver_range[0], ui_ver_range[1] + 1)
             append_horizontal_axis_labels(rows, ui_hor_range)
 
+        render_aborted = False
         for ui_ver in ver_range:
             row = [f"{C}%02d{E}" % ui_ver]  # This adds the Y-axis label
             # 1. Add graphics
@@ -529,8 +535,15 @@ class Device:
                     if cell_renderer == None:
                         render_str = all_block_locs[(ui_hor, ui_ver)].to_str("logical")
                     else:
-                        render_str = cell_renderer(all_block_locs[(ui_hor, ui_ver)])
+                        try:
+                            render_str = cell_renderer(all_block_locs[(ui_hor, ui_ver)])
+                        except TimeoutDeviceRegisterError:
+                            render_aborted = True
+                            break
                 row.append(render_str)
+
+            if render_aborted:
+                break
 
             # 2. Add legend
             legend_y = screen_row_y
