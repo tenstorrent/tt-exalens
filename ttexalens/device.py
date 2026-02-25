@@ -143,7 +143,7 @@ class Device:
     @property
     def active_noc(self) -> int:
         return self._noc_to_use[0]
-    
+
     def switch_noc(self, noc_id: int):
         assert noc_id in self._noc_to_use, f"NOC{noc_id} is not in the known NOC list {self._noc_to_use}"
         self._noc_to_use.remove(noc_id)
