@@ -339,11 +339,11 @@ class UmdDevice:
             self.__configure_working_active_eth()
             return do_read(telemetry_tag)
 
-    def get_firmware_version(self, noc_id: int) -> tt_umd.semver_t:
+    def get_firmware_version(self, noc_id: int) -> tt_umd.FirmwareBundleVersion:
         """Returns firmware version"""
         self.__select_noc_id(noc_id)
 
-        def do_read() -> tt_umd.semver_t:
+        def do_read() -> tt_umd.FirmwareBundleVersion:
             firmware_info_provider = self.__device.get_firmware_info_provider()
             return firmware_info_provider.get_firmware_version()
 
