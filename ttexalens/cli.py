@@ -427,7 +427,9 @@ def main():
         server_ip = address[0] if address[0] != "" else "localhost"
         server_port = address[-1]
         util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
-        context = init_ttexalens_remote(server_ip, int(server_port), use_4B_mode, safe_mode=safe_mode, noc_failover=noc_failover)
+        context = init_ttexalens_remote(
+            server_ip, int(server_port), use_4B_mode, safe_mode=safe_mode, noc_failover=noc_failover
+        )
     else:
         context = init_ttexalens(
             init_jtag=init_jtag,
@@ -435,7 +437,7 @@ def main():
             use_4B_mode=use_4B_mode,
             safe_mode=safe_mode,
             simulation_directory=simulation_directory,
-			noc_failover=noc_failover
+            noc_failover=noc_failover,
         )
 
     # Main function
