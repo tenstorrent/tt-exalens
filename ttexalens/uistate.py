@@ -77,6 +77,9 @@ class UIState:
             PromptSession(completer=TTExaLensCompleter(context)) if self.is_prompt_session else SimplePromptSession()
         )
 
+        for device in context.devices.values():
+            device.on_noc_switch = self.__invalidate_app_prompt
+
     @property
     def current_device(self):
         return self.context.devices[self.current_device_id]
@@ -88,7 +91,7 @@ class UIState:
         else:
             return self.prompt_session.prompt(get_dynamic_prompt())
 
-    def __on_gdb_connection_change(self):
+    def __invalidate_app_prompt(self):
         if self.is_prompt_session:
             app = get_app()
             app.invalidate()
@@ -99,8 +102,8 @@ class UIState:
         server = ServerSocket(port)
         server.start()
         self.gdb_server = GdbServer(self.context, server)
-        self.gdb_server.on_connected = self.__on_gdb_connection_change
-        self.gdb_server.on_disconnected = self.__on_gdb_connection_change
+        self.gdb_server.on_connected = self.__invalidate_app_prompt
+        self.gdb_server.on_disconnected = self.__invalidate_app_prompt
         self.gdb_server.start()
 
     def stop_gdb(self):
