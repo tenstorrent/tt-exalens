@@ -145,7 +145,7 @@ Reads one four-byte word of data, from address 'addr' at specified location usin
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
-- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
 ### Returns
@@ -175,7 +175,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at specif
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
-- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
 ### Returns
@@ -204,7 +204,7 @@ Reads num_bytes of data starting from address 'addr' at specified location using
 - `num_bytes` *(int, default 4)*: Number of bytes to read.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
-- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
 ### Returns
@@ -234,7 +234,7 @@ Writes data word to address 'addr' at specified location using specified noc.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
-- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
 
@@ -260,7 +260,7 @@ Writes data to address 'addr' at specified location using specified noc.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
-- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
 
@@ -399,7 +399,7 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 - `neo_id` *(int | None, optional)*: NEO ID of the register store.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
 ### Returns
@@ -430,7 +430,7 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 - `neo_id` *(int | None, optional)*: NEO ID of the register store.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
 
@@ -538,7 +538,7 @@ Extract coverage data from the device.
 ## read_riscv_memory
 
 ```
-read_riscv_memory(location: str | OnChipCoordinate, addr: int, risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> int
+read_riscv_memory(location: str | OnChipCoordinate, addr: int, risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None) -> int
 ```
 
 
@@ -555,6 +555,7 @@ Reads a 32-bit word from the specified RISC-V core's private memory.
 - `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
 - `device_id` *(int)*: ID number of device to read from. Default 0.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
 ### Returns
@@ -566,7 +567,7 @@ Reads a 32-bit word from the specified RISC-V core's private memory.
 ## write_riscv_memory
 
 ```
-write_riscv_memory(location: str | OnChipCoordinate, addr: int, value: int, risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None)
+write_riscv_memory(location: str | OnChipCoordinate, addr: int, value: int, risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None)
 ```
 
 
@@ -584,6 +585,7 @@ Writes a 32-bit word to the specified RISC-V core's private memory.
 - `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
 - `device_id` *(int)*: ID number of device to read from. Default 0.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+- `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
 

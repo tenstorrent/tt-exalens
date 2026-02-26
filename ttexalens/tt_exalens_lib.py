@@ -125,7 +125,7 @@ def read_word_from_device(
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
         use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
-        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
     Returns:
         int: Data read from the device.
@@ -160,7 +160,7 @@ def read_words_from_device(
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
         use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
-        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
     Returns:
         list[int]: Data read from the device.
@@ -199,7 +199,7 @@ def read_from_device(
         num_bytes (int, default 4): Number of bytes to read.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
-        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
     Returns:
         bytes: Data read from the device.
@@ -237,7 +237,7 @@ def write_words_to_device(
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
         use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
-        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
     """
 
     coordinate = convert_coordinate(location, device_id, context)
@@ -274,7 +274,7 @@ def write_to_device(
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
         noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
         use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
-        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
     """
 
     coordinate = convert_coordinate(location, device_id, context)
@@ -515,7 +515,7 @@ def read_register(
         neo_id (int | None, optional): NEO ID of the register store.
         device_id (int, default 0):	ID number of device to read from.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
     Returns:
         int: Value of the configuration or debug register specified.
@@ -555,7 +555,7 @@ def write_register(
         neo_id (int | None, optional): NEO ID of the register store.
         device_id (int, default 0):	ID number of device to read from.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
     """
 
     from ttexalens.register_store import RegisterDescription
@@ -744,7 +744,7 @@ def read_riscv_memory(
         neo_id (int | None, optional): NEO ID of the RISC-V core.
         device_id (int): ID number of device to read from. Default 0.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
     Returns:
         int: Data read from the device.
@@ -792,7 +792,7 @@ def write_riscv_memory(
         neo_id (int | None, optional): NEO ID of the RISC-V core.
         device_id (int): ID number of device to read from. Default 0.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only NoC accessible and known to be safe memory regions. If None, it will be used based on context.
+        safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
     """
 
     coordinate = convert_coordinate(location, device_id, context)
