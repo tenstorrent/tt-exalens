@@ -155,7 +155,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                         x = data & 0x3F
                         y = (data >> 6) & 0x3F
                         cell_contents_str.append(color_block(f"{x:02}-{y:02}", block_type))
-                    except TimeoutDeviceRegisterError:
+                    except TimeoutDeviceRegisterError as e:
+                        util.ERROR(f"Reading {ct} at location {loc.to_user_str()} hung NoC: {e}")
                         raise
                     except Exception:
                         cell_contents_str.append("")

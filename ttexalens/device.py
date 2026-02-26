@@ -139,6 +139,7 @@ class Device:
         # When an operation is attempted, the first NOC in the list is used. If it fails, it is moved to the back of the list
         # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
         self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
+        self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
 
     @property
     def active_noc(self) -> int:
@@ -146,8 +147,12 @@ class Device:
 
     def switch_noc(self, noc_id: int):
         assert noc_id in self._noc_to_use, f"NOC{noc_id} is not in the known NOC list {self._noc_to_use}"
-        self._noc_to_use.remove(noc_id)
-        self._noc_to_use.insert(0, noc_id)
+        noc_to_use_copy = self._noc_to_use.copy()
+        noc_to_use_copy.remove(noc_id)
+        noc_to_use_copy.insert(0, noc_id)
+        self._noc_to_use = noc_to_use_copy
+        if self.on_noc_switch is not None:
+            self.on_noc_switch()
 
     def _with_noc_failover(self, noc_operation: Callable[[int], T], noc_id: int | None = None) -> T:
         if noc_id is not None or not self._context.noc_failover:
@@ -163,6 +168,8 @@ class Device:
                 result = noc_operation(selected_noc)
                 if selected_noc != first_used:
                     self._noc_to_use = noc_queue
+                    if self.on_noc_switch:
+                        self.on_noc_switch()
                 return result
             except TimeoutDeviceRegisterError:
                 if selected_noc == first_used:
@@ -525,7 +532,6 @@ class Device:
             ver_range = range(ui_ver_range[0], ui_ver_range[1] + 1)
             append_horizontal_axis_labels(rows, ui_hor_range)
 
-        render_aborted = False
         for ui_ver in ver_range:
             row = [f"{C}%02d{E}" % ui_ver]  # This adds the Y-axis label
             # 1. Add graphics
@@ -538,12 +544,8 @@ class Device:
                         try:
                             render_str = cell_renderer(all_block_locs[(ui_hor, ui_ver)])
                         except TimeoutDeviceRegisterError:
-                            render_aborted = True
-                            break
+                            raise
                 row.append(render_str)
-
-            if render_aborted:
-                break
 
             # 2. Add legend
             legend_y = screen_row_y
