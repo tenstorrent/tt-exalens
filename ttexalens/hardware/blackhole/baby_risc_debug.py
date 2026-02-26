@@ -24,27 +24,13 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             assert self.noc_block.debug_bus is not None, "Debug bus is not initialized."
             return int(self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc"))
 
-    def read_memory_bytes(self, address: int, size_bytes: int):
-        if self.enable_asserts:
-            self.assert_not_in_reset()
+    def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
+        self.assert_trisc2_address(address)
+        return super().read_memory_bytes(address, size_bytes, safe_mode=safe_mode)
 
-        noc_address = self.baby_risc_info.translate_to_noc_address(address)
-        if noc_address is not None and not self.is_in_reset():
-            return self.risc_info.noc_block.location.noc_read(noc_address, size_bytes, use_4B_mode=True)
-        else:
-            self.assert_trisc2_address(address)
-            return super().read_memory_bytes(address, size_bytes)
-
-    def write_memory_bytes(self, address: int, data: bytes):
-        if self.enable_asserts:
-            self.assert_not_in_reset()
-
-        noc_address = self.baby_risc_info.translate_to_noc_address(address)
-        if noc_address is not None and not self.is_in_reset():
-            self.risc_info.noc_block.location.noc_write(noc_address, data, use_4B_mode=True)
-        else:
-            self.assert_trisc2_address(address)
-            super().write_memory_bytes(address, data)
+    def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None):
+        self.assert_trisc2_address(address)
+        super().write_memory_bytes(address, data, safe_mode=safe_mode)
 
     def assert_trisc2_address(self, address: int):
         if self.risc_info.risc_name == "trisc2" and address % 16 > 4:

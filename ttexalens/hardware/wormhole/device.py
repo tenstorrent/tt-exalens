@@ -86,12 +86,13 @@ class WormholeDevice(Device):
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
+        safe_mode: bool | None = None,
     ) -> bytes:
         # Workaround for problematic DRAM locations on NOC1, #tt-umd:1823
         if noc_id is None and location in self._problematic_locations.get(1, set()):
             noc_id = 0  # Force use of NOC0
 
-        return super().noc_read(location, address, size_bytes, noc_id, use_4B_mode, dma_threshold)
+        return super().noc_read(location, address, size_bytes, noc_id, use_4B_mode, dma_threshold, safe_mode)
 
     def noc_write(
         self,
@@ -101,12 +102,13 @@ class WormholeDevice(Device):
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
+        safe_mode: bool | None = None,
     ):
         # Workaround for problematic DRAM locations on NOC1, #tt-umd:1823
         if noc_id is None and location in self._problematic_locations.get(1, set()):
             noc_id = 0  # Force use of NOC0
 
-        return super().noc_write(location, address, data, noc_id, use_4B_mode, dma_threshold)
+        return super().noc_write(location, address, data, noc_id, use_4B_mode, dma_threshold, safe_mode)
 
 
 # end of class WormholeDevice

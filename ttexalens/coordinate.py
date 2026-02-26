@@ -331,11 +331,12 @@ class OnChipCoordinate:
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
+        safe_mode: bool | None = None,
     ) -> bytes:
-        return self.device.noc_read(self, address, size_bytes, noc_id, use_4B_mode, dma_threshold)
+        return self.device.noc_read(self, address, size_bytes, noc_id, use_4B_mode, dma_threshold, safe_mode)
 
-    def noc_read32(self, address: int, noc_id: int | None = None) -> int:
-        return self.device.noc_read32(self, address, noc_id)
+    def noc_read32(self, address: int, noc_id: int | None = None, safe_mode: bool | None = None) -> int:
+        return self.device.noc_read32(self, address, noc_id, safe_mode)
 
     def noc_write(
         self,
@@ -344,8 +345,9 @@ class OnChipCoordinate:
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
+        safe_mode: bool | None = None,
     ):
-        return self.device.noc_write(self, address, data, noc_id, use_4B_mode, dma_threshold)
+        return self.device.noc_write(self, address, data, noc_id, use_4B_mode, dma_threshold, safe_mode)
 
-    def noc_write32(self, address: int, data: int, noc_id: int | None = None):
-        return self.device.noc_write32(self, address, data, noc_id)
+    def noc_write32(self, address: int, data: int, noc_id: int | None = None, safe_mode: bool | None = None):
+        return self.device.noc_write32(self, address, data, noc_id, safe_mode)

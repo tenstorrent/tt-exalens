@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--disable-4B-mode]
+  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--disable-4B-mode] [--unsafe-mode]
   tt-exalens --server [--port=<port>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--disable-4B-mode]
   tt-exalens --gdb [gdb_args...]
@@ -29,6 +29,7 @@ Options:
   --use-noc1                      Initialize with NOC1 and use NOC1 for communication with the device.
   --disable-4B-mode               Disable 4-byte mode for communication with the device.
   --gdb                           Start RISC-V gdb client with the specified arguments.
+  --unsafe-mode                   Disable safe mode to allow potentially unsafe operations (e.g., writing to certain memory regions) without explicit overrides. Use with caution.
 
 Description:
   TTExaLens parses the build output files and reads the device state to provide a debugging interface for the user.
@@ -381,14 +382,21 @@ def main():
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 
+    use_4B_mode = False if args["--disable-4B-mode"] else True
+    safe_mode = False if args["--unsafe-mode"] else True
+    use_noc1 = args["--use-noc1"]
+    simulation_directory = args["-s"]
+    init_jtag = args["--jtag"]
+
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         if args["--background"]:
             context = init_ttexalens(
-                init_jtag=args["--jtag"],
-                use_noc1=args["--use-noc1"],
-                use_4B_mode=False if args["--disable-4B-mode"] else True,
-                simulation_directory=args["-s"],
+                init_jtag=init_jtag,
+                use_noc1=use_noc1,
+                use_4B_mode=use_4B_mode,
+                safe_mode=safe_mode,
+                simulation_directory=simulation_directory,
             )
             ttexalens_server = start_server(port=int(args["--port"]), context=context)
 
@@ -416,14 +424,14 @@ def main():
         server_ip = address[0] if address[0] != "" else "localhost"
         server_port = address[-1]
         util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
-        use_4B_mode = False if args["--disable-4B-mode"] else True
-        context = init_ttexalens_remote(server_ip, int(server_port), use_4B_mode)
+        context = init_ttexalens_remote(server_ip, int(server_port), use_4B_mode, safe_mode=safe_mode)
     else:
         context = init_ttexalens(
-            init_jtag=args["--jtag"],
-            use_noc1=args["--use-noc1"],
-            use_4B_mode=False if args["--disable-4B-mode"] else True,
-            simulation_directory=args["-s"],
+            init_jtag=init_jtag,
+            use_noc1=use_noc1,
+            use_4B_mode=use_4B_mode,
+            safe_mode=safe_mode,
+            simulation_directory=simulation_directory,
         )
 
     # Main function

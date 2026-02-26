@@ -15,11 +15,10 @@ import ttexalens as lib
 from ttexalens import util
 from ttexalens.elf.parsed import ParsedElfFile
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
-from ttexalens.tt_exalens_lib import UnsafeAccessException
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.device import Device
+from ttexalens.device import Device, UnsafeAccessException
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.memory_access import MemoryAccess
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
@@ -634,7 +633,11 @@ class TestReadWrite(unittest.TestCase):
         ]
     )
     def test_unaligned_read_private_memory(self, loc_str: str, risc_name: str):
-        location = OnChipCoordinate.create(loc_str, device=self.context.devices[0])
+        device = self.context.devices[0]
+        if device.is_blackhole() and risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        location = OnChipCoordinate.create(loc_str, device)
         risc_debug = location._device.get_block(location).get_risc_debug(risc_name)
         with risc_debug.ensure_private_memory_access():
             private_memory = risc_debug.get_data_private_memory()
@@ -686,7 +689,11 @@ class TestReadWrite(unittest.TestCase):
         ]
     )
     def test_unaligned_write_private_memory(self, loc_str: str, risc_name: str):
-        location = OnChipCoordinate.create(loc_str, device=self.context.devices[0])
+        device = self.context.devices[0]
+        if device.is_blackhole() and risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        location = OnChipCoordinate.create(loc_str, device)
         risc_debug = location._device.get_block(location).get_risc_debug(risc_name)
         with risc_debug.ensure_private_memory_access():
             private_memory = risc_debug.get_data_private_memory()
@@ -778,9 +785,14 @@ class TestSafeAccess(unittest.TestCase):
     def setUpClass(cls):
         cls.context = init_cached_test_context()
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.context.safe_mode = False  # Reset safe mode for any subsequent tests that use the context
+
     def setUp(self):
         self.assertIsNotNone(self.context)
         self.assertIsInstance(self.context, Context)
+        self.context.safe_mode = True
 
     def test_comprehensive_block_access(self):
         """Comprehensive test that validates safe access patterns for all blocks on all devices.
@@ -948,8 +960,8 @@ class TestSafeAccess(unittest.TestCase):
                 location, start_addr, data, device_id=device_id, use_4B_mode=use_4b_mode, context=self.context
             )
 
-            # Verify by reading back
-            if is_safe_to_read:
+            # Verify by reading back (skip debug registers block - they don't guarantee read-back of written values)
+            if is_safe_to_read and block_name != "debug_regs":
                 result = lib.read_from_device(
                     location,
                     start_addr,
@@ -1533,6 +1545,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, RECURSION_COUNT))
     def test_callstack_with_parsing(self, elf_name: str, recursion_count: int):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
         self.set_recursion_count(parsed_elf, recursion_count)
@@ -1577,6 +1592,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_namespace(self, elf_name):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
         self.set_recursion_count(parsed_elf, 0)
