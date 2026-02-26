@@ -283,7 +283,7 @@ class RegisterStore:
 
         return register, register.__str__()
 
-    def read_register(self, register: str | RegisterDescription) -> int:
+    def read_register(self, register: str | RegisterDescription, safe_mode: bool | None = None) -> int:
         if isinstance(register, str):
             register = self.get_register_description(register)
         else:
@@ -304,10 +304,10 @@ class RegisterStore:
         if register.bar0_address is not None:
             value = self.device.bar0_read32(register.bar0_address)
         elif register.noc_address is not None:
-            value = self.location.noc_read32(register.noc_address, register.noc_id)
+            value = self.location.noc_read32(register.noc_address, register.noc_id, safe_mode=safe_mode)
         elif isinstance(register, ConfigurationRegisterDescription):
-            self.location.noc_write32(self._control_register_address, register.index)
-            value = self.location.noc_read32(self._data_register_address)
+            self.location.noc_write32(self._control_register_address, register.index, safe_mode=safe_mode)
+            value = self.location.noc_read32(self._data_register_address, safe_mode=safe_mode)
         else:
             # Read using RISC core debugging hardware.
             risc_debug = self.device.get_block(self.location).get_default_risc_debug()
@@ -316,7 +316,7 @@ class RegisterStore:
                 value = risc_debug.read_memory(register.private_address)
         return (value & register.mask) >> register.shift
 
-    def write_register(self, register: str | RegisterDescription, value: int) -> None:
+    def write_register(self, register: str | RegisterDescription, value: int, safe_mode: bool | None = None) -> None:
         if isinstance(register, str):
             register = self.get_register_description(register)
         else:
@@ -347,9 +347,9 @@ class RegisterStore:
             self.device.bar0_write32(register.bar0_address, value)
         elif register.noc_address is not None:
             if register.mask != 0xFFFFFFFF:
-                old_value = self.location.noc_read32(register.noc_address, register.noc_id)
+                old_value = self.location.noc_read32(register.noc_address, register.noc_id, safe_mode=safe_mode)
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            self.location.noc_write32(register.noc_address, value, register.noc_id)
+            self.location.noc_write32(register.noc_address, value, register.noc_id, safe_mode=safe_mode)
         else:
             # Write using RISC core debugging hardware.
             risc_debug = self.device.get_block(self.location).get_default_risc_debug()

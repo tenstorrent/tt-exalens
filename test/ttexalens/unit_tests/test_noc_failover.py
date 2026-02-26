@@ -19,6 +19,17 @@ def create_timeout_error(chip_id=0, is_read=True):
     )
 
 
+def setup_safe_mode_mocks(test_location):
+    """Set up noc_block mock chain on test_location so safe mode validation passes."""
+    mock_memory_block_info = Mock()
+    mock_memory_block_info.is_accessible = True
+    mock_memory_block_info.memory_block.address.noc_address = 0x0
+    mock_memory_block_info.memory_block.size = 0x100000
+    mock_memory_block_info.is_safe_to_read.return_value = True
+    mock_memory_block_info.is_safe_to_write.return_value = True
+    test_location.noc_block.noc_memory_map.find_by_noc_address.return_value = mock_memory_block_info
+
+
 class TestNocFailoverDisabled(unittest.TestCase):
     """Test NOC behavior when failover is disabled."""
 
@@ -36,6 +47,7 @@ class TestNocFailoverDisabled(unittest.TestCase):
         cls.mock_context.use_4B_mode = True
         cls.mock_context.dma_read_threshold = 24
         cls.mock_context.dma_write_threshold = 56
+        cls.mock_context.safe_mode = True
 
         # Create mock UMD device
         cls.mock_umd_device = Mock()
@@ -50,6 +62,7 @@ class TestNocFailoverDisabled(unittest.TestCase):
         # Create test location
         cls.test_location = Mock(spec=OnChipCoordinate)
         cls.test_location._noc0_coord = (1, 1)
+        setup_safe_mode_mocks(cls.test_location)
 
     def setUp(self):
         """Reset mock call history between tests."""
@@ -261,6 +274,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
         # Create test location
         cls.test_location = Mock(spec=OnChipCoordinate)
         cls.test_location._noc0_coord = (1, 1)
+        setup_safe_mode_mocks(cls.test_location)
 
     def setUp(self):
         """Reset mock call history between tests."""
@@ -281,6 +295,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
         mock_context.use_4B_mode = True
         mock_context.dma_read_threshold = 24
         mock_context.dma_write_threshold = 56
+        mock_context.safe_mode = True
 
         with patch.object(Device, "_init_coordinate_systems"), patch.object(Device, "get_block"), patch.object(
             Device, "get_tensix_registers_description"

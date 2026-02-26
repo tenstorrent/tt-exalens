@@ -184,45 +184,49 @@ class RiscDebug:
         pass
 
     @abstractmethod
-    def read_memory(self, address: int) -> int:
+    def read_memory(self, address: int, safe_mode: bool | None = None) -> int:
         """
         Read a memory address.
         Args:
             address (int): Memory address to read.
+            safe_mode (bool | None): If True, apply additional safety checks to prevent access to known unsafe memory regions.
         Returns:
             int: Value at the memory address.
         """
         pass
 
     @abstractmethod
-    def read_memory_bytes(self, address: int, size_bytes: int) -> bytes:
+    def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
         """
         Read size_bytes bytes from a memory address.
         Args:
             address (int): Memory address to read.
             size_bytes (int): Number of bytes to read.
+            safe_mode (bool | None): If True, apply additional safety checks to prevent access to known unsafe memory regions.
         Returns:
             bytes: Size_bytes bytes at the memory address.
         """
         pass
 
     @abstractmethod
-    def write_memory(self, address: int, data: int) -> None:
+    def write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
         """
         Write data to a memory address.
         Args:
             address (int): Memory address to write.
             data (int): Data to write to the memory address.
+            safe_mode (bool | None): If True, apply additional safety checks to prevent access to known unsafe memory regions.
         """
         pass
 
     @abstractmethod
-    def write_memory_bytes(self, address: int, data: bytes) -> None:
+    def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None) -> None:
         """
         Write size_bytes bytes to a memory address.
         Args:
             address (int): Memory address to write.
             data (bytes): Bytes to write to the memory address.
+            safe_mode (bool | None): If True, apply additional safety checks to prevent access to known unsafe memory regions.
         """
         pass
 
