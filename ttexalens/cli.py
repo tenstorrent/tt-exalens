@@ -435,7 +435,7 @@ def main():
             use_4B_mode=use_4B_mode,
             safe_mode=safe_mode,
             simulation_directory=simulation_directory,
-						noc_failover=noc_failover
+			noc_failover=noc_failover
         )
 
     # Main function
