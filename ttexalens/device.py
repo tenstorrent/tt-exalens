@@ -211,7 +211,9 @@ class Device:
                     util.ERROR(f"Device {self.id}: All NOCs hung. Raising exception: {e}")
                     raise  # Exhausted all NOCs, raise Timeout
 
-                util.WARN(f"Device {self.id}: NOC{failed_noc} hung, switching over to NOC{noc_queue[0]}: Exception: {e}")
+                util.WARN(
+                    f"Device {self.id}: NOC{failed_noc} hung, switching over to NOC{noc_queue[0]}: Exception: {e}"
+                )
 
     @property
     def board_type(self) -> tt_umd.BoardType:
