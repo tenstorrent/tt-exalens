@@ -269,7 +269,7 @@ class BlackholeEthBlock(BlackholeNocBlock):
         self.noc_memory_map.add_blocks(
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
-                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
@@ -287,7 +287,7 @@ class BlackholeEthBlock(BlackholeNocBlock):
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.erisc0.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
@@ -305,7 +305,7 @@ class BlackholeEthBlock(BlackholeNocBlock):
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.erisc1.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
-                MemoryMapBlockInfo("debug_regs", self.debug_regs),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
