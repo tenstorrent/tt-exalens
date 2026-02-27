@@ -200,7 +200,7 @@ class Device:
                     if self.on_noc_switch:
                         self.on_noc_switch()
                 return result
-            except TimeoutDeviceRegisterError:
+            except TimeoutDeviceRegisterError as e:
                 if selected_noc == first_used:
                     noc_queue = self._noc_to_use.copy()
 
@@ -208,10 +208,12 @@ class Device:
                 noc_queue.append(failed_noc)
 
                 if noc_queue[0] == first_used:
-                    util.ERROR(f"Device {self.id}: All NOCs hung. Raising exception.")
+                    util.ERROR(f"Device {self.id}: All NOCs hung. Raising exception: {e}")
                     raise  # Exhausted all NOCs, raise Timeout
 
-                util.WARN(f"Device {self.id}: NOC{failed_noc} hung, switching over to NOC{noc_queue[0]}.")
+                util.WARN(
+                    f"Device {self.id}: NOC{failed_noc} hung, switching over to NOC{noc_queue[0]}: Exception: {e}"
+                )
 
     @property
     def board_type(self) -> tt_umd.BoardType:
