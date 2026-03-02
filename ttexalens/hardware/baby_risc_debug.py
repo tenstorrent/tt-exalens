@@ -298,7 +298,7 @@ class BabyRiscDebugHardware:
 
     def halt(self):
         if self.is_halted():
-            util.WARN(f"Halt: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already halted")
+            util.DEBUG(f"Halt: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already halted")
             return
         util.TRACE("  halt()")
         self._halt_command()
