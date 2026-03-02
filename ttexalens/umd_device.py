@@ -367,6 +367,6 @@ class UmdDevice:
 
     def get_local_tt_device_id(self) -> int:
         if self._is_mmio_capable:
-            return self.__device
+            return self.__device.get_communication_device_id()
         remote_communication = self.__device.get_remote_communication()
         return remote_communication.get_local_device().get_communication_device_id()
