@@ -73,7 +73,7 @@ class Verbosity(Enum):
         return VERBOSITY_VALUE.value >= verbosity.value
 
 
-VERBOSITY_VALUE: Verbosity = Verbosity.INFO
+VERBOSITY_VALUE: Verbosity = Verbosity.ERROR
 
 # Pretty print exceptions (traceback)
 def notify_exception(exc_type, exc_value, tb):
