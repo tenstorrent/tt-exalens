@@ -23,7 +23,7 @@ Options:
   --start-server=<server_port>    Start a tt-exalens server on the specified port.
   --background                    Start the server in the background detached from console (doesn't require ENTER button for exit, but exit.server file to be created).
   -s=<simulation_directory>       Specifies build output directory of the simulator.
-  --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 2]
+  --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
   --use-noc1                      Initialize with NOC1 and use NOC1 for communication with the device.
