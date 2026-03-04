@@ -5,7 +5,7 @@
 """
 Usage:
   tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--disable-4B-mode] [--unsafe-mode] [--disable-noc-failover]
-  tt-exalens --server [--port=<port>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1]
+  tt-exalens --server [--port=<port>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1] [--verbosity=<verbosity>]
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--disable-4B-mode]
   tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help

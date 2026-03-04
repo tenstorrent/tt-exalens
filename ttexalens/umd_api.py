@@ -65,9 +65,22 @@ class UmdApi:
     ):
         self.devices: dict[int, UmdDevice] = {}
 
+        # Respect UMD's existing environment variable for logging level.
+        # If it's not set, set it based on ttexalens' verbosity level.
+        # This allows users to control UMD logging through the TT_LOGGER_LEVEL environment variable if they want to,
+        # while also providing a reasonable default based on ttexalens' verbosity settings.
+        # By default, UMD logs only errors to avoid spamming the user with too much information,
+        # but if the user has set ttexalens to a more verbose level, we will set UMD's logging level to match that.
+        if "TT_LOGGER_LEVEL" not in os.environ:
+            if util.Verbosity.get() == util.Verbosity.DEBUG:
+                tt_umd.logging.set_level(tt_umd.logging.Level.Debug)
+            elif util.Verbosity.get() == util.Verbosity.TRACE:
+                tt_umd.logging.set_level(tt_umd.logging.Level.Trace)
+            else:
+                tt_umd.logging.set_level(tt_umd.logging.Level.Error)
+
         UmdApi.select_noc_id(1 if initialize_with_noc1 else 0)
         if simulation_directory is not None:
-            tt_umd.logging.set_level(tt_umd.logging.Level.Debug)
             tt_device = tt_umd.RtlSimulationTTDevice.create(simulation_directory)
             soc_descriptor = tt_device.get_soc_descriptor()
             # Fix for simulator
@@ -79,10 +92,6 @@ class UmdApi:
             cluster_descriptor_content = create_simulation_cluster_descriptor(self.devices[0].arch)
             self.cluster_descriptor = tt_umd.ClusterDescriptor.create_from_yaml_content(cluster_descriptor_content)
         else:
-            # Respect UMD's existing env var first; default to ERROR otherwise.
-            # If Python wants DEBUG, it can set TT_LOGGER_LEVEL=debug before calling into this function.
-            if "TT_LOGGER_LEVEL" not in os.environ:
-                tt_umd.logging.set_level(tt_umd.logging.Level.Error)
 
             discovery_options = tt_umd.TopologyDiscoveryOptions()
             # TODO: discovery_options.no_wait_for_eth_training = True
@@ -135,12 +144,6 @@ class UmdApi:
 
 
 def local_init(init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None):
-    if "TT_LOGGER_LEVEL" not in os.environ:
-        if util.Verbosity.get() == util.Verbosity.DEBUG:
-            os.environ["TT_LOGGER_LEVEL"] = "debug"
-        elif util.Verbosity.get() == util.Verbosity.TRACE:
-            os.environ["TT_LOGGER_LEVEL"] = "trace"
-
     communicator = UmdApi(init_jtag, initialize_with_noc1, simulation_directory)
     util.VERBOSE("Device opened successfully.")
     return communicator
