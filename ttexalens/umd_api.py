@@ -94,7 +94,7 @@ class UmdApi:
         else:
 
             discovery_options = tt_umd.TopologyDiscoveryOptions()
-            # TODO: discovery_options.no_wait_for_eth_training = True
+            discovery_options.no_wait_for_eth_training = True
             # TODO: discovery_options.no_eth_firmware_strictness = True
             discovery_options.predict_eth_fw_version = True
             self.cluster_descriptor, devices = tt_umd.TopologyDiscovery.discover(
