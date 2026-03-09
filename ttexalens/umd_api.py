@@ -85,11 +85,11 @@ class UmdApi:
                 tt_umd.logging.set_level(tt_umd.logging.Level.Error)
 
             discovery_options = tt_umd.TopologyDiscoveryOptions()
-            discovery_options.cmfw_mismatch_action = tt_umd.TopologyDiscoveryOptions.DeviceAction.KEEP
-            discovery_options.cmfw_unsupported_action = tt_umd.TopologyDiscoveryOptions.DeviceAction.KEEP
-            discovery_options.eth_fw_mismatch_action = tt_umd.TopologyDiscoveryOptions.Action.WARN
-            discovery_options.unexpected_routing_firmware_config = tt_umd.TopologyDiscoveryOptions.Action.WARN
-            discovery_options.wait_on_ethernet_link_training = False
+            discovery_options.cmfw_mismatch_action = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
+            discovery_options.cmfw_unsupported_action = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
+            discovery_options.eth_fw_mismatch_action = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
+            discovery_options.unexpected_routing_firmware_config = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
+            discovery_options.wait_on_ethernet_link_training = True  # TODO: Set to False.
             discovery_options.predict_eth_fw_version_from_cmfw_version = True
 
             self.cluster_descriptor, devices = tt_umd.TopologyDiscovery.discover(
