@@ -427,7 +427,9 @@ class Device:
                     if coord_system in unique_coordinates:
                         self._to_noc0[(converted_location, coord_system, "any")] = noc0_location
                 except Exception:
-                    util.DEBUG(f"Could not convert noc0 {noc0_location} to {coord_system}/{core_type}:\n{traceback.format_exc()}")
+                    util.DEBUG(
+                        f"Could not convert noc0 {noc0_location} to {coord_system}/{core_type}:\n{traceback.format_exc()}"
+                    )
 
             # Add coordinate systems that UMD does not support
 
@@ -456,7 +458,9 @@ class Device:
                 )
                 return (converted_location, "router_only")
             except Exception as e:
-                raise CoordinateTranslationError(f"from_noc0(noc0_tuple={noc0_tuple}, coord_system={coord_system})") from e
+                raise CoordinateTranslationError(
+                    f"from_noc0(noc0_tuple={noc0_tuple}, coord_system={coord_system})"
+                ) from e
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         # Base class doesn't know if it is translated coordinate, but specialized classes do

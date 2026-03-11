@@ -106,7 +106,9 @@ class GdbServer(threading.Thread):
                     try:
                         elf_path = self.context.get_risc_elf_path(risc_debug.risc_location)
                     except Exception:
-                        util.DEBUG(f"Could not get ELF path for {risc_debug.risc_location}, running without it:\n{traceback.format_exc()}")
+                        util.DEBUG(
+                            f"Could not get ELF path for {risc_debug.risc_location}, running without it:\n{traceback.format_exc()}"
+                        )
                         elf_path = None
 
                     # Check if process is in self._last_available_processes and reuse it if it is

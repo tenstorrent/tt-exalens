@@ -1011,13 +1011,9 @@ def search(strings: list[str], pattern: str = "*", max: str | int | None = "all"
         try:
             n = int(max)
         except (TypeError, ValueError) as e:
-            raise ValueError(
-                f'Invalid argument for --max. Expected positive integer or "all", but got {max!r}'
-            ) from e
+            raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max!r}') from e
         if n <= 0:
-            raise ValueError(
-                f'Invalid argument for --max. Expected positive integer or "all", but got {max!r}'
-            )
+            raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max!r}')
 
     pattern = pattern.lower()
     results = []
