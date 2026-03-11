@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 from functools import cached_property
-from sortedcontainers import SortedSet
+import traceback
 from typing import Iterable, TYPE_CHECKING
+
+from sortedcontainers import SortedSet
 import tt_umd
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -86,7 +88,8 @@ class Context:
         device_ids: Iterable[int]
         try:
             device_ids = self.cluster_descriptor.get_all_chips()
-        except:
+        except Exception:
+            util.DEBUG(f"Could not get device IDs from cluster descriptor:\n{traceback.format_exc()}")
             device_ids = []
         return SortedSet(d for d in device_ids)
 

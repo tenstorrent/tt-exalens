@@ -6,8 +6,10 @@ import datetime
 import os
 import threading
 import time
+import traceback
 from typing import Sequence
 import tt_umd
+from ttexalens import util
 
 
 class TimeoutDeviceRegisterError(Exception):
@@ -97,7 +99,8 @@ class UmdDevice:
             try:
                 self.__read_from_device_reg(tensix_translated_coord.x, tensix_translated_coord.y, 0, 4, 8)
                 return
-            except:
+            except Exception:
+                util.DEBUG(f"ETH core {translated_coord} not working, trying next:\n{traceback.format_exc()}")
                 continue
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
@@ -205,7 +208,8 @@ class UmdDevice:
             return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
             raise
-        except:
+        except Exception:
+            util.DEBUG(f"Read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
             if self._is_simulation or self._is_mmio_capable:
                 raise
             self.__configure_working_active_eth()
@@ -263,7 +267,8 @@ class UmdDevice:
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
             raise
-        except:
+        except Exception:
+            util.DEBUG(f"Write failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
             if self._is_simulation or self._is_mmio_capable:
                 raise
             self.__configure_working_active_eth()
@@ -328,7 +333,8 @@ class UmdDevice:
 
         try:
             return do_read(telemetry_tag)
-        except:
+        except Exception:
+            util.DEBUG(f"Telemetry read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
             if not self._is_mmio_capable:
                 raise
             # TODO: We should retry only if it was remote read error
@@ -345,7 +351,8 @@ class UmdDevice:
 
         try:
             firmware_version = do_read()
-        except:
+        except Exception:
+            util.DEBUG(f"Firmware version read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
             if not self._is_mmio_capable:
                 raise
             # TODO: We should retry only if it was remote read error

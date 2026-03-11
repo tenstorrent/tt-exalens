@@ -5,6 +5,7 @@ from contextlib import closing
 import select
 import socket
 import threading
+import traceback
 from typing import IO
 from ttexalens.gdb.gdb_data import GdbThreadId
 from ttexalens import util as util
@@ -43,9 +44,10 @@ class ClientSocket:
         if self.socket is not None:
             try:
                 self.socket.close()
-            except:
-                # Ignore exception
+            except OSError:
                 pass
+            except Exception:
+                util.DEBUG(f"Unexpected exception closing client socket:\n{traceback.format_exc()}")
             self.socket = None
 
     def input_ready(self, timeout: float = 0):
@@ -97,7 +99,10 @@ class ServerSocket:
         try:
             self.connection, _ = self.server.accept()
             return ClientSocket(self.connection)
-        except:
+        except OSError:
+            return None
+        except Exception:
+            util.DEBUG(f"Unexpected exception in server socket accept:\n{traceback.format_exc()}")
             return None
 
     def close(self):

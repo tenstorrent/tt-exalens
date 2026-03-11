@@ -41,8 +41,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         else:
             try:
                 port = int(dopt.args["<port>"])
-                ui_state.start_gdb(port)
-            except:
+            except Exception:
                 util.ERROR("Invalid port number")
     elif dopt.args["stop"]:
         ui_state.stop_gdb()

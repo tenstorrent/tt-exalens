@@ -91,8 +91,8 @@ def get_core_location(core_desc: str, device: Device) -> OnChipCoordinate:
 
     try:
         return OnChipCoordinate.create(core_desc, device=device)
-    except:
-        raise ValueError(f"Unknown core description {core_desc}")
+    except Exception as e:
+        raise ValueError(f"Unknown core description {core_desc}") from e
 
 
 def get_parsed_elf_file(elf_path: str) -> ParsedElfFile:

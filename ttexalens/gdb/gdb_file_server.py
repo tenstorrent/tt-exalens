@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 import io
 import os
+import traceback
+import ttexalens.util as util
 from ttexalens.context import Context
 
 
@@ -43,7 +45,10 @@ class GdbFileServer:
             try:
                 stream.seek(offset, os.SEEK_SET)
                 return stream.read(count)
-            except:
+            except OSError:
+                return "-1, Exception while reading."
+            except Exception:
+                util.DEBUG(f"Unexpected exception in pread:\n{traceback.format_exc()}")
                 return "-1, Exception while reading."
         else:
             return "-1"
@@ -54,7 +59,10 @@ class GdbFileServer:
             try:
                 stream.seek(offset, os.SEEK_SET)
                 return stream.write(data)
-            except:
+            except OSError:
+                return "-2,Error while writing."
+            except Exception:
+                util.DEBUG(f"Unexpected exception in pwrite:\n{traceback.format_exc()}")
                 return "-2,Error while writing."
         else:
             return "-1"

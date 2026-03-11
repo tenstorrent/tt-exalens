@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 import sys
+import traceback
 
 from abc import abstractmethod
 import select
@@ -149,7 +150,7 @@ class TTExaLensTestRunner:
             assert self.process is not None
             self.process.kill()
             self.process.wait()
-        except:
+        except Exception:
             pass
 
     def execute(self, args=None, input=None, timeout=None):

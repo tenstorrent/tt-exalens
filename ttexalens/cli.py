@@ -340,12 +340,12 @@ def main_loop(args, context: Context):
         # Do best effort cleanup before exiting
         try:
             ui_state.stop_server()
-        except:
-            pass
+        except Exception:
+            util.DEBUG(f"Exception during server shutdown:\n{traceback.format_exc()}")
         try:
             ui_state.stop_gdb()
-        except:
-            pass
+        except Exception:
+            util.DEBUG(f"Exception during GDB shutdown:\n{traceback.format_exc()}")
 
 
 def main():
@@ -379,8 +379,10 @@ def main():
     try:
         verbosity = int(args["--verbosity"])
         util.Verbosity.set(verbosity)
-    except:
+    except (TypeError, ValueError):
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
+    except Exception as e:
+        util.DEBUG(f"Failed to set verbosity level:\n{traceback.format_exc()}")
     util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 
     use_4B_mode = False if args["--disable-4B-mode"] else True

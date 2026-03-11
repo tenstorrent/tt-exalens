@@ -15,6 +15,7 @@ from elftools.dwarf.ranges import BaseAddressEntry, RangeEntry
 from functools import cached_property
 import os
 import re
+import traceback
 import ttexalens.util as util
 from typing import TYPE_CHECKING, Any
 
@@ -319,8 +320,10 @@ class ElfDie:
             value = self.attributes["DW_AT_linkage_name"].value
             try:
                 return cxxfilt.demangle(value.decode("utf-8"))
-            except:
+            except (cxxfilt.InvalidName, UnicodeDecodeError):
                 pass
+            except Exception:
+                util.DEBUG(f"Unexpected exception demangling linkage name:\n{traceback.format_exc()}")
 
         return None
 
@@ -528,8 +531,10 @@ class ElfDie:
                 value = attr.value
                 try:
                     value = cxxfilt.demangle(value.decode("utf-8"))
-                except:
+                except (cxxfilt.InvalidName, UnicodeDecodeError):
                     pass
+                except Exception:
+                    util.DEBUG(f"Unexpected exception demangling linkage name:\n{traceback.format_exc()}")
             elif attr_name == "DW_AT_location":
                 value = self.cu.dwarf.location_parser.parse_from_attribute(attr, self.cu.version, self.dwarf_die)
             elif attr_name == "DW_AT_low_pc":
@@ -826,7 +831,10 @@ class ElfDie:
                     return False, None
                 try:
                     read_address = int(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
                 if frame_inspection is None:
                     return False, None
@@ -931,7 +939,10 @@ class ElfDie:
                 try:
                     value = abs(int(value))
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_neg":
                 if len(stack) > 0:
@@ -941,7 +952,10 @@ class ElfDie:
                 try:
                     value = -value
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_not":
                 if len(stack) > 0:
@@ -951,7 +965,8 @@ class ElfDie:
                 try:
                     value = not bool(value)
                     stack.append(value)
-                except:
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_and":
                 if len(stack) < 2:
@@ -961,7 +976,10 @@ class ElfDie:
                 try:
                     value = int(arg2) & int(arg1)
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_div":
                 if len(stack) < 2:
@@ -971,7 +989,10 @@ class ElfDie:
                 try:
                     value = int(arg2) // int(arg1)
                     stack.append(value)
-                except:
+                except (TypeError, ValueError, ZeroDivisionError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_minus":
                 if len(stack) < 2:
@@ -981,7 +1002,10 @@ class ElfDie:
                 try:
                     value = int(arg2) - int(arg1)
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_mod":
                 if len(stack) < 2:
@@ -991,7 +1015,10 @@ class ElfDie:
                 try:
                     value = int(arg2) % int(arg1)
                     stack.append(value)
-                except:
+                except (TypeError, ValueError, ZeroDivisionError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_mul":
                 if len(stack) < 2:
@@ -1001,7 +1028,10 @@ class ElfDie:
                 try:
                     value = arg2 * arg1
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_or":
                 if len(stack) < 2:
@@ -1011,7 +1041,10 @@ class ElfDie:
                 try:
                     value = arg2 | arg1
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_plus":
                 if len(stack) < 2:
@@ -1021,7 +1054,10 @@ class ElfDie:
                 try:
                     value = arg2 + arg1
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_plus_uconst":
                 if len(stack) > 0:
@@ -1033,7 +1069,10 @@ class ElfDie:
                 try:
                     value = value + op.args[0]
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_shl":
                 if len(stack) < 2:
@@ -1043,7 +1082,10 @@ class ElfDie:
                 try:
                     value = arg2 << arg1
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_shr":
                 if len(stack) < 2:
@@ -1053,7 +1095,10 @@ class ElfDie:
                 try:
                     value = arg2 >> arg1
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_shra":
                 if len(stack) < 2:
@@ -1063,7 +1108,10 @@ class ElfDie:
                 try:
                     value = arg2 // (2**arg1)
                     stack.append(value)
-                except:
+                except (TypeError, ValueError, ZeroDivisionError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_xor":
                 if len(stack) < 2:
@@ -1073,7 +1121,10 @@ class ElfDie:
                 try:
                     value = arg2 ^ arg1
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_eq":
                 if len(stack) < 2:
@@ -1083,7 +1134,8 @@ class ElfDie:
                 try:
                     value = 1 if arg2 == arg1 else 0
                     stack.append(value)
-                except:
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_ge":
                 if len(stack) < 2:
@@ -1093,7 +1145,10 @@ class ElfDie:
                 try:
                     value = 1 if arg2 >= arg1 else 0
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_gt":
                 if len(stack) < 2:
@@ -1103,7 +1158,10 @@ class ElfDie:
                 try:
                     value = 1 if arg2 > arg1 else 0
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_le":
                 if len(stack) < 2:
@@ -1113,7 +1171,10 @@ class ElfDie:
                 try:
                     value = 1 if arg2 <= arg1 else 0
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_lt":
                 if len(stack) < 2:
@@ -1123,7 +1184,10 @@ class ElfDie:
                 try:
                     value = 1 if arg2 < arg1 else 0
                     stack.append(value)
-                except:
+                except (TypeError, ValueError):
+                    return False, None
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_ne":
                 if len(stack) < 2:
@@ -1133,7 +1197,8 @@ class ElfDie:
                 try:
                     value = 1 if arg2 != arg1 else 0
                     stack.append(value)
-                except:
+                except Exception:
+                    util.DEBUG(f"Unexpected exception in DWARF op {op.op_name}:\n{traceback.format_exc()}")
                     return False, None
             elif op.op_name == "DW_OP_call2" or op.op_name == "DW_OP_call4" or op.op_name == "DW_OP_call_ref":
                 if len(op.args) != 1 or not isinstance(op.args[0], int):

@@ -4,6 +4,7 @@
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import cached_property
+import traceback
 
 from ttexalens import util
 from ttexalens.context import Context
@@ -675,8 +676,8 @@ class BabyRiscDebug(RiscDebug):
         try:
             if self.risc_info.noc_block.debug_bus is not None:
                 return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")
-        except:
-            pass
+        except Exception:
+            util.DEBUG(f"Unexpected exception getting debug bus PC signal:\n{traceback.format_exc()}")
         return None
 
     def get_pc(self) -> int:

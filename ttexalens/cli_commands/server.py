@@ -31,9 +31,15 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     if dopt.args["start"]:
         try:
             port = int(dopt.args["<port>"]) if dopt.args["<port>"] else None
-            ui_state.start_server(port)
-        except:
+        except (TypeError, ValueError):
             util.ERROR("Invalid port number")
+            return
+        try:
+            ui_state.start_server(port)
+        except OSError as e:
+            display_port = port if port is not None else 5555
+            util.ERROR(f"Failed to start tt-exalens server on port {display_port}: {e}")
+            return
     elif dopt.args["stop"]:
         ui_state.stop_server()
     else:
