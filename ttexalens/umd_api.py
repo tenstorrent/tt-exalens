@@ -13,20 +13,16 @@ from ttexalens.umd_device import UmdDevice
 
 def create_simulation_cluster_descriptor(arch: tt_umd.ARCH) -> str:
     return f"""\
-arch: {{
-   0: {arch},
-}}
+arch:
+   0: {arch}
 
-chips: {{
-   0: [0,0,0,0],
-}}
+chips:
+   0: [0,0,0,0]
 
-ethernet_connections: [
-]
+ethernet_connections: []
 
-chips_with_mmio: [
-   0: 0,
-]
+chips_with_mmio:
+   - 0: 0
 
 # harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first tensix row; bit 1 = second tensix row etc...
 harvesting: {{
@@ -34,9 +30,12 @@ harvesting: {{
 }}
 
 # This value will be null if the boardtype is unknown, should never happen in practice but to be defensive it would be useful to throw an error on this case.
-boardtype: {{
-   0: {arch}Simulator,
-}}
+boards:
+    -
+        - board_id: 0x36000000000
+        - board_type: UNKNOWN
+        - chips:
+            - 0
 io_device_type: SIMULATION
 """
 

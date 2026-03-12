@@ -12,6 +12,7 @@ from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.quasar.baby_risc_debug import QuasarBabyRiscDebug
 from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import debug_bus_signal_map
 from ttexalens.hardware.quasar.functional_neo_registers import register_map
+from ttexalens.memory_map import MemoryMapBlockInfo
 from typing import TYPE_CHECKING
 
 from ttexalens.hardware.risc_debug import RiscDebug
@@ -175,6 +176,29 @@ class QuasarFunctionalNeoBlock:
             code_private_memory=None,
             debug_hardware_present=True,
         )
+
+        self.debug_regs = MemoryBlock(
+            size=0x400,
+            address=DeviceAddress(
+                private_address=neo_base_address.private_address + 0x0, noc_address=neo_base_address.noc_address + 0x0
+            ),
+        )
+        self.pic_regs = MemoryBlock(
+            size=0x400,
+            address=DeviceAddress(
+                private_address=neo_base_address.private_address + 0x400,
+                noc_address=neo_base_address.noc_address + 0x400,
+            ),
+        )
+
+        self.noc_memory_list: list[MemoryMapBlockInfo] = [
+            MemoryMapBlockInfo(f"neo{neo_id}.trisc0.data_private_memory", self.trisc0.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+            MemoryMapBlockInfo(f"neo{neo_id}.trisc1.data_private_memory", self.trisc1.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+            MemoryMapBlockInfo(f"neo{neo_id}.trisc2.data_private_memory", self.trisc2.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+            MemoryMapBlockInfo(f"neo{neo_id}.trisc3.data_private_memory", self.trisc3.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+            MemoryMapBlockInfo(f"neo{neo_id}.debug_regs", self.debug_regs, safe_to_write=True),
+            MemoryMapBlockInfo(f"neo{neo_id}.pic_regs", self.pic_regs),
+        ]
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:
