@@ -32,6 +32,7 @@ Examples:
   device -d 0 noc0 block --no-legend  # Shows the block type on noc0 axis for device 0 without legend
 """  # Note: Limit the above comment to 120 characters in width
 
+import traceback
 from ttexalens import util as util
 from ttexalens.context import Context
 from ttexalens.device import Device
@@ -71,8 +72,8 @@ def get_riscv_run_status(device: Device, loc: OnChipCoordinate) -> str:
             for risc in riscs:
                 status_str += "-" if risc.is_in_reset() else "R"
             return status_str
-    except:
-        pass
+    except Exception:
+        util.DEBUG(f"Unexpected exception getting risc status:\n{traceback.format_exc()}")
     return device.get_block_type(loc)
 
 

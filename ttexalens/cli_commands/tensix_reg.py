@@ -113,8 +113,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                             )
                     else:
                         max_regs = len(register_names)
-                except:
-                    raise ValueError(f"Invalid value for max-regs. Expected an integer, but got {max_regs}")
+                except (TypeError, ValueError) as e:
+                    raise ValueError(f"Invalid value for max-regs. Expected an integer, but got {max_regs}") from e
 
                 INFO(f"Register names that match pattern on device {device.id}")
                 print_matches(register_pattern, register_names, max_regs)

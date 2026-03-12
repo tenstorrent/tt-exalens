@@ -912,20 +912,6 @@ def word_to_byte_array(A):
     return byte_array
 
 
-# Returns True if port available
-def is_port_available(port):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    result = False
-    try:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        sock.bind(("0.0.0.0", port))
-        result = True
-    except:
-        pass
-    sock.close()
-    return result
-
-
 # Returns a dictionary pretty printed into a string
 def pretty(dct):
     pp = pprint.PrettyPrinter(indent=2)
@@ -1014,20 +1000,20 @@ def color_text_by_index(text, color_index):
 
 
 # Return a list of up to n elements from strings that match the given wildcard pattern.
-# Defaults to 10 elements, negative values of max or "all" mean all.
-def search(strings: list[str], pattern: str = "*", max: str | int = "all") -> list[str]:
-    n = 0
-    try:
-        if max != "all":
-            n = int(max)
-            if n <= 0:
-                raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max}')
-    except:
-        raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max}')
+# Defaults to "all" results. If max is None, defaults to 10.
+def search(strings: list[str], pattern: str = "*", max: str | int | None = "all") -> list[str]:
+    # Parse max into n (number of results to return, -1 for unlimited)
     if max is None:
         n = 10
     elif max == "all":
         n = -1
+    else:
+        try:
+            n = int(max)
+        except (TypeError, ValueError) as e:
+            raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max!r}') from e
+        if n <= 0:
+            raise ValueError(f'Invalid argument for --max. Expected positive integer or "all", but got {max!r}')
 
     pattern = pattern.lower()
     results = []

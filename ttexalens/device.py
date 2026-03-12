@@ -7,6 +7,7 @@ from abc import abstractmethod
 from dataclasses import dataclass
 import datetime
 from functools import cache, cached_property
+import traceback
 import tt_umd
 from typing import Callable, Iterable, Sequence, TypeVar
 
@@ -425,8 +426,10 @@ class Device:
                     self._to_noc0[(converted_location, coord_system, core_type)] = noc0_location
                     if coord_system in unique_coordinates:
                         self._to_noc0[(converted_location, coord_system, "any")] = noc0_location
-                except:
-                    pass
+                except Exception:
+                    util.DEBUG(
+                        f"Could not convert noc0 {noc0_location} to {coord_system}/{core_type}:\n{traceback.format_exc()}"
+                    )
 
             # Add coordinate systems that UMD does not support
 
@@ -439,23 +442,25 @@ class Device:
     def to_noc0(self, coord_tuple: tuple[int, int], coord_system: str, core_type: str = "any") -> tuple[int, int]:
         try:
             return self._to_noc0[(coord_tuple, coord_system, core_type)]
-        except:
+        except KeyError as e:
             raise CoordinateTranslationError(
                 f"to_noc0(coord_tuple={coord_tuple}, coord_system={coord_system}, core_type={core_type})"
-            )
+            ) from e
 
     def from_noc0(self, noc0_tuple: tuple[int, int], coord_system: str) -> tuple[tuple[int, int], str]:
         try:
             return self._from_noc0[(noc0_tuple, coord_system)]
-        except:
+        except KeyError:
             try:
                 # Try to recover using UMD API
                 converted_location = self._umd_device.convert_from_noc0(
                     noc0_tuple[0], noc0_tuple[1], "router_only", coord_system
                 )
                 return (converted_location, "router_only")
-            except:
-                raise CoordinateTranslationError(f"from_noc0(noc0_tuple={noc0_tuple}, coord_system={coord_system})")
+            except Exception as e:
+                raise CoordinateTranslationError(
+                    f"from_noc0(noc0_tuple={noc0_tuple}, coord_system={coord_system})"
+                ) from e
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         # Base class doesn't know if it is translated coordinate, but specialized classes do
@@ -620,8 +625,8 @@ class Device:
                         max(ui_ver_range[1], ui_ver),
                     )
                     all_block_locs[(ui_hor, ui_ver)] = loc
-                except:
-                    pass
+                except Exception:
+                    util.DEBUG(f"Could not compute grid location for display:\n{traceback.format_exc()}")
 
         screen_row_y = 0
         C = util.CLR_INFO

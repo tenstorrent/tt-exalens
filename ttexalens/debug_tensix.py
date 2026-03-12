@@ -49,7 +49,7 @@ def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
     try:
         if isinstance(regfile, str):
             return REGFILE[regfile.upper()]
-    except:
+    except KeyError:
         pass
     raise TTException(f"Invalid regfile {regfile}.")
 

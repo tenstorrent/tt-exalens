@@ -286,5 +286,5 @@ def connect_to_server(server_host="localhost", port=5555) -> tuple[UmdApi, FileA
 
         # Return connected APIs
         return umd_api, file_api
-    except:
-        raise util.TTFatalException("Failed to connect to TTExaLens server.")
+    except Exception as e:
+        raise util.TTFatalException("Failed to connect to TTExaLens server.") from e

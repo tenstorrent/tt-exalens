@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from io import StringIO
 import threading
+import traceback
 from typing import Callable, IO
 from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
 
@@ -104,8 +105,10 @@ class GdbServer(threading.Thread):
                 if not risc_debug.is_in_reset():
                     try:
                         elf_path = self.context.get_risc_elf_path(risc_debug.risc_location)
-                    except:
-                        # If we are running without full functionality, we will not have elf files available
+                    except Exception:
+                        util.DEBUG(
+                            f"Could not get ELF path for {risc_debug.risc_location}, running without it:\n{traceback.format_exc()}"
+                        )
                         elf_path = None
 
                     # Check if process is in self._last_available_processes and reuse it if it is
@@ -177,7 +180,7 @@ class GdbServer(threading.Thread):
                         util.VERBOSE(f"sent response to GDB: +")
                     try:
                         util.VERBOSE(f"sent response to GDB: {writer.data.decode()}")
-                    except:
+                    except UnicodeDecodeError:
                         # We ignore error if we cannot decode message
                         pass
                     writer.send()
@@ -199,7 +202,7 @@ class GdbServer(threading.Thread):
 
         try:
             util.VERBOSE(f"processing GDB message: {parser.data.decode()}")
-        except:
+        except UnicodeDecodeError:
             # We ignore error if we cannot decode message
             pass
 
@@ -970,7 +973,8 @@ class GdbServer(threading.Thread):
                     except RestrictedMemoryAccessError as e:
                         util.ERROR(str(e), file=self.error_stream)
                         writer.append(b"E04")  # restricted memory access
-            except:
+            except Exception:
+                util.DEBUG(f"Unexpected exception handling GDB memory write:\n{traceback.format_exc()}")
                 writer.append(b"E03")
         elif parser.parse(b"z0,"):  # Remove a software breakpoint at address of type kind.
             # ‘z0,addr,kind’

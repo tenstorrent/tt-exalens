@@ -4,6 +4,7 @@
 from dataclasses import dataclass
 from enum import Enum
 from functools import cached_property
+import traceback
 from types import ModuleType
 from typing import Callable
 from docopt import DocoptExit, docopt
@@ -11,6 +12,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
+from ttexalens import util
 
 
 class CommonCommandOptions(Enum):
@@ -112,8 +114,8 @@ class tt_docopt:
                 riscs = noc_block.all_riscs
                 for risc in riscs:
                     yield risc.risc_location.risc_name
-            except:
-                pass
+            except Exception:
+                util.DEBUG(f"Could not enumerate RISC names for location {location}:\n{traceback.format_exc()}")
         else:
             for name in risc_name.split(","):
                 yield name

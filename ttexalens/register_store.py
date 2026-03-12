@@ -37,7 +37,7 @@ def format_register_value(value: int, data_type: REGISTER_DATA_TYPE, number_of_b
     elif data_type == REGISTER_DATA_TYPE.TENSIX_DATA_FORMAT:
         try:
             return f"TensixDataFormat.{TensixDataFormat(value).name}"
-        except:
+        except ValueError:
             return f"{value} -> INVALID VALUE"
     else:
         raise ValueError(f"Invalid value for data_type: {data_type}")
