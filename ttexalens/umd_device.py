@@ -185,7 +185,7 @@ class UmdDevice:
 
         # Read aligned bytes
         aligned_size = size - (size % 4)
-        block_size = 4 if use_4B_mode and not self._is_simulation else aligned_size
+        block_size = 4 if use_4B_mode and self._is_mmio_capable and not self._is_simulation else aligned_size
         while aligned_size > 0:
             data.extend(self.__read_from_device_reg(coord.x, coord.y, address, block_size, dma_threshold))
             aligned_size -= block_size
@@ -242,7 +242,7 @@ class UmdDevice:
 
         # Write aligned bytes
         aligned_size = size_in_bytes - (size_in_bytes % 4)
-        block_size = 4 if use_4B_mode and not self._is_simulation else aligned_size
+        block_size = 4 if use_4B_mode and self._is_mmio_capable and not self._is_simulation else aligned_size
         offset = 0
         while aligned_size > 0:
             self.__write_to_device_reg(coord.x, coord.y, address, data[offset : offset + block_size], dma_threshold)
