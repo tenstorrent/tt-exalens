@@ -43,6 +43,10 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                 port = int(dopt.args["<port>"])
             except Exception:
                 util.ERROR("Invalid port number")
+            try:
+                ui_state.start_gdb(port)
+            except Exception as e:
+                util.ERROR(f"Failed to start GDB server on port {port}: {e}")
     elif dopt.args["stop"]:
         ui_state.stop_gdb()
     else:
