@@ -370,17 +370,10 @@ class UmdDevice:
         if remote_communication is None:
             return None
         translated_coord = remote_communication.get_remote_transfer_ethernet_core()
-        local_device = remote_communication.get_local_device()
-        logical_coord = tt_umd.SocDescriptor(local_device).translate_coord_to(
-            tt_umd.CoreCoord(
-                translated_coord[0], translated_coord[1], tt_umd.CoreType.ETH, tt_umd.CoordSystem.TRANSLATED
-            ),
-            tt_umd.CoordSystem.LOGICAL,
-        )
-        return (logical_coord.x, logical_coord.y)
+        return (translated_coord.x, translated_coord.y)
 
-    def get_local_tt_device(self) -> tt_umd.TTDevice:
+    def get_local_tt_device_id(self) -> int:
         if self._is_mmio_capable:
-            return self.__device
+            return self.__device.get_communication_device_id()
         remote_communication = self.__device.get_remote_communication()
-        return remote_communication.get_local_device()
+        return remote_communication.get_local_device().get_communication_device_id()
