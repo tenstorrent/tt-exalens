@@ -60,9 +60,10 @@ class TimeoutMemoryAccess(MemoryAccess):
 
 
 class RiscHaltErrorMemoryAccess(MemoryAccess):
-    _device = init_cached_test_context().devices[0]
-    _risc_name = "dummy risc"
-    _location = OnChipCoordinate.create("0,0", _device)
+    def __init__(self):
+        self._device = init_cached_test_context().devices[0]
+        self._risc_name = "dummy risc"
+        self._location = OnChipCoordinate.create("0,0", self._device)
 
     def read(self, address: int, size_bytes: int) -> bytes:
         raise RiscHaltError(self._risc_name, self._location)
