@@ -109,8 +109,8 @@ class UmdDevice:
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
     def __convert_noc0_to_device_coords(self, noc0_x: int, noc0_y: int):
-        return self._soc_descriptor.translate_coord_to(
-            tt_umd.tt_xy_pair(noc0_x, noc0_y), tt_umd.CoordSystem.NOC0, tt_umd.CoordSystem.TRANSLATED
+        return self._soc_descriptor.translate_chip_coord_to_translated_coord(
+            self._soc_descriptor.get_coord_at(tt_umd.tt_xy_pair(noc0_x, noc0_y), tt_umd.CoordSystem.NOC0)
         )
 
     READ_TIMEOUT = float(os.environ.get("TT_EXALENS_READ_TIMEOUT_MS", 2)) / 1_000  # seconds
