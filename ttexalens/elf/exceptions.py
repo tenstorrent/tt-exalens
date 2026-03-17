@@ -24,10 +24,10 @@ class TypeMismatchError(DebugSymbolError):
     calling read_value() on a composite type.
     """
 
-    def __init__(self, operation: str, actual_type: str):
-        super().__init__(f"Cannot perform '{operation}' on type '{actual_type}'")
+    def __init__(self, operation: str, actual_type: str | None):
+        super().__init__(f"Cannot perform '{operation}' on type '{actual_type or '<unknown>'}'")
         self.operation = operation
-        self.actual_type = actual_type
+        self.actual_type = actual_type or "<unknown>"
 
 
 class InvalidArrayAccessError(DebugSymbolError):
@@ -42,10 +42,10 @@ class InvalidArrayAccessError(DebugSymbolError):
 class DataLossError(DebugSymbolError):
     """Writing this value would cause data loss (truncation or precision loss)."""
 
-    def __init__(self, value, type_name: str):
-        super().__init__(f"Data loss writing {value!r} to {type_name}")
+    def __init__(self, value, type_name: str | None):
+        super().__init__(f"Data loss writing {value!r} to {type_name or '<unknown>'}")
         self.value = value
-        self.type_name = type_name
+        self.type_name = type_name or "<unknown>"
 
 
 class MemoryLayoutError(DebugSymbolError):
