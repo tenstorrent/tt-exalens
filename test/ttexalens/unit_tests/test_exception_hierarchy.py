@@ -131,6 +131,7 @@ class TestExceptionCatchability(unittest.TestCase):
         from ttexalens.elf.exceptions import SymbolNotFoundError as SNF
         from ttexalens.elf.exceptions import MemoryLayoutError as MLErr
         from ttexalens.coordinate import UnknownCoordinateSystemError as UCSE
+
         self.assertTrue(issubclass(SNF, DebugSymbolError))
         self.assertTrue(issubclass(MLErr, DebugSymbolError))
         self.assertTrue(issubclass(UCSE, CoordinateError))
