@@ -23,7 +23,7 @@ class TestNOC(unittest.TestCase):
     noc_id: int
 
     def setUp(self):
-        self.context = init_test_context(self.use_noc1)
+        self.context = init_test_context(use_noc1=self.use_noc1)
         self.device = self.context.devices[0]
         self.loc = OnChipCoordinate(1, 0, "logical", self.device, core_type="tensix")
         self.register_store = self.device.get_block(self.loc).get_register_store(self.noc_id)
@@ -45,8 +45,10 @@ class TestNOC(unittest.TestCase):
     ]
 )
 class TestNOCLocations(unittest.TestCase):
+    use_noc1: bool
+
     def setUp(self):
-        self.context = init_test_context(use_noc1=False)
+        self.context = init_test_context(use_noc1=self.use_noc1)
 
     @staticmethod
     def _read_noc_location(register_store: RegisterStore, register_name: str):
@@ -57,6 +59,9 @@ class TestNOCLocations(unittest.TestCase):
 
     def test_noc_locations(self):
         for device in self.context.devices.values():
+            # TODO (944): Remove this check once UMD bug is fixed.
+            if device.is_blackhole:
+                continue
             for block_type in device.block_types:
                 for block in device.get_blocks(block_type):
                     noc0_register_store = block.get_register_store(noc_id=0)
