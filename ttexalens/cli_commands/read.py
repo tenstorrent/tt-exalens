@@ -132,7 +132,7 @@ def execute_unsafe_read(
         if memory_block_info is not None and memory_block_info.memory_block.address.noc_address is not None:
             memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
             read_size = min(bytes_to_read, memory_block_end - address)
-            bytes = location.noc_read(address, read_size)
+            bytes = location.noc_read(address, read_size, safe_mode=False)
             return bytes, memory_block_info.name
     else:
         risc_debug = location.noc_block.get_risc_debug(risc_name)
@@ -147,7 +147,7 @@ def execute_unsafe_read(
                 noc_address = memory_block_info.memory_block.address.noc_address + (
                     address - memory_block_info.memory_block.address.private_address
                 )
-                bytes = location.noc_read(noc_address, read_size)
+                bytes = location.noc_read(noc_address, read_size, safe_mode=False)
             else:
                 bytes = risc_debug.read_memory_bytes(address, read_size)
             return bytes, memory_block_info.name
@@ -167,7 +167,7 @@ def execute_unsafe_read(
     # Not found in known memory blocks, do direct read
     if risc_debug:
         with risc_debug.ensure_private_memory_access():
-            bytes = risc_debug.read_memory_bytes(address, bytes_to_read)
+            bytes = risc_debug.read_memory_bytes(address, bytes_to_read, safe_mode=False)
     else:
-        bytes = location.noc_read(address, bytes_to_read)
+        bytes = location.noc_read(address, bytes_to_read, safe_mode=False)
     return bytes, "???"
