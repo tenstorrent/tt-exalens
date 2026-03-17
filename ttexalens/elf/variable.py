@@ -6,6 +6,12 @@ from __future__ import annotations
 import struct
 from typing import TYPE_CHECKING
 
+from ttexalens.elf.exceptions import (
+    DataLossError,
+    InvalidArrayAccessError,
+    SymbolNotFoundError,
+    TypeMismatchError,
+)
 from ttexalens.memory_access import (
     MemoryAccess,
     CachedReadMemoryAccess,
@@ -46,7 +52,7 @@ class ElfVariable:
         if child_die is None or offset is None:
             assert self.__type_die.path is not None
             member_path = self.__type_die.path + "::" + member_name
-            raise Exception(f"ERROR: Cannot find {member_path}")
+            raise SymbolNotFoundError(member_path)
         assert self.__address is not None and child_die.address is not None
         return ElfVariable(child_die.resolved_type, self.__address + child_die.address + offset, self.__mem_access)
 
@@ -97,7 +103,7 @@ class ElfVariable:
         # Handle integer keys for array/pointer indexing
         if isinstance(key, int):
             if not self.__type_die.tag_is("array_type") and not self.__type_die.tag_is("pointer_type"):
-                raise Exception(f"ERROR: {self.__type_die.name} is not an array or pointer")
+                raise TypeMismatchError("index", self.__type_die.name)
 
             if self.__type_die.tag_is("pointer_type"):
                 array_element_type = self.__type_die.dereference_type
@@ -123,7 +129,7 @@ class ElfVariable:
         Return the number of elements in the array
         """
         if not self.__type_die.tag_is("array_type"):
-            raise Exception(f"ERROR: {self.__type_die.name} is not an array")
+            raise TypeMismatchError("len", self.__type_die.name)
 
         # For arrays, calculate total number of elements in the first dimension
         for child in self.__type_die.iter_children():
@@ -132,7 +138,7 @@ class ElfVariable:
                 return upper_bound + 1  # Return first dimension size
 
         # If no upper bound found, this might be a flexible array member
-        raise Exception(f"ERROR: Cannot determine length of array {self.__type_die.name}")
+        raise InvalidArrayAccessError(0, None)
 
     def __iter__(self):
         """
@@ -159,7 +165,7 @@ class ElfVariable:
         Dereference a pointer variable and return the pointed-to variable.
         """
         if not self.__type_die.tag_is("pointer_type"):
-            raise Exception(f"ERROR: {self.__type_die.name} is not a pointer type")
+            raise TypeMismatchError("dereference", self.__type_die.name)
         assert self.__type_die.size is not None
         assert self.__type_die.dereference_type is not None
         address_bytes = self.__mem_access.read(self.__address, self.__type_die.size)
@@ -170,7 +176,7 @@ class ElfVariable:
         # Check that type_die is a basic type
         type = self.__type_die
         if not type.tag_is("base_type") and not type.tag_is("pointer_type") and not type.tag_is("enumeration_type"):
-            raise Exception(f"ERROR: {type.name} is not a base type or pointer type")
+            raise TypeMismatchError("read_value", type.name)
 
         # If it is an enumeration type, treat it as its underlying base type
         while type.tag_is("enumeration_type") and type.resolved_type != type:
@@ -196,7 +202,7 @@ class ElfVariable:
         # Check that type_die is a basic type
         type = self.__type_die
         if not type.tag_is("base_type") and not type.tag_is("enumeration_type"):
-            raise Exception(f"ERROR: {type.name} is not a base type")
+            raise TypeMismatchError("write_value", type.name)
 
         # If it is an enumeration type, treat it as its underlying base type
         while type.tag_is("enumeration_type"):
@@ -212,7 +218,7 @@ class ElfVariable:
                 # Verify no data loss
                 unpacked_value = struct.unpack("f", value_bytes)[0]
                 if unpacked_value != value:
-                    raise Exception(f"ERROR: Data loss when writing float value {value} to variable")
+                    raise DataLossError(value, "float")
         elif type.name == "double":
             value_bytes = struct.pack("d", value)
             if len(value_bytes) > type.size:
@@ -221,7 +227,7 @@ class ElfVariable:
                 # Verify no data loss
                 unpacked_value = struct.unpack("d", value_bytes)[0]
                 if unpacked_value != value:
-                    raise Exception(f"ERROR: Data loss when writing double value {value} to variable")
+                    raise DataLossError(value, "double")
         elif type.name == "bool":
             value_bytes = (1 if value else 0).to_bytes(type.size, byteorder="little")
         else:
@@ -230,7 +236,7 @@ class ElfVariable:
                 # Verify no data loss
                 unpacked_value = int.from_bytes(value_bytes, byteorder="little")
                 if unpacked_value != value:
-                    raise Exception(f"ERROR: Data loss when writing integer value {value} to variable")
+                    raise DataLossError(value, type.name)
 
         # Write the value to memory
         self.__mem_access.write(self.__address, value_bytes)

@@ -188,6 +188,21 @@ class TTFatalException(Exception):
     pass
 
 
+class HardwareError(TTException):
+    """Hardware I/O failures. Always fatal — callers should re-raise."""
+    pass
+
+
+class DebugSymbolError(TTException):
+    """ELF/DWARF symbol resolution failures. May be recoverable."""
+    pass
+
+
+class CoordinateError(TTException):
+    """Coordinate system conversion failures."""
+    pass
+
+
 # Colorized messages
 def NULL_PRINT(s):
     pass

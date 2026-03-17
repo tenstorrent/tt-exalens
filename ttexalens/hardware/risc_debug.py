@@ -8,12 +8,13 @@ from dataclasses import dataclass, field
 from typing import Any, Generator
 from ttexalens import util
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.util import HardwareError
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.elf import ParsedElfFile, ParsedElfFileWithOffset, ElfVariable, ElfDie, FrameInspection
 from ttexalens.hardware.risc_info import RiscInfo
 
 
-class RiscHaltError(Exception):
+class RiscHaltError(HardwareError):
     """
     Raised when we failed to halt RISC core.
     """

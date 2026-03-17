@@ -10,9 +10,10 @@ import traceback
 from typing import Sequence
 import tt_umd
 from ttexalens import util
+from ttexalens.util import HardwareError
 
 
-class TimeoutDeviceRegisterError(Exception):
+class TimeoutDeviceRegisterError(HardwareError):
     def __init__(self, chip_id: int, coord: tt_umd.CoreCoord, address: int, size: int, is_read: bool, duration: float):
         self.chip_id = chip_id
         self.coord = coord

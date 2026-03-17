@@ -24,7 +24,7 @@ from ttexalens import util as util
 T = TypeVar("T")
 
 
-class UnsafeAccessException(util.TTException):
+class UnsafeAccessException(util.HardwareError):
     """Exception raised when an unsafe memory access violation is detected."""
 
     def __init__(

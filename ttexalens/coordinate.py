@@ -43,7 +43,7 @@ The following coordinate systems are available to represent a grid location on t
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from ttexalens.util import TTException
+from ttexalens.util import TTException, CoordinateError
 
 if TYPE_CHECKING:
     from ttexalens.context import Context
@@ -62,7 +62,7 @@ VALID_COORDINATE_TYPES = [
 ]
 
 
-class CoordinateTranslationError(Exception):
+class CoordinateTranslationError(CoordinateError):
     """
     This exception is thrown when a coordinate translation fails.
     """
@@ -73,6 +73,14 @@ class CoordinateTranslationError(Exception):
 
     def __str__(self):
         return f"CoordinateTranslationError: {self.message}"
+
+
+class UnknownCoordinateSystemError(CoordinateError):
+    """Raised when an unrecognized coordinate system name is used."""
+
+    def __init__(self, coord_system: str):
+        super().__init__(f"Unknown coordinate system: {coord_system!r}")
+        self.coord_system = coord_system
 
 
 class OnChipCoordinate:
@@ -119,7 +127,7 @@ class OnChipCoordinate:
         elif input_type == "translated":
             self._noc0_coord = self._device.to_noc0((x, y), "translated", core_type)
         else:
-            raise Exception("Unknown input coordinate system: " + input_type)
+            raise UnknownCoordinateSystemError(input_type)
 
     @property
     def context(self) -> Context:
@@ -167,11 +175,9 @@ class OnChipCoordinate:
             if coord[1] == core_type:
                 return coord[0]
             else:
-                raise Exception(
-                    f"Coordinate (noc0 {self._noc0_coord[0]}-{self._noc0_coord[1]}: {coord[1]}) is not supported in coordinate sub-system {output_type}"
-                )
+                raise UnknownCoordinateSystemError(output_type)
         else:
-            raise Exception("Unknown output coordinate system: " + output_type)
+            raise UnknownCoordinateSystemError(output_type)
 
     # Which axis is used to advance in the horizontal direction when rendering the chip
     # For X-Y coordinates, this is the X, for R,C coordinates, this is the C.
