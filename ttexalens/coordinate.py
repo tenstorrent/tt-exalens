@@ -43,7 +43,8 @@ The following coordinate systems are available to represent a grid location on t
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from ttexalens.util import TTException, CoordinateError
+from ttexalens.util import TTException
+from ttexalens.exceptions import CoordinateTranslationError, UnknownCoordinateSystemError
 
 if TYPE_CHECKING:
     from ttexalens.context import Context
@@ -60,27 +61,6 @@ VALID_COORDINATE_TYPES = [
     "logical-dram",
     "translated",
 ]
-
-
-class CoordinateTranslationError(CoordinateError):
-    """
-    This exception is thrown when a coordinate translation fails.
-    """
-
-    def __init__(self, message):
-        super().__init__(message)
-        self.message = message
-
-    def __str__(self):
-        return f"CoordinateTranslationError: {self.message}"
-
-
-class UnknownCoordinateSystemError(CoordinateError):
-    """Raised when an unrecognized coordinate system name is used."""
-
-    def __init__(self, coord_system: str):
-        super().__init__(f"Unknown coordinate system: {coord_system!r}")
-        self.coord_system = coord_system
 
 
 class OnChipCoordinate:
@@ -175,9 +155,9 @@ class OnChipCoordinate:
             if coord[1] == core_type:
                 return coord[0]
             else:
-                raise UnknownCoordinateSystemError(output_type)
+                raise UnknownCoordinateSystemError(output_type, self)
         else:
-            raise UnknownCoordinateSystemError(output_type)
+            raise UnknownCoordinateSystemError(output_type, self)
 
     # Which axis is used to advance in the horizontal direction when rendering the chip
     # For X-Y coordinates, this is the X, for R,C coordinates, this is the C.

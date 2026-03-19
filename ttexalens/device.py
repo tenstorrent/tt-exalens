@@ -13,7 +13,8 @@ from typing import Callable, Iterable, Sequence, TypeVar
 
 from tabulate import tabulate
 from ttexalens.context import Context
-from ttexalens.coordinate import CoordinateTranslationError, OnChipCoordinate
+from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.exceptions import CoordinateTranslationError, UnsafeAccessException
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
@@ -22,35 +23,6 @@ from ttexalens.umd_device import UmdDevice, TimeoutDeviceRegisterError
 from ttexalens import util as util
 
 T = TypeVar("T")
-
-
-class UnsafeAccessException(util.HardwareError):
-    """Exception raised when an unsafe memory access violation is detected."""
-
-    def __init__(
-        self,
-        location: OnChipCoordinate,
-        original_addr: int,
-        num_bytes: int,
-        violating_addr: int,
-        is_write: bool = False,
-        reason: str | None = None,
-    ):
-        self.location = location
-        self.original_addr = original_addr
-        self.num_bytes = num_bytes
-        self.violating_addr = violating_addr
-        self.is_write = is_write
-        self.reason = reason
-
-    def __str__(self) -> str:
-        """Generate error message lazily when the exception is converted to string."""
-
-        msg = f"Attempted to {'write to' if self.is_write else 'read from'} address range [0x{self.original_addr:08x}, 0x{self.original_addr + self.num_bytes - 1:08x}]."
-        if self.reason:
-            msg += f" Reason: {self.reason}"
-
-        return f"{self.location.to_user_str()}, unsafe access at address 0x{self.violating_addr:08x}. {msg}"
 
 
 class TensixInstructions:

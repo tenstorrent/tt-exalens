@@ -5,7 +5,7 @@
 from .cu import ElfCompileUnit
 from .die import ElfDie
 from .dwarf import ElfDwarf
-from .exceptions import (
+from ttexalens.exceptions import (
     DataLossError,
     InvalidArrayAccessError,
     MemoryLayoutError,

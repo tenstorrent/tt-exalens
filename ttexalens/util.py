@@ -178,33 +178,14 @@ HEX_FORMAT = 'f"0x{d:08x}"'
 DEC_AND_HEX_FORMAT = 'f"{d} (0x{d:08x})"'
 
 
-class TTException(Exception):
-    pass
-
-
-# We create a fatal exception that must terminate the program
-# All other exceptions might get caught and the program might continue
-class TTFatalException(Exception):
-    pass
-
-
-class HardwareError(TTException):
-    """Hardware I/O failures. Always fatal — callers should re-raise."""
-
-    pass
-
-
-class DebugSymbolError(TTException):
-    """ELF/DWARF symbol resolution failures. May be recoverable."""
-
-    pass
-
-
-class CoordinateError(TTException):
-    """Coordinate system conversion failures."""
-
-    pass
-
+from ttexalens.exceptions import (  # noqa: E402
+    TTException,
+    TTFatalException,
+    HardwareError,
+    MemoryAccessException,
+    DebugSymbolError,
+    CoordinateError,
+)
 
 # Colorized messages
 def NULL_PRINT(s):

@@ -6,7 +6,7 @@ from __future__ import annotations
 import struct
 from typing import TYPE_CHECKING
 
-from ttexalens.elf.exceptions import (
+from ttexalens.exceptions import (
     DataLossError,
     InvalidArrayAccessError,
     SymbolNotFoundError,

@@ -6,6 +6,7 @@ import time
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from ttexalens.elf_loader import ElfLoader
+from ttexalens.exceptions import RiscHaltError
 
 
 class TestMulticore(unittest.TestCase):
@@ -94,6 +95,9 @@ class TestMulticore(unittest.TestCase):
 
         except Exception as e:
             print(f"\nExpected exception occurred: {e}")
+            self._verify_core_states()
+        except RiscHaltError as he:
+            print(f"\nFailed to halt RISC core (core was locked up): {he}")
             self._verify_core_states()
 
 

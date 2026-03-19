@@ -10,25 +10,7 @@ import traceback
 from typing import Sequence
 import tt_umd
 from ttexalens import util
-from ttexalens.util import HardwareError
-
-
-class TimeoutDeviceRegisterError(HardwareError):
-    def __init__(self, chip_id: int, coord: tt_umd.CoreCoord, address: int, size: int, is_read: bool, duration: float):
-        self.chip_id = chip_id
-        self.coord = coord
-        self.address = address
-        self.size = size
-        self.is_read = is_read
-        self.duration = duration
-
-    def __str__(self):
-        operation = "read" if self.is_read else "write"
-        return (
-            f"TimeoutDeviceRegisterError: Timeout during {operation} operation on device {self.chip_id}, "
-            f"coord ({self.coord.x}, {self.coord.y}, {self.coord.core_type}), address {hex(self.address)}, "
-            f"size {self.size} bytes after {self.duration:.4f} seconds."
-        )
+from ttexalens.exceptions import TimeoutDeviceRegisterError
 
 
 class UmdDevice:
