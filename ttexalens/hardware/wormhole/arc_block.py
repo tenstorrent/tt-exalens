@@ -6,7 +6,9 @@ from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.device_address import DeviceAddress
+from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
+from ttexalens.memory_map import MemoryMapBlockInfo
 from ttexalens.register_store import (
     ArcCsmRegisterDescription,
     ArcResetRegisterDescription,
@@ -83,9 +85,26 @@ class WormholeArcBlock(ArcBlock):
         if self.device.is_local:
             self.register_store_noc0 = RegisterStore(register_store_noc0_initialization_local, self.location)
             self.register_store_noc1 = RegisterStore(register_store_noc1_initialization_local, self.location)
+            self.noc0_bar_regs = MemoryBlock(size=0x10000, address=DeviceAddress(bar0_address=0x1FF50000))
+            self.noc1_bar_regs = MemoryBlock(size=0x10000, address=DeviceAddress(bar0_address=0x1FF58000))
+            self.noc_memory_map.add_blocks(
+                [
+                    MemoryMapBlockInfo("noc0_bar_regs", self.noc0_bar_regs),
+                    MemoryMapBlockInfo("noc1_bar_regs", self.noc1_bar_regs),
+                ]
+            )
         else:
             self.register_store_noc0 = RegisterStore(register_store_noc0_initialization_remote, self.location)
             self.register_store_noc1 = RegisterStore(register_store_noc1_initialization_remote, self.location)
+
+        self.noc_regs = MemoryBlock(
+            size=0x10000, address=DeviceAddress(private_address=0xFFFB20000, noc_address=0xFFFB20000)
+        )
+        self.noc_memory_map.add_blocks(
+            [
+                MemoryMapBlockInfo("noc_regs", self.noc_regs),
+            ]
+        )
 
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
         if noc_id == 0:
