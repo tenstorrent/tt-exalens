@@ -21,13 +21,14 @@ _cached_test_context = None
 _cached_parsed_elf_files: dict[str, ParsedElfFile] = {}
 
 
-def init_default_test_context():
+def init_default_test_context(use_noc1: bool | None = None):
     global _cached_simulator_context
     global _cached_test_context
 
-    use_noc1 = False
-    if os.getenv("TTEXALENS_TESTS_USE_NOC1", "0") == "1":
-        use_noc1 = True
+    if use_noc1 is None:
+        use_noc1 = False
+        if os.getenv("TTEXALENS_TESTS_USE_NOC1", "0") == "1":
+            use_noc1 = True
 
     if os.getenv("TTEXALENS_TESTS_REMOTE"):
         ip_address = os.getenv("TTEXALENS_TESTS_REMOTE_ADDRESS", "localhost")
@@ -64,7 +65,7 @@ def init_test_context(use_noc1: bool = False, safe_mode: bool = False):
         assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing for NOC1 not supported"
         return init_ttexalens(use_noc1=True, use_4B_mode=False, noc_failover=False, safe_mode=safe_mode)
     else:
-        return init_default_test_context()
+        return init_default_test_context(use_noc1=use_noc1)
 
 
 def get_core_location(core_desc: str, device: Device) -> OnChipCoordinate:
