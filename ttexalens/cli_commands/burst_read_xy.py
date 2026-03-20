@@ -3,27 +3,30 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  brxy <core-loc> <addr> [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <D>...]
+  brxy <addr> [ <core-loc> ] [ --w=<N> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <D>...]
 
 Arguments:
-  core-loc      Either X-Y or R,C location of a core, or dram channel (e.g. ch3)
   addr          Address to read from
-  word-count    Number of words to read. Default: 1
+  core-loc      Either X-Y or R,C location of a core, or dram channel (e.g. ch3).
+                Default: The current location from the UI.
 
 Options:
+  --w=<N>       Number of words to read. [default: 1]
   --sample=<N>  Number of seconds to sample for. [default: 0] (single read)
   --format=<F>  Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: hex32]
   -o <O>        Address offset. Optional and repeatable.
 
 Description:
-  Reads and prints a block of data from address 'addr' at core <core-loc>.
+  Reads and prints a block of data from address 'addr' at core <core-loc>, or at the
+  current UI location when <core-loc> is omitted.
 
 Examples:
-  brxy 0,0 0x0 1                          # Read 1 word from address 0
-  brxy 0,0 0x0 16                         # Read 16 words from address 0
-  brxy 0,0 0x0 32 --format i8             # Prints 32 bytes in i8 format
-  brxy 0,0 0x0 32 --format i8 --sample 5  # Sample for 5 seconds
-  brxy ch0 0x0 16                         # Read 16 words from dram channel 0
+  brxy 0x0                                      # Read 1 word from address 0, current UI core
+  brxy 0x0 0,0                                  # Read 1 word from address 0, core 0,0
+  brxy 0x0 0,0 --w=16                           # Read 16 words from address 0
+  brxy 0x0 0,0 --w=32 --format i8               # Prints 32 bytes in i8 format
+  brxy 0x0 0,0 --w=32 --format i8 --sample 5    # Sample for 5 seconds
+  brxy 0x0 ch0 --w=16                           # Read 16 words from dram channel 0
 """
 
 import time
@@ -54,7 +57,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     location_str = args["<core-loc>"]
     offsets = args["-o"]
     sample = float(args["--sample"]) if args["--sample"] else 0
-    word_count = int(args["<word-count>"]) if args["<word-count>"] else 0
+    word_count = int(args["--w"], 0) if args["--w"] else 0
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
         raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
@@ -67,7 +70,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         pass
 
     def process_device(device_id: int):
-        location = OnChipCoordinate.create(location_str, device=context.find_device_by_id(device_id))
+        device = context.find_device_by_id(device_id)
+        if location_str:
+            location = OnChipCoordinate.create(location_str, device=device)
+        else:
+            location = ui_state.current_location.change_device(device)
 
         addr, size_bytes = addr_arg, size_bytes_arg
 
