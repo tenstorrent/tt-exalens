@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  brxy <addr> [ <core-loc> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <D>...]
+  brxy <addr> [ <core-loc> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <device>]
 
 Arguments:
   addr          Address to read from
@@ -35,6 +35,7 @@ import time
 from docopt import docopt
 
 from ttexalens.context import Context
+from ttexalens.device import Device
 from ttexalens.memory_map import MemoryMap
 from ttexalens.uistate import UIState
 
@@ -126,13 +127,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     except ValueError:
         pass
 
-    def process_device(device_id: int):
-        device = context.find_device_by_id(device_id)
-        if location_str:
-            location = OnChipCoordinate.create(location_str, device=device)
-        else:
-            location = ui_state.current_location.change_device(device)
-
+    def do_burst_read(device: Device, location: OnChipCoordinate):
         addr, size_bytes = addr_arg, size_bytes_arg
 
         size_words = ((size_bytes + 3) // 4) if size_bytes else 1
@@ -149,14 +144,13 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             context=context,
         )
 
-    devices = args["-d"]
-    if devices:
-        for device in devices:
-            did = int(device, 0)
-            util.INFO(f"Reading from device {did}")
-            process_device(did)
-    else:
-        process_device(ui_state.current_device_id)
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        if args["-d"]:
+            util.INFO(f"Reading from device {device.id}")
+        if location_str:
+            do_burst_read(device, OnChipCoordinate.create(location_str, device=device))
+        else:
+            do_burst_read(device, ui_state.current_location.change_device(device))
 
 
 # A helper to print the result of a single PCI read
