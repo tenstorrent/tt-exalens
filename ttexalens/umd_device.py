@@ -97,7 +97,7 @@ class UmdDevice:
 
     def __configure_working_active_eth(self):
         tensix_coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
-        tensix_translated_coord = self._soc_descriptor.translate_coord_to(tensix_coord, tt_umd.CoordSystem.TRANSLATED)
+        tensix_translated_coord = self._soc_descriptor.translate_chip_coord_to_translated_coord(tensix_coord)
         for translated_coord in self._active_eth_coords_on_mmio_chip:
             self.__device.get_remote_communication().set_remote_transfer_ethernet_cores([translated_coord])
             try:
@@ -311,7 +311,10 @@ class UmdDevice:
         core_type_enum = tt_umd.CoreType[core_type.upper()]
         coord_system_enum = tt_umd.CoordSystem[coord_system.upper()]
         core_coord = tt_umd.CoreCoord(noc_x, noc_y, core_type_enum, tt_umd.CoordSystem.NOC0)
-        output = self._soc_descriptor.translate_coord_to(core_coord, coord_system_enum)
+        if coord_system_enum == tt_umd.CoordSystem.TRANSLATED:
+            output = self._soc_descriptor.translate_chip_coord_to_translated_coord(core_coord)
+        else:
+            output = self._soc_descriptor.translate_coord_to(core_coord, coord_system_enum)
         return (output.x, output.y)
 
     def arc_msg(
