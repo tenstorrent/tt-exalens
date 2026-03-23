@@ -173,7 +173,7 @@ def read_words_from_device(
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
-    bytes_data = coordinate.noc_read(addr, 4 * word_count, noc_id, use_4B_mode, safe_mode)
+    bytes_data = coordinate.noc_read(addr, 4 * word_count, noc_id, use_4B_mode, safe_mode=safe_mode)
     data = list(struct.unpack(f"<{word_count}I", bytes_data))
     return data
 
@@ -212,7 +212,7 @@ def read_from_device(
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
-    return coordinate.noc_read(addr, num_bytes, noc_id, use_4B_mode, safe_mode)
+    return coordinate.noc_read(addr, num_bytes, noc_id, use_4B_mode, safe_mode=safe_mode)
 
 
 @trace_api
@@ -249,7 +249,7 @@ def write_words_to_device(
         coordinate.noc_write32(addr, data, noc_id, safe_mode)
     else:
         byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-        coordinate.noc_write(addr, byte_data, noc_id, use_4B_mode, safe_mode)
+        coordinate.noc_write(addr, byte_data, noc_id, use_4B_mode, safe_mode=safe_mode)
 
 
 @trace_api
@@ -288,7 +288,7 @@ def write_to_device(
     if len(data) == 0:
         raise TTException("Data to write must not be empty.")
 
-    coordinate.noc_write(addr, data, noc_id, use_4B_mode, safe_mode)
+    coordinate.noc_write(addr, data, noc_id, use_4B_mode, safe_mode=safe_mode)
 
 
 @trace_api
