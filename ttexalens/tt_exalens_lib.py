@@ -288,7 +288,7 @@ def write_to_device(
     if len(data) == 0:
         raise TTException("Data to write must not be empty.")
 
-    coordinate.noc_write(addr, data, noc_id, use_4B_mode, safe_mode)
+    coordinate.noc_write(addr, data, noc_id, use_4B_mode, safe_mode=safe_mode)
 
 
 @trace_api
