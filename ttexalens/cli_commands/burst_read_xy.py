@@ -3,30 +3,32 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  brxy <addr> [ <core-loc> ] [ --w=<N> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <D>...]
+  brxy <addr> [ <core-loc> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <D>...]
 
 Arguments:
   addr          Address to read from
   core-loc      Either X-Y or R,C location of a core, or dram channel (e.g. ch3).
-                Default: The current location from the UI.
+                Optional; defaults to the current location from the UI. If you pass
+                both <core-loc> and <word-count>, they may be given in either order.
+  word-count    Number of words to read. Default: 1
 
 Options:
-  --w=<N>       Number of words to read. [default: 1]
   --sample=<N>  Number of seconds to sample for. [default: 0] (single read)
   --format=<F>  Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: hex32]
   -o <O>        Address offset. Optional and repeatable.
 
 Description:
-  Reads and prints a block of data from address 'addr' at core <core-loc>, or at the
-  current UI location when <core-loc> is omitted.
+  Reads and prints a block of data from address 'addr' at core <core-loc>, or at the current UI location when <core-loc> is omitted.
 
 Examples:
   brxy 0x0                                      # Read 1 word from address 0, current UI core
   brxy 0x0 0,0                                  # Read 1 word from address 0, core 0,0
-  brxy 0x0 0,0 --w=16                           # Read 16 words from address 0
-  brxy 0x0 0,0 --w=32 --format i8               # Prints 32 bytes in i8 format
-  brxy 0x0 0,0 --w=32 --format i8 --sample 5    # Sample for 5 seconds
-  brxy 0x0 ch0 --w=16                           # Read 16 words from dram channel 0
+  brxy 0x0 16                                   # Read 16 words from address 0, current UI core
+  brxy 0x0 0,0 16                               # Read 16 words from address 0, core 0,0
+  brxy 0x0 16 0,0                               # Same (word-count and core-loc may be swapped)
+  brxy 0x0 0,0 32 --format i8                   # Read 32 words in i8 format from address 0, core 0,0
+  brxy 0x0 0,0 32 --format i8 --sample 5        # Sample for 5 seconds
+  brxy 0x0 ch0 16                               # Read 16 words from address 0, dram channel 0
 """
 
 import time
@@ -50,14 +52,69 @@ command_metadata = CommandMetadata(
 )
 
 
+def _brxy_token_is_core_loc(token: str, device) -> bool:
+    try:
+        OnChipCoordinate.create(token, device=device)
+        return True
+    except (util.TTException, ValueError):
+        return False
+
+
+def _brxy_token_is_word_count(token: str) -> bool:
+    try:
+        int(token, 0)
+        return True
+    except ValueError:
+        return False
+
+
+def _resolve_one_brxy_optional_token(token: str, device) -> tuple[str | None, int]:
+    """Single optional token after <addr> (docopt usually stores it in <core-loc>)."""
+    if _brxy_token_is_core_loc(token, device):
+        return token, 0
+    if _brxy_token_is_word_count(token):
+        return None, int(token, 0)
+    # Not a valid core string; int() raises ValueError (same as unparseable word count).
+    return None, int(token, 0)
+
+
+def _resolve_brxy_core_loc_and_word_count(
+    raw_core_loc: str | bool | None,
+    raw_word_count: str | bool | None,
+    context: Context,
+    ui_state: UIState,
+) -> tuple[str | None, int]:
+    """
+    Docopt fills [ <core-loc> ] then [ <word-count> ], so <word-count> is never set without
+    <core-loc>. If only one token is given after <addr>, it lands in <core-loc>; classify it
+    with the same predicates as the two-token case. If both tokens are present, accept either
+    order (core then count, or count then core).
+    """
+    first = str(raw_core_loc) if raw_core_loc else None
+    second = str(raw_word_count) if raw_word_count else None
+    device = context.find_device_by_id(ui_state.current_device_id)
+
+    if first is not None and second is not None:
+        swapped_order = _brxy_token_is_core_loc(second, device) and _brxy_token_is_word_count(first)
+        if swapped_order:
+            return second, int(first, 0)
+        return first, int(second, 0)
+
+    if first is not None:
+        return _resolve_one_brxy_optional_token(first, device)
+
+    return None, 0
+
+
 def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     args = dopt.args
 
-    location_str = args["<core-loc>"]
+    location_str, word_count = _resolve_brxy_core_loc_and_word_count(
+        args["<core-loc>"], args["<word-count>"], context, ui_state
+    )
     offsets = args["-o"]
     sample = float(args["--sample"]) if args["--sample"] else 0
-    word_count = int(args["--w"], 0) if args["--w"] else 0
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
         raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
