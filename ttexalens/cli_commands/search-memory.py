@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: © 2025 Tenstorrent AI ULC
+# SPDX-FileCopyrightText: © 2026 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
 """
@@ -9,17 +9,17 @@ Arguments:
   pattern         One or more integer values forming the byte pattern to search for.
 
 Options:
-  --start=<start>   Start address for the search. Defaults to 0, or to the start of RISC private memory if -r is specified.
-  --end=<end>       End address (exclusive) or 'all'. If omitted, searches only the block containing --start.
-                    'all' searches all blocks from --start onwards.
-  --width=<width>   Bytes per pattern element (any positive integer) or auto. [default: auto]
-                    auto = minimum power-of-2 byte count needed to represent the largest element,
-                    applied uniformly to all elements.
-  --read-size=<rs>  Maximum bytes per device read. Defaults to 4 when -r is used (RISC debug hardware),
-                    or 1MB otherwise.
-  --max-results=<n> Maximum number of matches to return, or 'all'. [default: 1]
-  -r <risc_name>    RISC core name to search in private memory instead of NOC memory.
-  --unsafe          Expert mode, allow searching everywhere (bypass safety checks).
+  --start=<start>    Start address for the search. Defaults to 0, or to the start of RISC private memory if -r is specified.
+  --end=<end>        End address (exclusive) or 'all'. If omitted, searches only the block containing --start.
+                     'all' searches all blocks from --start onwards.
+  --width=<width>    Bytes per pattern element (any positive integer) or auto. [default: auto]
+                     auto = minimum power-of-2 byte count needed to represent the largest element,
+                     applied uniformly to all elements.
+  --read-size=<rs>   Maximum bytes per device read. Defaults to 4 when -r is used (RISC debug hardware),
+                     or 1MB otherwise.
+  --max-results=<n>  Maximum number of matches to return, or 'all'. [default: 1]
+  -r <risc_name>     RISC core name to search in private memory instead of NOC memory.
+  --unsafe           Expert mode, allow searching everywhere (bypass safety checks).
 
 Description:
   Searches for a byte pattern in device memory. Pattern elements are encoded as

@@ -598,11 +598,6 @@ Writes a 32-bit word to the specified RISC-V core's private memory.
 
 # coordinate
 
-## CoordinateTranslationError
-
-
-
-This exception is thrown when a coordinate translation fails.
 ## OnChipCoordinate
 
 
@@ -750,8 +745,35 @@ Get the verbosity level of messages shown.
 supports(verbosity: Verbosity) -> bool
 ```
 Check if the verbosity level is supported and should be printed.
- *(bool)*: True if supported, False otherwise.## TTException
+ *(bool)*: True if supported, False otherwise.
+
+# exceptions
+
+## TTException
 
 
 
 ## TTFatalException
+
+
+
+## TimeoutDeviceRegisterError
+
+
+
+## RestrictedMemoryAccessError
+
+
+
+Raised when attempting to access memory outside of allowed regions
+(e.g., outside L1 or data private memory when restricted_access for them is enabled).
+## UnsafeAccessException
+
+
+
+Exception raised when an unsafe memory access violation is detected.
+## CoordinateTranslationError
+
+
+
+Raised when a coordinate translation fails.
