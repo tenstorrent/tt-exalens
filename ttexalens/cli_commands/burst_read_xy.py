@@ -72,7 +72,7 @@ def _brxy_token_is_word_count(token: str) -> bool:
 def _resolve_one_brxy_optional_token(token: str, device) -> tuple[str | None, int]:
     """Single optional token after <addr> (docopt usually stores it in <core-loc>)."""
     if _brxy_token_is_core_loc(token, device):
-        return token, 0
+        return token, 1
     if _brxy_token_is_word_count(token):
         return None, int(token, 0)
     # Not a valid core string; int() raises ValueError (same as unparseable word count).
@@ -104,7 +104,7 @@ def _resolve_brxy_core_loc_and_word_count(
     if first is not None:
         return _resolve_one_brxy_optional_token(first, device)
 
-    return None, 0
+    return None, 1
 
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
@@ -120,7 +120,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     if format not in util.PRINT_FORMATS:
         raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
     addr_arg = args["<addr>"]
-    size_bytes_arg = 4
     try:
         # If we can parse the address as a number, do it. Otherwise, it's a variable name.
         addr_arg = int(addr_arg, 0)
@@ -128,9 +127,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         pass
 
     def do_burst_read(device: Device, location: OnChipCoordinate):
-        addr, size_bytes = addr_arg, size_bytes_arg
-
-        size_words = ((size_bytes + 3) // 4) if size_bytes else 1
+        addr = addr_arg
 
         for offset in offsets:
             addr += offset
@@ -138,7 +135,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         print_a_burst_read(
             location,
             addr,
-            word_count=word_count if word_count > 0 else size_words,
+            word_count=word_count,
             sample=sample,
             print_format=format,
             context=context,
