@@ -8,7 +8,7 @@ from typing import Any, Iterator, TYPE_CHECKING
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
-import traceback
+import traceback, socket
 import ryml, yaml
 from fnmatch import fnmatch
 from enum import Enum
