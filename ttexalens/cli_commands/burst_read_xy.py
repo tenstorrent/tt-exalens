@@ -3,14 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  brxy <addr> [ <core-loc> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <device>]
+  brxy [ <core-loc> ] [ <addr> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <device>]
 
 Arguments:
-  addr          Address to read from
-  core-loc      Either X-Y or R,C location of a core, or dram channel (e.g. ch3).
-                Optional; defaults to the current location from the UI. If you pass
-                both <core-loc> and <word-count>, they may be given in either order.
-  word-count    Number of words to read. Default: 1
+  Docopt stores up to three positionals in order in the brackets above. Semantics (not the bracket names) are:
+  core-loc      Optional. X-Y or R,C, or dram channel (e.g. ch3). Defaults to the current UI location when omitted.
+  addr          Required. Address to read from (omit zero positionals to get a clear error).
+  word-count    Optional. Number of words to read. Default: 1
 
 Options:
   --sample=<N>  Number of seconds to sample for. [default: 0] (single read)
@@ -18,21 +17,19 @@ Options:
   -o <O>        Address offset. Optional and repeatable.
 
 Description:
-  Reads and prints a block of data from address 'addr' at core <core-loc>, or at the current UI location when <core-loc> is omitted.
+  Reads a block of data at <addr> on <core-loc>, or at the current UI core when <core-loc> is omitted.
 
 Examples:
-  brxy 0x0                                      # Read 1 word from address 0, current UI core
-  brxy 0x0 0,0                                  # Read 1 word from address 0, core 0,0
-  brxy 0x0 16                                   # Read 16 words from address 0, current UI core
-  brxy 0x0 0,0 16                               # Read 16 words from address 0, core 0,0
-  brxy 0x0 16 0,0                               # Same (word-count and core-loc may be swapped)
-  brxy 0x0 0,0 32 --format i8                   # Read 32 words in i8 format from address 0, core 0,0
-  brxy 0x0 0,0 32 --format i8 --sample 5        # Sample for 5 seconds
-  brxy 0x0 ch0 16                               # Read 16 words from address 0, dram channel 0
+  brxy 0x0                                      # 1 word at 0x0, current UI core
+  brxy 0x0 16                                   # 16 words at 0x0, current UI core
+  brxy 0,0 0x0                                  # 1 word at 0x0, core 0,0
+  brxy 0,0 0x0 16                               # 16 words at 0x0, core 0,0
+  brxy 0,0 0x0 32 --format i8                   # 32 words, i8 format
+  brxy 0,0 0x0 32 --format i8 --sample 5        # Sample for 5 seconds
+  brxy ch0 0x0 16                               # 16 words at 0x0, dram channel 0
 """
 
 import time
-from docopt import docopt
 
 from ttexalens.context import Context
 from ttexalens.device import Device
@@ -53,12 +50,24 @@ command_metadata = CommandMetadata(
 )
 
 
-def _brxy_token_is_core_loc(token: str, device) -> bool:
+def _brxy_token_is_core_loc(token: str, device: Device) -> bool:
     try:
         OnChipCoordinate.create(token, device=device)
         return True
     except (util.TTException, ValueError):
         return False
+
+
+def _brxy_core_loc_classify_vs_devices(token: str, devices: list[Device]) -> str:
+    """Return 'all' | 'some' | 'none' according to whether token parses as a core on each selected device."""
+    if not devices:
+        return "none"
+    n_ok = sum(1 for d in devices if _brxy_token_is_core_loc(token, d))
+    if n_ok == len(devices):
+        return "all"
+    if n_ok > 0:
+        return "some"
+    return "none"
 
 
 def _brxy_token_is_word_count(token: str) -> bool:
@@ -69,57 +78,75 @@ def _brxy_token_is_word_count(token: str) -> bool:
         return False
 
 
-def _resolve_one_brxy_optional_token(token: str, device) -> tuple[str | None, int]:
-    """Single optional token after <addr> (docopt usually stores it in <core-loc>)."""
-    if _brxy_token_is_core_loc(token, device):
-        return token, 1
-    if _brxy_token_is_word_count(token):
-        return None, int(token, 0)
-    # Not a valid core string; int() raises ValueError (same as unparseable word count).
-    return None, int(token, 0)
+def _brxy_docopt_ordered_slots(args: dict) -> list[str]:
+    """Left-filled docopt slots; map to t0,t1,t2 by length, not by key name."""
+    slots: list[str] = []
+    for key in ("<core-loc>", "<addr>", "<word-count>"):
+        v = args.get(key)
+        if not v:
+            break
+        slots.append(str(v))
+    return slots
 
 
-def _resolve_brxy_core_loc_and_word_count(
-    raw_core_loc: str | bool | None,
-    raw_word_count: str | bool | None,
-    context: Context,
-    ui_state: UIState,
-) -> tuple[str | None, int]:
+def _resolve_brxy_positionals(slots: list[str], devices: list[Device]) -> tuple[str | None, str, int]:
     """
-    Docopt fills [ <core-loc> ] then [ <word-count> ], so <word-count> is never set without
-    <core-loc>. If only one token is given after <addr>, it lands in <core-loc>; classify it
-    with the same predicates as the two-token case. If both tokens are present, accept either
-    order (core then count, or count then core).
+    Interpret t0,t1,t2 from docopt's left-filled optional positionals.
+    Core-location checks use every device selected by -d (via for_each), not only the UI current device.
+    0 → error (addr required). 1 → addr only. 2 → (core, addr) if t0 is a core on all selected devices, else (addr, word-count).
+    3 → core, addr, word-count (strict order); core must be valid on all selected devices.
     """
-    first = str(raw_core_loc) if raw_core_loc else None
-    second = str(raw_word_count) if raw_word_count else None
-    device = context.find_device_by_id(ui_state.current_device_id)
-
-    if first is not None and second is not None:
-        swapped_order = _brxy_token_is_core_loc(second, device) and _brxy_token_is_word_count(first)
-        if swapped_order:
-            return second, int(first, 0)
-        return first, int(second, 0)
-
-    if first is not None:
-        return _resolve_one_brxy_optional_token(first, device)
-
-    return None, 1
+    n = len(slots)
+    if n == 0:
+        raise util.TTException("brxy: address omitted; give at least one positional argument (the address).")
+    if n == 1:
+        return None, slots[0], 1
+    if n == 2:
+        t0, t1 = slots[0], slots[1]
+        core_kind = _brxy_core_loc_classify_vs_devices(t0, devices)
+        if core_kind == "all":
+            return t0, t1, 1
+        if core_kind == "some":
+            raise util.TTException(
+                f"brxy: {t0!r} is a core location on some but not all selected devices; adjust -d or the coordinate."
+            )
+        if _brxy_token_is_word_count(t1):
+            return None, t0, int(t1, 0)
+        raise util.TTException(
+            f"brxy: two arguments must be either (core, address) or (address, word-count); got {t0!r} and {t1!r}."
+        )
+    if n == 3:
+        t0, t1, t2 = slots[0], slots[1], slots[2]
+        if not _brxy_token_is_word_count(t2):
+            raise util.TTException(f"brxy: third argument must be an integer word count; got {t2!r}.")
+        core_kind = _brxy_core_loc_classify_vs_devices(t0, devices)
+        if core_kind != "all":
+            if core_kind == "some":
+                raise util.TTException(
+                    f"brxy: {t0!r} is a core location on some but not all selected devices; adjust -d or the coordinate."
+                )
+            raise util.TTException(
+                f"brxy: first argument must be a valid core location on all selected devices; got {t0!r}."
+            )
+        return t0, t1, int(t2, 0)
+    raise util.TTException(
+        f"brxy: at most three positional arguments (core, address, word-count); got {n}: {' '.join(slots)}."
+    )
 
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     args = dopt.args
 
-    location_str, word_count = _resolve_brxy_core_loc_and_word_count(
-        args["<core-loc>"], args["<word-count>"], context, ui_state
-    )
+    devices = list(dopt.for_each(CommonCommandOptions.Device, context, ui_state))
+    slots = _brxy_docopt_ordered_slots(args)
+    location_str, addr_str, word_count = _resolve_brxy_positionals(slots, devices)
     offsets = args["-o"]
     sample = float(args["--sample"]) if args["--sample"] else 0
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
         raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
-    addr_arg = args["<addr>"]
+    addr_arg = addr_str
     try:
         # If we can parse the address as a number, do it. Otherwise, it's a variable name.
         addr_arg = int(addr_arg, 0)
@@ -141,7 +168,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             context=context,
         )
 
-    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+    for device in devices:
         if args["-d"]:
             util.INFO(f"Reading from device {device.id}")
         if location_str:
