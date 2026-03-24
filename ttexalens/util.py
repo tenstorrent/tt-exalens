@@ -13,6 +13,15 @@ import ryml, yaml
 from fnmatch import fnmatch
 from enum import Enum
 
+from ttexalens.exceptions import (
+    TTException,
+    TTFatalException,
+    HardwareError,
+    MemoryAccessException,
+    DebugSymbolError,
+    CoordinateError,
+)
+
 if TYPE_CHECKING:
     from ttexalens.server import FileAccessApi
 
@@ -176,17 +185,6 @@ CLR_PROMPT_BAD_VALUE_END = "</style>"
 DEC_FORMAT = 'f"{d}"'
 HEX_FORMAT = 'f"0x{d:08x}"'
 DEC_AND_HEX_FORMAT = 'f"{d} (0x{d:08x})"'
-
-
-class TTException(Exception):
-    pass
-
-
-# We create a fatal exception that must terminate the program
-# All other exceptions might get caught and the program might continue
-class TTFatalException(Exception):
-    pass
-
 
 # Colorized messages
 def NULL_PRINT(s):

@@ -8,5 +8,6 @@
 - [*gdb.md*](gdb.md): How to use GDB to debug RISC-V cores
 - [*coordinates.md*](coordinates.md): How to use coordinates for device targeting
 - [*coverage.md*](coverage.md): How to enable coverage for your kernels
+- [*exceptions.md*](exceptions.md): Exception hierarchy and catching strategies
 
 Non-`.md` files are used to generate the automatic documentation.

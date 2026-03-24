@@ -25,13 +25,16 @@ from .tt_exalens_lib import (
     write_words_to_device,
     TensixState,
 )
-from .coordinate import CoordinateTranslationError, OnChipCoordinate
+from .coordinate import OnChipCoordinate
 from .context import Context
 from .device import Device
 from .util import TTException, TTFatalException, Verbosity
-from .memory_access import RestrictedMemoryAccessError
-from .device import UnsafeAccessException
-from .umd_device import TimeoutDeviceRegisterError
+from .exceptions import (
+    CoordinateTranslationError,
+    RestrictedMemoryAccessError,
+    UnsafeAccessException,
+    TimeoutDeviceRegisterError,
+)
 
 
 __all__ = [
