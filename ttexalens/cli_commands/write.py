@@ -10,11 +10,11 @@ Arguments:
   data            One or more data values to write
 
 Options:
-  --width=<width>   Number of bytes per data value, or 'auto' to use the minimum power-of-2 width
-                    that fits all values. [default: auto]
-  --repeat=<repeat> Number of times to repeat the write, advancing the address each time. [default: 1]
-  -r <risc_name>    RISC core name if you want to write memory that is not exposed on NOC.
-  --unsafe          Experts mode, allow writing everything (bypass safety checks).
+  --width=<width>    Number of bytes per data value, or 'auto' to use the minimum power-of-2 width
+                     that fits all values. [default: auto]
+  --repeat=<repeat>  Number of times to repeat the write, advancing the address each time. [default: 1]
+  -r <risc_name>     RISC core name if you want to write memory that is not exposed on NOC.
+  --unsafe           Experts mode, allow writing everything (bypass safety checks).
 
 Description:
   Writes a block of data to address 'address'.
