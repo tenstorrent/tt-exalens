@@ -1321,6 +1321,7 @@ dump-tensix-state  tensix   Prints the tensix state group of the given name, at 
 dump-gpr           gpr      Prints all RISC-V registers for BRISC, TRISC0, TRISC1, and TRISC2 on the current core.
 read               r        Reads and prints a block of data from address 'address'.
 riscv              rv       Commands for RISC-V debugging:
+search-memory      search   Searches for a byte pattern in device memory. Pattern elements are encoded as
 tensix-reg         reg      Prints/writes to the specified register, at the specified location and device.
 write-xy           wxy      Writes data word to address 'addr' at noc0 location x-y of the current chip.
 device             d        Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
@@ -1755,6 +1756,138 @@ run-elf build/riscv-src/wormhole/sample.brisc.elf
 - `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
 - `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
 - `--verbose, -v`: Execute command with verbose output. [default: False]
+
+
+
+
+
+
+## search
+
+### Usage
+
+```
+search <pattern>... [--start <start>] [--end <end>] [--width <width>] [--read-size <rs>] [--max-results <n>] [--unsafe] [-r <risc_name>] [-d <device>] [-l <loc>]
+```
+
+
+### Description
+
+Searches for a byte pattern in device memory. Pattern elements are encoded as
+little-endian integers. With --width=auto (default), the width is determined once
+as the minimum power-of-2 byte count needed to represent the largest element, and
+applied uniformly to all elements.
+
+
+### Arguments
+
+- `pattern`: One or more integer values forming the byte pattern to search for.
+
+
+### Options
+
+- `--start` = **\<start\>**: Start address for the search. Defaults to 0, or to the start of RISC private memory if -r is specified.
+- `--end` = **\<end\>**: End address (exclusive) or 'all'. If omitted, searches only the block containing --start. 'all' searches all blocks from --start onwards.
+- `--width` = **\<width\>**: Bytes per pattern element (any positive integer) or auto. [default: auto] auto = minimum power-of-2 byte count needed to represent the largest element, applied uniformly to all elements.
+- `--read-size` = **\<rs\>**: Maximum bytes per device read. Defaults to 4 when -r is used (RISC debug hardware), or 1MB otherwise.
+- `--max-results` = **\<n\>**: Maximum number of matches to return, or 'all'. [default: 1]
+- `-r` = **\<risc_name\>**: RISC core name to search in private memory instead of NOC memory.
+- `--unsafe`: Expert mode, allow searching everywhere (bypass safety checks).
+
+
+### Examples
+
+Search for pattern in the block containing address 0
+```
+search 0xDEADBEEF
+```
+Output:
+```
+Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
+Device 0 [0x2618320aa] | Location 1-1 (0,0): pattern not found.
+```
+Search all accessible blocks
+```
+search 0xDEADBEEF --end all
+```
+Output:
+```
+Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
+Device 0 [0x2618320aa] | Location 1-1 (0,0): pattern not found.
+```
+Search all blocks from 0x10000 onwards
+```
+search 0xDEADBEEF --start 0x10000 --end all
+```
+Output:
+```
+Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
+Device 0 [0x2618320aa] | Location 1-1 (0,0): pattern not found.
+```
+Search from address 0 to 0xFFFF
+```
+search 0x1234 --start 0 --end 0xFFFF
+```
+Output:
+```
+Searching for pattern [0x34 0x12] (2 byte(s))
+Device 0 [0x2618320aa] | Location 1-1 (0,0): 1 match(es) found:
+  0x0000e2c4  (l1)
+```
+Search for two 2-byte LE values (0x34 0x12 0x78 0x56)
+```
+search 0x1234 0x5678 --width 2
+```
+Output:
+```
+Searching for pattern [0x34 0x12 0x78 0x56] (4 byte(s))
+Device 0 [0x2618320aa] | Location 1-1 (0,0): pattern not found.
+```
+Search using 64-byte reads
+```
+search 0xDEADBEEF --read-size 64
+```
+Output:
+```
+Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
+Device 0 [0x2618320aa] | Location 1-1 (0,0): pattern not found.
+```
+Search with safety checks bypassed
+```
+search 0xAB --unsafe
+```
+Output:
+```
+Searching for pattern [0xab] (1 byte(s))
+Device 0 [0x2618320aa] | Location 1-1 (0,0): 1 match(es) found:
+  0x000014ca  (l1)
+```
+Search brisc private memory (4-byte reads by default)
+```
+search 0xBEEF -r brisc
+```
+Output:
+```
+Searching for pattern [0xef 0xbe] (2 byte(s))
+Device 0 [0x2618320aa] | Location 1-1 (0,0): 1 match(es) found:
+  0x0000af86  (l1)
+```
+Search brisc private memory with 256-byte reads
+```
+search 0xBEEF -r brisc --read-size 256
+```
+Output:
+```
+Searching for pattern [0xef 0xbe] (2 byte(s))
+Device 0 [0x2618320aa] | Location 1-1 (0,0): 1 match(es) found:
+  0x0000af86  (l1)
+```
+
+
+### Common options
+
+- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
+- `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
 
 
 
