@@ -11,6 +11,7 @@ from ttexalens import Context, write_to_device
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebugWatchpointState, get_register_index
 from ttexalens.elf_loader import ElfLoader
+from ttexalens.exceptions import RiscHaltError
 
 
 @parameterized_class(
@@ -562,7 +563,7 @@ class TestDebugging(unittest.TestCase):
                 iteration = iteration + 1
                 if iteration > 1000:
                     break
-            except Exception as e:
+            except RiscHaltError as e:
                 # print pc
                 self.core_sim.set_reset(True)
                 return
