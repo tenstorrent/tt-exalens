@@ -60,6 +60,13 @@ class CoordinateError(TTException):
     pass
 
 
+class RiscHaltError(TTException):
+    """Raised when we failed to halt RISC core."""
+
+    def __init__(self, risc_name: str, location: OnChipCoordinate):
+        super().__init__(f"Failed to halt {risc_name} core at {location.to_user_str()} on device {location.device_id}")
+
+
 # ---------------------------------------------------------------------------
 # Hardware errors
 # ---------------------------------------------------------------------------
@@ -81,13 +88,6 @@ class TimeoutDeviceRegisterError(HardwareError):
             f"coord ({self.coord.x}, {self.coord.y}, {self.coord.core_type}), address {hex(self.address)}, "
             f"size {self.size} bytes after {self.duration:.4f} seconds."
         )
-
-
-class RiscHaltError(HardwareError):
-    """Raised when we failed to halt RISC core."""
-
-    def __init__(self, risc_name: str, location: OnChipCoordinate):
-        super().__init__(f"Failed to halt {risc_name} core at {location.to_user_str()} on device {location.device_id}")
 
 
 # ---------------------------------------------------------------------------

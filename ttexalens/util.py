@@ -8,10 +8,19 @@ from typing import Any, Iterator, TYPE_CHECKING
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
-import traceback, socket
+import traceback
 import ryml, yaml
 from fnmatch import fnmatch
 from enum import Enum
+
+from ttexalens.exceptions import (
+    TTException,
+    TTFatalException,
+    HardwareError,
+    MemoryAccessException,
+    DebugSymbolError,
+    CoordinateError,
+)
 
 if TYPE_CHECKING:
     from ttexalens.server import FileAccessApi
@@ -176,16 +185,6 @@ CLR_PROMPT_BAD_VALUE_END = "</style>"
 DEC_FORMAT = 'f"{d}"'
 HEX_FORMAT = 'f"0x{d:08x}"'
 DEC_AND_HEX_FORMAT = 'f"{d} (0x{d:08x})"'
-
-
-from ttexalens.exceptions import (  # noqa: E402
-    TTException,
-    TTFatalException,
-    HardwareError,
-    MemoryAccessException,
-    DebugSymbolError,
-    CoordinateError,
-)
 
 # Colorized messages
 def NULL_PRINT(s):

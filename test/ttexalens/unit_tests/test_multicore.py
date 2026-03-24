@@ -97,7 +97,7 @@ class TestMulticore(unittest.TestCase):
             print(f"\nExpected exception occurred: {e}")
             self._verify_core_states()
         except RiscHaltError as he:
-            print(f"\nFailed to halt RISC core (core was locked up): {he}")
+            print(f"\nCore was locked up. {he}")
             self._verify_core_states()
 
 
