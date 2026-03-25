@@ -52,7 +52,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     args = dopt.args
 
-    raw_core_loc = args["<core-loc>"]
+    core_loc_str: str | None = args["<core-loc>"]
     base_addr = int(args["<addr>"], 0)
     data = int(args["<data>"], 0)
     repeat = int(args["--repeat"]) if args["--repeat"] else 1
@@ -68,11 +68,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             addr += 4
 
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
-        if args["-d"]:
-            util.INFO(f"Writing to device {device.id}")
-        if raw_core_loc:
-            core_loc = OnChipCoordinate.create(str(raw_core_loc), device=device)
-            core_loc_str = str(raw_core_loc)
+        util.INFO(f"Writing to device {device.id}")
+        if core_loc_str:
+            core_loc = OnChipCoordinate.create(core_loc_str, device=device)
         else:
             core_loc = ui_state.current_location.change_device(device)
             core_loc_str = core_loc.to_user_str()
