@@ -146,10 +146,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
         raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
-    addr_arg = addr_str
     try:
         # If we can parse the address as a number, do it. Otherwise, it's a variable name.
-        addr_arg = int(addr_arg, 0)
+        addr_arg = int(addr_str, 0)
     except ValueError:
         pass
 
