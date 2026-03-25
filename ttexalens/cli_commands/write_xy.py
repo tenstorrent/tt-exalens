@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  wxy <addr> <data> [--repeat <repeat>]
-  wxy <core-loc> <addr> <data> [--repeat <repeat>]
+  wxy <addr> <data> [--repeat <repeat>] [-d <device>]
+  wxy <core-loc> <addr> <data> [--repeat <repeat>] [-d <device>]
 
 Description:
-  Writes a data word to address <addr> at noc0 <core-loc>, or at the current UI location when <core-loc> is omitted.
+  Writes a data word to address <addr> at <core-loc>, or at the current UI location when <core-loc> is omitted.
 
 Arguments:
   core-loc    Optional. X-Y or R,C location of a core, or dram channel (e.g. ch3). Defaults to the current UI location.
@@ -18,24 +18,27 @@ Options:
   --repeat <repeat>  Number of times to repeat the write. Default: 1
 
 Examples:
-  wxy 0x0 0x1234                               # Current UI core location, address 0x0
-  wxy 0,0 0x0 0x1234                           # Explicit core location 0,0
+  wxy 0x0 0x1234                               # Current device, current UI core location, address 0x0
+  wxy 0,0 0x0 0x1234                           # Current device, explicit core location 0,0
+  wxy 0,0 0x0 0x1234 -d 1                      # Device 1
   wxy 0,0 0x0 0x1234 --repeat 10
 """
 
 from ttexalens.context import Context
+from ttexalens.device import Device
 from ttexalens.uistate import UIState
 import ttexalens.util as util
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import write_words_to_device
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
 
 command_metadata = CommandMetadata(
     short_name="wxy",
     long_name="write-xy",
     type="low-level",
     description=__doc__,
+    common_option_names=[CommonCommandOptions.Device],
 )
 
 
@@ -46,29 +49,33 @@ def print_a_write(core_loc_str: str, addr: int, val: int):
 
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
-    args = tt_docopt(command_metadata, cmd_text).args
+    dopt = tt_docopt(command_metadata, cmd_text)
+    args = dopt.args
 
     raw_core_loc = args["<core-loc>"]
-    addr = int(args["<addr>"], 0)
+    base_addr = int(args["<addr>"], 0)
     data = int(args["<data>"], 0)
     repeat = int(args["--repeat"]) if args["--repeat"] else 1
     if repeat <= 0:
         util.WARN("Repeat count must be a positive integer, defaulting to 1")
         repeat = 1
 
-    current_device_id = ui_state.current_device_id
-    current_device = context.devices[current_device_id]
-    if raw_core_loc:
-        core_loc = OnChipCoordinate.create(str(raw_core_loc), device=current_device)
-        core_loc_str = str(raw_core_loc)
-    else:
-        core_loc = ui_state.current_location.change_device(current_device)
-        core_loc_str = core_loc.to_user_str()
+    def do_writes(device: Device, core_loc: OnChipCoordinate, core_loc_str: str):
+        addr = base_addr
+        for _ in range(repeat):
+            write_words_to_device(core_loc, addr, data, device.id, context)
+            print_a_write(core_loc_str, addr, data)
+            addr += 4
 
-    for _ in range(repeat):
-        write_words_to_device(core_loc, addr, data, ui_state.current_device_id, context)
-
-        print_a_write(core_loc_str, addr, data)
-        addr += 4
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+        if args["-d"]:
+            util.INFO(f"Writing to device {device.id}")
+        if raw_core_loc:
+            core_loc = OnChipCoordinate.create(str(raw_core_loc), device=device)
+            core_loc_str = str(raw_core_loc)
+        else:
+            core_loc = ui_state.current_location.change_device(device)
+            core_loc_str = core_loc.to_user_str()
+        do_writes(device, core_loc, core_loc_str)
 
     return None
