@@ -73,29 +73,5 @@ class WormholeDevice(Device):
     def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
         return tensix_debug_bus_description
 
-    def noc_read(
-        self,
-        location: OnChipCoordinate,
-        address: int,
-        size_bytes: int,
-        noc_id: int | None = None,
-        use_4B_mode: bool | None = None,
-        dma_threshold: int | None = None,
-        safe_mode: bool | None = None,
-    ) -> bytes:
-        return super().noc_read(location, address, size_bytes, noc_id, use_4B_mode, dma_threshold, safe_mode)
-
-    def noc_write(
-        self,
-        location: OnChipCoordinate,
-        address: int,
-        data: bytes,
-        noc_id: int | None = None,
-        use_4B_mode: bool | None = None,
-        dma_threshold: int | None = None,
-        safe_mode: bool | None = None,
-    ):
-        return super().noc_write(location, address, data, noc_id, use_4B_mode, dma_threshold, safe_mode)
-
 
 # end of class WormholeDevice
