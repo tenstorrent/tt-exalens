@@ -10,8 +10,12 @@ from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.memory_map import MemoryMapBlockInfo
 from ttexalens.register_store import RegisterStore
 
-register_store_noc0_initialization = get_niu_register_store_initialization(DeviceAddress(noc_address=0xFFFFFFFF_FF000000, bar0_address=0x1FD04000, noc_id=0))
-register_store_noc1_initialization = get_niu_register_store_initialization(DeviceAddress(noc_address=0xFFFFFFFF_FF000000, bar0_address=0x1FD14000, noc_id=1))
+register_store_noc0_initialization = get_niu_register_store_initialization(
+    DeviceAddress(noc_address=0xFFFFFFFF_FF000000, bar0_address=0x1FD04000, noc_id=0)
+)
+register_store_noc1_initialization = get_niu_register_store_initialization(
+    DeviceAddress(noc_address=0xFFFFFFFF_FF000000, bar0_address=0x1FD14000, noc_id=1)
+)
 
 
 class BlackholePcieBlock(BlackholeNocBlock):
