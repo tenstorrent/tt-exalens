@@ -136,7 +136,10 @@ class UmdDevice:
             try:
                 translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.LOGICAL)
             except Exception:
-                translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.NOC0)
+                try:
+                    translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.NOC0)
+                except Exception:
+                    translated_coord = coord
             raise TimeoutDeviceRegisterError(self.device_id, translated_coord, address, size, True, elapsed_time)
         return result
 
@@ -159,7 +162,10 @@ class UmdDevice:
             try:
                 translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.LOGICAL)
             except Exception:
-                translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.NOC0)
+                try:
+                    translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.NOC0)
+                except Exception:
+                    translated_coord = coord
             event = TimeoutDeviceRegisterError(
                 self.device_id, translated_coord, address, len(data), False, elapsed_time
             )
