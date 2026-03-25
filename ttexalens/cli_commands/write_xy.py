@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
+  wxy <addr> <data> [--repeat <repeat>]
   wxy <core-loc> <addr> <data> [--repeat <repeat>]
 
 Description:
-  Writes data word to address 'addr' at noc0 location x-y of the current chip.
+  Writes a data word to address <addr> at noc0 <core-loc>, or at the current UI location when <core-loc> is omitted.
 
 Arguments:
-  core-loc    Either X-Y or R,C location of a core, or dram channel (e.g. ch3)
+  core-loc    Optional. X-Y or R,C location of a core, or dram channel (e.g. ch3). Defaults to the current UI location.
   addr        Address to write to
   data        Data to write
 
@@ -17,7 +18,8 @@ Options:
   --repeat <repeat>  Number of times to repeat the write. Default: 1
 
 Examples:
-  wxy 0,0 0x0 0x1234
+  wxy 0x0 0x1234                               # Current UI core location, address 0x0
+  wxy 0,0 0x0 0x1234                           # Explicit core location 0,0
   wxy 0,0 0x0 0x1234 --repeat 10
 """
 
@@ -46,7 +48,7 @@ def print_a_write(core_loc_str: str, addr: int, val: int):
 def run(cmd_text: str, context: Context, ui_state: UIState):
     args = tt_docopt(command_metadata, cmd_text).args
 
-    core_loc_str = args["<core-loc>"]
+    raw_core_loc = args["<core-loc>"]
     addr = int(args["<addr>"], 0)
     data = int(args["<data>"], 0)
     repeat = int(args["--repeat"]) if args["--repeat"] else 1
@@ -56,7 +58,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     current_device_id = ui_state.current_device_id
     current_device = context.devices[current_device_id]
-    core_loc = OnChipCoordinate.create(core_loc_str, device=current_device)
+    if raw_core_loc:
+        core_loc = OnChipCoordinate.create(str(raw_core_loc), device=current_device)
+        core_loc_str = str(raw_core_loc)
+    else:
+        core_loc = ui_state.current_location.change_device(current_device)
+        core_loc_str = core_loc.to_user_str()
 
     for _ in range(repeat):
         write_words_to_device(core_loc, addr, data, ui_state.current_device_id, context)
