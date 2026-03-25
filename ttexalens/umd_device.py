@@ -180,8 +180,6 @@ class UmdDevice:
     def __read_from_device_reg_unaligned_helper(
         self, coord: tt_umd.CoreCoord, address: int, size: int, use_4B_mode: bool, dma_threshold: int
     ) -> bytes:
-        assert coord.coord_system == tt_umd.CoordSystem.TRANSLATED
-
         # Read first unaligned word
         first_unaligned_index = address % 4
         if first_unaligned_index != 0:
@@ -230,7 +228,6 @@ class UmdDevice:
     def __write_to_device_reg_unaligned_helper(
         self, coord: tt_umd.CoreCoord, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
     ):
-        assert coord.coord_system == tt_umd.CoordSystem.TRANSLATED
         size_in_bytes = len(data)
 
         # Read/Write first unaligned word
