@@ -54,12 +54,12 @@ def get_register_base_address_callable(noc_id: int, has_mmio: bool) -> Callable[
                 return DeviceAddress(noc_address=0x80000000)
         elif noc_id == 0:
             return get_niu_register_base_address_callable(
-                DeviceAddress(noc_address=0x80050000, bar0_address=0x1FD04000 if has_mmio else None, noc_id=0)
+                DeviceAddress(noc_address=0x80050000)
             )(register_description)
         else:
             assert noc_id == 1
             return get_niu_register_base_address_callable(
-                DeviceAddress(noc_address=0x80058000, bar0_address=0x1FD14000 if has_mmio else None, noc_id=1)
+                DeviceAddress(noc_address=0x80058000)
             )(register_description)
 
     return get_register_base_address
@@ -87,10 +87,10 @@ class BlackholeArcBlock(ArcBlock):
             self.register_store_noc0 = RegisterStore(register_store_noc0_initialization_local, self.location)
             self.register_store_noc1 = RegisterStore(register_store_noc1_initialization_local, self.location)
             self.noc0_regs = MemoryBlock(
-                size=0x10000, address=DeviceAddress(noc_address=0x80050000, bar0_address=0x1FD04000)
+                size=0x8000, address=DeviceAddress(noc_address=0x80050000)
             )
             self.noc1_regs = MemoryBlock(
-                size=0x10000, address=DeviceAddress(noc_address=0x80058000, bar0_address=0x1FD14000)
+                size=0x8000, address=DeviceAddress(noc_address=0x80058000)
             )
         else:
             self.register_store_noc0 = RegisterStore(register_store_noc0_initialization_remote, self.location)
