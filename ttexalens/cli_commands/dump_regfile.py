@@ -67,8 +67,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     device: Device
     location: OnChipCoordinate
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
-        if args["-d"]:
-            INFO(f"Dump regfile on device {device.id}")
+        INFO(f"Dump regfile on device {device.id}")
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             INFO(f"Location {location.to_user_str()}")
             debug_tensix = TensixDebug(location)

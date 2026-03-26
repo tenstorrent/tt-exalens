@@ -60,11 +60,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         util.WARN("Repeat count must be a positive integer, defaulting to 1")
         repeat = 1
 
-    def do_writes(device: Device, core_loc: OnChipCoordinate, core_loc_str: str):
+    def do_writes(device: Device, core_loc: OnChipCoordinate):
         addr = base_addr
         for _ in range(repeat):
             write_words_to_device(core_loc, addr, data, device.id, context)
-            print_a_write(core_loc_str, addr, data)
+            print_a_write(core_loc.to_user_str(), addr, data)
             addr += 4
 
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
@@ -73,7 +73,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             core_loc = OnChipCoordinate.create(core_loc_str, device=device)
         else:
             core_loc = ui_state.current_location.change_device(device)
-            core_loc_str = core_loc.to_user_str()
-        do_writes(device, core_loc, core_loc_str)
+        do_writes(device, core_loc)
 
     return None
