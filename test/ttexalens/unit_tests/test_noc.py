@@ -13,9 +13,8 @@ from ttexalens.register_store import RegisterStore
     [
         {"use_noc1": False, "noc_id": 0},
         {"use_noc1": False, "noc_id": 1},
-        # Disabled until issue #455 is resolved
-        # {"use_noc1": True, "noc_id": 0},
-        # {"use_noc1": True, "noc_id": 1},
+        {"use_noc1": True, "noc_id": 0},
+        {"use_noc1": True, "noc_id": 1},
     ]
 )
 class TestNOC(unittest.TestCase):
@@ -40,8 +39,7 @@ class TestNOC(unittest.TestCase):
 @parameterized_class(
     [
         {"use_noc1": False},
-        # Disabled until issue #455 is resolved
-        # {"use_noc1": True},
+        {"use_noc1": True},
     ]
 )
 class TestNOCLocations(unittest.TestCase):

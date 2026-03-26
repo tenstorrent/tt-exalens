@@ -80,7 +80,7 @@ class UmdDevice:
 
     def __configure_working_active_eth(self):
         tensix_coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
-        tensix_translated_coord = self._soc_descriptor.translate_coord_to(tensix_coord, tt_umd.CoordSystem.TRANSLATED)
+        tensix_translated_coord = self._soc_descriptor.translate_chip_coord_to_translated_coord(tensix_coord)
         for translated_coord in self._active_eth_coords_on_mmio_chip:
             self.__device.get_remote_communication().set_remote_transfer_ethernet_cores([translated_coord])
             try:
@@ -92,8 +92,8 @@ class UmdDevice:
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
     def __convert_noc0_to_device_coords(self, noc0_x: int, noc0_y: int):
-        return self._soc_descriptor.translate_coord_to(
-            tt_umd.tt_xy_pair(noc0_x, noc0_y), tt_umd.CoordSystem.NOC0, tt_umd.CoordSystem.TRANSLATED
+        return self._soc_descriptor.translate_chip_coord_to_translated_coord(
+            self._soc_descriptor.get_coord_at(tt_umd.tt_xy_pair(noc0_x, noc0_y), tt_umd.CoordSystem.NOC0)
         )
 
     READ_TIMEOUT = float(os.environ.get("TT_EXALENS_READ_TIMEOUT_MS", 2)) / 1_000  # seconds
@@ -119,7 +119,10 @@ class UmdDevice:
             try:
                 translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.LOGICAL)
             except Exception:
-                translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.NOC0)
+                try:
+                    translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.NOC0)
+                except Exception:
+                    translated_coord = coord
             raise TimeoutDeviceRegisterError(self.device_id, translated_coord, address, size, True, elapsed_time)
         return result
 
@@ -142,7 +145,10 @@ class UmdDevice:
             try:
                 translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.LOGICAL)
             except Exception:
-                translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.NOC0)
+                try:
+                    translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.NOC0)
+                except Exception:
+                    translated_coord = coord
             event = TimeoutDeviceRegisterError(
                 self.device_id, translated_coord, address, len(data), False, elapsed_time
             )
@@ -157,8 +163,6 @@ class UmdDevice:
     def __read_from_device_reg_unaligned_helper(
         self, coord: tt_umd.CoreCoord, address: int, size: int, use_4B_mode: bool, dma_threshold: int
     ) -> bytes:
-        assert coord.coord_system == tt_umd.CoordSystem.TRANSLATED
-
         # Read first unaligned word
         first_unaligned_index = address % 4
         if first_unaligned_index != 0:
@@ -207,7 +211,6 @@ class UmdDevice:
     def __write_to_device_reg_unaligned_helper(
         self, coord: tt_umd.CoreCoord, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
     ):
-        assert coord.coord_system == tt_umd.CoordSystem.TRANSLATED
         size_in_bytes = len(data)
 
         # Read/Write first unaligned word
@@ -294,7 +297,10 @@ class UmdDevice:
         core_type_enum = tt_umd.CoreType[core_type.upper()]
         coord_system_enum = tt_umd.CoordSystem[coord_system.upper()]
         core_coord = tt_umd.CoreCoord(noc_x, noc_y, core_type_enum, tt_umd.CoordSystem.NOC0)
-        output = self._soc_descriptor.translate_coord_to(core_coord, coord_system_enum)
+        if coord_system_enum == tt_umd.CoordSystem.TRANSLATED:
+            output = self._soc_descriptor.translate_chip_coord_to_translated_coord(core_coord)
+        else:
+            output = self._soc_descriptor.translate_coord_to(core_coord, coord_system_enum)
         return (output.x, output.y)
 
     def arc_msg(
