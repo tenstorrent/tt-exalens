@@ -131,6 +131,9 @@ def _resolve_brxy_positionals(slots: list[str], devices: list[Device]) -> tuple[
                     raise util.TTException(
                         f"brxy: first argument must be a valid core location on all selected devices; got {t0!r}."
                     )
+    raise util.TTException(
+        f"brxy: at most three positional arguments (core, address, word-count); got {len(slots)}: {' '.join(slots)}."
+    )
 
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
