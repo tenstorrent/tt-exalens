@@ -85,7 +85,7 @@ def _brxy_docopt_ordered_slots(args: dict) -> list[str]:
         v = args.get(key)
         if not v:
             break
-        slots.append(str(v))
+        slots.append(v)
     return slots
 
 
@@ -96,42 +96,41 @@ def _resolve_brxy_positionals(slots: list[str], devices: list[Device]) -> tuple[
     0 → error (addr required). 1 → addr only. 2 → (core, addr) if t0 is a core on all selected devices, else (addr, word-count).
     3 → core, addr, word-count (strict order); core must be valid on all selected devices.
     """
-    n = len(slots)
-    if n == 0:
-        raise util.TTException("brxy: address omitted; give at least one positional argument (the address).")
-    if n == 1:
-        return None, slots[0], 1
-    if n == 2:
-        t0, t1 = slots[0], slots[1]
-        core_kind = _brxy_core_loc_classify_vs_devices(t0, devices)
-        if core_kind == "all":
-            return t0, t1, 1
-        if core_kind == "some":
-            raise util.TTException(
-                f"brxy: {t0!r} is a core location on some but not all selected devices; adjust -d or the coordinate."
-            )
-        if _brxy_token_is_word_count(t1):
-            return None, t0, int(t1, 0)
-        raise util.TTException(
-            f"brxy: two arguments must be either (core, address) or (address, word-count); got {t0!r} and {t1!r}."
-        )
-    if n == 3:
-        t0, t1, t2 = slots[0], slots[1], slots[2]
-        if not _brxy_token_is_word_count(t2):
-            raise util.TTException(f"brxy: third argument must be an integer word count; got {t2!r}.")
-        core_kind = _brxy_core_loc_classify_vs_devices(t0, devices)
-        if core_kind != "all":
-            if core_kind == "some":
-                raise util.TTException(
-                    f"brxy: {t0!r} is a core location on some but not all selected devices; adjust -d or the coordinate."
-                )
-            raise util.TTException(
-                f"brxy: first argument must be a valid core location on all selected devices; got {t0!r}."
-            )
-        return t0, t1, int(t2, 0)
-    raise util.TTException(
-        f"brxy: at most three positional arguments (core, address, word-count); got {n}: {' '.join(slots)}."
-    )
+    match len(slots):
+        case 0:
+            raise util.TTException("brxy: address omitted; give at least one positional argument (the address).")
+        case 1:
+            return None, slots[0], 1
+        case 2:
+            t0, t1 = slots[0], slots[1]
+            match _brxy_core_loc_classify_vs_devices(t0, devices):
+                case "all":
+                    return t0, t1, 1
+                case "some":
+                    raise util.TTException(
+                        f"brxy: {t0!r} is a core location on some but not all selected devices; adjust -d or the coordinate."
+                    )
+                case _:
+                    if _brxy_token_is_word_count(t1):
+                        return None, t0, int(t1, 0)
+                    raise util.TTException(
+                        f"brxy: two arguments must be either (core, address) or (address, word-count); got {t0!r} and {t1!r}."
+                    )
+        case 3:
+            t0, t1, t2 = slots[0], slots[1], slots[2]
+            if not _brxy_token_is_word_count(t2):
+                raise util.TTException(f"brxy: third argument must be an integer word count; got {t2!r}.")
+            match _brxy_core_loc_classify_vs_devices(t0, devices):
+                case "all":
+                    return t0, t1, int(t2, 0)
+                case "some":
+                    raise util.TTException(
+                        f"brxy: {t0!r} is a core location on some but not all selected devices; adjust -d or the coordinate."
+                    )
+                case _:
+                    raise util.TTException(
+                        f"brxy: first argument must be a valid core location on all selected devices; got {t0!r}."
+                    )
 
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
@@ -168,8 +167,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         )
 
     for device in devices:
-        if args["-d"]:
-            util.INFO(f"Reading from device {device.id}")
+        util.INFO(f"Reading from device {device.id}")
         if location_str:
             do_burst_read(device, OnChipCoordinate.create(location_str, device=device))
         else:
