@@ -50,34 +50,6 @@ command_metadata = CommandMetadata(
 )
 
 
-def _brxy_token_is_core_loc(token: str, device: Device) -> bool:
-    try:
-        OnChipCoordinate.create(token, device=device)
-        return True
-    except (util.TTException, ValueError):
-        return False
-
-
-def _brxy_core_loc_classify_vs_devices(token: str, devices: list[Device]) -> str:
-    """Return 'all' | 'some' | 'none' according to whether token parses as a core on each selected device."""
-    if not devices:
-        return "none"
-    n_ok = sum(1 for d in devices if _brxy_token_is_core_loc(token, d))
-    if n_ok == len(devices):
-        return "all"
-    if n_ok > 0:
-        return "some"
-    return "none"
-
-
-def _brxy_token_is_word_count(token: str) -> bool:
-    try:
-        int(token, 0)
-        return True
-    except ValueError:
-        return False
-
-
 def _brxy_docopt_ordered_slots(args: dict) -> list[str]:
     """Left-filled docopt slots; map to t0,t1,t2 by length, not by key name."""
     slots: list[str] = []
@@ -89,48 +61,38 @@ def _brxy_docopt_ordered_slots(args: dict) -> list[str]:
     return slots
 
 
-def _resolve_brxy_positionals(slots: list[str], devices: list[Device]) -> tuple[str | None, str, int]:
+def _resolve_brxy_positionals(slots: list[str]) -> tuple[str | None, str, int]:
     """
     Interpret t0,t1,t2 from docopt's left-filled optional positionals.
-    Core-location checks use every device selected by -d (via for_each), not only the UI current device.
-    0 → error (addr required). 1 → addr only. 2 → (core, addr) if t0 is a core on all selected devices, else (addr, word-count).
-    3 → core, addr, word-count (strict order); core must be valid on all selected devices.
+    0 → error (addr required). 1 → addr only. 2 → (core, addr) if t0 is a core location or dram channel, else (addr, word-count).
+    3 → core, addr, word-count (strict order).
     """
     match len(slots):
+        # No positional arguments -> error
         case 0:
             raise util.TTException("brxy: address omitted; give at least one positional argument (the address).")
+        # One positional argument -> addr only
         case 1:
             return None, slots[0], 1
+        # Two positional arguments -> core, addr or addr, word-count
         case 2:
             t0, t1 = slots[0], slots[1]
-            match _brxy_core_loc_classify_vs_devices(t0, devices):
-                case "all":
-                    return t0, t1, 1
-                case "some":
-                    raise util.TTException(
-                        f"brxy: {t0!r} is a core location on some but not all selected devices; adjust -d or the coordinate."
-                    )
-                case _:
-                    if _brxy_token_is_word_count(t1):
-                        return None, t0, int(t1, 0)
-                    raise util.TTException(
-                        f"brxy: two arguments must be either (core, address) or (address, word-count); got {t0!r} and {t1!r}."
-                    )
+            if any(x in t0 for x in ["-", ",", "ch"]):
+                return t0, t1, 1
+            else:
+                try:
+                    return None, t0, int(t1, 0)
+                except ValueError:
+                    raise util.TTException(f"brxy: second argument must be an integer word count; got {t1!r}.")
+        # Three positional arguments -> core, addr, word-count
         case 3:
             t0, t1, t2 = slots[0], slots[1], slots[2]
-            if not _brxy_token_is_word_count(t2):
-                raise util.TTException(f"brxy: third argument must be an integer word count; got {t2!r}.")
-            match _brxy_core_loc_classify_vs_devices(t0, devices):
-                case "all":
+            if any(x in t0 for x in ["-", ",", "ch"]):
+                try:
                     return t0, t1, int(t2, 0)
-                case "some":
-                    raise util.TTException(
-                        f"brxy: {t0!r} is a core location on some but not all selected devices; adjust -d or the coordinate."
-                    )
-                case _:
-                    raise util.TTException(
-                        f"brxy: first argument must be a valid core location on all selected devices; got {t0!r}."
-                    )
+                except ValueError:
+                    raise util.TTException(f"brxy: third argument must be an integer word count; got {t2!r}.")
+            raise util.TTException(f"brxy: first argument must be a valid core location or dram channel; got {t0!r}.")
     raise util.TTException(
         f"brxy: at most three positional arguments (core, address, word-count); got {len(slots)}: {' '.join(slots)}."
     )
@@ -140,9 +102,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     args = dopt.args
 
-    devices = list(dopt.for_each(CommonCommandOptions.Device, context, ui_state))
     slots = _brxy_docopt_ordered_slots(args)
-    location_str, addr_str, word_count = _resolve_brxy_positionals(slots, devices)
+    core_loc_str, addr_str, word_count = _resolve_brxy_positionals(slots)
     offsets = args["-o"]
     sample = float(args["--sample"]) if args["--sample"] else 0
     format = args["--format"] if args["--format"] else "hex32"
@@ -169,10 +130,10 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             context=context,
         )
 
-    for device in devices:
+    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         util.INFO(f"Reading from device {device.id}")
-        if location_str:
-            do_burst_read(device, OnChipCoordinate.create(location_str, device=device))
+        if core_loc_str:
+            do_burst_read(device, OnChipCoordinate.create(core_loc_str, device=device))
         else:
             do_burst_read(device, ui_state.current_location.change_device(device))
 
