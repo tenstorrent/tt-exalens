@@ -12,7 +12,7 @@ Options:
   -t <num-tiles>            Number of tiles to read. Only effective for 32 bit formats on blackhole.
 
 Description:
-  Prints the specified regfile (SRCA/DSTACC) at the given location, or at the current UI location when -l is omitted.
+  Prints the specified regfile (SRCA/DSTACC).
 
   Note:
   Due to the architecture of SRCA, you can see only see last two faces written.
