@@ -3,18 +3,18 @@
 ### Usage
 
 ```
-brxy [ <core-loc> ] [ <addr> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <device>]
+brxy [ <noc-loc> ] [ <addr> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <device>]
 ```
 
 
 ### Description
 
-Reads a block of data at <addr> on <core-loc>, or at the current UI core when <core-loc> is omitted.
+Reads a block of data at <addr> on <noc-loc>, or at the current location when <noc-loc> is omitted.
 
 
 ### Arguments
 
-- `core-loc`: Optional. X-Y or R,C, or dram channel (e.g. ch3). Defaults to the current UI location when omitted.
+- `noc-loc`: Optional. X-Y or R,C, or dram channel (e.g. ch3). Defaults to the current noc location when omitted.
 - `addr`: Required. Address to read from (omit zero positionals to get a clear error).
 - `word-count`: Optional. Number of words to read. Default: 1
 
@@ -28,7 +28,7 @@ Reads a block of data at <addr> on <core-loc>, or at the current UI core when <c
 
 ### Examples
 
-1 word at 0x0, current UI core
+1 word at 0x0, current noc location
 ```
 brxy 0x0
 ```
@@ -39,7 +39,7 @@ Reading from device 0
 (l1) : 0x00000000 (4 bytes)
 0x00000000:  00001234
 ```
-16 words at 0x0, current UI core
+16 words at 0x0, current noc location
 ```
 brxy 0x0 16
 ```
@@ -53,7 +53,7 @@ Reading from device 0
 0x00000020:  00001234  00001234  0062a023  ffb112b7
 0x00000030:  00828293  00000313  00000393  40638333
 ```
-1 word at 0x0, core 0,0
+1 word at 0x0, location 0,0
 ```
 brxy 0,0 0x0
 ```
@@ -64,7 +64,7 @@ Reading from device 0
 (l1) : 0x00000000 (4 bytes)
 0x00000000:  00001234
 ```
-16 words at 0x0, core 0,0
+16 words at 0x0, location 0,0
 ```
 brxy 0,0 0x0 16
 ```
@@ -104,23 +104,23 @@ Output:
 ```
 Reading from device 0
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 21973 times
+1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 21880 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 22570 times
+1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 22754 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 22485 times
+1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 23792 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 22884 times
+1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 23460 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 22614 times
+1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 24098 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 22551 times
+1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 23872 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 22532 times
+1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 23755 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 22551 times
+1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 24065 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 22850 times
+1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 23729 times
 Sampling for 0.15625 seconds...
 ...
 ```
@@ -1341,7 +1341,7 @@ Full Name          Short    Description
 exit               x        Exits the program. The optional argument represents the exit code. Defaults to 0.
 reload             rl       Reloads files in cli_commands directory. Useful for development of commands.
 help               h        Prints documentation summary. Use -v for details. If a command name is specified, it prints documentat...
-burst-read-xy      brxy     Reads a block of data at <addr> on <core-loc>, or at the current UI core when <core-loc> is omitted.
+burst-read-xy      brxy     Reads a block of data at <addr> on <noc-loc>, or at the current location when <noc-loc> is omitted.
 callstack          bt       Prints callstack using provided elf for a given RiscV core.
 debug-bus          dbus     Commands for RISC-V debugging:
 dump-tensix-state  tensix   Prints the tensix state group of the given name, at the specified location and device.
@@ -1350,13 +1350,12 @@ read               r        Reads and prints a block of data from address 'addre
 riscv              rv       Commands for RISC-V debugging:
 search-memory      search   Searches for a byte pattern in device memory. Pattern elements are encoded as
 tensix-reg         reg      Prints/writes to the specified register, at the specified location and device.
-write-xy           wxy      Writes a data word to address <addr> at <core-loc>, or at the current UI location when <core-loc> is o...
+write-xy           wxy      Writes a data word to address <addr> at <noc-loc>, or at the current location when <noc-loc> is omitte...
 device             d        Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
 dump-coverage      cov      Get coverage data for a given ELF. Extract the gcda from the given core
 gdb                gdb      Starts or stops gdb server.
 go                 go       Sets the current device/location/noc/4B mode.
 noc                nc       Displays NOC (Network on Chip) registers.
-run-elf            re       Loads an elf file into a brisc and runs it.
 ...
 ```
 
@@ -1412,13 +1411,13 @@ NOC0 Status Registers
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ├────────────────────────────┼────────────┼────────────┤ ├────────────────────────────────┼────────────┼────────────┤
-│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x00018821 │
-│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x0016d6eb │
-│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x0016d6ea │
-│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x0016d6ea │
-│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x00018821 │
+│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x00040ab4 │
+│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x00abc3e5 │
+│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x00abc3e4 │
+│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x00abc3e4 │
+│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x00040ab4 │
 │ posted write words sent    │ 0xffb20224 │ 0x00000000 │ │ posted write words received    │ 0xffb202e4 │ 0x00000000 │
-│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x00018821 │
+│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x00040ab4 │
 │ posted write reqs sent     │ 0xffb2022c │ 0x00000000 │ │ posted write reqs received     │ 0xffb202ec │ 0x00000000 │
 ╰────────────────────────────┴────────────┴────────────╯ ╰────────────────────────────────┴────────────┴────────────╯
 
@@ -1450,10 +1449,10 @@ NOC0 Status Registers
 
               Transaction Counters (Received)
 
-  write acks sent                  0xffb202c4   0x00018821
-  read resps sent                  0xffb202c8   0x0016d70b
-  read words sent                  0xffb202cc   0x0016d70a
-  read reqs received               0xffb202d4   0x0016d70a
+  write acks sent                  0xffb202c4   0x00040ab4
+  read resps sent                  0xffb202c8   0x00abc405
+  read words sent                  0xffb202cc   0x00abc404
+  read reqs received               0xffb202d4   0x00abc404
 ...
 ```
 Prints a specific register value
@@ -1517,9 +1516,9 @@ Output:
 │ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00000000 │
 │ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000000 │
 │ NIU_MST_RD_REQ_STARTED        │ 0xffb20238 │ 0x00000000 │
-│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x0016d728 │
-│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x0016d726 │
-│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x0016d728 │
+│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00abc422 │
+│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x00abc420 │
+│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00abc422 │
 ╰───────────────────────────────┴────────────┴────────────╯
 
                       NOC1 Registers
@@ -1830,7 +1829,7 @@ search 0xDEADBEEF
 Output:
 ```
 Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
-Device 0 [0x2618320aa] | Location 1-1 (0,0): pattern not found.
+Device 0 [0x10001861171e0b8] | Location 1-1 (0,0): pattern not found.
 ```
 Search all accessible blocks
 ```
@@ -1839,7 +1838,7 @@ search 0xDEADBEEF --end all
 Output:
 ```
 Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
-Device 0 [0x2618320aa] | Location 1-1 (0,0): pattern not found.
+Device 0 [0x10001861171e0b8] | Location 1-1 (0,0): pattern not found.
 ```
 Search all blocks from 0x10000 onwards
 ```
@@ -1848,7 +1847,7 @@ search 0xDEADBEEF --start 0x10000 --end all
 Output:
 ```
 Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
-Device 0 [0x2618320aa] | Location 1-1 (0,0): pattern not found.
+Device 0 [0x10001861171e0b8] | Location 1-1 (0,0): pattern not found.
 ```
 Search from address 0 to 0xFFFF
 ```
@@ -1857,8 +1856,8 @@ search 0x1234 --start 0 --end 0xFFFF
 Output:
 ```
 Searching for pattern [0x34 0x12] (2 byte(s))
-Device 0 [0x2618320aa] | Location 1-1 (0,0): 1 match(es) found:
-  0x0000e2c4  (l1)
+Device 0 [0x10001861171e0b8] | Location 1-1 (0,0): 1 match(es) found:
+  0x0000a3f1  (l1)
 ```
 Search for two 2-byte LE values (0x34 0x12 0x78 0x56)
 ```
@@ -1867,7 +1866,7 @@ search 0x1234 0x5678 --width 2
 Output:
 ```
 Searching for pattern [0x34 0x12 0x78 0x56] (4 byte(s))
-Device 0 [0x2618320aa] | Location 1-1 (0,0): pattern not found.
+Device 0 [0x10001861171e0b8] | Location 1-1 (0,0): pattern not found.
 ```
 Search using 64-byte reads
 ```
@@ -1876,7 +1875,7 @@ search 0xDEADBEEF --read-size 64
 Output:
 ```
 Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
-Device 0 [0x2618320aa] | Location 1-1 (0,0): pattern not found.
+Device 0 [0x10001861171e0b8] | Location 1-1 (0,0): pattern not found.
 ```
 Search with safety checks bypassed
 ```
@@ -1885,8 +1884,8 @@ search 0xAB --unsafe
 Output:
 ```
 Searching for pattern [0xab] (1 byte(s))
-Device 0 [0x2618320aa] | Location 1-1 (0,0): 1 match(es) found:
-  0x000014ca  (l1)
+Device 0 [0x10001861171e0b8] | Location 1-1 (0,0): 1 match(es) found:
+  0x000012e6  (l1)
 ```
 Search brisc private memory (4-byte reads by default)
 ```
@@ -1895,8 +1894,8 @@ search 0xBEEF -r brisc
 Output:
 ```
 Searching for pattern [0xef 0xbe] (2 byte(s))
-Device 0 [0x2618320aa] | Location 1-1 (0,0): 1 match(es) found:
-  0x0000af86  (l1)
+Device 0 [0x10001861171e0b8] | Location 1-1 (0,0): 1 match(es) found:
+  0x00025545  (l1)
 ```
 Search brisc private memory with 256-byte reads
 ```
@@ -1905,8 +1904,8 @@ search 0xBEEF -r brisc --read-size 256
 Output:
 ```
 Searching for pattern [0xef 0xbe] (2 byte(s))
-Device 0 [0x2618320aa] | Location 1-1 (0,0): 1 match(es) found:
-  0x0000af86  (l1)
+Device 0 [0x10001861171e0b8] | Location 1-1 (0,0): 1 match(es) found:
+  0x00025545  (l1)
 ```
 
 
@@ -2152,18 +2151,18 @@ Value of register DebugRegisterDescription(base_address=DeviceAddress(private_ad
 
 ```
 wxy <addr> <data> [--repeat <repeat>] [-d <device>]
-wxy <core-loc> <addr> <data> [--repeat <repeat>] [-d <device>]
+wxy <noc-loc> <addr> <data> [--repeat <repeat>] [-d <device>]
 ```
 
 
 ### Description
 
-Writes a data word to address <addr> at <core-loc>, or at the current UI location when <core-loc> is omitted.
+Writes a data word to address <addr> at <noc-loc>, or at the current location when <noc-loc> is omitted.
 
 
 ### Arguments
 
-- `core-loc`: Optional. X-Y or R,C location of a core, or dram channel (e.g. ch3). Defaults to the current UI location.
+- `noc-loc`: Optional. X-Y or R,C noc location, or dram channel (e.g. ch3). Defaults to the current location.
 - `addr`: Address to write to
 - `data`: Data to write
 
@@ -2175,7 +2174,7 @@ Writes a data word to address <addr> at <core-loc>, or at the current UI locatio
 
 ### Examples
 
-Current device, current UI core location, address 0x0
+Current device, current location, address 0x0
 ```
 wxy 0x0 0x1234
 ```
@@ -2184,7 +2183,7 @@ Output:
 Writing to device 0
 1-1 (0,0) (L1) : 0x00000000 (0) <= 0x00001234 (4660)
 ```
-Current device, explicit core location 0,0
+Current device, explicit noc location 0,0
 ```
 wxy 0,0 0x0 0x1234
 ```
