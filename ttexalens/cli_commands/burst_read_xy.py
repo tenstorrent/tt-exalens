@@ -60,7 +60,7 @@ def _brxy_docopt_ordered_slots(args: dict) -> list[str]:
     return slots
 
 
-def _resolve_brxy_positionals(slots: list[str]) -> tuple[str | None, str, int]:
+def _resolve_brxy_positionals(slots: list[str], device: Device) -> tuple[OnChipCoordinate | None, str, int]:
     """
     Interpret t0,t1,t2 from docopt's left-filled optional positionals.
     0 → error (addr required). 1 → addr only. 2 → (noc-loc, addr) if t0 is a noc location or dram channel, else (addr, word-count).
@@ -76,9 +76,9 @@ def _resolve_brxy_positionals(slots: list[str]) -> tuple[str | None, str, int]:
         # Two positional arguments -> noc-loc, addr or addr, word-count
         case 2:
             t0, t1 = slots[0], slots[1]
-            if any(x in t0 for x in ["-", ",", "ch"]):
-                return t0, t1, 1
-            else:
+            try:
+                return OnChipCoordinate.create(t0, device=device), t1, 1
+            except util.TTException:
                 try:
                     return None, t0, int(t1, 0)
                 except ValueError:
@@ -86,12 +86,12 @@ def _resolve_brxy_positionals(slots: list[str]) -> tuple[str | None, str, int]:
         # Three positional arguments -> noc-loc, addr, word-count
         case 3:
             t0, t1, t2 = slots[0], slots[1], slots[2]
-            if any(x in t0 for x in ["-", ",", "ch"]):
-                try:
-                    return t0, t1, int(t2, 0)
-                except ValueError:
-                    raise util.TTException(f"brxy: third argument must be an integer word count; got {t2!r}.")
-            raise util.TTException(f"brxy: first argument must be a valid noc location or dram channel; got {t0!r}.")
+            try:
+                return OnChipCoordinate.create(t0, device=device), t1, int(t2, 0)
+            except util.TTException:
+                raise util.TTException(
+                    f"brxy: first argument must be a valid noc location or dram channel; got {t0!r}. and third argument must be an integer word count; got {t2!r}."
+                )
         case _:
             raise util.TTException(
                 f"brxy: at most three positional arguments (noc-loc, address, word-count); got {len(slots)}: {' '.join(slots)}."
@@ -103,7 +103,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     args = dopt.args
 
     slots = _brxy_docopt_ordered_slots(args)
-    noc_loc_str, addr_str, word_count = _resolve_brxy_positionals(slots)
+    raw_noc_loc, addr_str, word_count = _resolve_brxy_positionals(slots, ui_state.current_location.device)
     offsets = args["-o"]
     sample = float(args["--sample"]) if args["--sample"] else 0
     format = args["--format"] if args["--format"] else "hex32"
@@ -131,11 +131,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         util.INFO(f"Reading from device {device.id}")
-        noc_loc = (
-            OnChipCoordinate.create(noc_loc_str, device=device)
-            if noc_loc_str
-            else ui_state.current_location.change_device(device)
-        )
+        noc_loc = raw_noc_loc.change_device(device) if raw_noc_loc else ui_state.current_location.change_device(device)
         do_burst_read(device, noc_loc)
 
 
