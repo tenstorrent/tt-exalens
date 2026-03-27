@@ -93,9 +93,10 @@ def _resolve_brxy_positionals(slots: list[str]) -> tuple[str | None, str, int]:
                 except ValueError:
                     raise util.TTException(f"brxy: third argument must be an integer word count; got {t2!r}.")
             raise util.TTException(f"brxy: first argument must be a valid core location or dram channel; got {t0!r}.")
-    raise util.TTException(
-        f"brxy: at most three positional arguments (core, address, word-count); got {len(slots)}: {' '.join(slots)}."
-    )
+        case _:
+            raise util.TTException(
+                f"brxy: at most three positional arguments (core, address, word-count); got {len(slots)}: {' '.join(slots)}."
+            )
 
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
@@ -132,10 +133,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         util.INFO(f"Reading from device {device.id}")
-        if core_loc_str:
-            do_burst_read(device, OnChipCoordinate.create(core_loc_str, device=device))
-        else:
-            do_burst_read(device, ui_state.current_location.change_device(device))
+        core_loc = (
+            OnChipCoordinate.create(core_loc_str, device=device)
+            if core_loc_str
+            else ui_state.current_location.change_device(device)
+        )
+        do_burst_read(device, core_loc)
 
 
 # A helper to print the result of a single PCI read

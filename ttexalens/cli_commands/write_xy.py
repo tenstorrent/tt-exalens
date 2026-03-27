@@ -69,10 +69,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         util.INFO(f"Writing to device {device.id}")
-        if core_loc_str:
-            core_loc = OnChipCoordinate.create(core_loc_str, device=device)
-        else:
-            core_loc = ui_state.current_location.change_device(device)
+        core_loc = (
+            OnChipCoordinate.create(core_loc_str, device=device)
+            if core_loc_str
+            else ui_state.current_location.change_device(device)
+        )
         do_writes(device, core_loc)
 
     return None
