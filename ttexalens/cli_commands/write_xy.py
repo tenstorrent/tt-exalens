@@ -18,7 +18,7 @@ Options:
   --repeat <repeat>  Number of times to repeat the write. Default: 1
 
 Examples:
-  wxy 0x0 0x1234                               # Current device, current UI core location, address 0x0
+  wxy 0x0 0x1234                               # Current device, current location, address 0x0
   wxy 0,0 0x0 0x1234                           # Current device, explicit core location 0,0
   wxy 0,0 0x0 0x1234 -d 1                      # Device 1
   wxy 0,0 0x0 0x1234 --repeat 10
