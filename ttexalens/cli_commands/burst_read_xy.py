@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  brxy [ <core-loc> ] [ <addr> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <device>]
+  brxy [ <noc-loc> ] [ <addr> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <device>]
 
 Arguments:
-  core-loc      Optional. X-Y or R,C, or dram channel (e.g. ch3). Defaults to the current UI location when omitted.
+  noc-loc       Optional. X-Y or R,C, or dram channel (e.g. ch3). Defaults to the current noc location when omitted.
   addr          Required. Address to read from (omit zero positionals to get a clear error).
   word-count    Optional. Number of words to read. Default: 1
 
@@ -16,13 +16,13 @@ Options:
   -o <O>        Address offset. Optional and repeatable.
 
 Description:
-  Reads a block of data at <addr> on <core-loc>, or at the current UI core when <core-loc> is omitted.
+  Reads a block of data at <addr> on <noc-loc>, or at the current location when <noc-loc> is omitted.
 
 Examples:
-  brxy 0x0                                      # 1 word at 0x0, current UI core
-  brxy 0x0 16                                   # 16 words at 0x0, current UI core
-  brxy 0,0 0x0                                  # 1 word at 0x0, core 0,0
-  brxy 0,0 0x0 16                               # 16 words at 0x0, core 0,0
+  brxy 0x0                                      # 1 word at 0x0, current noc location
+  brxy 0x0 16                                   # 16 words at 0x0, current noc location
+  brxy 0,0 0x0                                  # 1 word at 0x0, location 0,0
+  brxy 0,0 0x0 16                               # 16 words at 0x0, location 0,0
   brxy 0,0 0x0 32 --format i8                   # 32 words, i8 format
   brxy 0,0 0x0 32 --format i8 --sample 5        # Sample for 5 seconds
   brxy ch0 0x0 16                               # 16 words at 0x0, dram channel 0
@@ -52,7 +52,7 @@ command_metadata = CommandMetadata(
 def _brxy_docopt_ordered_slots(args: dict) -> list[str]:
     """Left-filled docopt slots; map to t0,t1,t2 by length, not by key name."""
     slots: list[str] = []
-    for key in ("<core-loc>", "<addr>", "<word-count>"):
+    for key in ("<noc-loc>", "<addr>", "<word-count>"):
         v = args.get(key)
         if not v:
             break
@@ -63,8 +63,8 @@ def _brxy_docopt_ordered_slots(args: dict) -> list[str]:
 def _resolve_brxy_positionals(slots: list[str]) -> tuple[str | None, str, int]:
     """
     Interpret t0,t1,t2 from docopt's left-filled optional positionals.
-    0 → error (addr required). 1 → addr only. 2 → (core, addr) if t0 is a core location or dram channel, else (addr, word-count).
-    3 → core, addr, word-count (strict order).
+    0 → error (addr required). 1 → addr only. 2 → (noc-loc, addr) if t0 is a noc location or dram channel, else (addr, word-count).
+    3 → noc-loc, addr, word-count (strict order).
     """
     match len(slots):
         # No positional arguments -> error
@@ -73,7 +73,7 @@ def _resolve_brxy_positionals(slots: list[str]) -> tuple[str | None, str, int]:
         # One positional argument -> addr only
         case 1:
             return None, slots[0], 1
-        # Two positional arguments -> core, addr or addr, word-count
+        # Two positional arguments -> noc-loc, addr or addr, word-count
         case 2:
             t0, t1 = slots[0], slots[1]
             if any(x in t0 for x in ["-", ",", "ch"]):
@@ -83,7 +83,7 @@ def _resolve_brxy_positionals(slots: list[str]) -> tuple[str | None, str, int]:
                     return None, t0, int(t1, 0)
                 except ValueError:
                     raise util.TTException(f"brxy: second argument must be an integer word count; got {t1!r}.")
-        # Three positional arguments -> core, addr, word-count
+        # Three positional arguments -> noc-loc, addr, word-count
         case 3:
             t0, t1, t2 = slots[0], slots[1], slots[2]
             if any(x in t0 for x in ["-", ",", "ch"]):
@@ -91,10 +91,10 @@ def _resolve_brxy_positionals(slots: list[str]) -> tuple[str | None, str, int]:
                     return t0, t1, int(t2, 0)
                 except ValueError:
                     raise util.TTException(f"brxy: third argument must be an integer word count; got {t2!r}.")
-            raise util.TTException(f"brxy: first argument must be a valid core location or dram channel; got {t0!r}.")
+            raise util.TTException(f"brxy: first argument must be a valid noc location or dram channel; got {t0!r}.")
         case _:
             raise util.TTException(
-                f"brxy: at most three positional arguments (core, address, word-count); got {len(slots)}: {' '.join(slots)}."
+                f"brxy: at most three positional arguments (noc-loc, address, word-count); got {len(slots)}: {' '.join(slots)}."
             )
 
 
@@ -103,17 +103,16 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     args = dopt.args
 
     slots = _brxy_docopt_ordered_slots(args)
-    core_loc_str, addr_str, word_count = _resolve_brxy_positionals(slots)
+    noc_loc_str, addr_str, word_count = _resolve_brxy_positionals(slots)
     offsets = args["-o"]
     sample = float(args["--sample"]) if args["--sample"] else 0
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
         raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
     try:
-        # If we can parse the address as a number, do it. Otherwise, it's a variable name.
         addr_arg = int(addr_str, 0)
     except ValueError:
-        pass
+        raise util.TTException(f"brxy: address must be an integer; got {addr_str!r}.")
 
     def do_burst_read(device: Device, location: OnChipCoordinate):
         addr = addr_arg
@@ -132,12 +131,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         util.INFO(f"Reading from device {device.id}")
-        core_loc = (
-            OnChipCoordinate.create(core_loc_str, device=device)
-            if core_loc_str
+        noc_loc = (
+            OnChipCoordinate.create(noc_loc_str, device=device)
+            if noc_loc_str
             else ui_state.current_location.change_device(device)
         )
-        do_burst_read(device, core_loc)
+        do_burst_read(device, noc_loc)
 
 
 # A helper to print the result of a single PCI read
