@@ -669,6 +669,11 @@ If not specified, it will be determined based on the separators used in the stri
 
 # device
 
+## UnsafeAccessException
+
+
+
+Exception raised when an unsafe memory access violation is detected.
 ## Device
 
 
@@ -755,3 +760,21 @@ Check if the verbosity level is supported and should be printed.
 
 
 ## TTFatalException
+
+
+
+
+
+# memory_access
+
+## RestrictedMemoryAccessError
+
+
+
+Raised when attempting to access memory outside of allowed regions
+(e.g., outside L1 or data private memory when restricted_access for them is is enabled).
+
+
+# umd_device
+
+## TimeoutDeviceRegisterError

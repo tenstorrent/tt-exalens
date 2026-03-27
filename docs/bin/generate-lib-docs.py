@@ -299,6 +299,9 @@ class FileParser:
         elif type(node_returns) == ast.BinOp:
             operator = self.operator_symbols.get(type(node_returns.op), "(Unknown operator)")
             return f"{self._resolve_node_returns(node_returns.left)} {operator} {self._resolve_node_returns(node_returns.right)}"
+        elif type(node_returns) in (ast.List, ast.Tuple):
+            elements = [self._resolve_node_returns(elt) for elt in node_returns.elts]
+            return f"[{', '.join(elements)}]"
         elif node_returns is None:
             return "None"
         else:

@@ -6,7 +6,6 @@ Usage:
   brxy [ <core-loc> ] [ <addr> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <device>]
 
 Arguments:
-  Docopt stores up to three positionals in order in the brackets above. Semantics (not the bracket names) are:
   core-loc      Optional. X-Y or R,C, or dram channel (e.g. ch3). Defaults to the current UI location when omitted.
   addr          Required. Address to read from (omit zero positionals to get a clear error).
   word-count    Optional. Number of words to read. Default: 1
