@@ -7,7 +7,7 @@ Usage:
   wxy <core-loc> <addr> <data> [--repeat <repeat>] [-d <device>]
 
 Description:
-  Writes a data word to address <addr> at <core-loc>, or at the current UI location when <core-loc> is omitted.
+  Writes a data word to address <addr> at <core-loc>, or at the current location when <core-loc> is omitted.
 
 Arguments:
   core-loc    Optional. X-Y or R,C location of a core, or dram channel (e.g. ch3). Defaults to the current UI location.
