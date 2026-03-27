@@ -5,7 +5,7 @@
 from functools import cache
 import tt_umd
 from ttexalens import util
-from ttexalens.context import Context
+from ttexalens.context import HardwareSession
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.noc_block import NocBlock
@@ -28,8 +28,8 @@ class QuasarDevice(Device):
     NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
     NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
 
-    def __init__(self, id: int, umd_device: UmdDevice, context: Context):
-        super().__init__(id, umd_device, context)
+    def __init__(self, id: int, umd_device: UmdDevice, session: HardwareSession):
+        super().__init__(id, umd_device, session)
 
     def is_quasar(self) -> bool:
         return True

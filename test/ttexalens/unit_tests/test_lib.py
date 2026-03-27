@@ -1224,7 +1224,7 @@ class TestRunElf(unittest.TestCase):
         assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug, got {type(risc_debug)}"
         rdbg: BabyRiscDebug = risc_debug
         assert rdbg.debug_hardware is not None, "Debug hardware is not available."
-        rloader = ElfLoader(rdbg)
+        rloader = ElfLoader(rdbg, self.context)
 
         elf = lib.parse_elf(elf_path)
         mem_access = MemoryAccess.create(risc_debug)
@@ -1501,7 +1501,7 @@ class TestCallStack(unittest.TestCase):
         except ValueError as e:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
-        self.loader = ElfLoader(self.risc_debug)
+        self.loader = ElfLoader(self.risc_debug, self.context)
 
         # Stop risc with reset
         self.risc_debug.set_reset_signal(True)

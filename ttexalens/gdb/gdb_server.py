@@ -19,7 +19,7 @@ from ttexalens.gdb.gdb_communication import (
 )
 from ttexalens.gdb.gdb_data import GdbProcess, GdbThreadId
 from ttexalens.gdb.gdb_file_server import GdbFileServer
-from ttexalens.context import Context
+from ttexalens.context import DebugSession
 from ttexalens import util as util
 from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.memory_access import RestrictedMemoryAccessError
@@ -54,7 +54,7 @@ class GdbThreadListPaged:
 # Class that serves gdb client requests
 # Gdb remote protocol documentation: https://sourceware.org/gdb/current/onlinedocs/gdb.html/Remote-Protocol.html
 class GdbServer(threading.Thread):
-    def __init__(self, context: Context, server: ServerSocket, error_stream: IO[str] | None = None):
+    def __init__(self, context: DebugSession, server: ServerSocket, error_stream: IO[str] | None = None):
         super().__init__(daemon=True)  # Spawn as daemon, so we don't block exit
         self.context = context  # TTExaLens context
         self.server = server  # server socket used for listening to incoming connections

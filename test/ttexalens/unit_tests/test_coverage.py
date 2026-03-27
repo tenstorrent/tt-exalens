@@ -87,7 +87,7 @@ class TestCoverage(unittest.TestCase):
         except ValueError as e:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
-        self.loader = ElfLoader(self.risc_debug)
+        self.loader = ElfLoader(self.risc_debug, self.context)
 
     def get_elf_name(self, elf: str):
         return os.path.join(self.elf_root, f"{elf}.{self.risc_name.lower()}.elf")
@@ -97,7 +97,7 @@ class TestCoverage(unittest.TestCase):
         elf = get_parsed_elf_file(elf_path)
         self.loader.run_elf(elf)
         with self.assertRaises(TTException) as cm:
-            dump_coverage(elf, self.location, "/tmp/callstack.release.gcda", "/tmp/callstack.release.gcno")
+            dump_coverage(elf, self.location, "/tmp/callstack.release.gcda", "/tmp/callstack.release.gcno", file_api=self.context.file_api)
             self.assertIn("__coverage_start not found", str(cm.exception))
 
     def test_coverage_not_finished(self):
@@ -105,7 +105,7 @@ class TestCoverage(unittest.TestCase):
         elf = get_parsed_elf_file(elf_path)
         self.loader.run_elf(elf)
         with self.assertRaises(TTException) as cm:
-            dump_coverage(elf, self.location, "/tmp/callstack.release.gcda", "/tmp/callstack.release.gcno")
+            dump_coverage(elf, self.location, "/tmp/callstack.release.gcda", "/tmp/callstack.release.gcno", file_api=self.context.file_api)
             self.assertIn("Kernel did not finish writing coverage data", str(cm.exception))
 
     @parameterized.expand(ELFS)
@@ -121,7 +121,7 @@ class TestCoverage(unittest.TestCase):
             gcda = os.path.join(temp_root, f"{basename}.gcda")
             gcno = os.path.join(temp_root, f"{basename}.gcno")
 
-            dump_coverage(elf, self.location, gcda, gcno)
+            dump_coverage(elf, self.location, gcda, gcno, file_api=self.context.file_api)
 
             # Check if the files match expectations: if they exist, and if the headers are well-formed.
             self.assertTrue(os.path.exists(gcda), f"{gcda}: file does not exist")

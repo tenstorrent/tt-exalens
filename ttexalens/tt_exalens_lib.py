@@ -13,7 +13,7 @@ from ttexalens import util
 from ttexalens.device import Device
 from ttexalens.tt_exalens_init import init_ttexalens
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.context import Context
+from ttexalens.context import Context, DebugSession, HardwareSession
 from ttexalens.elf import read_elf, ParsedElfFile
 from ttexalens.hardware.risc_debug import CallstackEntry
 from ttexalens.util import TTException, Verbosity, TRACE
@@ -62,16 +62,16 @@ def check_context(context: Context | None = None) -> Context:
     return init.GLOBAL_CONTEXT
 
 
-def check_noc_id(noc_id: int | None, context: Context) -> int:
+def check_noc_id(noc_id: int | None, session: HardwareSession | Context) -> int:
     if noc_id is None:
-        return 1 if context.use_noc1 else 0
+        return 1 if session.use_noc1 else 0
     assert noc_id in (0, 1), f"Invalid NOC ID {noc_id}. Expected 0 or 1."
     return noc_id
 
 
-def check_4B_mode(use_4B_mode: bool | None, context: Context) -> bool:
+def check_4B_mode(use_4B_mode: bool | None, session: HardwareSession | Context) -> bool:
     if use_4B_mode is None:
-        return context.use_4B_mode
+        return session.use_4B_mode
     return use_4B_mode
 
 
@@ -80,7 +80,7 @@ def validate_addr(addr: int) -> None:
         raise TTException("addr must be greater than or equal to 0.")
 
 
-def validate_device_id(device_id: int, context: Context) -> Device:
+def validate_device_id(device_id: int, context: Context | HardwareSession) -> Device:
     return context.find_device_by_id(device_id)
 
 
@@ -133,7 +133,7 @@ def read_word_from_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.context)
+    noc_id = check_noc_id(noc_id, coordinate.session)
 
     return coordinate.noc_read32(addr, noc_id, safe_mode)
 
@@ -168,8 +168,8 @@ def read_words_from_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.context)
-    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
+    noc_id = check_noc_id(noc_id, coordinate.session)
+    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.session)
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
@@ -207,8 +207,8 @@ def read_from_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.context)
-    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
+    noc_id = check_noc_id(noc_id, coordinate.session)
+    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.session)
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
@@ -242,8 +242,8 @@ def write_words_to_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.context)
-    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
+    noc_id = check_noc_id(noc_id, coordinate.session)
+    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.session)
 
     if isinstance(data, int):
         coordinate.noc_write32(addr, data, noc_id, safe_mode)
@@ -279,8 +279,8 @@ def write_to_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.context)
-    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
+    noc_id = check_noc_id(noc_id, coordinate.session)
+    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.session)
 
     if isinstance(data, list):
         data = bytes(data)
@@ -345,11 +345,12 @@ def load_elf(
         context = check_context(context)
         elf_file = read_elf(context.file_api, elf_file, require_debug_symbols=False)
 
+    context = check_context(context)
     assert locations, "No valid core locations provided."
     returns = []
     for loc in locations:
         risc_debug = loc.noc_block.get_risc_debug(risc_name, neo_id)
-        elf_loader = ElfLoader(risc_debug)
+        elf_loader = ElfLoader(risc_debug, context)
         start_address = elf_loader.load_elf(
             elf_file, return_start_address=return_start_address, verify_write=verify_write
         )
@@ -413,10 +414,11 @@ def run_elf(
         context = check_context(context)
         elf_file = read_elf(context.file_api, elf_file, require_debug_symbols=False)
 
+    context = check_context(context)
     assert locations, "No valid core locations provided."
     for loc in locations:
         risc_debug = loc.noc_block.get_risc_debug(risc_name, neo_id)
-        elf_loader = ElfLoader(risc_debug)
+        elf_loader = ElfLoader(risc_debug, context)
         elf_loader.run_elf(elf_file, verify_write=verify_write)
 
 
@@ -572,7 +574,7 @@ def write_register(
 
 
 @trace_api
-def parse_elf(elf_path: str, context: Context | None = None, require_debug_symbols: bool = True) -> ParsedElfFile:
+def parse_elf(elf_path: str, context: DebugSession | None = None, require_debug_symbols: bool = True) -> ParsedElfFile:
     """
     Reads the ELF file and returns a ParsedElfFile object.
     Args:
@@ -642,7 +644,7 @@ def callstack(
     max_depth: int = 100,
     stop_on_main: bool = True,
     device_id: int = 0,
-    context: Context | None = None,
+    context: DebugSession | None = None,
 ) -> list[CallstackEntry]:
     """
     Retrieves the callstack of the specified RISC core for a given ELF.
@@ -663,7 +665,6 @@ def callstack(
     """
 
     coordinate = convert_coordinate(location, device_id, context)
-    context = coordinate.context
 
     # If given a single string, convert to list
     if isinstance(elfs, str):
@@ -696,7 +697,7 @@ def coverage(
     gcda_path: str,
     gcno_copy_path: str | None = None,
     device_id: int = 0,
-    context: Context | None = None,
+    context: DebugSession | None = None,
 ) -> None:
     """
     Extract coverage data from the device.
@@ -710,8 +711,8 @@ def coverage(
         context (Context | None, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
     """
 
+    context = check_context(context)
     coordinate = convert_coordinate(location, device_id, context)
-    context = coordinate.context
     parsed_elf: ParsedElfFile
     if isinstance(elf, str):
         parsed_elf = parse_elf(elf, context)
@@ -720,7 +721,7 @@ def coverage(
 
     from ttexalens.coverage import dump_coverage
 
-    dump_coverage(parsed_elf, coordinate, gcda_path, gcno_copy_path)
+    dump_coverage(parsed_elf, coordinate, gcda_path, gcno_copy_path, file_api=context.file_api)
 
 
 @trace_api

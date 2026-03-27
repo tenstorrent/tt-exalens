@@ -7,7 +7,7 @@ from functools import cached_property
 import traceback
 
 from ttexalens import util
-from ttexalens.context import Context
+from ttexalens.context import HardwareSession
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.device import Device
@@ -494,8 +494,8 @@ class BabyRiscDebug(RiscDebug):
         return self.risc_info.noc_block.device
 
     @property
-    def context(self) -> Context:
-        return self.device._context
+    def session(self) -> HardwareSession:
+        return self.device._session
 
     def __write(self, addr, data):
         self.location.noc_write32(addr, data)
@@ -702,7 +702,7 @@ class BabyRiscDebug(RiscDebug):
         self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"), safe_mode=safe_mode)
 
     def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
-        safe_mode = safe_mode if safe_mode is not None else self.device._context.safe_mode
+        safe_mode = safe_mode if safe_mode is not None else self.device._session.safe_mode
         if safe_mode:
             self._validate_safe_access(address, size_bytes)
 
@@ -725,7 +725,7 @@ class BabyRiscDebug(RiscDebug):
         return bytes(result[address - aligned_start : address - aligned_start + size_bytes])
 
     def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None) -> None:
-        safe_mode = safe_mode if safe_mode is not None else self.device._context.safe_mode
+        safe_mode = safe_mode if safe_mode is not None else self.device._session.safe_mode
         if safe_mode:
             self._validate_safe_access(address, len(data))
 

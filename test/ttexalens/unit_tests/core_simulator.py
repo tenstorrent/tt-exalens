@@ -45,7 +45,7 @@ class RiscvCoreSimulator:
         self.program_base_address = self.risc_debug.baby_risc_info.get_code_start_address(
             self.risc_debug.register_store
         )
-        self.loader = ElfLoader(self.risc_debug)
+        self.loader = ElfLoader(self.risc_debug, self.context)
 
         # Initialize core in reset state
         self.set_reset(True)

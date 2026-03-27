@@ -5,7 +5,7 @@ import unittest
 from unittest.mock import Mock, patch
 from parameterized import parameterized
 import tt_umd
-from ttexalens.context import Context
+from ttexalens.context import HardwareSession
 from ttexalens.device import Device
 from ttexalens.umd_device import TimeoutDeviceRegisterError
 from ttexalens.coordinate import OnChipCoordinate
@@ -41,7 +41,7 @@ class TestNocFailoverDisabled(unittest.TestCase):
     def setUpClass(cls):
         """Set up mock objects once for all tests."""
         # Create mock context with failover disabled
-        cls.mock_context = Mock(spec=Context)
+        cls.mock_context = Mock(spec=HardwareSession)
         cls.mock_context.use_noc1 = False
         cls.mock_context.noc_failover = False
         cls.mock_context.use_4B_mode = True
@@ -289,18 +289,18 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
     def _create_device(self, use_noc1):
         """Helper to create a test device with specified NOC configuration."""
-        mock_context = Mock(spec=Context)
-        mock_context.use_noc1 = use_noc1
-        mock_context.noc_failover = True
-        mock_context.use_4B_mode = True
-        mock_context.dma_read_threshold = 24
-        mock_context.dma_write_threshold = 56
-        mock_context.safe_mode = True
+        mock_session = Mock(spec=HardwareSession)
+        mock_session.use_noc1 = use_noc1
+        mock_session.noc_failover = True
+        mock_session.use_4B_mode = True
+        mock_session.dma_read_threshold = 24
+        mock_session.dma_write_threshold = 56
+        mock_session.safe_mode = True
 
         with patch.object(Device, "_init_coordinate_systems"), patch.object(Device, "get_block"), patch.object(
             Device, "get_tensix_registers_description"
         ), patch.object(Device, "get_tensix_debug_bus_description"):
-            return Device(0, self.mock_umd_device, mock_context)  # type: ignore[abstract]
+            return Device(0, self.mock_umd_device, mock_session)  # type: ignore[abstract]
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ import tt_umd
 from typing import Callable, Iterable, Sequence, TypeVar
 
 from tabulate import tabulate
-from ttexalens.context import Context
+from ttexalens.context import HardwareSession
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.exceptions import CoordinateTranslationError, UnsafeAccessException
 from ttexalens.hardware.arc_block import ArcBlock
@@ -104,33 +104,33 @@ class Device:
 
     # Class method to create a Device object given device architecture
     @staticmethod
-    def create(device_id: int, context: Context):
-        umd_device = context.umd_api.get_device(device_id)
+    def create(device_id: int, session: HardwareSession):
+        umd_device = session.umd_api.get_device(device_id)
         arch = umd_device.arch
         match arch:
             case tt_umd.ARCH.WORMHOLE_B0:
                 from ttexalens.hardware.wormhole.device import WormholeDevice
 
-                return WormholeDevice(device_id, umd_device, context)
+                return WormholeDevice(device_id, umd_device, session)
 
             case tt_umd.ARCH.BLACKHOLE:
                 from ttexalens.hardware.blackhole.device import BlackholeDevice
 
-                return BlackholeDevice(device_id, umd_device, context)
+                return BlackholeDevice(device_id, umd_device, session)
 
             case tt_umd.ARCH.QUASAR:
                 from ttexalens.hardware.quasar.device import QuasarDevice
 
-                return QuasarDevice(device_id, umd_device, context)
+                return QuasarDevice(device_id, umd_device, session)
 
             case _:
                 raise RuntimeError(f"Architecture {arch} is not supported")
 
-    def __init__(self, id: int, umd_device: UmdDevice, context: Context):
+    def __init__(self, id: int, umd_device: UmdDevice, session: HardwareSession):
         self.id: int = id
         self.unique_id = umd_device.unique_id
         self._arch = umd_device.arch
-        self._context = context
+        self._session = session
         self._umd_device = umd_device
         self._soc_descriptor = umd_device.soc_descriptor
         self._has_jtag = umd_device.is_jtag_capable
@@ -140,7 +140,7 @@ class Device:
         # NOC queue used for failover, initialized based on context preference
         # When an operation is attempted, the first NOC in the list is used. If it fails, it is moved to the back of the list
         # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
-        self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
+        self._noc_to_use: list[int] = [1, 0] if session.use_noc1 else [0, 1]
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
 
     @property
@@ -157,7 +157,7 @@ class Device:
             self.on_noc_switch()
 
     def _with_noc_failover(self, noc_operation: Callable[[int], T], noc_id: int | None = None) -> T:
-        if noc_id is not None or not self._context.noc_failover:
+        if noc_id is not None or not self._session.noc_failover:
             selected_noc = noc_id if noc_id is not None else self._noc_to_use[0]
             return noc_operation(selected_noc)
 
@@ -190,14 +190,14 @@ class Device:
 
     @property
     def board_type(self) -> tt_umd.BoardType:
-        return self._context.cluster_descriptor.get_board_type(self.id)
+        return self._session.cluster_descriptor.get_board_type(self.id)
 
     @cached_property
     def local_device(self) -> Device:
         if self.is_local:
             return self
         local_tt_device = self._umd_device.get_local_tt_device()
-        for device in self._context.devices.values():
+        for device in self._session.devices.values():
             if device.is_local and device._umd_device.get_local_tt_device() == local_tt_device:
                 return device
         raise RuntimeError("Local device not found in context devices")
@@ -215,7 +215,7 @@ class Device:
     def remote_devices(self) -> list[Device]:
         assert self.is_local, "Only local devices can get remote devices"
         return [
-            device for device in self._context.devices.values() if not device.is_local and device.local_device == self
+            device for device in self._session.devices.values() if not device.is_local and device.local_device == self
         ]
 
     def _validate_noc_access_is_safe(
@@ -285,11 +285,11 @@ class Device:
         noc_x, noc_y = location._noc0_coord
 
         if use_4B_mode is None:
-            use_4B_mode = self._context.use_4B_mode
+            use_4B_mode = self._session.use_4B_mode
         if dma_threshold is None:
-            dma_threshold = self._context.dma_read_threshold
+            dma_threshold = self._session.dma_read_threshold
         if safe_mode is None:
-            safe_mode = self._context.safe_mode
+            safe_mode = self._session.safe_mode
 
         if safe_mode:
             self._validate_noc_access_is_safe(location, address, size_bytes, is_write=False)
@@ -318,11 +318,11 @@ class Device:
         noc_x, noc_y = location._noc0_coord
 
         if use_4B_mode is None:
-            use_4B_mode = self._context.use_4B_mode
+            use_4B_mode = self._session.use_4B_mode
         if dma_threshold is None:
-            dma_threshold = self._context.dma_write_threshold
+            dma_threshold = self._session.dma_write_threshold
         if safe_mode is None:
-            safe_mode = self._context.safe_mode
+            safe_mode = self._session.safe_mode
 
         if safe_mode:
             self._validate_noc_access_is_safe(location, address, len(data), is_write=True)
@@ -468,7 +468,7 @@ class Device:
     @cached_property
     def active_eth_block_locations(self) -> list[OnChipCoordinate]:
         active_channels: list[int] = []
-        for src_chip, channels in self._context.cluster_descriptor.get_ethernet_connections().items():
+        for src_chip, channels in self._session.cluster_descriptor.get_ethernet_connections().items():
             for src_chan, dest in channels.items():
                 dest_chip, dest_chan = dest
                 if dest_chip == self.id:

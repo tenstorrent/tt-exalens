@@ -47,7 +47,7 @@ from ttexalens.util import TTException
 from ttexalens.exceptions import CoordinateTranslationError, UnknownCoordinateSystemError
 
 if TYPE_CHECKING:
-    from ttexalens.context import Context
+    from ttexalens.context import HardwareSession
     from ttexalens.device import Device
     from ttexalens.hardware.noc_block import NocBlock
 
@@ -110,8 +110,8 @@ class OnChipCoordinate:
             raise UnknownCoordinateSystemError(input_type)
 
     @property
-    def context(self) -> Context:
-        return self._device._context
+    def session(self) -> HardwareSession:
+        return self._device._session
 
     @property
     def device(self) -> Device:

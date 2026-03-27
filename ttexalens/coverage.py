@@ -2,10 +2,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import TTException
 from ttexalens.elf import ParsedElfFile
 from ttexalens.memory_access import MemoryAccess
+
+if TYPE_CHECKING:
+    from ttexalens.server import FileAccessApi
 
 """
 Extract the coverage data from the device into a .gcda file.
@@ -25,6 +32,8 @@ def dump_coverage(
     location: OnChipCoordinate,
     gcda_path: str,
     gcno_copy_path: str | None = None,
+    *,
+    file_api: FileAccessApi,
 ) -> None:
 
     # Find coverage region in ELF.
@@ -67,9 +76,9 @@ def dump_coverage(
 
         # This points to the expected gcda file, which is in the same directory where the compiler placed the gcno,
         # so we just replace the extension and get the gcno path.
-        # We fetch it through context.file_api.get_binary in case this is a remote debugging session.
+        # We fetch it through file_api.get_binary in case this is a remote debugging session.
         gcno_path = filename[:-4] + "gcno"
-        with location.context.file_api.get_binary(gcno_path) as gcno_reader:
+        with file_api.get_binary(gcno_path) as gcno_reader:
             with open(gcno_copy_path, "wb") as f:
                 f.write(gcno_reader.read())
 

@@ -9,7 +9,7 @@ from functools import cached_property
 import re
 from typing import TYPE_CHECKING, Callable
 
-from ttexalens.context import Context
+from ttexalens.context import HardwareSession
 from ttexalens.pack_unpack_regfile import TensixDataFormat
 
 if TYPE_CHECKING:
@@ -180,8 +180,8 @@ class RegisterStore:
         return self.location._device
 
     @property
-    def context(self) -> Context:
-        return self.device._context
+    def session(self) -> HardwareSession:
+        return self.device._session
 
     @cached_property
     def _control_register_address(self) -> int:

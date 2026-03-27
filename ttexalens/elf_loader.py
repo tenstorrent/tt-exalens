@@ -2,11 +2,17 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
 from ttexalens import util
 from ttexalens.elf.parsed import ParsedElfFile
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.memory_access import MemoryAccess
+
+if TYPE_CHECKING:
+    from ttexalens.context import DebugSession
 
 
 class ElfLoader:
@@ -14,10 +20,10 @@ class ElfLoader:
     This class is used to load elf file to a RISC-V core.
     """
 
-    def __init__(self, risc_debug: RiscDebug):
+    def __init__(self, risc_debug: RiscDebug, debug_session: DebugSession):
         self.risc_debug = risc_debug
         self.location = risc_debug.risc_location.location
-        self.context = self.location.context
+        self._debug_session = debug_session
         self.mem_access = MemoryAccess.create(risc_debug)
 
     SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".gcov_info"]
@@ -195,7 +201,7 @@ class ElfLoader:
             util.ERROR(e)
             raise util.TTException(f"Error loading elf file {elf_path}")
 
-        self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
+        self._debug_session.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
 
     def load_elf(
