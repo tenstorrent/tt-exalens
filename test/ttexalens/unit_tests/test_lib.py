@@ -1488,6 +1488,8 @@ class TestCallStack(unittest.TestCase):
             self.risc_name = self.risc_debug.risc_location.risc_name
         except ValueError as e:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
+        except NotImplementedError as e:
+            self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
         self.loader = ElfLoader(self.risc_debug)
         self.l1_mem_access = MemoryAccess.create_l1(self.location)
