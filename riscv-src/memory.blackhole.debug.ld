@@ -10,6 +10,7 @@ TRISC_L0_LENGTH = 4K;
 NCRISC_L0_LENGTH = 8K;
 ERISC0_L0_LENGTH = 8K;
 ERISC1_L0_LENGTH = 8K;
+DRISC_L0_LENGTH = 8K;
 
 L1_BASE = 0x0;
 UNDEFINED = 0;
@@ -17,14 +18,21 @@ UNDEFINED = 0;
 /* The address space layout goes as follows:
  * [BRISC] [TRISCs] [NCRISC] (...) [L0]
  * LOADER_INIT regions are undefined, all data is in L1; only stack is in L0.
- * LOADER_CODE regions are undefined, as there is no NCRISC IMEM on Blackhole.
+ * LOADER_CODE regions are undefined, as there is no NCRISC IRAM on Blackhole.
  * LOCAL_DATA and CODE regions are spacious because of instrumentation and less optimized kernels.
  *
  * The address space layout for ETH goes as follows:
  * [ERISC0] [ERISC1] (...) [L0]
  * LOADER_INIT regions are undefined, all data is in L1; only stack is in L0.
- * LOADER_CODE regions are undefined, as there is no NCRISC IMEM on Blackhole.
+ * LOADER_CODE regions are undefined, as there is no IRAM on Blackhole.
  * LOCAL_DATA and CODE regions are spacious because of instrumentation and less optimized kernels.
+ *
+ * On DRAM, space layout is simple:
+ * [ERISC] (...) [L0]
+ * LOADER_INIT region is undefined, as no data is in L0.
+ * LOADER_CODE region is undefined, as no code is in IRAM on Blackhole.
+ * LOCAL_DATA and CODE regions are spacious because of instrumentation and less optimized kernels.
+ * L0 is only used for the stack.
  */
 
 MEMORY
@@ -37,6 +45,7 @@ MEMORY
     NCRISC_STACK_MEM        : ORIGIN = L0_BASE, LENGTH = NCRISC_L0_LENGTH
     ERISC0_STACK_MEM         : ORIGIN = L0_BASE, LENGTH = ERISC0_L0_LENGTH
     ERISC1_STACK_MEM         : ORIGIN = L0_BASE, LENGTH = ERISC1_L0_LENGTH
+    DRISC_STACK_MEM         : ORIGIN = L0_BASE, LENGTH = DRISC_L0_LENGTH
 
 
     /* L1 layout */
@@ -71,6 +80,12 @@ MEMORY
     ERISC1_GCOV_MEM         : ORIGIN = ORIGIN(ERISC1_LOCAL_DATA_MEM) + LENGTH(ERISC1_LOCAL_DATA_MEM), LENGTH = 8K
 
 
+    /* DRAM L1 layout */
+    DRISC_CODE              : ORIGIN = L1_BASE, LENGTH = 32K
+    DRISC_LOCAL_DATA_MEM    : ORIGIN = ORIGIN(DRISC_CODE) + LENGTH(DRISC_CODE), LENGTH = 32K
+    DRISC_GCOV_MEM          : ORIGIN = ORIGIN(DRISC_LOCAL_DATA_MEM) + LENGTH(DRISC_LOCAL_DATA_MEM), LENGTH = 8K
+
+
     /* (discarded) */
     BRISC_LOADER_INIT_MEM   : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
     BRISC_LOADER_CODE_MEM   : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
@@ -86,4 +101,6 @@ MEMORY
     ERISC0_LOADER_CODE_MEM  : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
     ERISC1_LOADER_INIT_MEM  : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
     ERISC1_LOADER_CODE_MEM  : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
+    DRISC_LOADER_INIT_MEM   : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
+    DRISC_LOADER_CODE_MEM   : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
 }
