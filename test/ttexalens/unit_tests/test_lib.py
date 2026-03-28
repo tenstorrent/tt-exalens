@@ -10,7 +10,7 @@ from datetime import timedelta
 
 from parameterized import parameterized, parameterized_class
 
-from test.ttexalens.unit_tests.test_base import get_parsed_elf_file, init_cached_test_context
+from test.ttexalens.unit_tests.test_base import get_core_location, get_parsed_elf_file, init_cached_test_context
 import ttexalens as lib
 from ttexalens import util
 from ttexalens.elf.parsed import ParsedElfFile
@@ -839,6 +839,9 @@ class TestSafeAccess(unittest.TestCase):
                     # Skip L1 on DRAM on Blackhole devices due to bug #tt-umd:1873
                     if device.is_blackhole() and block_name == "l1" and block.block_type == "dram":
                         continue
+                    # Skip control_regs on DRAM on Blackhole devices. It is safe to write, but not safe to write whatever you want
+                    if device.is_blackhole() and block_name == "control_regs" and block.block_type == "dram":
+                        continue
                     noc_addr = block_info.memory_block.address.noc_address
                     assert noc_addr is not None, "NOC address should not be None here"
                     size = block_info.memory_block.size
@@ -1448,6 +1451,7 @@ class TestARC(unittest.TestCase):
         {"location_desc": "FW0", "risc_name": "TRISC0"},
         {"location_desc": "FW0", "risc_name": "TRISC1"},
         {"location_desc": "FW0", "risc_name": "TRISC2"},
+        {"location_desc": "DRAM0", "risc_name": "DRISC"},
     ]
 )
 class TestCallStack(unittest.TestCase):
@@ -1472,27 +1476,11 @@ class TestCallStack(unittest.TestCase):
         cls.gdb_server.start()
 
     def setUp(self):
-        # Convert location_desc to location
-        if self.location_desc.startswith("ETH"):
-            # Ask device for all ETH cores and get first one
-            eth_blocks = self.device.idle_eth_blocks
-            location_index = int(self.location_desc[3:])
-            if len(eth_blocks) > location_index:
-                self.location = eth_blocks[location_index].location
-            else:
-                # If not found, we should skip the test
-                self.skipTest("ETH core is not available on this platform")
-        elif self.location_desc.startswith("FW"):
-            # Ask device for all ETH cores and get first one
-            eth_cores = self.device.get_block_locations(block_type="functional_workers")
-            location_index = int(self.location_desc[2:])
-            if len(eth_cores) > location_index:
-                self.location = eth_cores[location_index]
-            else:
-                # If not found, we should skip the test
-                self.skipTest("FW core is not available on this platform")
-        else:
-            self.fail(f"Unknown core description {self.location_desc}")
+        try:
+            self.location = get_core_location(self.location_desc, self.device)
+        except ValueError:
+            # If not found, we should skip the test
+            self.skipTest("Location is not available on this platform")
 
         noc_block = self.location._device.get_block(self.location)
         try:
@@ -1502,6 +1490,7 @@ class TestCallStack(unittest.TestCase):
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
         self.loader = ElfLoader(self.risc_debug)
+        self.l1_mem_access = MemoryAccess.create_l1(self.location)
 
         # Stop risc with reset
         self.risc_debug.set_reset_signal(True)
@@ -1538,7 +1527,7 @@ class TestCallStack(unittest.TestCase):
         assert text_section is not None
 
         address = text_section.address + text_section.size
-        lib.write_words_to_device(self.location, address, count)
+        self.l1_mem_access.write_word(address, count)
 
     CALLSTACK_ELFS = ["callstack.debug", "callstack.release", "callstack.coverage"]
     RECURSION_COUNT = [1, 10, 40]

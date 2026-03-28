@@ -20,32 +20,36 @@ class MemoryAccess(ABC):
     """
 
     @abstractmethod
-    def read(self, address: int, size_bytes: int) -> bytes:
+    def read(self, private_address: int, size_bytes: int) -> bytes:
         """
-        Read 'size_bytes' bytes from 'address' and return them as bytes.
+        Read 'size_bytes' bytes from 'private_address' and return them as bytes.
+        'private_address' is the address as seen from the core's private address space, which may be translated to a NOC address by the implementation.
         """
         pass
 
-    def read_word(self, address: int) -> int:
+    def read_word(self, private_address: int) -> int:
         """
-        Read a word from 'address' and return it as an integer.
+        Read a word from 'private_address' and return it as an integer.
+        'private_address' is the address as seen from the core's private address space, which may be translated to a NOC address by the implementation.
         """
-        data_bytes = self.read(address, 4)
+        data_bytes = self.read(private_address, 4)
         return int.from_bytes(data_bytes, byteorder="little")
 
     @abstractmethod
-    def write(self, address: int, data: bytes) -> None:
+    def write(self, private_address: int, data: bytes) -> None:
         """
-        Write 'data' bytes to 'address'.
+        Write 'data' bytes to 'private_address'.
+        'private_address' is the address as seen from the core's private address space, which may be translated to a NOC address by the implementation.
         """
         pass
 
-    def write_word(self, address: int, value: int) -> None:
+    def write_word(self, private_address: int, value: int) -> None:
         """
-        Write a word to 'address'.
+        Write a word to 'private_address'.
+        'private_address' is the address as seen from the core's private address space, which may be translated to a NOC address by the implementation.
         """
         data_bytes = value.to_bytes(4, byteorder="little")
-        self.write(address, data_bytes)
+        self.write(private_address, data_bytes)
 
     @staticmethod
     def create(
@@ -82,24 +86,34 @@ class L1MemoryAccess(MemoryAccess):
         l1 = location.noc_block.noc_memory_map.find_by_name("l1")
         if l1 is None:
             raise MemoryLayoutError(f"Could not find L1 memory block at location {location}", location)
+        if l1.memory_block.address.private_address is None:
+            raise MemoryLayoutError(f"Found L1 memory block without private address at location {location}", location)
         if l1.memory_block.address.noc_address is None:
             raise MemoryLayoutError(f"Found L1 memory block without NOC address at location {location}", location)
+        self.l1_block = l1.memory_block
 
-        self.base_address = l1.memory_block.address.noc_address
-        self.size = l1.memory_block.size
+    def _tranlate_to_noc_address(self, private_address: int) -> int:
+        assert self.l1_block.address.private_address is not None, "L1 memory block has no private address"
+        assert self.l1_block.address.noc_address is not None, "L1 memory block has no NOC address"
+        offset = private_address - self.l1_block.address.private_address
+        return self.l1_block.address.noc_address + offset
 
-    def read(self, address: int, size_bytes: int) -> bytes:
-        self.validate_access(address, size_bytes)
-        return self._location.noc_read(address, size_bytes)
+    def read(self, private_address: int, size_bytes: int) -> bytes:
+        self._validate_access(private_address, size_bytes)
+        noc_address = self._tranlate_to_noc_address(private_address)
+        return self._location.noc_read(noc_address, size_bytes)
 
-    def write(self, address: int, data: bytes) -> None:
-        self.validate_access(address, len(data))
-        self._location.noc_write(address, data)
+    def write(self, private_address: int, data: bytes) -> None:
+        self._validate_access(private_address, len(data))
+        noc_address = self._tranlate_to_noc_address(private_address)
+        self._location.noc_write(noc_address, data)
 
-    def validate_access(self, address: int, size_bytes: int) -> None:
-        if address < self.base_address or address + size_bytes > self.base_address + self.size:
+    def _validate_access(self, private_address: int, size_bytes: int) -> None:
+        base_address = self.l1_block.address.private_address
+        assert base_address is not None, "L1 memory block has no private address"
+        if private_address < base_address or private_address + size_bytes > base_address + self.l1_block.size:
             raise RestrictedMemoryAccessError(
-                access_start=address, access_end=address + size_bytes - 1, location=self._location
+                access_start=private_address, access_end=private_address + size_bytes - 1, location=self._location
             )
 
 
@@ -116,11 +130,11 @@ class FixedMemoryAccess(MemoryAccess):
     def __init__(self, data: bytes):
         self._data = data
 
-    def read(self, address: int, size_bytes: int) -> bytes:
-        return self._data[address : address + size_bytes]
+    def read(self, private_address: int, size_bytes: int) -> bytes:
+        return self._data[private_address : private_address + size_bytes]
 
-    def write(self, address: int, data: bytes) -> None:
-        raise ReadOnlyMemoryError(address, len(data))
+    def write(self, private_address: int, data: bytes) -> None:
+        raise ReadOnlyMemoryError(private_address, len(data))
 
 
 class RiscDebugMemoryAccess(MemoryAccess):
@@ -149,25 +163,25 @@ class RiscDebugMemoryAccess(MemoryAccess):
         self._restricted_access = restricted_access  # restrict access to only L1 and Data Private Memory
         self._safe_mode = safe_mode  # additional safety checks to prevent access to known unsafe memory regions
 
-    def read(self, address: int, size_bytes: int) -> bytes:
-        self.validate_access(address, size_bytes)
+    def read(self, private_address: int, size_bytes: int) -> bytes:
+        self._validate_access(private_address, size_bytes)
 
         if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
-                return self._risc_debug.read_memory_bytes(address, size_bytes, safe_mode=self._safe_mode)
+                return self._risc_debug.read_memory_bytes(private_address, size_bytes, safe_mode=self._safe_mode)
         else:
-            return self._risc_debug.read_memory_bytes(address, size_bytes, safe_mode=self._safe_mode)
+            return self._risc_debug.read_memory_bytes(private_address, size_bytes, safe_mode=self._safe_mode)
 
-    def write(self, address: int, data: bytes) -> None:
-        self.validate_access(address, len(data))
+    def write(self, private_address: int, data: bytes) -> None:
+        self._validate_access(private_address, len(data))
 
         if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
-                self._risc_debug.write_memory_bytes(address, data, safe_mode=self._safe_mode)
+                self._risc_debug.write_memory_bytes(private_address, data, safe_mode=self._safe_mode)
         else:
-            self._risc_debug.write_memory_bytes(address, data, safe_mode=self._safe_mode)
+            self._risc_debug.write_memory_bytes(private_address, data, safe_mode=self._safe_mode)
 
-    def validate_access(self, address: int, size_bytes: int) -> None:
+    def _validate_access(self, private_address: int, size_bytes: int) -> None:
         if self._restricted_access:
             l1: MemoryBlock = self._risc_debug.get_l1()
             assert l1.address.private_address is not None, "L1 memory block has no private address"
@@ -178,17 +192,19 @@ class RiscDebugMemoryAccess(MemoryAccess):
                     data_private_memory.address.private_address is not None
                 ), "Data Private Memory block has no private address"
 
-            address_end = address + size_bytes - 1
-            inside_l1: bool = l1.contains_private_address(address) and l1.contains_private_address(address_end)
+            address_end = private_address + size_bytes - 1
+            inside_l1: bool = l1.contains_private_address(private_address) and l1.contains_private_address(address_end)
             inside_data_private_memory: bool = (
                 data_private_memory is not None
-                and data_private_memory.contains_private_address(address)
+                and data_private_memory.contains_private_address(private_address)
                 and data_private_memory.contains_private_address(address_end)
             )
 
             if not inside_l1 and not inside_data_private_memory:
                 raise RestrictedMemoryAccessError(
-                    access_start=address, access_end=address_end, location=self._risc_debug.risc_location.location
+                    access_start=private_address,
+                    access_end=address_end,
+                    location=self._risc_debug.risc_location.location,
                 )
 
 
@@ -203,12 +219,14 @@ class CachedReadMemoryAccess(MemoryAccess):
         self._cached_address = cached_address
         self._cached_data = cached_data
 
-    def read(self, address: int, size_bytes: int) -> bytes:
-        if address >= self._cached_address and address + size_bytes <= self._cached_address + len(self._cached_data):
-            offset = address - self._cached_address
+    def read(self, private_address: int, size_bytes: int) -> bytes:
+        if private_address >= self._cached_address and private_address + size_bytes <= self._cached_address + len(
+            self._cached_data
+        ):
+            offset = private_address - self._cached_address
             return self._cached_data[offset : offset + size_bytes]
         else:
-            return self._base_mem_access.read(address, size_bytes)
+            return self._base_mem_access.read(private_address, size_bytes)
 
-    def write(self, address: int, data: bytes) -> None:
-        self._base_mem_access.write(address, data)
+    def write(self, private_address: int, data: bytes) -> None:
+        self._base_mem_access.write(private_address, data)
