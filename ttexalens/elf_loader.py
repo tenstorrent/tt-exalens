@@ -65,7 +65,7 @@ class ElfLoader:
         """
         self.mem_access.write(address, data)
 
-    def read_block_through_debug(self, address, byte_count):
+    def read_block_through_debug(self, address: int, byte_count: int) -> bytes:
         """
         Reads a block of data from a given address through the debug interface.
         """
