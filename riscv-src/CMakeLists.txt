@@ -33,7 +33,7 @@ set(RISCV_OBJECT "${CMAKE_SOURCE_DIR}/build/riscv-src/obj")
 
 # Define architectures, applications, and cores
 set(RISCV_ARCHITECTURES "wormhole" "blackhole")
-set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc" "erisc0" "erisc1")
+set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc" "erisc0" "erisc1" "drisc")
 set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "edge_mem_test")
 
 # Create the object file output directory
@@ -157,8 +157,8 @@ foreach(CORE ${RISCV_CORES})
                 # Skip invalid combinations of blackhole architecture with erisc cores
                 continue()
             endif()
-            if (ARCH STREQUAL "wormhole" AND (CORE MATCHES "^erisc0$" OR CORE MATCHES "^erisc1$"))
-                # Skip invalid combinations of wormhole architecture with erisc0 and erisc1 cores
+            if (ARCH STREQUAL "wormhole" AND (CORE MATCHES "^erisc0$" OR CORE MATCHES "^erisc1$" OR CORE MATCHES "^drisc$"))
+                # Skip invalid combinations of wormhole architecture with erisc0, erisc1, and drisc cores
                 continue()
             endif()
             foreach(BUILD_TYPE debug release coverage)
