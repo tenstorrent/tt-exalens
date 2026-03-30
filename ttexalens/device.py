@@ -86,7 +86,7 @@ class Device:
 
     @cached_property
     def debuggable_cores(self):
-        block_types_with_cores = ["functional_workers", "eth"]
+        block_types_with_cores = ["functional_workers", "eth", "dram"]
         cores: list[RiscDebug] = []
         for block_type in block_types_with_cores:
             for noc_block in self.get_blocks(block_type):

@@ -320,7 +320,7 @@ class BlackholeDramBlock(BlackholeNocBlock):
         self.noc_memory_map.add_blocks(
             [
                 MemoryMapBlockInfo("dram_bank", self.dram_bank, safe_to_write=True),
-                MemoryMapBlockInfo("l1", self.l1.just_noc_address(), safe_to_write=True),
+                MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("tx_stream0_regs", self.tx_stream0_regs.just_noc_address()),
                 MemoryMapBlockInfo("tx_stream1_regs", self.tx_stream1_regs.just_noc_address()),
                 MemoryMapBlockInfo("tx_control_regs", self.tx_control_regs.just_noc_address()),
@@ -333,7 +333,7 @@ class BlackholeDramBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("gddr_phy_regs", self.gddr_phy_regs.just_noc_address(), safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs.just_noc_address(), safe_to_write=True),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs.just_noc_address()),
-                MemoryMapBlockInfo("control_regs", self.control_regs.just_noc_address()),
+                MemoryMapBlockInfo("control_regs", self.control_regs.just_noc_address(), safe_to_write=True),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs.just_noc_address()),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs.just_noc_address()),
                 MemoryMapBlockInfo("noc_overlay", self.noc_overlay.just_noc_address()),
