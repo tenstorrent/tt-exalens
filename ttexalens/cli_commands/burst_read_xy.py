@@ -95,10 +95,15 @@ def _resolve_brxy_positionals(slots: list[str], device: Device) -> tuple[OnChipC
             )
     try:
         addr = int(addr_str, 0)
+        if addr < 0:
+            raise util.TTException(f"brxy: address must be non-negative; got {addr_str!r}.")
     except ValueError:
         raise util.TTException(f"brxy: address must be an integer; got {addr_str!r}.")
     try:
         word_count = int(word_count_str, 0) if word_count_str else 1
+        if word_count < 1:
+            util.WARN(f"brxy: word count must be a positive integer, defaulting to 1.")
+            word_count = 1
     except ValueError:
         raise util.TTException(f"brxy: word count must be an integer; got {word_count_str!r}.")
     return noc_loc, addr, word_count
