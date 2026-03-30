@@ -1653,6 +1653,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_template_arguments(self, elf_name):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
         self.set_recursion_count(parsed_elf, 0xFFFFFFFF)
@@ -1675,6 +1678,9 @@ class TestCallStack(unittest.TestCase):
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_template_arguments2(self, elf_name):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
         elf_path = self.get_elf_path(elf_name)
         parsed_elf = get_parsed_elf_file(elf_path)
         self.set_recursion_count(parsed_elf, 0xFFFFFFFE)
