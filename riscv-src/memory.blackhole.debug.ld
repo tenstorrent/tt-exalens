@@ -28,7 +28,7 @@ UNDEFINED = 0;
  * LOCAL_DATA and CODE regions are spacious because of instrumentation and less optimized kernels.
  *
  * On DRAM, space layout is simple:
- * [ERISC] (...) [L0]
+ * [DRISC] (...) [L0]
  * LOADER_INIT region is undefined, as no data is in L0.
  * LOADER_CODE region is undefined, as no code is in IRAM on Blackhole.
  * LOCAL_DATA and CODE regions are spacious because of instrumentation and less optimized kernels.
