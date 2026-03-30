@@ -157,6 +157,7 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(0x22222222, g_global_struct.uint_pointer[1].read_value())
         self.assertEqual(2, g_global_struct.enum_class_field.read_value())
         self.assertEqual(20, g_global_struct.enum_type_field.read_value())
+        self.assertEqual(-123456789, g_global_struct.signed_int_field.read_value())
 
     def verify_global_struct(self, g_global_struct):
         self.assertEqual(0xAA, g_global_struct.base_field1)
@@ -208,6 +209,7 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual("EnumClass::VALUE_C", str(g_global_struct.enum_class_field))
         self.assertEqual(20, g_global_struct.enum_type_field)
         self.assertEqual("EnumType::TYPE_Y", str(g_global_struct.enum_type_field))
+        self.assertEqual(-123456789, g_global_struct.signed_int_field)
 
     def test_elf_variable_low_level(self):
         variable_die = self.parsed_elf.variables["g_global_struct"]
