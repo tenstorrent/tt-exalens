@@ -1350,7 +1350,8 @@ read               r        Reads and prints a block of data from address 'addre
 riscv              rv       Commands for RISC-V debugging:
 search-memory      search   Searches for a byte pattern in device memory. Pattern elements are encoded as
 tensix-reg         reg      Prints/writes to the specified register, at the specified location and device.
-write-xy           wxy      Writes a data word to address <addr> at <noc-loc>, or at the current location when <noc-loc> is omitte...
+write              w        Writes a block of data to address 'address'.
+write-xy           wxy      Writes a data word to address <addr> at <noc-loc>, or at the current location when <noc-loc> is omitted.
 device             d        Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
 dump-coverage      cov      Get coverage data for a given ELF. Extract the gcda from the given core
 gdb                gdb      Starts or stops gdb server.
@@ -2132,6 +2133,84 @@ Output:
 ```
 Value of register DebugRegisterDescription(base_address=DeviceAddress(private_address=4289798144, noc_address=4289798144, bar0_add...
 18
+```
+
+
+### Common options
+
+- `--device, -d` = **\<device-id\>**: Device ID. Defaults to the current device.
+- `--loc, -l` = **\<loc\>**: Grid location. Defaults to the current location.
+
+
+
+
+
+
+## w
+
+### Usage
+
+```
+write <address> <data>... [ --width=<width> ] [ --repeat=<repeat> ] [ --unsafe ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ]
+```
+
+
+### Description
+
+Writes a block of data to address 'address'.
+
+
+### Arguments
+
+- `address`: Address to write to
+- `data`: One or more data values to write
+
+
+### Options
+
+- `--width` = **\<width\>**: Number of bytes per data value, or 'auto' to use the minimum power-of-2 width that fits all values. [default: auto]
+- `--repeat` = **\<repeat\>**: Number of times to repeat the write, advancing the address each time. [default: 1]
+- `-r` = **\<risc_name\>**: RISC core name if you want to write memory that is not exposed on NOC.
+- `--unsafe`: Experts mode, allow writing everything (bypass safety checks).
+
+
+### Examples
+
+Write 1 word (4 bytes) to address 0
+```
+write 0x0 0xdeadbeef
+```
+Output:
+```
+Device 0 [0x2618320aa] | Location 1-1 (0,0) | Block l1 : 0x00000000 (4 bytes written)
+```
+Write 3 bytes to address 0
+```
+write 0x0 0x1 0x2 0x3
+```
+Output:
+```
+Device 0 [0x2618320aa] | Location 1-1 (0,0) | Block l1 : 0x00000000 (3 bytes written)
+```
+Write 4 bytes to address 0
+```
+write 0x0 0x12 0x34 --width 2
+```
+Output:
+```
+Device 0 [0x2618320aa] | Location 1-1 (0,0) | Block l1 : 0x00000000 (4 bytes written)
+```
+Write the same word to 4 consecutive addresses
+```
+write 0x0 0xdeadbeef --repeat 4
+```
+Output:
+```
+Device 0 [0x2618320aa] | Location 1-1 (0,0) | Block l1 : 0x00000000 (16 bytes written)
+```
+Write 1 word to brisc private data memory
+```
+write 0xFFB0000 0xdeadbeef -r brisc
 ```
 
 
