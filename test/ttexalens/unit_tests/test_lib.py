@@ -1571,6 +1571,9 @@ class TestCallStack(unittest.TestCase):
         self.compare_callstacks(callstack, gdb_callstack)
 
     def test_callstack(self):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
         # No need to test multiple versions here, they are tested in test_callstack_with_parsing. Here we just test that callstack works with elf path.
         elf_name = "callstack.release"
         recursion_count = 1
