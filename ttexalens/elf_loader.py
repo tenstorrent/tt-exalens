@@ -104,7 +104,7 @@ class ElfLoader:
         else:
             self.location.noc_write(private_address, data)
 
-    def read_block(self, address, byte_count):
+    def read_block(self, private_address: int, byte_count: int) -> bytes:
         """
         Reads a block of bytes from a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
         the debug interface to read them.
@@ -113,17 +113,19 @@ class ElfLoader:
         private_code_memory = self.risc_debug.get_code_private_memory()
         if (
             private_data_memory is not None
-            and ElfLoader.__inside_private_memory(private_data_memory, address)
+            and ElfLoader.__inside_private_memory(private_data_memory, private_address)
             and private_data_memory.address.noc_address is None
         ) or (
             private_code_memory is not None
-            and ElfLoader.__inside_private_memory(private_code_memory, address)
+            and ElfLoader.__inside_private_memory(private_code_memory, private_address)
             and private_code_memory.address.noc_address is None
         ):
             # Use debug interface
-            return self.read_block_through_debug(address, byte_count)
+            return self.read_block_through_debug(private_address, byte_count)
+        elif self.l1_block is not None and self.l1_block.memory_block.contains_private_address(private_address):
+            return self.l1_mem_access.read(private_address, byte_count)
         else:
-            return self.location.noc_read(address, byte_count)
+            return self.location.noc_read(private_address, byte_count)
 
     def remap_address(self, address: int, loader_data: int | None, loader_code: int | None):
         data_private_memory = self.risc_debug.get_data_private_memory()
