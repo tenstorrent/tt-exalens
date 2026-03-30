@@ -12,6 +12,7 @@ from elftools.dwarf.locationlists import (
     BaseAddressEntry as ListBaseAddressEntry,
 )
 from elftools.dwarf.ranges import BaseAddressEntry, RangeEntry
+from elftools.dwarf.constants import DW_ATE_signed, DW_ATE_signed_char, DW_ATE_signed_fixed
 from functools import cached_property
 import os
 import re
@@ -122,6 +123,12 @@ class ElfDie:
         """
         parent = self.parent
         name = self.name
+
+        if self.category == "subprogram" and "DW_AT_abstract_origin" in self.attributes:
+            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
+            die = self.cu.dwarf.get_die(dwarf_die)
+            if die is not None:
+                return die.path  # type: ignore
 
         if self.category == "subprogram" and "DW_AT_specification" in self.attributes:
             dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
@@ -468,6 +475,32 @@ class ElfDie:
             return self.cu.get_die(parent)
         return None
 
+    @cached_property
+    def template_value_parameters(self) -> list[ElfDie]:
+        if "DW_AT_specification" in self.attributes:
+            die = self.get_DIE_from_attribute("DW_AT_specification")
+            if die is not None:
+                return die.template_value_parameters  # type: ignore
+        elif "DW_AT_abstract_origin" in self.attributes:
+            die = self.get_DIE_from_attribute("DW_AT_abstract_origin")
+            if die is not None:
+                return die.template_value_parameters  # type: ignore
+        result: list[ElfDie] = []
+        for child in self.iter_children():
+            if child.tag_is("template_value_param"):
+                result.append(child)
+        if self.parent is not None:
+            result.extend(self.parent.template_value_parameters)
+        return result
+
+    @cached_property
+    def is_signed_type(self) -> bool:
+        if "DW_AT_encoding" in self.attributes:
+            encoding = self.attributes["DW_AT_encoding"].value
+            if encoding in [DW_ATE_signed, DW_ATE_signed_char, DW_ATE_signed_fixed]:
+                return True
+        return False
+
     ###########################################
     # Propertied for debugging and inspection #
     ###########################################
@@ -584,7 +617,11 @@ class ElfDie:
         from ttexalens.memory_access import FixedMemoryAccess
 
         # TODO: Check if it is variable (global, local, member, argument)
-        if not self.tag_is("formal_parameter") and not self.tag_is("variable"):
+        if (
+            not self.tag_is("formal_parameter")
+            and not self.tag_is("variable")
+            and not self.tag_is("template_value_param")
+        ):
             return None
 
         util.DEBUG(f"Evaluating location expression for variable: {self.name}")
@@ -606,9 +643,9 @@ class ElfDie:
                 try:
                     const_value = int(const_value)
                     size = variable_type.size if variable_type.size is not None else 4
-                    memory = const_value.to_bytes(size, byteorder="little")
-                except Exception:
-                    util.DEBUG("    Failed to convert constant value to integer")
+                    memory = const_value.to_bytes(size, byteorder="little", signed=variable_type.is_signed_type)
+                except Exception as e:
+                    util.DEBUG(f"    Failed to convert constant value to integer: {e}")
                     return None
 
             # We explicitly set address to 0 to indicate that this is not an addressable variable

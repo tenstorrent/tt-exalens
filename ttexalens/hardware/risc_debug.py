@@ -80,6 +80,7 @@ class CallstackEntry:
     cfa: int | None = None
     arguments: list[CallstackEntryVariable] = field(default_factory=list)
     locals: list[CallstackEntryVariable] = field(default_factory=list)
+    template_parameters: list[CallstackEntryVariable] = field(default_factory=list)
 
 
 class RiscDebug:
@@ -404,18 +405,26 @@ class RiscDebug:
         callstack = callstack if callstack is not None else []
         arguments: list[CallstackEntryVariable] = []
         locals: list[CallstackEntryVariable] = []
+        template_parameters: list[CallstackEntryVariable] = []
 
         if frame_inspection is not None:
             frame_inspection.pc = adjusted_pc
 
         def extract_variables(
-            function_die: ElfDie, arguments: list[CallstackEntryVariable], locals: list[CallstackEntryVariable]
+            function_die: ElfDie,
+            arguments: list[CallstackEntryVariable],
+            locals: list[CallstackEntryVariable],
+            template_parameters: list[CallstackEntryVariable],
         ):
             for child in function_die.iter_children():
                 if child.tag_is("formal_parameter"):
                     arguments.append(CallstackEntryVariable(child, child.read_value(frame_inspection)))
                 elif child.tag_is("variable"):
                     locals.append(CallstackEntryVariable(child, child.read_value(frame_inspection)))
+            for template_value_param in function_die.template_value_parameters:
+                template_parameters.append(
+                    CallstackEntryVariable(template_value_param, template_value_param.read_value(frame_inspection))
+                )
 
         # Skipping lexical blocks since we do not print them
         if function_die is not None and (
@@ -425,38 +434,56 @@ class RiscDebug:
 
             # Skipping lexical blocks since we do not print them
             while function_die.category == "lexical_block" and function_die.parent is not None:
-                extract_variables(function_die, arguments, locals)
+                extract_variables(function_die, arguments, locals, template_parameters)
                 function_die = function_die.parent
 
-            extract_variables(function_die, arguments, locals)
+            extract_variables(function_die, arguments, locals, template_parameters)
             callstack.append(
-                CallstackEntry(pc, function_die.name, file, line, column, frame_pointer, arguments, locals)
+                CallstackEntry(
+                    pc, function_die.name, file, line, column, frame_pointer, arguments, locals, template_parameters
+                )
             )
             arguments = []
             locals = []
+            template_parameters = []
             file, line, column = function_die.call_file_info
             while function_die.category == "inlined_function":
                 assert function_die.parent is not None
                 function_die = function_die.parent
                 # Skipping lexical blocks since we do not print them
                 while function_die.category == "lexical_block" and function_die.parent is not None:
-                    extract_variables(function_die, arguments, locals)
+                    extract_variables(function_die, arguments, locals, template_parameters)
                     function_die = function_die.parent
 
-                extract_variables(function_die, arguments, locals)
+                extract_variables(function_die, arguments, locals, template_parameters)
                 callstack.append(
-                    CallstackEntry(None, function_die.name, file, line, column, frame_pointer, arguments, locals)
+                    CallstackEntry(
+                        None,
+                        function_die.name,
+                        file,
+                        line,
+                        column,
+                        frame_pointer,
+                        arguments,
+                        locals,
+                        template_parameters,
+                    )
                 )
                 arguments = []
                 locals = []
+                template_parameters = []
                 file, line, column = function_die.call_file_info
         elif function_die is not None and function_die.category == "subprogram":
-            extract_variables(function_die, arguments, locals)
+            extract_variables(function_die, arguments, locals, template_parameters)
             callstack.append(
-                CallstackEntry(pc, function_die.path, file, line, column, frame_pointer, arguments, locals)
+                CallstackEntry(
+                    pc, function_die.path, file, line, column, frame_pointer, arguments, locals, template_parameters
+                )
             )
         else:
-            callstack.append(CallstackEntry(pc, None, file, line, column, frame_pointer, arguments, locals))
+            callstack.append(
+                CallstackEntry(pc, None, file, line, column, frame_pointer, arguments, locals, template_parameters)
+            )
         return callstack, function_die
 
     def get_callstack(
@@ -511,11 +538,13 @@ class RiscDebug:
                 # Prepare for next iteration
                 cfa = frame_pointer
                 return_address = frame_description.read_register(1, cfa)
-                frame_pointer = frame_description.read_previous_cfa(cfa)
                 if return_address is None:
                     break
                 pc = return_address
                 frame_inspection = FrameInspection(self, elf.loaded_offset, frame_description, cfa)
+
+                # Get the caller's frame description BEFORE computing the caller's CFA,
+                # because the CFA offset comes from the caller's FDE, not the current one.
                 frame_description = elf.frame_info.get_frame_description(pc, self)
 
                 # If we do not get frame description from current elf check in others
@@ -523,5 +552,10 @@ class RiscDebug:
                     new_elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, self)
                     if frame_description is not None and new_elf is not None:
                         elf = new_elf
+
+                if frame_description is not None:
+                    frame_pointer = frame_description.read_previous_cfa(cfa)
+                else:
+                    frame_pointer = None
 
         return callstack

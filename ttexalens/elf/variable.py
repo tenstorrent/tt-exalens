@@ -196,7 +196,7 @@ class ElfVariable:
         elif type.name == "bool":
             return bool(int.from_bytes(value_bytes, byteorder="little"))
         else:
-            return int.from_bytes(value_bytes, byteorder="little")
+            return int.from_bytes(value_bytes, byteorder="little", signed=type.is_signed_type)
 
     def write_value(self, value: int | float | bool, check_data_loss: bool = True) -> None:
         # Check that type_die is a basic type
@@ -231,10 +231,10 @@ class ElfVariable:
         elif type.name == "bool":
             value_bytes = (1 if value else 0).to_bytes(type.size, byteorder="little")
         else:
-            value_bytes = int(value).to_bytes(type.size, byteorder="little")
+            value_bytes = int(value).to_bytes(type.size, byteorder="little", signed=type.is_signed_type)
             if check_data_loss:
                 # Verify no data loss
-                unpacked_value = int.from_bytes(value_bytes, byteorder="little")
+                unpacked_value = int.from_bytes(value_bytes, byteorder="little", signed=type.is_signed_type)
                 if unpacked_value != value:
                     raise DataLossError(value, type.name)
 

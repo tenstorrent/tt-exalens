@@ -1562,6 +1562,9 @@ class TestCallStack(unittest.TestCase):
         self.compare_callstacks(callstack, gdb_callstack)
 
     def test_callstack(self):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
         # No need to test multiple versions here, they are tested in test_callstack_with_parsing. Here we just test that callstack works with elf path.
         elf_name = "callstack.release"
         recursion_count = 1
@@ -1637,11 +1640,59 @@ class TestCallStack(unittest.TestCase):
             pc = self.risc_debug.read_gpr(32)
         callstack: list[CallstackEntry] = lib.top_callstack(pc, parsed_elf, None, self.context)
 
-        self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
+        self.assertEqual(len(callstack), expected_f1_on_callstack_count + 1)
         for i in range(0, expected_f1_on_callstack_count):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
-        self.assertEqual(callstack[expected_f1_on_callstack_count + 1].function_name, "main")
+
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_template_arguments(self, elf_name):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0xFFFFFFFF)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+        self.assertEqual(len(callstack), 6)
+        self.assertEqual(callstack[0].function_name, "halt")
+        self.assertEqual(callstack[1].function_name, "f1")
+        self.assertEqual(callstack[2].function_name, "f1")
+        self.assertEqual(callstack[3].function_name, "recurse")
+        self.assertEqual(callstack[4].function_name, "template_test::TemplateClass<3>::static_method<-1>")
+        self.assertEqual(len(callstack[4].template_parameters), 2)
+        self.assertEqual(callstack[4].template_parameters[0].name, "FunctionT1")
+        self.assertEqual(callstack[4].template_parameters[0].value, -1)
+        self.assertEqual(callstack[4].template_parameters[1].name, "ClassT1")
+        self.assertEqual(callstack[4].template_parameters[1].value, 3)
+        self.assertEqual(callstack[5].function_name, "main")
+
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_template_arguments2(self, elf_name):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0xFFFFFFFE)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+        self.assertEqual(len(callstack), 5)
+        self.assertEqual(callstack[0].function_name, "halt")
+        self.assertEqual(callstack[1].function_name, "f1")
+        self.assertEqual(callstack[2].function_name, "recurse")
+        self.assertEqual(callstack[3].function_name, "template_test::TemplateClass<4>::static_method<-3>")
+        self.assertEqual(len(callstack[3].template_parameters), 2)
+        self.assertEqual(callstack[3].template_parameters[0].name, "FunctionT1")
+        self.assertEqual(callstack[3].template_parameters[0].value, -3)
+        self.assertEqual(callstack[3].template_parameters[1].name, "ClassT1")
+        self.assertEqual(callstack[3].template_parameters[1].value, 4)
+        self.assertEqual(callstack[4].function_name, "main")
 
     @parameterized.expand(
         [

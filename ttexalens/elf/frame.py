@@ -63,8 +63,11 @@ class FrameDescription:
                 if not register_index in self.current_fde_entry:
                     return current_cfa + offset
 
-                # Just read stored value of the register in current frame
-                return self.read_register(register_index, current_cfa)
+                # Read stored value of the register and apply the CFA offset
+                saved_value = self.read_register(register_index, current_cfa)
+                if saved_value is not None:
+                    return saved_value + offset
+                return None
 
         # We don't know how to calculate CFA, return 0 which will stop callstack evaluation
         return None
