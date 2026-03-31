@@ -78,9 +78,11 @@ def _resolve_brxy_positionals(slots: list[str], device: Device) -> tuple[OnChipC
         # Two positional arguments -> noc-loc, addr or addr, word-count
         case 2:
             try:
-                noc_loc, addr_str = OnChipCoordinate.create(slots[0], device=device), slots[1]
+                noc_loc = OnChipCoordinate.create(slots[0], device=device)
+                addr_str = slots[1]
             except util.TTException:
-                addr_str, word_count_str = slots[0], slots[1]
+                addr_str = slots[0]
+                word_count_str = slots[1]
         # Three positional arguments -> noc-loc, addr, word-count
         case 3:
             try:
