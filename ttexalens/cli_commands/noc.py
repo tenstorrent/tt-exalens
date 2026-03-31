@@ -3,6 +3,7 @@
 
 """
 Usage:
+    noc [-d <device>] [--noc <noc-id>] [-l <loc>] [-s]
     noc status [-d <device>] [--noc <noc-id>] [-l <loc>] [-s]
     noc all [-d <device>] [-l <loc>] [-s]
     noc register (<reg-names> | --search <reg-pattern> [--max <max-regs>]) [-d <device>] [--noc <noc-id>] [-l <loc>] [-s]
@@ -21,6 +22,7 @@ Options:
 
 Description:
     Displays NOC (Network on Chip) registers.
+        • "noc" is a shortcut for "noc status".
         • "noc status" prints status registers for transaction counters.
         • "noc all" prints all registers.
         • "noc register <reg-names>" prints specific register(s) by name.
@@ -365,7 +367,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             formatter.print_device_header(device, loc)
 
-            if dopt.args["status"]:
+            if dopt.args["status"] or (not dopt.args["all"] and not dopt.args["register"]):
                 if dopt.args["--noc"]:
                     # If a specific NOC ID was specified, only display that one
                     display_noc_status_registers(loc, device, noc_ids[0], simple_print)

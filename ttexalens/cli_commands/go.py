@@ -3,10 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-    go [-m <mode>] [-n <noc>] [ -d <device> ] [ -l <loc> ]
+    go [-m <mode>] [-n <noc>] [ -d <device> ] [ -l <noc-loc> ]
+    go <noc-loc> [-m <mode>] [-n <noc>] [ -d <device> ]
 
 Description:
     Sets the current device/location/noc/4B mode.
+
+Arguments:
+    noc-loc     Optional. X-Y or R,C, or dram channel (e.g. ch3). Use interchangeably with -l <loc>.
 
 Options:
     -m <mode>    Use 4B mode for communication with the device. [0: False, 1: True]
@@ -32,25 +36,29 @@ command_metadata = CommandMetadata(
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
+    args = dopt.args
 
-    if dopt.args["-n"] is not None:
-        noc = int(dopt.args["-n"])
+    noc_loc_str: str | None = args["<noc-loc>"]
+
+    if args["-n"] is not None:
+        noc = int(args["-n"])
         if noc not in [0, 1]:
             util.ERROR("NOC must be 0 or 1")
             return
         ui_state.context.use_noc1 = noc == 1
 
-    if dopt.args["-m"] is not None:
-        use_4B_mode = int(dopt.args["-m"])
+    if args["-m"] is not None:
+        use_4B_mode = int(args["-m"])
         if use_4B_mode not in [0, 1]:
             util.ERROR("4B mode must be 0 or 1")
             return
         ui_state.context.use_4B_mode = True if use_4B_mode == 1 else False
-    device: Device
-    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
-        ui_state.current_device_id = device.id
-        loc: OnChipCoordinate
-        for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            ui_state.current_location = loc
-            break
-        break
+    device: Device = next(dopt.for_each(CommonCommandOptions.Device, context, ui_state))
+    ui_state.current_device_id = device.id
+
+    loc: OnChipCoordinate = (
+        OnChipCoordinate.create(noc_loc_str, device=device)
+        if noc_loc_str
+        else next(dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device))
+    )
+    ui_state.current_location = loc

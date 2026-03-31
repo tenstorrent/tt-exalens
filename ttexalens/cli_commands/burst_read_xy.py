@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  brxy <core-loc> <addr> [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <D>...]
+  brxy [ <noc-loc> ] [ <addr> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <device>]
 
 Arguments:
-  core-loc      Either X-Y or R,C location of a core, or dram channel (e.g. ch3)
-  addr          Address to read from
-  word-count    Number of words to read. Default: 1
+  noc-loc       Optional. X-Y or R,C, or dram channel (e.g. ch3). Defaults to the current noc location when omitted.
+  addr          Required. Address to read from (omit zero positionals to get a clear error).
+  word-count    Optional. Number of words to read. Default: 1
 
 Options:
   --sample=<N>  Number of seconds to sample for. [default: 0] (single read)
@@ -16,20 +16,22 @@ Options:
   -o <O>        Address offset. Optional and repeatable.
 
 Description:
-  Reads and prints a block of data from address 'addr' at core <core-loc>.
+  Reads a block of data at <addr> on <noc-loc>, or at the current location when <noc-loc> is omitted.
 
 Examples:
-  brxy 0,0 0x0 1                          # Read 1 word from address 0
-  brxy 0,0 0x0 16                         # Read 16 words from address 0
-  brxy 0,0 0x0 32 --format i8             # Prints 32 bytes in i8 format
-  brxy 0,0 0x0 32 --format i8 --sample 5  # Sample for 5 seconds
-  brxy ch0 0x0 16                         # Read 16 words from dram channel 0
+  brxy 0x0                                      # 1 word at 0x0, current noc location
+  brxy 0x0 16                                   # 16 words at 0x0, current noc location
+  brxy 0,0 0x0                                  # 1 word at 0x0, location 0,0
+  brxy 0,0 0x0 16                               # 16 words at 0x0, location 0,0
+  brxy 0,0 0x0 32 --format i8                   # 32 words, i8 format
+  brxy 0,0 0x0 32 --format i8 --sample 5        # Sample for 5 seconds
+  brxy ch0 0x0 16                               # 16 words at 0x0, dram channel 0
 """
 
 import time
-from docopt import docopt
 
 from ttexalens.context import Context
+from ttexalens.device import Device
 from ttexalens.memory_map import MemoryMap
 from ttexalens.uistate import UIState
 
@@ -47,31 +49,83 @@ command_metadata = CommandMetadata(
 )
 
 
+def _brxy_docopt_ordered_slots(args: dict) -> list[str]:
+    """Left-filled docopt slots; map to t0,t1,t2 by length, not by key name."""
+    slots: list[str] = []
+    for key in ("<noc-loc>", "<addr>", "<word-count>"):
+        v = args.get(key)
+        if not v:
+            break
+        slots.append(v)
+    return slots
+
+
+def _resolve_brxy_positionals(slots: list[str], device: Device) -> tuple[OnChipCoordinate | None, int, int]:
+    """
+    Interpret t0,t1,t2 from docopt's left-filled optional positionals.
+    0 → error (addr required). 1 → addr only. 2 → (noc-loc, addr) if t0 is a noc location or dram channel, else (addr, word-count).
+    3 → noc-loc, addr, word-count (strict order).
+    """
+    noc_loc, addr, word_count = None, None, None
+    addr_str, word_count_str = None, None
+    match len(slots):
+        # No positional arguments -> error
+        case 0:
+            raise util.TTException("brxy: address omitted; give at least one positional argument (the address).")
+        # One positional argument -> addr only
+        case 1:
+            addr_str = slots[0]
+        # Two positional arguments -> noc-loc, addr or addr, word-count
+        case 2:
+            try:
+                noc_loc = OnChipCoordinate.create(slots[0], device=device)
+                addr_str = slots[1]
+            except util.TTException:
+                addr_str = slots[0]
+                word_count_str = slots[1]
+        # Three positional arguments -> noc-loc, addr, word-count
+        case 3:
+            try:
+                noc_loc, addr_str, word_count_str = OnChipCoordinate.create(slots[0], device=device), slots[1], slots[2]
+            except util.TTException:
+                raise util.TTException(
+                    f"brxy: first argument must be a valid noc location or dram channel; got {slots[0]!r}."
+                )
+        case _:
+            raise util.TTException(
+                f"brxy: at most three positional arguments (noc-loc, address, word-count); got {len(slots)}: {' '.join(slots)}."
+            )
+    try:
+        addr = int(addr_str, 0)
+        if addr < 0:
+            raise util.TTException(f"brxy: address must be non-negative; got {addr_str!r}.")
+    except ValueError:
+        raise util.TTException(f"brxy: address must be an integer; got {addr_str!r}.")
+    try:
+        word_count = int(word_count_str, 0) if word_count_str else 1
+        if word_count < 1:
+            util.WARN(f"brxy: word count must be a positive integer, defaulting to 1.")
+            word_count = 1
+    except ValueError:
+        raise util.TTException(f"brxy: word count must be an integer; got {word_count_str!r}.")
+    return noc_loc, addr, word_count
+
+
 def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     args = dopt.args
 
-    location_str = args["<core-loc>"]
+    devices = list(dopt.for_each(CommonCommandOptions.Device, context, ui_state))
+    slots = _brxy_docopt_ordered_slots(args)
+    raw_noc_loc, addr_arg, word_count = _resolve_brxy_positionals(slots, devices[0])
     offsets = args["-o"]
     sample = float(args["--sample"]) if args["--sample"] else 0
-    word_count = int(args["<word-count>"]) if args["<word-count>"] else 0
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
         raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
-    addr_arg = args["<addr>"]
-    size_bytes_arg = 4
-    try:
-        # If we can parse the address as a number, do it. Otherwise, it's a variable name.
-        addr_arg = int(addr_arg, 0)
-    except ValueError:
-        pass
 
-    def process_device(device_id: int):
-        location = OnChipCoordinate.create(location_str, device=context.find_device_by_id(device_id))
-
-        addr, size_bytes = addr_arg, size_bytes_arg
-
-        size_words = ((size_bytes + 3) // 4) if size_bytes else 1
+    def do_burst_read(device: Device, location: OnChipCoordinate):
+        addr = addr_arg
 
         for offset in offsets:
             addr += offset
@@ -79,20 +133,16 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         print_a_burst_read(
             location,
             addr,
-            word_count=word_count if word_count > 0 else size_words,
+            word_count=word_count,
             sample=sample,
             print_format=format,
             context=context,
         )
 
-    devices = args["-d"]
-    if devices:
-        for device in devices:
-            did = int(device, 0)
-            util.INFO(f"Reading from device {did}")
-            process_device(did)
-    else:
-        process_device(ui_state.current_device_id)
+    for device in devices:
+        util.INFO(f"Reading from device {device.id}")
+        noc_loc = raw_noc_loc.change_device(device) if raw_noc_loc else ui_state.current_location.change_device(device)
+        do_burst_read(device, noc_loc)
 
 
 # A helper to print the result of a single PCI read
