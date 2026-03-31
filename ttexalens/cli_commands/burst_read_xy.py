@@ -115,8 +115,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
     args = dopt.args
 
+    devices = list(dopt.for_each(CommonCommandOptions.Device, context, ui_state))
     slots = _brxy_docopt_ordered_slots(args)
-    raw_noc_loc, addr_arg, word_count = _resolve_brxy_positionals(slots, ui_state.current_location.device)
+    raw_noc_loc, addr_arg, word_count = _resolve_brxy_positionals(slots, devices[0])
     offsets = args["-o"]
     sample = float(args["--sample"]) if args["--sample"] else 0
     format = args["--format"] if args["--format"] else "hex32"
@@ -138,7 +139,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             context=context,
         )
 
-    for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
+    for device in devices:
         util.INFO(f"Reading from device {device.id}")
         noc_loc = raw_noc_loc.change_device(device) if raw_noc_loc else ui_state.current_location.change_device(device)
         do_burst_read(device, noc_loc)
