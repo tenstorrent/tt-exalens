@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-    go [-m <mode>] [-n <noc>] [ -d <device> ] [ -l <loc> ]
+    go [-m <mode>] [-n <noc>] [ -d <device> ] [ -l <noc-loc> ]
     go <noc-loc> [-m <mode>] [-n <noc>] [ -d <device> ]
 
 Description:
