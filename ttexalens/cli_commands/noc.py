@@ -22,6 +22,7 @@ Options:
 
 Description:
     Displays NOC (Network on Chip) registers.
+        • "noc" is a shortcut for "noc status".
         • "noc status" prints status registers for transaction counters.
         • "noc all" prints all registers.
         • "noc register <reg-names>" prints specific register(s) by name.
