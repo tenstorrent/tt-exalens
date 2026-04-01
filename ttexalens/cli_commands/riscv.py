@@ -173,6 +173,7 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
                 # is most probably in an invalid state, though a core stuck in a very tight polling
                 # loop can also appear the same way.
                 _PC_SAMPLES = 5
+                first_pc = None
                 try:
                     first_pc = risc.get_pc()
                     running = False
@@ -181,12 +182,13 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
                             running = True
                             break
                 except RiscHaltError:
-                    util.INFO(f"  POTENTIALLY INVALID STATE - {where}")
+                    pc_info = f" PC=0x{first_pc:08x}" if first_pc is not None else ""
+                    util.INFO(f"  POTENTIALLY INVALID STATE{pc_info} - {where}")
                 else:
                     if running:
                         util.INFO(f"  RUNNING - {where}")
                     else:
-                        util.INFO(f"  POTENTIALLY INVALID STATE - {where}")
+                        util.INFO(f"  POTENTIALLY INVALID STATE PC=0x{first_pc:08x} - {where}")
 
     elif args["reset"]:
         if args["1"]:
