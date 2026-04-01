@@ -260,23 +260,32 @@ class OnChipCoordinate:
             coord_str (str): The string representation of the coordinate.
             device (Device): The device object representing the chip.
             coord_type (str, optional): The type of coordinate system used in the string.
-                If not specified, it will be determined based on the separators used in the string.
+                If not specified, it will be inferred from the format:
+                - X-Y format: "translated" if the coordinate is a valid translated coordinate,
+                  otherwise "noc0". This inference only works on Wormhole, where translated
+                  coordinates occupy a higher address range distinct from noc0. On Blackhole,
+                  translated and noc0 coordinates overlap, so the type cannot be inferred
+                  and must be specified explicitly.
+                - R,C format: defaults to "logical".
+                - DRAM channel format: always "logical".
 
         Returns:
             OnChipCoordinate: The created coordinate object.
 
         Raises:
-            Exception: If the coordinate format is unknown or invalid.
+            TTException: If the coordinate format is unknown or invalid.
 
         Supported coordinate formats:
-            - X-Y format: The coordinates are separated by a hyphen ("-"). Example: "10-20"
-            - R,C format: The coordinates are separated by a comma (","). Example: "10,20"
+            - X-Y format: The coordinates are separated by a hyphen ("-"). Example: "5-10".
+              Core type is set to "any".
+            - [core_type]R,C format: The coordinates are separated by a comma (",").
+              An optional leading letter selects the core type by matching the first character
+              of the device's core types (e.g., "t0,1" for tensix, "d0,0" for dram).
+              If omitted, core type defaults to "tensix". Example: "5,10" or "d0,0".
             - DRAM channel format: The coordinate starts with "CH" followed by the channel number.
-              Example: "CH1"
-
-        Notes:
-            - If the coordinate format is X-Y or R,C, the coordinates will be converted to integers.
-            - If the coordinate format is DRAM channel, the corresponding NOC0 coordinates will be used.
+              The channel number becomes the x coordinate and y is set to 0, producing a
+              logical dram coordinate. For example, "CH3" is equivalent to "d3,0" (dram logical
+              coordinate x=3, y=0).
         """
 
         if "-" in coord_str:
