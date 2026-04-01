@@ -169,7 +169,12 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
             else:
                 try:
                     # There is no debug register to detect invalid state directly.
-                    # Temporarily halting is the only way to verify the core can be halted.
+                    # Temporarily halting is the only way to verify the core can be halted,
+                    # but this is a side-effecting operation that may be unsafe on some
+                    # architectures (e.g., WH and BH). A safer alternative would be to
+                    # sample the PC multiple times and check whether it is advancing or
+                    # stuck in a loop, but that approach cannot distinguish an invalid
+                    # state from a tight polling loop in valid firmware.
                     risc.halt()
                     risc.cont()
                     util.INFO(f"  RUNNING - {where}")
