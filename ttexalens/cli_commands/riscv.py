@@ -174,11 +174,14 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
                 # loop can also appear the same way.
                 _PC_SAMPLES = 5
                 first_pc = None
+                last_pc = None
                 try:
                     first_pc = risc.get_pc()
+                    last_pc = first_pc
                     running = False
                     for _ in range(_PC_SAMPLES - 1):
-                        if risc.get_pc() != first_pc:
+                        last_pc = risc.get_pc()
+                        if last_pc != first_pc:
                             running = True
                             break
                 except RiscHaltError:
@@ -186,7 +189,7 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
                     util.INFO(f"  POTENTIALLY INVALID STATE{pc_info} - {where}")
                 else:
                     if running:
-                        util.INFO(f"  RUNNING - {where}")
+                        util.INFO(f"  RUNNING PC=0x{last_pc:08x} - {where}")
                     else:
                         util.INFO(f"  POTENTIALLY INVALID STATE PC=0x{first_pc:08x} - {where}")
 
