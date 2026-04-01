@@ -44,6 +44,8 @@ Examples:
   riscv wchpt setw 0 0xc          # Set a write watchpoint
 """
 
+import time
+
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
@@ -167,19 +169,24 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
                 PC = risc.get_pc()
                 util.INFO(f"  HALTED PC=0x{PC:08x} - {where}")
             else:
+                # Sample the PC multiple times to check if the core is advancing.
+                # This avoids an unsafe halt/continue probe on some architectures (e.g., WH and BH).
+                # Note: a core stuck in a tight polling loop will also show a constant PC,
+                # so this cannot always distinguish that from a truly invalid state.
+                _PC_SAMPLES = 5
+                _PC_SAMPLE_INTERVAL = 0.001  # seconds between samples
                 try:
-                    # There is no debug register to detect invalid state directly.
-                    # Temporarily halting is the only way to verify the core can be halted,
-                    # but this is a side-effecting operation that may be unsafe on some
-                    # architectures (e.g., WH and BH). A safer alternative would be to
-                    # sample the PC multiple times and check whether it is advancing or
-                    # stuck in a loop, but that approach cannot distinguish an invalid
-                    # state from a tight polling loop in valid firmware.
-                    risc.halt()
-                    risc.cont()
-                    util.INFO(f"  RUNNING - {where}")
+                    pcs = []
+                    for _ in range(_PC_SAMPLES):
+                        pcs.append(risc.get_pc())
+                        time.sleep(_PC_SAMPLE_INTERVAL)
                 except RiscHaltError:
                     util.INFO(f"  INVALID STATE - {where}")
+                else:
+                    if len(set(pcs)) > 1:
+                        util.INFO(f"  RUNNING - {where}")
+                    else:
+                        util.INFO(f"  INVALID STATE - {where}")
 
     elif args["reset"]:
         if args["1"]:
