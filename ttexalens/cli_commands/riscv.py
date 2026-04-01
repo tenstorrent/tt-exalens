@@ -47,6 +47,7 @@ Examples:
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.exceptions import RiscHaltError
 from ttexalens.uistate import UIState
 
 from ttexalens import util as util
@@ -75,7 +76,10 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
 
     if args["halt"]:
         util.INFO(f"Halting {where}")
-        risc.halt()
+        try:
+            risc.halt()
+        except RiscHaltError:
+            util.ERROR(f"  INVALID STATE - {where} (core cannot be halted)")
 
     elif args["step"]:
         util.INFO(f"Stepping {where}")
@@ -163,7 +167,14 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
                 PC = risc.get_pc()
                 util.INFO(f"  HALTED PC=0x{PC:08x} - {where}")
             else:
-                util.INFO(f"  RUNNING - {where}")
+                try:
+                    # There is no debug register to detect invalid state directly.
+                    # Temporarily halting is the only way to verify the core can be halted.
+                    risc.halt()
+                    risc.cont()
+                    util.INFO(f"  RUNNING - {where}")
+                except RiscHaltError:
+                    util.INFO(f"  INVALID STATE - {where}")
 
     elif args["reset"]:
         if args["1"]:
