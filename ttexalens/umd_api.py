@@ -80,7 +80,10 @@ class UmdApi:
 
         UmdApi.select_noc_id(1 if initialize_with_noc1 else 0)
         if simulation_directory is not None:
-            tt_device = tt_umd.create_simulation_tt_device(simulation_directory)
+            if simulation_directory.endswith(".so"):
+                tt_device = tt_umd.TTSimTTDevice(simulation_directory)
+            else:
+                tt_device = tt_umd.RtlSimTTDevice(simulation_directory)
             soc_descriptor = tt_device.get_soc_descriptor()
             # Fix for simulator
             for core in soc_descriptor.get_cores(tt_umd.CoreType.TENSIX):
