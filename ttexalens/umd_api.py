@@ -80,6 +80,7 @@ class UmdApi:
 
         UmdApi.select_noc_id(1 if initialize_with_noc1 else 0)
         if simulation_directory is not None:
+            tt_device: tt_umd.TTDevice
             if simulation_directory.endswith(".so"):
                 tt_device = tt_umd.TTSimTTDevice.create(simulation_directory)
             else:
