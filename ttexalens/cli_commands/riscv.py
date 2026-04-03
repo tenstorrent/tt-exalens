@@ -47,6 +47,7 @@ Examples:
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.exceptions import RiscHaltError
 from ttexalens.uistate import UIState
 
 from ttexalens import util as util
@@ -75,7 +76,10 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
 
     if args["halt"]:
         util.INFO(f"Halting {where}")
-        risc.halt()
+        try:
+            risc.halt()
+        except RiscHaltError:
+            util.ERROR(f"  INVALID STATE - {where} (core cannot be halted)")
 
     elif args["step"]:
         util.INFO(f"Stepping {where}")
@@ -163,7 +167,29 @@ def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, r
                 PC = risc.get_pc()
                 util.INFO(f"  HALTED PC=0x{PC:08x} - {where}")
             else:
-                util.INFO(f"  RUNNING - {where}")
+                # Sample the PC up to N times to check if the core is advancing.
+                # This avoids an unsafe halt/continue probe on some architectures (e.g., WH and BH).
+                # We exit early as soon as the PC changes. If all samples are identical, the core
+                # is most probably in an invalid state, though a core stuck in a very tight polling
+                # loop can also appear the same way.
+                _PC_SAMPLES = 5
+                first_pc = None
+                last_pc = None
+                try:
+                    first_pc = risc.get_pc()
+                    last_pc = first_pc
+                    for _ in range(_PC_SAMPLES - 1):
+                        last_pc = risc.get_pc()
+                        if last_pc != first_pc:
+                            break
+                except RiscHaltError:
+                    pc_info = f" PC=0x{first_pc:08x}" if first_pc is not None else ""
+                    util.INFO(f"  POTENTIALLY INVALID STATE{pc_info} - {where}")
+                else:
+                    if last_pc != first_pc:
+                        util.INFO(f"  RUNNING PC=0x{last_pc:08x} - {where}")
+                    else:
+                        util.INFO(f"  POTENTIALLY INVALID STATE PC=0x{first_pc:08x} - {where}")
 
     elif args["reset"]:
         if args["1"]:
