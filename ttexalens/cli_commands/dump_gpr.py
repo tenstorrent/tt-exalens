@@ -23,6 +23,7 @@ import traceback
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.exceptions import RiscHaltError
 import ttexalens.tt_exalens_lib as lib
 from ttexalens.hardware.baby_risc_debug import get_register_index, get_register_name
 from ttexalens.hardware.risc_debug import CallstackEntry, RiscLocation
@@ -74,7 +75,12 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
         halted_state[risc_name] = str(already_halted)
 
         if not already_halted:
-            risc.halt()  # We must halt the core to read the registers
+            try:
+                risc.halt()  # We must halt the core to read the registers
+            except RiscHaltError:
+                halted_state[risc_name] = "invalid"
+                util.ERROR(f"Core {risc_name} is in INVALID STATE - cannot be halted.")
+                continue
 
         if risc.is_halted():
             reg_value[risc_name] = {}
