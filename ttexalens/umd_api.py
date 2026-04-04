@@ -81,16 +81,19 @@ class UmdApi:
         UmdApi.select_noc_id(1 if initialize_with_noc1 else 0)
         if simulation_directory is not None:
             tt_device: tt_umd.TTDevice
-            if simulation_directory.endswith(".so"):
-                tt_device = tt_umd.TTSimTTDevice.create(simulation_directory)
+            is_ttsim = simulation_directory.endswith(".so")
+            if is_ttsim:
+                tt_device = tt_umd.create_simulation_tt_device(simulation_directory)
+                soc_descriptor = tt_umd.SocDescriptor(tt_device)
+                # ttsim: skip core reset (SOFT_RESET register not simulated)
             else:
                 tt_device = tt_umd.RtlSimulationTTDevice.create(simulation_directory)
-            soc_descriptor = tt_device.get_soc_descriptor()
-            # Fix for simulator
-            for core in soc_descriptor.get_cores(tt_umd.CoreType.TENSIX):
-                core_noc0 = soc_descriptor.translate_coord_to(core, tt_umd.CoordSystem.NOC0)
-                tt_device.noc_write32(core_noc0.x, core_noc0.y, 0, 0x6F)
-                tt_device.send_tensix_risc_reset(tt_umd.tt_xy_pair(core.x, core.y), deassert=True)
+                soc_descriptor = tt_device.get_soc_descriptor()
+                # RTL sim: reset all tensix cores
+                for core in soc_descriptor.get_cores(tt_umd.CoreType.TENSIX):
+                    core_noc0 = soc_descriptor.translate_coord_to(core, tt_umd.CoordSystem.NOC0)
+                    tt_device.noc_write32(core_noc0.x, core_noc0.y, 0, 0x6F)
+                    tt_device.send_tensix_risc_reset(tt_umd.tt_xy_pair(core.x, core.y), deassert=True)
             self.devices[0] = UmdDevice(tt_device, 0, 0, soc_descriptor=soc_descriptor, is_simulation=True)
             cluster_descriptor_content = create_simulation_cluster_descriptor(self.devices[0].arch)
             self.cluster_descriptor = tt_umd.ClusterDescriptor.create_from_yaml_content(cluster_descriptor_content)

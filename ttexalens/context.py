@@ -39,6 +39,10 @@ class Context:
         self.file_api = file_api
         self.short_name = short_name
         self.use_4B_mode: bool = use_4B_mode
+        # DMA transfers not supported on BH in current UMD — disable by raising threshold
+        if any(d.arch == tt_umd.ARCH.BLACKHOLE for d in umd_api.devices.values() if hasattr(d, 'arch')):
+            dma_read_threshold = 2**31
+            dma_write_threshold = 2**31
         self.dma_read_threshold: int = dma_read_threshold
         self.dma_write_threshold: int = dma_write_threshold
 
