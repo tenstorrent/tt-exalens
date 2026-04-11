@@ -97,11 +97,18 @@ class WormholeArcBlock(ArcBlock):
             self.register_store_noc0 = RegisterStore(register_store_noc0_initialization_remote, self.location)
             self.register_store_noc1 = RegisterStore(register_store_noc1_initialization_remote, self.location)
 
+        self.arc_reset_regs = MemoryBlock(size=0x200, address=DeviceAddress(noc_address=0x880030000))
+        self.arc_csm = MemoryBlock(size=0x80000, address=DeviceAddress(noc_address=0x810000000))
+        self.arc_rom = MemoryBlock(size=0x30000, address=DeviceAddress(noc_address=0x880000000))
+
         self.noc_regs = MemoryBlock(
             size=0x10000, address=DeviceAddress(private_address=0xFFFB20000, noc_address=0xFFFB20000)
         )
         self.noc_memory_map.add_blocks(
             [
+                MemoryMapBlockInfo("arc_reset_regs", self.arc_reset_regs, safe_to_write=True),
+                MemoryMapBlockInfo("arc_csm", self.arc_csm, safe_to_write=True),
+                MemoryMapBlockInfo("arc_rom", self.arc_rom, safe_to_write=True),
                 MemoryMapBlockInfo("noc_regs", self.noc_regs),
             ]
         )

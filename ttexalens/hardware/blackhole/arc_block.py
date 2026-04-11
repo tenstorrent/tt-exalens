@@ -89,8 +89,16 @@ class BlackholeArcBlock(ArcBlock):
             self.register_store_noc1 = RegisterStore(register_store_noc1_initialization_remote, self.location)
             self.noc0_regs = MemoryBlock(size=0x10000, address=DeviceAddress(noc_address=0x80050000))
             self.noc1_regs = MemoryBlock(size=0x10000, address=DeviceAddress(noc_address=0x80058000))
+
+        self.arc_reset_regs = MemoryBlock(size=0x200, address=DeviceAddress(noc_address=0x80030000))
+        self.arc_csm = MemoryBlock(size=0x80000, address=DeviceAddress(noc_address=0x10000000))
+        self.arc_rom = MemoryBlock(size=0x30000, address=DeviceAddress(noc_address=0x80000000))
+
         self.noc_memory_map.add_blocks(
             [
+                MemoryMapBlockInfo("arc_reset_regs", self.arc_reset_regs, safe_to_write=True),
+                MemoryMapBlockInfo("arc_csm", self.arc_csm, safe_to_write=True),
+                MemoryMapBlockInfo("arc_rom", self.arc_rom, safe_to_write=True),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
             ]
