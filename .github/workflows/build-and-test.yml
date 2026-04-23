@@ -128,6 +128,11 @@ jobs:
           JOB_ID="${{ github.run_id }}_ubuntu_${{ inputs.ubuntu-version }}_${{ matrix.runner-info.arch }}_${{ matrix.runner-info.board }}"
           echo "test_report_path=report_${JOB_ID}.xml" >> "$GITHUB_OUTPUT"
 
+      - name: Start ttexalens
+        run: |
+          tt-exalens &
+          echo "TTEXALENS_PID=$!" >> $GITHUB_ENV
+
       - name: Run Python tests for ttexalens library (using NOC0)
         run: |
           python3 -m xmlrunner discover -v -t . -s test/ttexalens -p '*test*.py' \
@@ -161,3 +166,8 @@ jobs:
           # Change to the wheel tests directory so that we are certain we don't import dev files
           cd test/wheel
           ./run-wheel.sh
+
+      - name: Stop ttexalens
+        if: always()
+        run: |
+          kill $TTEXALENS_PID || true
