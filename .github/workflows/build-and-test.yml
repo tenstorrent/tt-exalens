@@ -147,13 +147,13 @@ jobs:
         run: |
           export TTEXALENS_TESTS_USE_NOC1=1
           python3 tt-exalens.py < /dev/null & # Workaround due to bug: #999
-          python3 -m unittest discover -v -t . -s test/ttexalens -p *test*.py
+          python3 -m unittest discover -v -t . -s test/ttexalens -p *test*.py > /dev/null
 
       - name: Run Python tests for TTExaLens app (using NOC1)
         run: |
           export TTEXALENS_TESTS_USE_NOC1=1
           python3 tt-exalens.py < /dev/null & # Workaround due to bug: #999
-          python3 -m unittest discover -v -t . -s test/app -p *test*.py
+          python3 -m unittest discover -v -t . -s test/app -p *test*.py > /dev/null
 
       - name: Install wheel
         run: |
