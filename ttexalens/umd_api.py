@@ -86,11 +86,17 @@ class UmdApi:
             else:
                 tt_device = tt_umd.RtlSimulationTTDevice.create(simulation_directory)
             soc_descriptor = tt_device.get_soc_descriptor()
-            # Fix for simulator
+            # Fix for simulator: write an infinite-loop stub to each Tensix core's reset vector
+            # and take all cores out of reset. Downstream test harnesses then re-assert specific
+            # cores, load their ELFs, and re-deassert. This keeps cores from executing garbage
+            # between tt-exalens init and the harness taking over.
             for core in soc_descriptor.get_cores(tt_umd.CoreType.TENSIX):
                 core_noc0 = soc_descriptor.translate_coord_to(core, tt_umd.CoordSystem.NOC0)
                 tt_device.noc_write32(core_noc0.x, core_noc0.y, 0, 0x6F)
-                tt_device.send_tensix_risc_reset(tt_umd.tt_xy_pair(core.x, core.y), deassert=True)
+                tt_device.send_tensix_risc_reset(
+                    tt_umd.tt_xy_pair(core.x, core.y),
+                    tt_umd.TensixSoftResetOptions.TENSIX_DEASSERT_SOFT_RESET,
+                )
             self.devices[0] = UmdDevice(tt_device, 0, 0, soc_descriptor=soc_descriptor, is_simulation=True)
             cluster_descriptor_content = create_simulation_cluster_descriptor(self.devices[0].arch)
             self.cluster_descriptor = tt_umd.ClusterDescriptor.create_from_yaml_content(cluster_descriptor_content)
