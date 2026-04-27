@@ -292,6 +292,16 @@ class UmdDevice:
             raise RuntimeError("Device is not mmio capable.")
         self.__device.bar_write32(address, data)
 
+    def smn_read(self, noc0_x: int, noc0_y: int, address: int, size: int) -> bytes:
+        """Reads data from SMN address"""
+        coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        return self.__device.smn_read(coord.x, coord.y, address, size)
+
+    def smn_write(self, noc0_x: int, noc0_y: int, address: int, data: bytes):
+        """Writes data to SMN address"""
+        coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        self.__device.smn_write(coord.x, coord.y, address, data)
+
     def convert_from_noc0(self, noc_x: int, noc_y: int, core_type: str, coord_system: str) -> tuple[int, int]:
         """Convert noc0 coordinate into specified coordinate system"""
         core_type_enum = tt_umd.CoreType[core_type.upper()]

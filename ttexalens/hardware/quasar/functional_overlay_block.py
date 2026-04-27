@@ -1,0 +1,143 @@
+# SPDX-FileCopyrightText: © 2025 Tenstorrent AI ULC
+
+# SPDX-License-Identifier: Apache-2.0
+
+from __future__ import annotations
+
+from functools import cache, cached_property
+
+from ttexalens.hardware.baby_risc_info import BabyRiscInfo
+from ttexalens.hardware.device_address import DeviceAddress
+from ttexalens.hardware.noc_block import NocBlock
+from ttexalens.hardware.quasar.functional_overlay_registers import (
+    DEBUG_MODULE,
+    EDU_BIU,
+    SMN,
+    T6_L1_CSR,
+    TT_CLUSTER_CTRL,
+    TT_NEO,
+    TT_OVERLAY_LLK_TILE_COUNTERS,
+    TT_ROC_ACCELL,
+    register_map,
+)
+from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
+from ttexalens.hardware.quasar.rocket_core_debug import QuasarRocketCoreDebug
+from ttexalens.hardware.risc_debug import RiscDebug
+from ttexalens.register_store import (
+    RegisterDescription,
+    RegisterStore,
+)
+
+def get_overlay_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
+    if isinstance(register_description, EDU_BIU):
+        return DeviceAddress(noc_address=0x01800000, smn_address=0x01800000)
+    elif isinstance(register_description, TT_CLUSTER_CTRL):
+        return DeviceAddress(noc_address=0x03000000, smn_address=0x03000000)
+    elif isinstance(register_description, T6_L1_CSR):
+        return DeviceAddress(noc_address=0x03000200, smn_address=0x03000200)
+    elif isinstance(register_description, TT_OVERLAY_LLK_TILE_COUNTERS):
+        return DeviceAddress(noc_address=0x03003000, smn_address=0x03003000)
+    elif isinstance(register_description, TT_ROC_ACCELL):
+        return DeviceAddress(noc_address=0x03004000, smn_address=0x03004000)
+    elif isinstance(register_description, DEBUG_MODULE):
+        return DeviceAddress(noc_address=0x0300A000, smn_address=0x0300A000)
+    elif isinstance(register_description, SMN):
+        return DeviceAddress(noc_address=0x03010000, smn_address=0x03010000)
+    elif isinstance(register_description, TT_NEO):
+        return DeviceAddress(noc_address=0x03020000, smn_address=0x03020000)
+    else:
+        raise ValueError(f"Unknown register description type: {type(register_description)}")
+
+
+
+overlay_register_store_initialization = RegisterStore.create_initialization(
+    register_map, get_overlay_register_base_address
+)
+
+
+class QuasarFunctionalOverlayBlock(NocBlock):
+    """
+    Represents the Quasar overlay cluster: 8 in-order 64-bit Rocket RISC-V
+    data-movement cores sharing a 128 KB L2 cache and a 4 MB SRAM region.
+
+    This block is not a separate NOC tile — it lives inside the functional
+    worker tile and is accessed through the same (x, y) NOC coordinate.
+    """
+
+    def __init__(self, noc_block: QuasarFunctionalWorkerBlock):
+        self.noc_block = noc_block
+
+        self.overlay_register_store = RegisterStore(
+            overlay_register_store_initialization, noc_block.location
+        )
+
+        self.rocket0 = BabyRiscInfo(
+            risc_name="rocket0",
+            risc_id=0,
+            noc_block=noc_block,
+        )
+        
+        self.rocket1 = BabyRiscInfo(
+            risc_name="rocket1",
+            risc_id=1,
+            noc_block=noc_block,
+        )
+        
+        self.rocket2 = BabyRiscInfo(
+            risc_name="rocket2",
+            risc_id=2,
+            noc_block=noc_block,
+        )
+        
+        self.rocket3 = BabyRiscInfo(
+            risc_name="rocket3",           
+            risc_id=3,
+            noc_block=noc_block,
+        )
+        
+        self.rocket4 = BabyRiscInfo(
+            risc_name="rocket4",
+            risc_id=4,
+            noc_block=noc_block,
+        )
+        
+        self.rocket5 = BabyRiscInfo(
+            risc_name="rocket5",
+            risc_id=5,
+            noc_block=noc_block,
+        )
+        
+        self.rocket6 = BabyRiscInfo(
+            risc_name="rocket6",
+            risc_id=6,
+            noc_block=noc_block,
+        )
+        
+        self.rocket7 = BabyRiscInfo(
+            risc_name="rocket7",
+            risc_id=7,
+            noc_block=noc_block,
+        )
+
+    def get_register_store(self) -> RegisterStore:
+        return self.overlay_register_store
+
+    @cached_property
+    def all_riscs(self) -> list[RiscDebug]:
+        return [
+            QuasarRocketCoreDebug(self.rocket0, self.overlay_register_store),
+            QuasarRocketCoreDebug(self.rocket1, self.overlay_register_store),
+            QuasarRocketCoreDebug(self.rocket2, self.overlay_register_store),
+            QuasarRocketCoreDebug(self.rocket3, self.overlay_register_store),
+            QuasarRocketCoreDebug(self.rocket4, self.overlay_register_store),
+            QuasarRocketCoreDebug(self.rocket5, self.overlay_register_store),
+            QuasarRocketCoreDebug(self.rocket6, self.overlay_register_store),
+            QuasarRocketCoreDebug(self.rocket7, self.overlay_register_store),
+        ]
+
+    @cache
+    def get_risc_debug(self, risc_name: str) -> RiscDebug:
+        for core in self.rocket_cores:
+            if core.risc_name == risc_name:
+                return QuasarRocketCoreDebug(core, self.overlay_register_store)
+        raise ValueError(f"Rocket core '{risc_name}' not found in overlay block at {self.location}")

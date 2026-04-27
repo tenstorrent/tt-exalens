@@ -50,11 +50,14 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             risc_base_start_address=0x00030000,
         )
 
+        self.overlay = QuasarFunctionalWorkerBlock(noc_block=self)
+
         self.noc_memory_map.add_block(MemoryMapBlockInfo("l1", self.l1, safe_to_write=True))
         self.noc_memory_map.add_blocks(self.neo0.noc_memory_list)
         self.noc_memory_map.add_blocks(self.neo1.noc_memory_list)
         self.noc_memory_map.add_blocks(self.neo2.noc_memory_list)
         self.noc_memory_map.add_blocks(self.neo3.noc_memory_list)
+        self.noc_memory_map.add_blocks(self.overlay.noc_memory_list)
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
         if neo_id == 0:
@@ -76,6 +79,8 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             return self.neo2.register_store
         elif neo_id == 3:
             return self.neo3.register_store
+        elif neo_id is None:
+            return self.overlay.register_store   
         return super().get_register_store(noc_id, neo_id)
 
     @cached_property
@@ -85,6 +90,7 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
         riscs.extend(self.neo1.all_riscs)
         riscs.extend(self.neo2.all_riscs)
         riscs.extend(self.neo3.all_riscs)
+        riscs.extend(self.overlay.all_riscs)
         return riscs
 
     @cache
@@ -97,6 +103,9 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             return self.neo2.get_risc_debug(risc_name)
         elif neo_id == self.neo3.neo_id:
             return self.neo3.get_risc_debug(risc_name)
+        elif risc_name.startswith("rocket"):
+            return self.overlay.get_risc_debug(risc_name)
         raise ValueError(
             f"RISC debug for {risc_name} [neo: {neo_id}] is not supported in Quasar functional worker block."
         )
+    

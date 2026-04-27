@@ -87,6 +87,12 @@ class RegisterDescription:
         return self.base_address.bar0_address + self.offset
 
     @property
+    def smn_address(self) -> int | None:
+        if self.base_address is None or self.base_address.smn_address is None:
+            return None
+        return self.base_address.smn_address + self.offset
+
+    @property
     def noc_id(self) -> int | None:
         assert self.base_address is not None and self.base_address.noc_address is not None
         return self.base_address.noc_id
@@ -238,6 +244,11 @@ class RegisterStore:
         register = self.get_register_description(register_name)
         assert register.mask == 0xFFFFFFFF
         return register.bar0_address
+
+    def get_register_smn_address(self, register_name: str) -> int | None:
+        register = self.get_register_description(register_name)
+        assert register.mask == 0xFFFFFFFF
+        return register.smn_address
 
     def parse_register_description(self, input_string: str) -> tuple[RegisterDescription, str]:
         # Check if the input string is a register name
