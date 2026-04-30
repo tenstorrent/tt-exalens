@@ -10,7 +10,7 @@ import traceback
 from typing import Sequence
 import tt_umd
 from ttexalens import util
-from ttexalens.exceptions import TimeoutDeviceRegisterError
+from ttexalens.exceptions import TimeoutDeviceRegisterError, SimulatorException
 
 
 class UmdDevice:
@@ -72,6 +72,34 @@ class UmdDevice:
     @property
     def can_use_dma(self) -> bool:
         return self._arch != tt_umd.ARCH.BLACKHOLE and self._is_mmio_capable and not self._is_simulation
+
+    @contextmanager
+    def _sim_guard(self):
+        """Context manager that translates any exception raised by the C++ simulator
+        backend into a :class:`~ttexalens.exceptions.SimulatorException`.
+
+        When the functional simulator encounters unimplemented functionality it
+        raises a C++ exception.  Depending on how the exception escapes the
+        nanobind boundary it may arrive in Python as a ``RuntimeError``, a plain
+        ``Exception``, or — in the worst case — cause ``std::terminate()`` and
+        crash the process entirely.  Wrapping every call to the underlying
+        ``tt_umd.TTDevice`` in this guard ensures that, for the cases that *do*
+        surface as a Python exception, the caller always receives a predictable
+        :class:`SimulatorException` that pytest can catch and report as a test
+        failure without terminating the rest of the test suite.
+
+        This guard is a no-op when the device is not in simulation mode so that
+        real-hardware paths are completely unaffected.
+        """
+        if not self._is_simulation:
+            yield
+            return
+        try:
+            yield
+        except SimulatorException:
+            raise
+        except Exception as exc:
+            raise SimulatorException(str(exc)) from exc
 
     def __select_noc_id(self, noc_id: int):
         from ttexalens.umd_api import UmdApi
@@ -270,27 +298,31 @@ class UmdDevice:
         self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool, dma_threshold: int
     ) -> bytes:
         """Reads data from address"""
-        self.__select_noc_id(noc_id)
-        return self.__read_from_device_reg_unaligned(noc0_x, noc0_y, address, size, use_4B_mode, dma_threshold)
+        with self._sim_guard():
+            self.__select_noc_id(noc_id)
+            return self.__read_from_device_reg_unaligned(noc0_x, noc0_y, address, size, use_4B_mode, dma_threshold)
 
     def noc_write(
         self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
     ):
         """Writes data to address"""
-        self.__select_noc_id(noc_id)
-        self.__write_to_device_reg_unaligned(noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
+        with self._sim_guard():
+            self.__select_noc_id(noc_id)
+            self.__write_to_device_reg_unaligned(noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
 
     def bar0_read32(self, address: int) -> int:
         """Reads 4 bytes from PCI address"""
         if not self._is_mmio_capable:
             raise RuntimeError("Device is not mmio capable.")
-        return self.__device.bar_read32(address)
+        with self._sim_guard():
+            return self.__device.bar_read32(address)
 
     def bar0_write32(self, address: int, data: int):
         """Writes 4 bytes to PCI address"""
         if not self._is_mmio_capable:
             raise RuntimeError("Device is not mmio capable.")
-        self.__device.bar_write32(address, data)
+        with self._sim_guard():
+            self.__device.bar_write32(address, data)
 
     def convert_from_noc0(self, noc_x: int, noc_y: int, core_type: str, coord_system: str) -> tuple[int, int]:
         """Convert noc0 coordinate into specified coordinate system"""
@@ -312,9 +344,10 @@ class UmdDevice:
         timeout: datetime.timedelta | float,
     ) -> tuple[int, int, int]:
         """Send ARC message"""
-        self.__select_noc_id(noc_id)
-        timeout_ms = timeout.total_seconds() * 1000 if isinstance(timeout, datetime.timedelta) else timeout * 1000
-        return self.__device.arc_msg(msg_code, wait_for_done, args, int(timeout_ms))
+        with self._sim_guard():
+            self.__select_noc_id(noc_id)
+            timeout_ms = timeout.total_seconds() * 1000 if isinstance(timeout, datetime.timedelta) else timeout * 1000
+            return self.__device.arc_msg(msg_code, wait_for_done, args, int(timeout_ms))
 
     def read_arc_telemetry_entry(self, noc_id: int, telemetry_tag: int) -> int:
         """Read ARC telemetry entry"""
@@ -326,15 +359,16 @@ class UmdDevice:
                 raise RuntimeError(f"Telemetry tag {telemetry_tag} is not available on device {self.device_id}.")
             return arc_telemetry_reader.read_entry(telemetry_tag)
 
-        try:
-            return do_read(telemetry_tag)
-        except Exception:
-            if not self._is_mmio_capable:
-                raise
-            util.DEBUG(f"Telemetry read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
-            # TODO: We should retry only if it was remote read error
-            self.__configure_working_active_eth()
-            return do_read(telemetry_tag)
+        with self._sim_guard():
+            try:
+                return do_read(telemetry_tag)
+            except Exception:
+                if not self._is_mmio_capable:
+                    raise
+                util.DEBUG(f"Telemetry read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
+                # TODO: We should retry only if it was remote read error
+                self.__configure_working_active_eth()
+                return do_read(telemetry_tag)
 
     def get_firmware_version(self, noc_id: int) -> tt_umd.FirmwareBundleVersion:
         """Returns firmware version"""
@@ -344,34 +378,37 @@ class UmdDevice:
             firmware_info_provider = self.__device.get_firmware_info_provider()
             return firmware_info_provider.get_firmware_version()
 
-        try:
-            firmware_version = do_read()
-        except Exception:
-            if not self._is_mmio_capable:
-                raise
-            util.DEBUG(f"Firmware version read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
-            # TODO: We should retry only if it was remote read error
-            self.__configure_working_active_eth()
-            firmware_version = do_read()
+        with self._sim_guard():
+            try:
+                firmware_version = do_read()
+            except Exception:
+                if not self._is_mmio_capable:
+                    raise
+                util.DEBUG(f"Firmware version read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
+                # TODO: We should retry only if it was remote read error
+                self.__configure_working_active_eth()
+                firmware_version = do_read()
         return firmware_version
 
     def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
         """Returns currently active Ethernet core in logical coordinates"""
-        remote_communication = self.__device.get_remote_communication()
-        if remote_communication is None:
-            return None
-        translated_coord = remote_communication.get_remote_transfer_ethernet_core()
-        local_device = remote_communication.get_local_device()
-        logical_coord = tt_umd.SocDescriptor(local_device).translate_coord_to(
-            tt_umd.CoreCoord(
-                translated_coord[0], translated_coord[1], tt_umd.CoreType.ETH, tt_umd.CoordSystem.TRANSLATED
-            ),
-            tt_umd.CoordSystem.LOGICAL,
-        )
-        return (logical_coord.x, logical_coord.y)
+        with self._sim_guard():
+            remote_communication = self.__device.get_remote_communication()
+            if remote_communication is None:
+                return None
+            translated_coord = remote_communication.get_remote_transfer_ethernet_core()
+            local_device = remote_communication.get_local_device()
+            logical_coord = tt_umd.SocDescriptor(local_device).translate_coord_to(
+                tt_umd.CoreCoord(
+                    translated_coord[0], translated_coord[1], tt_umd.CoreType.ETH, tt_umd.CoordSystem.TRANSLATED
+                ),
+                tt_umd.CoordSystem.LOGICAL,
+            )
+            return (logical_coord.x, logical_coord.y)
 
     def get_local_tt_device(self) -> tt_umd.TTDevice:
-        if self._is_mmio_capable:
-            return self.__device
-        remote_communication = self.__device.get_remote_communication()
-        return remote_communication.get_local_device()
+        with self._sim_guard():
+            if self._is_mmio_capable:
+                return self.__device
+            remote_communication = self.__device.get_remote_communication()
+            return remote_communication.get_local_device()

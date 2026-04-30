@@ -25,6 +25,35 @@ class TTFatalException(Exception):
     pass
 
 
+class SimulatorException(TTException):
+    """Raised when the functional simulator encounters unimplemented functionality.
+
+    Wraps any exception that originates from the C++ simulator backend so that
+    pytest (and other test runners) can catch it as an ordinary Python exception.
+    This allows individual tests to fail gracefully instead of crashing the entire
+    process when the simulator raises a C++ exception for unimplemented features.
+
+    Usage in pytest::
+
+        import pytest
+        from ttexalens.exceptions import SimulatorException
+
+        def test_my_feature(context):
+            with pytest.raises(SimulatorException):
+                context.devices[0].some_unimplemented_call()
+
+    Or to skip a test when the simulator does not support the feature::
+
+        def test_my_feature(context):
+            try:
+                result = context.devices[0].some_call()
+            except SimulatorException:
+                pytest.skip("Simulator does not implement this feature yet")
+    """
+
+    pass
+
+
 class HardwareError(BaseException):
     """Hardware I/O failures.
 
