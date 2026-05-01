@@ -26,12 +26,15 @@ class TTFatalException(Exception):
 
 
 class SimulatorException(TTException):
-    """Raised when the functional simulator encounters unimplemented functionality.
+    """Raised when the functional simulator encounters an error.
 
     Wraps any exception that originates from the C++ simulator backend so that
     pytest (and other test runners) can catch it as an ordinary Python exception.
     This allows individual tests to fail gracefully instead of crashing the entire
-    process when the simulator raises a C++ exception for unimplemented features.
+    process when the simulator raises a C++ exception.
+
+    See :class:`SimulatorUnimplementedError` for the narrower case where the
+    simulator reports that a specific feature is not yet implemented.
 
     Usage in pytest::
 
@@ -40,7 +43,7 @@ class SimulatorException(TTException):
 
         def test_my_feature(context):
             with pytest.raises(SimulatorException):
-                context.devices[0].some_unimplemented_call()
+                context.devices[0].some_call()
 
     Or to skip a test when the simulator does not support the feature::
 
@@ -49,6 +52,48 @@ class SimulatorException(TTException):
                 result = context.devices[0].some_call()
             except SimulatorException:
                 pytest.skip("Simulator does not implement this feature yet")
+    """
+
+    pass
+
+
+class SimulatorUnimplementedError(SimulatorException):
+    """Raised when the functional simulator reports that a feature is not implemented.
+
+    This is a subclass of :class:`SimulatorException` raised specifically when the
+    C++ simulator backend throws an exception whose message contains a recognisable
+    "not implemented" / "unimplemented" phrase.  It lets test code distinguish a
+    clean "this path is not coded yet" failure from a general simulator error.
+
+    Because it still inherits from :class:`SimulatorException` (and therefore from
+    :class:`TTException` → :class:`Exception`), pytest will catch it as a normal
+    test failure.  You can use ``pytest.fail()`` to attach a custom failure message,
+    or just let the exception propagate for an automatic ``FAILED`` result.
+
+    Usage in pytest::
+
+        import pytest
+        from ttexalens.exceptions import SimulatorUnimplementedError
+
+        # Let the test fail with the original simulator message
+        def test_my_feature(context):
+            result = context.devices[0].some_call()   # raises SimulatorUnimplementedError
+
+        # Fail with a custom message that clearly names the missing feature
+        def test_my_feature(context):
+            try:
+                result = context.devices[0].some_call()
+            except SimulatorUnimplementedError as exc:
+                pytest.fail(f"Simulator missing feature: {exc}")
+
+        # Catch the whole simulator-error family but handle unimplemented specifically
+        def test_my_feature(context):
+            try:
+                result = context.devices[0].some_call()
+            except SimulatorUnimplementedError as exc:
+                pytest.fail(f"Unimplemented in simulator: {exc}")
+            except SimulatorException as exc:
+                pytest.skip(f"Simulator error (skipping): {exc}")
     """
 
     pass
