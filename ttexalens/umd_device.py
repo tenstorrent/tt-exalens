@@ -10,11 +10,7 @@ import traceback
 from typing import Sequence
 import tt_umd
 from ttexalens import util
-from ttexalens.exceptions import TimeoutDeviceRegisterError, SimulatorException, SimulatorUnimplementedError
-
-# Keywords used to recognise "not implemented" messages from the C++ simulator.
-# Checked case-insensitively against the stringified exception message.
-_UNIMPLEMENTED_KEYWORDS = ("not implemented", "unimplemented")
+from ttexalens.exceptions import TimeoutDeviceRegisterError, SimulatorException
 
 
 class UmdDevice:
@@ -103,10 +99,7 @@ class UmdDevice:
         except SimulatorException:
             raise
         except Exception as exc:
-            msg = str(exc)
-            if any(kw in msg.lower() for kw in _UNIMPLEMENTED_KEYWORDS):
-                raise SimulatorUnimplementedError(msg) from exc
-            raise SimulatorException(msg) from exc
+            raise SimulatorException(str(exc)) from exc
 
     def __select_noc_id(self, noc_id: int):
         from ttexalens.umd_api import UmdApi

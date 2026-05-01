@@ -5,7 +5,7 @@
 import unittest
 
 from ttexalens.util import HardwareError
-from ttexalens.exceptions import SimulatorException, SimulatorUnimplementedError, TTException
+from ttexalens.exceptions import SimulatorException, TTException
 
 
 class TestHardwareErrorCatchability(unittest.TestCase):
@@ -53,62 +53,6 @@ class TestSimulatorExceptionCatchability(unittest.TestCase):
         try:
             raise SimulatorException("wrapped") from original
         except SimulatorException as exc:
-            self.assertIs(exc.__cause__, original)
-
-
-class TestSimulatorUnimplementedError(unittest.TestCase):
-    """SimulatorUnimplementedError must be a subclass of SimulatorException."""
-
-    def test_is_simulator_exception(self):
-        exc = SimulatorUnimplementedError("not implemented")
-        self.assertIsInstance(exc, SimulatorException)
-
-    def test_is_tt_exception(self):
-        exc = SimulatorUnimplementedError("not implemented")
-        self.assertIsInstance(exc, TTException)
-
-    def test_caught_by_simulator_exception(self):
-        """Broad SimulatorException catch still catches the narrower subclass."""
-        caught = False
-        try:
-            raise SimulatorUnimplementedError("feature not implemented")
-        except SimulatorException:
-            caught = True
-        self.assertTrue(caught)
-
-    def test_caught_by_except_exception(self):
-        caught = False
-        try:
-            raise SimulatorUnimplementedError("feature not implemented")
-        except Exception:
-            caught = True
-        self.assertTrue(caught)
-
-    def test_distinguishable_from_plain_simulator_exception(self):
-        """SimulatorUnimplementedError is distinguishable from SimulatorException."""
-        with self.assertRaises(SimulatorUnimplementedError):
-            raise SimulatorUnimplementedError("not implemented")
-
-        # A plain SimulatorException must NOT be caught as SimulatorUnimplementedError
-        caught_as_unimplemented = False
-        try:
-            raise SimulatorException("some other simulator error")
-        except SimulatorUnimplementedError:
-            caught_as_unimplemented = True
-        except SimulatorException:
-            pass
-        self.assertFalse(caught_as_unimplemented)
-
-    def test_message_preserved(self):
-        msg = "not implemented: arc_msg"
-        exc = SimulatorUnimplementedError(msg)
-        self.assertEqual(str(exc), msg)
-
-    def test_chained_cause_preserved(self):
-        original = RuntimeError("C++ not implemented")
-        try:
-            raise SimulatorUnimplementedError("wrapped") from original
-        except SimulatorUnimplementedError as exc:
             self.assertIs(exc.__cause__, original)
 
 

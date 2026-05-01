@@ -17,7 +17,6 @@ from ttexalens.exceptions import (
     TTException,
     TTFatalException,
     SimulatorException,
-    SimulatorUnimplementedError,
     HardwareError,
     MemoryAccessException,
     DebugSymbolError,
