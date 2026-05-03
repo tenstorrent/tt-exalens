@@ -57,7 +57,6 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
         self.noc_memory_map.add_blocks(self.neo1.noc_memory_list)
         self.noc_memory_map.add_blocks(self.neo2.noc_memory_list)
         self.noc_memory_map.add_blocks(self.neo3.noc_memory_list)
-        self.noc_memory_map.add_blocks(self.overlay.noc_memory_list)
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
         if neo_id == 0:

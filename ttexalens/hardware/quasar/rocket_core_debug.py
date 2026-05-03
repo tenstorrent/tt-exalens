@@ -5,11 +5,18 @@
 from contextlib import contextmanager
 from typing import Any, Generator
 
+from ttexalens import util
+from ttexalens.exceptions import RiscHaltError
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebugStatus, RiscDebugWatchpointState
 from ttexalens.register_store import RegisterStore
+
+# RISC-V Debug Spec 0.13 — DMCONTROL bit fields
+_DMACTIVE  = 1 << 0
+_RESUMEREQ = 1 << 30
+_HALTREQ   = 1 << 31
 
 class QuasarRocketCoreDebug(BabyRiscDebug):
     def __init__(self, risc_info: BabyRiscInfo, overlay_register_store: RegisterStore, enable_asserts: bool = True):
@@ -32,24 +39,46 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
         self.device.smn_write(self.location, address, new_value.to_bytes(4, "little"))
 
     def is_halted(self) -> bool:
-        raise NotImplementedError(f"Rocket core halt detection not yet implemented for {self.risc_location.risc_name}")
+        address = self.overlay_register_store.get_register_smn_address("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
+        haltsummary = int.from_bytes(self.device.smn_read(self.location, address, 4), "little")
+        return bool(haltsummary & (1 << self.baby_risc_info.risc_id))
+
+    def halt(self) -> None:
+        if self.is_halted():
+            util.WARN(f"Halt: {self.risc_location.risc_name} at {self.location} is already halted")
+            return
+        address = self.overlay_register_store.get_register_smn_address("TT_DEBUG_MODULE_APB_DMCONTROL")
+        hartsel = self.baby_risc_info.risc_id << 16
+        self.device.smn_write(self.location, address, (_DMACTIVE | hartsel | _HALTREQ).to_bytes(4, "little"))
+        self.device.smn_write(self.location, address, (_DMACTIVE | hartsel).to_bytes(4, "little"))  # clear haltreq
+        if not self.is_halted():
+            raise RiscHaltError(self.risc_location.risc_name, self.location)
+
+    def cont(self) -> None:
+        if not self.is_halted():
+            util.WARN(f"Continue: {self.risc_location.risc_name} at {self.location} is already running")
+            return
+        address = self.overlay_register_store.get_register_smn_address("TT_DEBUG_MODULE_APB_DMCONTROL")
+        hartsel = self.baby_risc_info.risc_id << 16
+        self.device.smn_write(self.location, address, (_DMACTIVE | hartsel | _RESUMEREQ).to_bytes(4, "little"))
+        self.device.smn_write(self.location, address, (_DMACTIVE | hartsel).to_bytes(4, "little"))  # clear resumereq
+
+    @contextmanager
+    def ensure_halted(self) -> Generator[None, Any, None]:
+        was_halted = self.is_halted()
+        if not was_halted:
+            self.halt()
+        try:
+            yield
+        finally:
+            if not was_halted:
+                self.cont()
 
     def is_ebreak_hit(self) -> bool:
         raise NotImplementedError(f"Rocket core ebreak detection not yet implemented for {self.risc_location.risc_name}")
 
-    def halt(self) -> None:
-        raise NotImplementedError(f"Rocket core halt not yet implemented for {self.risc_location.risc_name}")
-
     def step(self) -> None:
         raise NotImplementedError(f"Rocket core step not yet implemented for {self.risc_location.risc_name}")
-
-    def cont(self) -> None:
-        raise NotImplementedError(f"Rocket core continue not yet implemented for {self.risc_location.risc_name}")
-
-    @contextmanager
-    def ensure_halted(self) -> Generator[None, Any, None]:
-        raise NotImplementedError(f"Rocket core ensure_halted not yet implemented for {self.risc_location.risc_name}")
-        yield  # noqa: unreachable — required for generator protocol
 
     @contextmanager
     def ensure_private_memory_access(self) -> Generator[None, Any, None]:
