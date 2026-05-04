@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from functools import cache
 import tt_umd
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
@@ -41,6 +41,10 @@ class WormholeDevice(Device):
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         super().__init__(id, umd_device, context)
         self.instructions = WormholeInstructions()
+        if context.noc_id == NocId.NOC0:
+            self._noc_to_use = [int(NocId.NOC0), int(NocId.NOC1)]
+        else:
+            self._noc_to_use = [int(context.noc_id), int(NocId.NOC0)]
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16

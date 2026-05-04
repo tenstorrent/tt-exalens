@@ -67,9 +67,8 @@ class Context:
             return
 
         self._noc_id = value
-        noc_int = 0 if value == NocId.NOC0 else 1
         for device in self.devices.values():
-            device.switch_noc(noc_int)
+            device.switch_noc(int(value))
 
     def assign_commands(self, commands: list[CommandMetadata]):
         self.commands = []

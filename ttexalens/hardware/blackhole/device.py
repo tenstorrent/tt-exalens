@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from functools import cache
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.blackhole.arc_block import BlackholeArcBlock
 from ttexalens.hardware.blackhole.dram_block import BlackholeDramBlock, BlackholeDramBlockSim
@@ -44,6 +44,10 @@ class BlackholeDevice(Device):
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         super().__init__(id, umd_device, context)
         self.instructions = BlackholeInstructions()
+        if context.noc_id == NocId.NOC0:
+            self._noc_to_use = [int(NocId.NOC0), int(NocId.NOC1)]
+        else:
+            self._noc_to_use = [int(context.noc_id), int(NocId.NOC0)]
 
     def is_blackhole(self) -> bool:
         return True
