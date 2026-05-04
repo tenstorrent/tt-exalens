@@ -45,9 +45,6 @@ class BlackholeDevice(Device):
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         super().__init__(id, umd_device, context)
         self.instructions = BlackholeInstructions()
-        self._noc_to_use = (
-            [int(NocId.NOC0), int(NocId.NOC1)] if context.noc_id == NocId.NOC0 else [NocId.NOC1, int(NocId.NOC0)]
-        )
 
     def is_blackhole(self) -> bool:
         return True
