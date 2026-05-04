@@ -26,7 +26,7 @@ from .tt_exalens_lib import (
     TensixState,
 )
 from .coordinate import OnChipCoordinate
-from .context import Context
+from .context import Context, NocId
 from .device import Device
 from .util import TTException, TTFatalException, Verbosity
 from .exceptions import (
@@ -40,6 +40,7 @@ from .exceptions import (
 __all__ = [
     # context.py
     "Context",
+    "NocId",
     # coordinate.py
     "CoordinateTranslationError",
     "OnChipCoordinate",

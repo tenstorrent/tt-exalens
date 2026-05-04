@@ -8,6 +8,7 @@ from typing import Sequence
 import tt_umd
 
 from ttexalens import util as util
+from ttexalens.context import NocId
 from ttexalens.umd_device import UmdDevice
 
 
@@ -59,7 +60,7 @@ class UmdApi:
     def __init__(
         self,
         init_jtag=False,
-        initialize_with_noc1=False,
+        noc_id: NocId = NocId.NOC0,
         simulation_directory: str | None = None,
     ):
         self.devices: dict[int, UmdDevice] = {}
@@ -78,7 +79,7 @@ class UmdApi:
             else:
                 tt_umd.logging.set_level(tt_umd.logging.Level.Error)
 
-        UmdApi.select_noc_id(1 if initialize_with_noc1 else 0)
+        UmdApi.select_noc_id(int(noc_id))
         if simulation_directory is not None:
             tt_device: tt_umd.TTDevice
             if simulation_directory.endswith(".so"):
@@ -156,7 +157,7 @@ class UmdApi:
             tt_umd.WarmReset.warm_reset()
 
 
-def local_init(init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None):
-    communicator = UmdApi(init_jtag, initialize_with_noc1, simulation_directory)
+def local_init(init_jtag=False, noc_id: NocId = NocId.NOC0, simulation_directory: str | None = None):
+    communicator = UmdApi(init_jtag, noc_id, simulation_directory)
     util.VERBOSE("Device opened successfully.")
     return communicator

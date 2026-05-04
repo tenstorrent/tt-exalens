@@ -12,7 +12,7 @@ import tt_umd
 from typing import Callable, Iterable, Sequence, TypeVar
 
 from tabulate import tabulate
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.exceptions import CoordinateTranslationError, UnsafeAccessException
 from ttexalens.hardware.arc_block import ArcBlock
@@ -140,7 +140,7 @@ class Device:
         # NOC queue used for failover, initialized based on context preference
         # When an operation is attempted, the first NOC in the list is used. If it fails, it is moved to the back of the list
         # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
-        self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
+        self._noc_to_use: list[int] = [1, 0] if context.noc_id != NocId.NOC0 else [0, 1]
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
 
     @property
