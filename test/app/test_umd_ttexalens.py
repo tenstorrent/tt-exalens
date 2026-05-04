@@ -5,6 +5,7 @@ import os
 import sys
 
 from abc import abstractmethod
+from ttexalens.context import NocId
 import select
 import unittest
 import subprocess
@@ -94,7 +95,7 @@ class TTExaLensTestRunner:
             if not type(args) == list:
                 args = [args]
         if os.getenv("TTEXALENS_TESTS_USE_NOC1", "0") == "1":
-            program_args.append("--use-noc1")
+            program_args.append(f"--noc-id={NocId.NOC1.value}")
         self.process = subprocess.Popen(
             program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )

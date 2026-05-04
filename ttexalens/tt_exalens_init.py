@@ -7,7 +7,7 @@ import atexit
 from ttexalens.umd_api import UmdApi, local_init
 from ttexalens.server import FileAccessApi, connect_to_server
 from ttexalens import util as util
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 
 """
 GLOBAL_CONTEXT is a convenience variable to store fallback TTExaLens context object.
@@ -20,7 +20,7 @@ GLOBAL_CONTEXT: Context | None = None
 
 def init_ttexalens(
     init_jtag: bool = False,
-    use_noc1: bool = False,
+    noc_id: NocId = NocId.NOC0,
     use_4B_mode: bool = True,
     simulation_directory: str | None = None,
     noc_failover: bool = True,
@@ -31,7 +31,7 @@ def init_ttexalens(
 
     Args:
         init_jtag (bool): Whether to initialize JTAG interface. Default is False.
-        use_noc1 (bool): Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
+        noc_id (NocId): NOC to use for communication with the device. Default is NocId.NOC0.
         use_4B_mode (bool): Whether to use 4B mode for communication with the device. Default is True.
         simulation_directory (str, optional): If specified, starts the simulator from the given build output directory.
         safe_mode (bool): Whether to enable safe mode for memory access. Default is True.
@@ -40,9 +40,9 @@ def init_ttexalens(
         Context: TTExaLens context object.
     """
 
-    umd_api = local_init(init_jtag, use_noc1, simulation_directory)
+    umd_api = local_init(init_jtag, noc_id, simulation_directory)
 
-    return load_context(umd_api, FileAccessApi(), use_noc1, use_4B_mode, noc_failover=noc_failover, safe_mode=safe_mode)
+    return load_context(umd_api, FileAccessApi(), noc_id, use_4B_mode, noc_failover=noc_failover, safe_mode=safe_mode)
 
 
 def init_ttexalens_remote(
@@ -73,14 +73,14 @@ def init_ttexalens_remote(
 def load_context(
     umd_api: UmdApi,
     file_api: FileAccessApi,
-    use_noc1: bool = False,
+    noc_id: NocId = NocId.NOC0,
     use_4B_mode: bool = True,
     noc_failover: bool = True,
     safe_mode: bool = True,
 ) -> Context:
     """Load the TTExaLens context object with specified parameters."""
     context = Context(
-        umd_api, file_api, use_noc1=use_noc1, use_4B_mode=use_4B_mode, noc_failover=noc_failover, safe_mode=safe_mode
+        umd_api, file_api, noc_id=noc_id, use_4B_mode=use_4B_mode, noc_failover=noc_failover, safe_mode=safe_mode
     )
 
     global GLOBAL_CONTEXT

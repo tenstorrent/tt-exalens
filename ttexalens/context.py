@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
+from enum import IntEnum
 from functools import cached_property
 import traceback
 from typing import Iterable, TYPE_CHECKING
@@ -21,6 +22,13 @@ if TYPE_CHECKING:
     from ttexalens.server import FileAccessApi
     from ttexalens.umd_api import UmdApi
 
+
+class NocId(IntEnum):
+    NOC0 = 0
+    NOC1 = 1
+    SMN = 2
+
+
 # All-encompassing structure representing a TTExaLens context
 class Context:
     def __init__(
@@ -28,7 +36,7 @@ class Context:
         umd_api: UmdApi,
         file_api: FileAccessApi,
         short_name: str = "default",
-        use_noc1=False,
+        noc_id: NocId = NocId.NOC0,
         use_4B_mode=True,
         dma_read_threshold: int = 24,  # Measured thresholds for DMA vs NOC transfers on WH
         dma_write_threshold: int = 56,  # Measured thresholds for DMA vs NOC transfers on WH
@@ -43,24 +51,24 @@ class Context:
         self.dma_write_threshold: int = dma_write_threshold
 
         self.noc_failover = noc_failover
-        self._use_noc1 = use_noc1
+        self._noc_id = noc_id
         self.safe_mode = safe_mode
 
         self.commands: list[CommandMetadata] = []
         self.loaded_elfs: dict[RiscLocation, str] = {}
 
     @property
-    def use_noc1(self):
-        return self._use_noc1
+    def noc_id(self) -> NocId:
+        return self._noc_id
 
-    @use_noc1.setter
-    def use_noc1(self, value: bool):
-        if value == self._use_noc1:
+    @noc_id.setter
+    def noc_id(self, value: NocId):
+        if value == self._noc_id:
             return
 
-        self._use_noc1 = value
+        self._noc_id = value
         for device in self.devices.values():
-            device.switch_noc(int(value))
+            device.switch_noc(value.value)
 
     def assign_commands(self, commands: list[CommandMetadata]):
         self.commands = []

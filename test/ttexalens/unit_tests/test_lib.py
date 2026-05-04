@@ -17,7 +17,7 @@ from ttexalens.elf.parsed import ParsedElfFile
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.device import Device, UnsafeAccessException
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.memory_access import MemoryAccess
@@ -824,7 +824,7 @@ class TestSafeAccess(unittest.TestCase):
                 block = device.get_block(location)
                 memory_map = block.noc_memory_map
 
-                if device.is_wormhole() and block.block_type == "dram" and self.context.use_noc1:
+                if device.is_wormhole() and block.block_type == "dram" and self.context.noc_id != NocId.NOC0:
                     # Skip DRAM tests on wormhole devices when using NOC1 due to bug #tt-umd:1823
                     continue
 

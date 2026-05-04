@@ -14,7 +14,7 @@ Arguments:
 
 Options:
     -m <mode>    Use 4B mode for communication with the device. [0: False, 1: True]
-    -n <noc>     Use NOC1 or NOC0 for communication with the device. [0: NOC0, 1: NOC1]
+    -n <noc>     NOC to use for communication with the device. [0: NOC0, 1: NOC1, 2: SMN]
 
 Examples:
     go -m 1 -n 1 -d 0 -l 0,0
@@ -23,7 +23,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 import ttexalens.util as util
 from ttexalens.uistate import UIState
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
@@ -42,10 +42,10 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     if args["-n"] is not None:
         noc = int(args["-n"])
-        if noc not in [0, 1]:
-            util.ERROR("NOC must be 0 or 1")
+        if noc not in [0, 1, 2]:
+            util.ERROR("NOC must be 0, 1, or 2")
             return
-        ui_state.context.use_noc1 = noc == 1
+        ui_state.context.noc_id = NocId(noc)
 
     if args["-m"] is not None:
         use_4B_mode = int(args["-m"])
