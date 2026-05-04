@@ -139,6 +139,20 @@ def read_word_from_device(
 
 
 @trace_api
+def advance_simulated_clock(
+    cycles: int,
+    device_id: int = 0,
+    context: Context | None = None,
+) -> None:
+    """Advance the simulated clock by N cycles. No-op on silicon. Use after register writes
+    that bypass the umd reset API but still need a freshly-deasserted core to make progress
+    before the next host op."""
+    if context is None:
+        context = check_context()
+    context.devices[device_id]._umd_device.advance_simulated_clock(cycles)
+
+
+@trace_api
 def read_words_from_device(
     location: str | OnChipCoordinate,
     addr: int,

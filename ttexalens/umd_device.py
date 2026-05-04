@@ -273,6 +273,10 @@ class UmdDevice:
         self.__select_noc_id(noc_id)
         return self.__read_from_device_reg_unaligned(noc0_x, noc0_y, address, size, use_4B_mode, dma_threshold)
 
+    def advance_simulated_clock(self, cycles: int) -> None:
+        """Advance the simulated clock by N cycles. No-op on silicon."""
+        self.__device.advance_simulated_clock(cycles)
+
     def noc_write(
         self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
     ):
