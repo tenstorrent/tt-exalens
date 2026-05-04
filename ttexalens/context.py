@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from ttexalens.server import FileAccessApi
     from ttexalens.umd_api import UmdApi
 
+
 class NocId(IntEnum):
     NOC0 = 0
     NOC1 = 1
