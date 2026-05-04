@@ -44,15 +44,15 @@ io_device_type: SIMULATION
 @Pyro5.api.expose
 class UmdApi:
     @staticmethod
-    def select_noc_id(noc_id: int, arch: tt_umd.ARCH | None = None):
+    def select_noc_id(noc_id: NocId, arch: tt_umd.ARCH | None = None):
         """
         Selects the NOC ID to be used for communication with the device by the current thread.
         This method should be called before any UMD API calls are made.
         """
-        if noc_id == 0:
+        if NocId.NOC0:
             tt_umd.set_thread_noc_id(tt_umd.NocId.NOC0)
         else:
-            if arch == tt_umd.ARCH.QUASAR:
+            if arch == tt_umd.ARCH.TT_QUASAR:
                 tt_umd.set_thread_noc_id(tt_umd.NocId.SYSTEM_NOC)
             else:
                 tt_umd.set_thread_noc_id(tt_umd.NocId.NOC1)

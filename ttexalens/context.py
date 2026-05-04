@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
-from enum import IntEnum
+from enum import Enum
 from functools import cached_property
 import traceback
 from typing import Iterable, TYPE_CHECKING
@@ -23,10 +23,10 @@ if TYPE_CHECKING:
     from ttexalens.umd_api import UmdApi
 
 
-class NocId(IntEnum):
+class NocId(Enum):
     NOC0 = 0
     NOC1 = 1
-    SMN = 2
+    SMN = 1
 
 
 # All-encompassing structure representing a TTExaLens context
