@@ -10,6 +10,7 @@ import traceback
 from typing import Sequence
 import tt_umd
 from ttexalens import util
+from ttexalens.context import NocId
 from ttexalens.exceptions import TimeoutDeviceRegisterError
 
 
@@ -76,7 +77,7 @@ class UmdDevice:
     def __select_noc_id(self, noc_id: int):
         from ttexalens.umd_api import UmdApi
 
-        UmdApi.select_noc_id(noc_id, self._arch)
+        UmdApi.select_noc_id(NocId(noc_id), self._arch)
 
     def __configure_working_active_eth(self):
         tensix_coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
