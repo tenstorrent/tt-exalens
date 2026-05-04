@@ -42,7 +42,7 @@ def get_overlay_register_base_address(register_description: RegisterDescription)
     elif isinstance(register_description, DEBUG_MODULE):
         return DeviceAddress(noc_address=0x0300A000, smn_address=0x0300A000)
     elif isinstance(register_description, SMN):
-        return DeviceAddress(noc_address=0x03010000, smn_address=0x03010000)
+        return DeviceAddress(smn_address=0x03010000) # Not accessible through NOC, only through SMN
     elif isinstance(register_description, TT_NEO):
         return DeviceAddress(noc_address=0x03020000, smn_address=0x03020000)
     else:
