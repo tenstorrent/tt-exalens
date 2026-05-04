@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
-from enum import Enum
+from enum import IntEnum
 from functools import cached_property
 import traceback
 from typing import Iterable, TYPE_CHECKING
@@ -23,10 +23,10 @@ if TYPE_CHECKING:
     from ttexalens.umd_api import UmdApi
 
 
-class NocId(Enum):
+class NocId(IntEnum):
     NOC0 = 0
     NOC1 = 1
-    SMN = 1
+    SMN = 2
 
 
 # All-encompassing structure representing a TTExaLens context
@@ -68,7 +68,7 @@ class Context:
 
         self._noc_id = value
         for device in self.devices.values():
-            device.switch_noc(int(value))
+            device.switch_noc(value.value)
 
     def assign_commands(self, commands: list[CommandMetadata]):
         self.commands = []

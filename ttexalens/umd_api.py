@@ -49,10 +49,10 @@ class UmdApi:
         Selects the NOC ID to be used for communication with the device by the current thread.
         This method should be called before any UMD API calls are made.
         """
-        if NocId.NOC0:
+        if noc_id == NocId.NOC0:
             tt_umd.set_thread_noc_id(tt_umd.NocId.NOC0)
         else:
-            if arch == tt_umd.ARCH.TT_QUASAR:
+            if arch == tt_umd.ARCH.QUASAR:
                 tt_umd.set_thread_noc_id(tt_umd.NocId.SYSTEM_NOC)
             else:
                 tt_umd.set_thread_noc_id(tt_umd.NocId.NOC1)
@@ -79,7 +79,7 @@ class UmdApi:
             else:
                 tt_umd.logging.set_level(tt_umd.logging.Level.Error)
 
-        UmdApi.select_noc_id(int(noc_id))
+        UmdApi.select_noc_id(noc_id)
         if simulation_directory is not None:
             tt_device: tt_umd.TTDevice
             if simulation_directory.endswith(".so"):
@@ -149,7 +149,7 @@ class UmdApi:
     def get_cluster_descriptor(self) -> tt_umd.ClusterDescriptor:
         return self.cluster_descriptor
 
-    def warm_reset(self, noc_id: int, is_galaxy_configuration: bool = False) -> None:
+    def warm_reset(self, noc_id: NocId, is_galaxy_configuration: bool = False) -> None:
         UmdApi.select_noc_id(noc_id)
         if is_galaxy_configuration:
             tt_umd.WarmReset.ubb_warm_reset()
