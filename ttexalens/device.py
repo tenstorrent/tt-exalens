@@ -140,7 +140,7 @@ class Device:
         # NOC queue used for failover; overridden by each arch subclass with the appropriate NOC pair.
         # When an operation is attempted, the first NOC in the list is used. If it fails, it is moved to the back of the list
         # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
-        self._noc_to_use: list[int] = [int(NocId.NOC0), int(NocId.NOC1)]
+        self._noc_to_use: list[int]
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
 
     @property

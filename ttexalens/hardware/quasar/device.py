@@ -30,10 +30,9 @@ class QuasarDevice(Device):
 
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         super().__init__(id, umd_device, context)
-        if context.noc_id == NocId.NOC0:
-            self._noc_to_use = [int(NocId.NOC0), int(NocId.SMN)]
-        else:
-            self._noc_to_use = [int(context.noc_id), int(NocId.NOC0)]
+        self._noc_to_use = (
+            [int(NocId.NOC0), int(NocId.SMN)] if context.noc_id == NocId.NOC0 else [NocId.SMN, int(NocId.NOC0)]
+        )
 
     def is_quasar(self) -> bool:
         return True
