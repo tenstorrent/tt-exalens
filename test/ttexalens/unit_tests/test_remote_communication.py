@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import unittest
 
-from tt_umd import NocId
+from ttexalens.context import NocId
 
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from ttexalens import Context, OnChipCoordinate, Device, read_word_from_device, write_words_to_device
