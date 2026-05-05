@@ -10,14 +10,13 @@ from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.quasar.functional_overlay_registers import (
-    DEBUG_MODULE,
-    EDU_BIU,
-    SMN,
-    T6_L1_CSR,
-    TT_CLUSTER_CTRL,
-    TT_NEO,
-    TT_OVERLAY_LLK_TILE_COUNTERS,
-    TT_ROC_ACCELL,
+    OverlayDebugRegisterDescription,
+    SmnRegisterDescription,
+    ControlStatusRegisterDescription,
+    ClusterControlRegisterDescription,
+    NeoRegisterDescription,
+    OverlayLlkTileCountersRegisterDescription,
+    RoccAcellRegisterDescription,
     register_map,
 )
 from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
@@ -30,21 +29,19 @@ from ttexalens.register_store import (
 
 
 def get_overlay_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
-    if isinstance(register_description, EDU_BIU):
-        return DeviceAddress(noc_address=0x01800000)
-    elif isinstance(register_description, TT_CLUSTER_CTRL):
+    if isinstance(register_description, ClusterControlRegisterDescription):
         return DeviceAddress(noc_address=0x03000000)
-    elif isinstance(register_description, T6_L1_CSR):
+    elif isinstance(register_description, ControlStatusRegisterDescription):
         return DeviceAddress(noc_address=0x03000200)
-    elif isinstance(register_description, TT_OVERLAY_LLK_TILE_COUNTERS):
+    elif isinstance(register_description, OverlayLlkTileCountersRegisterDescription):
         return DeviceAddress(noc_address=0x03003000)
-    elif isinstance(register_description, TT_ROC_ACCELL):
+    elif isinstance(register_description, RoccAcellRegisterDescription):
         return DeviceAddress(noc_address=0x03004000)
-    elif isinstance(register_description, DEBUG_MODULE):
+    elif isinstance(register_description, OverlayDebugRegisterDescription):
         return DeviceAddress(noc_address=0x0300A000)
-    elif isinstance(register_description, SMN):
-        return DeviceAddress(noc_address=0x03010000)  # Not accessible through NOC, only through SMN
-    elif isinstance(register_description, TT_NEO):
+    elif isinstance(register_description, SmnRegisterDescription):
+        return DeviceAddress(noc_address=0x03010000)
+    elif isinstance(register_description, NeoRegisterDescription):
         return DeviceAddress(noc_address=0x03020000)
     else:
         raise ValueError(f"Unknown register description type: {type(register_description)}")
