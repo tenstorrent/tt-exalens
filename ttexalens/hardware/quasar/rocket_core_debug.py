@@ -9,8 +9,6 @@ from ttexalens import util
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
-from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.hardware.risc_debug import RiscDebugStatus, RiscDebugWatchpointState
 from ttexalens.register_store import RegisterStore
 
 # RISC-V Debug Spec 0.13 — DMCONTROL bit fields
@@ -22,8 +20,8 @@ HALTREQ = 1 << 31
 DM_OUT_OF_RESET_BIT = 1 << 17
 
 # Abstract command (COMMAND) — Access Register, 64-bit, transfer=1, write=0, regno=dpc (0x7B1)
-_ABSTRACTCS_BUSY = 1 << 12
-_CMD_READ_DPC = (3 << 20) | (1 << 17) | 0x7B1
+ABSTRACTS_BUSY = 1 << 12
+CMD_READ_DPC = (3 << 20) | (1 << 17) | 0x7B1
 
 
 class QuasarRocketCoreDebug(BabyRiscDebug):
@@ -104,10 +102,10 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
                 self.location.noc_write32(dmcontrol, DMACTIVE | hartsel, noc_id=1)
 
                 command = self.overlay_register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_COMMAND")
-                self.location.noc_write32(command, _CMD_READ_DPC, noc_id=1)
+                self.location.noc_write32(command, CMD_READ_DPC, noc_id=1)
 
                 abstractcs = self.overlay_register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_ABSTRACTCS")
-                while self.location.noc_read32(abstractcs, noc_id=1) & _ABSTRACTCS_BUSY:
+                while self.location.noc_read32(abstractcs, noc_id=1) & ABSTRACTS_BUSY:
                     pass
 
                 data0 = self.overlay_register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_DATA0")
