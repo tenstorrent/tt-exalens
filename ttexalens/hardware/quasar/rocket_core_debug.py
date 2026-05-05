@@ -19,7 +19,7 @@ RESUMEREQ = 1 << 30
 HALTREQ = 1 << 31
 
 # SMN_RISC_RESET_REG bit 17: debug module out-of-reset (active-low, 0 = in reset)
-_DM_OUT_OF_RESET_BIT = 1 << 17
+DM_OUT_OF_RESET_BIT = 1 << 17
 
 
 class QuasarRocketCoreDebug(BabyRiscDebug):
@@ -44,9 +44,9 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
     def ensure_debug_module_out_of_reset(self) -> Generator[None, Any, None]:
         address = self.overlay_register_store.get_register_noc_address("SMN_RISC_RESET_REG")
         value = self.location.noc_read32(address, noc_id=1)
-        dm_was_in_reset = not bool(value & _DM_OUT_OF_RESET_BIT)
+        dm_was_in_reset = not bool(value & DM_OUT_OF_RESET_BIT)
         if dm_was_in_reset:
-            self.location.noc_write32(address, value | _DM_OUT_OF_RESET_BIT, noc_id=1)
+            self.location.noc_write32(address, value | DM_OUT_OF_RESET_BIT, noc_id=1)
         try:
             yield
         finally:
