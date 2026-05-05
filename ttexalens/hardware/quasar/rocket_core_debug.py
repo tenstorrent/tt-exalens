@@ -14,9 +14,13 @@ from ttexalens.hardware.risc_debug import RiscDebugStatus, RiscDebugWatchpointSt
 from ttexalens.register_store import RegisterStore
 
 # RISC-V Debug Spec 0.13 — DMCONTROL bit fields
-_DMACTIVE  = 1 << 0
-_RESUMEREQ = 1 << 30
-_HALTREQ   = 1 << 31
+DMACTIVE = 1 << 0
+RESUMEREQ = 1 << 30
+HALTREQ = 1 << 31
+
+# SMN_RISC_RESET_REG bit 17: debug module out-of-reset (active-low, 0 = in reset)
+_DM_OUT_OF_RESET_BIT = 1 << 17
+
 
 class QuasarRocketCoreDebug(BabyRiscDebug):
     def __init__(self, risc_info: BabyRiscInfo, overlay_register_store: RegisterStore, enable_asserts: bool = True):
@@ -25,43 +29,57 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
 
     def is_in_reset(self) -> bool:
         reset_bit = 1 << (8 + self.baby_risc_info.risc_id)
-        address = self.overlay_register_store.get_register_smn_address("SMN_RISC_RESET_REG")
-        data = self.device.smn_read(self.location, address, 4)
-        value = int.from_bytes(data, "little")
+        address = self.overlay_register_store.get_register_noc_address("SMN_RISC_RESET_REG")
+        value = self.location.noc_read32(address, noc_id=1)
         return not bool(value & reset_bit)
 
     def set_reset_signal(self, value: bool) -> None:
         reset_bit = 1 << (8 + self.baby_risc_info.risc_id)
-        address = self.overlay_register_store.get_register_smn_address("SMN_RISC_RESET_REG")
-        data = self.device.smn_read(self.location, address, 4)
-        current = int.from_bytes(data, "little")
+        address = self.overlay_register_store.get_register_noc_address("SMN_RISC_RESET_REG")
+        current = self.location.noc_read32(address, noc_id=1)
         new_value = (current & ~reset_bit) if value else (current | reset_bit)
-        self.device.smn_write(self.location, address, new_value.to_bytes(4, "little"))
+        self.location.noc_write32(address, new_value, noc_id=1)
+
+    @contextmanager
+    def ensure_debug_module_out_of_reset(self) -> Generator[None, Any, None]:
+        address = self.overlay_register_store.get_register_noc_address("SMN_RISC_RESET_REG")
+        value = self.location.noc_read32(address, noc_id=1)
+        dm_was_in_reset = not bool(value & _DM_OUT_OF_RESET_BIT)
+        if dm_was_in_reset:
+            self.location.noc_write32(address, value | _DM_OUT_OF_RESET_BIT, noc_id=1)
+        try:
+            yield
+        finally:
+            if dm_was_in_reset:
+                self.location.noc_write32(address, value, noc_id=1)
 
     def is_halted(self) -> bool:
-        address = self.overlay_register_store.get_register_smn_address("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
-        haltsummary = int.from_bytes(self.device.smn_read(self.location, address, 4), "little")
-        return bool(haltsummary & (1 << self.baby_risc_info.risc_id))
+        with self.ensure_debug_module_out_of_reset():
+            address = self.overlay_register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
+            haltsummary = self.location.noc_read32(address, noc_id=1)
+            return bool(haltsummary & (1 << self.baby_risc_info.risc_id))
 
     def halt(self) -> None:
-        if self.is_halted():
-            util.WARN(f"Halt: {self.risc_location.risc_name} at {self.location} is already halted")
-            return
-        address = self.overlay_register_store.get_register_smn_address("TT_DEBUG_MODULE_APB_DMCONTROL")
-        hartsel = self.baby_risc_info.risc_id << 16
-        self.device.smn_write(self.location, address, (_DMACTIVE | hartsel | _HALTREQ).to_bytes(4, "little"))
-        self.device.smn_write(self.location, address, (_DMACTIVE | hartsel).to_bytes(4, "little"))  # clear haltreq
-        if not self.is_halted():
-            raise RiscHaltError(self.risc_location.risc_name, self.location)
+        with self.ensure_debug_module_out_of_reset():
+            if self.is_halted():
+                util.WARN(f"Halt: {self.risc_location.risc_name} at {self.location} is already halted")
+                return
+            address = self.overlay_register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_DMCONTROL")
+            hartsel = self.baby_risc_info.risc_id << 16
+            self.location.noc_write32(address, DMACTIVE | hartsel | HALTREQ, noc_id=1)
+            self.location.noc_write32(address, DMACTIVE | hartsel, noc_id=1)  # clear haltreq
+            if not self.is_halted():
+                raise RiscHaltError(self.risc_location.risc_name, self.location)
 
     def cont(self) -> None:
-        if not self.is_halted():
-            util.WARN(f"Continue: {self.risc_location.risc_name} at {self.location} is already running")
-            return
-        address = self.overlay_register_store.get_register_smn_address("TT_DEBUG_MODULE_APB_DMCONTROL")
-        hartsel = self.baby_risc_info.risc_id << 16
-        self.device.smn_write(self.location, address, (_DMACTIVE | hartsel | _RESUMEREQ).to_bytes(4, "little"))
-        self.device.smn_write(self.location, address, (_DMACTIVE | hartsel).to_bytes(4, "little"))  # clear resumereq
+        with self.ensure_debug_module_out_of_reset():
+            if not self.is_halted():
+                util.WARN(f"Continue: {self.risc_location.risc_name} at {self.location} is already running")
+                return
+            address = self.overlay_register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_DMCONTROL")
+            hartsel = self.baby_risc_info.risc_id << 16
+            self.location.noc_write32(address, DMACTIVE | hartsel | RESUMEREQ, noc_id=1)
+            self.location.noc_write32(address, DMACTIVE | hartsel, noc_id=1)  # clear resumereq
 
     @contextmanager
     def ensure_halted(self) -> Generator[None, Any, None]:
@@ -75,7 +93,9 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
                 self.cont()
 
     def is_ebreak_hit(self) -> bool:
-        raise NotImplementedError(f"Rocket core ebreak detection not yet implemented for {self.risc_location.risc_name}")
+        raise NotImplementedError(
+            f"Rocket core ebreak detection not yet implemented for {self.risc_location.risc_name}"
+        )
 
     def step(self) -> None:
         raise NotImplementedError(f"Rocket core step not yet implemented for {self.risc_location.risc_name}")
