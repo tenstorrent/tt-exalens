@@ -350,16 +350,6 @@ class Device:
     def bar0_write32(self, address: int, data: int):
         return self._umd_device.bar0_write32(address, data)
 
-    def smn_read(self, location: OnChipCoordinate, address: int, size: int) -> bytes:
-        assert self.is_quasar(), "SMN read is only supported on Quasar devices"
-        noc_x, noc_y = location._noc0_coord
-        return self._umd_device.smn_read(noc_x, noc_y, address, size)
-
-    def smn_write(self, location: OnChipCoordinate, address: int, data: bytes):
-        assert self.is_quasar(), "SMN write is only supported on Quasar devices"
-        noc_x, noc_y = location._noc0_coord
-        return self._umd_device.smn_write(noc_x, noc_y, address, data)
-
     def arc_msg(
         self,
         noc_id: int,
