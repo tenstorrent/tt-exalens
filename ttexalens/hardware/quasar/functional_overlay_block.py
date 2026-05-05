@@ -28,26 +28,26 @@ from ttexalens.register_store import (
     RegisterStore,
 )
 
+
 def get_overlay_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
     if isinstance(register_description, EDU_BIU):
-        return DeviceAddress(noc_address=0x01800000, smn_address=0x01800000)
+        return DeviceAddress(noc_address=0x01800000)
     elif isinstance(register_description, TT_CLUSTER_CTRL):
-        return DeviceAddress(noc_address=0x03000000, smn_address=0x03000000)
+        return DeviceAddress(noc_address=0x03000000)
     elif isinstance(register_description, T6_L1_CSR):
-        return DeviceAddress(noc_address=0x03000200, smn_address=0x03000200)
+        return DeviceAddress(noc_address=0x03000200)
     elif isinstance(register_description, TT_OVERLAY_LLK_TILE_COUNTERS):
-        return DeviceAddress(noc_address=0x03003000, smn_address=0x03003000)
+        return DeviceAddress(noc_address=0x03003000)
     elif isinstance(register_description, TT_ROC_ACCELL):
-        return DeviceAddress(noc_address=0x03004000, smn_address=0x03004000)
+        return DeviceAddress(noc_address=0x03004000)
     elif isinstance(register_description, DEBUG_MODULE):
-        return DeviceAddress(noc_address=0x0300A000, smn_address=0x0300A000)
+        return DeviceAddress(noc_address=0x0300A000)
     elif isinstance(register_description, SMN):
-        return DeviceAddress(smn_address=0x03010000) # Not accessible through NOC, only through SMN
+        return DeviceAddress(noc_address=0x03010000)  # Not accessible through NOC, only through SMN
     elif isinstance(register_description, TT_NEO):
-        return DeviceAddress(noc_address=0x03020000, smn_address=0x03020000)
+        return DeviceAddress(noc_address=0x03020000)
     else:
         raise ValueError(f"Unknown register description type: {type(register_description)}")
-
 
 
 overlay_register_store_initialization = RegisterStore.create_initialization(
@@ -67,18 +67,88 @@ class QuasarFunctionalOverlayBlock(NocBlock):
     def __init__(self, noc_block: QuasarFunctionalWorkerBlock):
         self.noc_block = noc_block
 
-        self.overlay_register_store = RegisterStore(
-            overlay_register_store_initialization, noc_block.location
-        )
+        self.overlay_register_store = RegisterStore(overlay_register_store_initialization, noc_block.location)
 
-        self.rocket0 = BabyRiscInfo(risc_name="rocket0", risc_id=0, noc_block=noc_block, neo_id=None, l1=noc_block.l1, max_watchpoints=0, reset_flag_shift=0, debug_hardware_present=False)
-        self.rocket1 = BabyRiscInfo(risc_name="rocket1", risc_id=1, noc_block=noc_block, neo_id=None, l1=noc_block.l1, max_watchpoints=0, reset_flag_shift=0, debug_hardware_present=False)
-        self.rocket2 = BabyRiscInfo(risc_name="rocket2", risc_id=2, noc_block=noc_block, neo_id=None, l1=noc_block.l1, max_watchpoints=0, reset_flag_shift=0, debug_hardware_present=False)
-        self.rocket3 = BabyRiscInfo(risc_name="rocket3", risc_id=3, noc_block=noc_block, neo_id=None, l1=noc_block.l1, max_watchpoints=0, reset_flag_shift=0, debug_hardware_present=False)
-        self.rocket4 = BabyRiscInfo(risc_name="rocket4", risc_id=4, noc_block=noc_block, neo_id=None, l1=noc_block.l1, max_watchpoints=0, reset_flag_shift=0, debug_hardware_present=False)
-        self.rocket5 = BabyRiscInfo(risc_name="rocket5", risc_id=5, noc_block=noc_block, neo_id=None, l1=noc_block.l1, max_watchpoints=0, reset_flag_shift=0, debug_hardware_present=False)
-        self.rocket6 = BabyRiscInfo(risc_name="rocket6", risc_id=6, noc_block=noc_block, neo_id=None, l1=noc_block.l1, max_watchpoints=0, reset_flag_shift=0, debug_hardware_present=False)
-        self.rocket7 = BabyRiscInfo(risc_name="rocket7", risc_id=7, noc_block=noc_block, neo_id=None, l1=noc_block.l1, max_watchpoints=0, reset_flag_shift=0, debug_hardware_present=False)
+        self.rocket0 = BabyRiscInfo(
+            risc_name="rocket0",
+            risc_id=0,
+            noc_block=noc_block,
+            neo_id=None,
+            l1=noc_block.l1,
+            max_watchpoints=0,
+            reset_flag_shift=0,
+            debug_hardware_present=False,
+        )
+        self.rocket1 = BabyRiscInfo(
+            risc_name="rocket1",
+            risc_id=1,
+            noc_block=noc_block,
+            neo_id=None,
+            l1=noc_block.l1,
+            max_watchpoints=0,
+            reset_flag_shift=0,
+            debug_hardware_present=False,
+        )
+        self.rocket2 = BabyRiscInfo(
+            risc_name="rocket2",
+            risc_id=2,
+            noc_block=noc_block,
+            neo_id=None,
+            l1=noc_block.l1,
+            max_watchpoints=0,
+            reset_flag_shift=0,
+            debug_hardware_present=False,
+        )
+        self.rocket3 = BabyRiscInfo(
+            risc_name="rocket3",
+            risc_id=3,
+            noc_block=noc_block,
+            neo_id=None,
+            l1=noc_block.l1,
+            max_watchpoints=0,
+            reset_flag_shift=0,
+            debug_hardware_present=False,
+        )
+        self.rocket4 = BabyRiscInfo(
+            risc_name="rocket4",
+            risc_id=4,
+            noc_block=noc_block,
+            neo_id=None,
+            l1=noc_block.l1,
+            max_watchpoints=0,
+            reset_flag_shift=0,
+            debug_hardware_present=False,
+        )
+        self.rocket5 = BabyRiscInfo(
+            risc_name="rocket5",
+            risc_id=5,
+            noc_block=noc_block,
+            neo_id=None,
+            l1=noc_block.l1,
+            max_watchpoints=0,
+            reset_flag_shift=0,
+            debug_hardware_present=False,
+        )
+        self.rocket6 = BabyRiscInfo(
+            risc_name="rocket6",
+            risc_id=6,
+            noc_block=noc_block,
+            neo_id=None,
+            l1=noc_block.l1,
+            max_watchpoints=0,
+            reset_flag_shift=0,
+            debug_hardware_present=False,
+        )
+        self.rocket7 = BabyRiscInfo(
+            risc_name="rocket7",
+            risc_id=7,
+            noc_block=noc_block,
+            neo_id=None,
+            l1=noc_block.l1,
+            max_watchpoints=0,
+            reset_flag_shift=0,
+            debug_hardware_present=False,
+        )
 
     def get_register_store(self) -> RegisterStore:
         return self.overlay_register_store
@@ -99,8 +169,14 @@ class QuasarFunctionalOverlayBlock(NocBlock):
     @cache
     def get_risc_debug(self, risc_name: str) -> RiscDebug:
         rocket_infos = [
-            self.rocket0, self.rocket1, self.rocket2, self.rocket3,
-            self.rocket4, self.rocket5, self.rocket6, self.rocket7,
+            self.rocket0,
+            self.rocket1,
+            self.rocket2,
+            self.rocket3,
+            self.rocket4,
+            self.rocket5,
+            self.rocket6,
+            self.rocket7,
         ]
         for core in rocket_infos:
             if core.risc_name == risc_name:
