@@ -96,26 +96,6 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
             if not was_halted:
                 self.cont()
 
-    def is_ebreak_hit(self) -> bool:
-        raise NotImplementedError(
-            f"Rocket core ebreak detection not yet implemented for {self.risc_location.risc_name}"
-        )
-
-    def step(self) -> None:
-        raise NotImplementedError(f"Rocket core step not yet implemented for {self.risc_location.risc_name}")
-
-    @contextmanager
-    def ensure_private_memory_access(self) -> Generator[None, Any, None]:
-        raise NotImplementedError(
-            f"Rocket core ensure_private_memory_access not yet implemented for {self.risc_location.risc_name}"
-        )
-
-    def read_gpr(self, register_index: int) -> int:
-        raise NotImplementedError(f"Rocket core GPR read not yet implemented for {self.risc_location.risc_name}")
-
-    def write_gpr(self, register_index: int, value: int) -> None:
-        raise NotImplementedError(f"Rocket core GPR write not yet implemented for {self.risc_location.risc_name}")
-
     def get_pc(self) -> int:
         with self.ensure_debug_module_out_of_reset():
             with self.ensure_halted():
