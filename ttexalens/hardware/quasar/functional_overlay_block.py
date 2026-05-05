@@ -73,8 +73,6 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
-            reset_flag_shift=0,
-            debug_hardware_present=False,
         )
         self.rocket1 = BabyRiscInfo(
             risc_name="rocket1",
@@ -83,8 +81,6 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
-            reset_flag_shift=0,
-            debug_hardware_present=False,
         )
         self.rocket2 = BabyRiscInfo(
             risc_name="rocket2",
@@ -93,8 +89,6 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
-            reset_flag_shift=0,
-            debug_hardware_present=False,
         )
         self.rocket3 = BabyRiscInfo(
             risc_name="rocket3",
@@ -103,8 +97,6 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
-            reset_flag_shift=0,
-            debug_hardware_present=False,
         )
         self.rocket4 = BabyRiscInfo(
             risc_name="rocket4",
@@ -113,8 +105,6 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
-            reset_flag_shift=0,
-            debug_hardware_present=False,
         )
         self.rocket5 = BabyRiscInfo(
             risc_name="rocket5",
@@ -123,8 +113,6 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
-            reset_flag_shift=0,
-            debug_hardware_present=False,
         )
         self.rocket6 = BabyRiscInfo(
             risc_name="rocket6",
@@ -133,8 +121,6 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
-            reset_flag_shift=0,
-            debug_hardware_present=False,
         )
         self.rocket7 = BabyRiscInfo(
             risc_name="rocket7",
@@ -143,8 +129,6 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
-            reset_flag_shift=0,
-            debug_hardware_present=False,
         )
 
     def get_register_store(self) -> RegisterStore:

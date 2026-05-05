@@ -21,6 +21,10 @@ HALTREQ = 1 << 31
 # SMN_RISC_RESET_REG bit 17: debug module out-of-reset (active-low, 0 = in reset)
 DM_OUT_OF_RESET_BIT = 1 << 17
 
+# Abstract command (COMMAND) — Access Register, 64-bit, transfer=1, write=0, regno=dpc (0x7B1)
+_ABSTRACTCS_BUSY = 1 << 12
+_CMD_READ_DPC = (3 << 20) | (1 << 17) | 0x7B1
+
 
 class QuasarRocketCoreDebug(BabyRiscDebug):
     def __init__(self, risc_info: BabyRiscInfo, overlay_register_store: RegisterStore, enable_asserts: bool = True):
@@ -113,66 +117,21 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
         raise NotImplementedError(f"Rocket core GPR write not yet implemented for {self.risc_location.risc_name}")
 
     def get_pc(self) -> int:
-        raise NotImplementedError(f"Rocket core PC read not yet implemented for {self.risc_location.risc_name}")
+        with self.ensure_debug_module_out_of_reset():
+            with self.ensure_halted():
+                hartsel = self.baby_risc_info.risc_id << 16
+                dmcontrol = self.overlay_register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_DMCONTROL")
+                self.location.noc_write32(dmcontrol, DMACTIVE | hartsel, noc_id=1)
 
-    def read_memory(self, address: int, safe_mode: bool | None = None) -> int:
-        raise NotImplementedError(f"Rocket core memory read not yet implemented for {self.risc_location.risc_name}")
+                command = self.overlay_register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_COMMAND")
+                self.location.noc_write32(command, _CMD_READ_DPC, noc_id=1)
 
-    def write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
-        raise NotImplementedError(f"Rocket core memory write not yet implemented for {self.risc_location.risc_name}")
+                abstractcs = self.overlay_register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_ABSTRACTCS")
+                while self.location.noc_read32(abstractcs, noc_id=1) & _ABSTRACTCS_BUSY:
+                    pass
 
-    def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
-        raise NotImplementedError(f"Rocket core memory read not yet implemented for {self.risc_location.risc_name}")
-
-    def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None) -> None:
-        raise NotImplementedError(f"Rocket core memory write not yet implemented for {self.risc_location.risc_name}")
-
-    def read_status(self) -> RiscDebugStatus:
-        raise NotImplementedError(f"Rocket core status read not yet implemented for {self.risc_location.risc_name}")
-
-    def read_watchpoints_state(self) -> list[RiscDebugWatchpointState]:
-        raise NotImplementedError(f"Rocket core watchpoints not yet implemented for {self.risc_location.risc_name}")
-
-    def read_watchpoint_address(self, watchpoint_index: int) -> int:
-        raise NotImplementedError(f"Rocket core watchpoints not yet implemented for {self.risc_location.risc_name}")
-
-    def disable_watchpoint(self, watchpoint_index: int) -> None:
-        raise NotImplementedError(f"Rocket core watchpoints not yet implemented for {self.risc_location.risc_name}")
-
-    def set_watchpoint_on_pc_address(self, watchpoint_index: int, address: int) -> None:
-        raise NotImplementedError(f"Rocket core watchpoints not yet implemented for {self.risc_location.risc_name}")
-
-    def set_watchpoint_on_memory_read(self, watchpoint_index: int, address: int) -> None:
-        raise NotImplementedError(f"Rocket core watchpoints not yet implemented for {self.risc_location.risc_name}")
-
-    def set_watchpoint_on_memory_write(self, watchpoint_index: int, address: int) -> None:
-        raise NotImplementedError(f"Rocket core watchpoints not yet implemented for {self.risc_location.risc_name}")
-
-    def set_watchpoint_on_memory_access(self, watchpoint_index: int, address: int) -> None:
-        raise NotImplementedError(f"Rocket core watchpoints not yet implemented for {self.risc_location.risc_name}")
-
-    def can_debug(self) -> bool:
-        raise NotImplementedError(f"Rocket core can_debug not yet implemented for {self.risc_location.risc_name}")
-
-    def set_branch_prediction(self, enable: bool) -> None:
-        raise NotImplementedError(
-            f"Rocket core branch prediction not yet implemented for {self.risc_location.risc_name}"
-        )
-
-    def set_code_start_address(self, address: int | None) -> None:
-        raise NotImplementedError(
-            f"Rocket core code start address not yet implemented for {self.risc_location.risc_name}"
-        )
-
-    def get_l1(self) -> MemoryBlock:
-        raise NotImplementedError(f"Rocket core L1 not yet implemented for {self.risc_location.risc_name}")
-
-    def get_data_private_memory(self) -> MemoryBlock | None:
-        raise NotImplementedError(
-            f"Rocket core data private memory not yet implemented for {self.risc_location.risc_name}"
-        )
-
-    def get_code_private_memory(self) -> MemoryBlock | None:
-        raise NotImplementedError(
-            f"Rocket core code private memory not yet implemented for {self.risc_location.risc_name}"
-        )
+                data0 = self.overlay_register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_DATA0")
+                data1 = self.overlay_register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_DATA1")
+                lo = self.location.noc_read32(data0, noc_id=1)
+                hi = self.location.noc_read32(data1, noc_id=1)
+                return (hi << 32) | lo
