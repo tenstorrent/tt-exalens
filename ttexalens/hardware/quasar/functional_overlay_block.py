@@ -73,6 +73,7 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
+            reset_flag_shift=8,
         )
         self.rocket1 = BabyRiscInfo(
             risc_name="rocket1",
@@ -81,6 +82,7 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
+            reset_flag_shift=9,
         )
         self.rocket2 = BabyRiscInfo(
             risc_name="rocket2",
@@ -89,6 +91,7 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
+            reset_flag_shift=10,
         )
         self.rocket3 = BabyRiscInfo(
             risc_name="rocket3",
@@ -97,6 +100,7 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
+            reset_flag_shift=11,
         )
         self.rocket4 = BabyRiscInfo(
             risc_name="rocket4",
@@ -105,6 +109,7 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
+            reset_flag_shift=12,
         )
         self.rocket5 = BabyRiscInfo(
             risc_name="rocket5",
@@ -113,6 +118,7 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
+            reset_flag_shift=13,
         )
         self.rocket6 = BabyRiscInfo(
             risc_name="rocket6",
@@ -121,6 +127,7 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
+            reset_flag_shift=14,
         )
         self.rocket7 = BabyRiscInfo(
             risc_name="rocket7",
@@ -129,6 +136,7 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             neo_id=None,
             l1=noc_block.l1,
             max_watchpoints=0,
+            reset_flag_shift=15,
         )
 
     def get_register_store(self) -> RegisterStore:

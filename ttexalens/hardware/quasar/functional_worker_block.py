@@ -8,6 +8,7 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.quasar.functional_neo_block import QuasarFunctionalNeoBlock
+from ttexalens.hardware.quasar.functional_overlay_block import QuasarFunctionalOverlayBlock
 from ttexalens.hardware.quasar.noc_block import QuasarNocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.memory_map import MemoryMapBlockInfo
@@ -50,7 +51,7 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             risc_base_start_address=0x00030000,
         )
 
-        self.overlay = QuasarFunctionalWorkerBlock(noc_block=self)
+        self.overlay = QuasarFunctionalOverlayBlock(noc_block=self)
 
         self.noc_memory_map.add_block(MemoryMapBlockInfo("l1", self.l1, safe_to_write=True))
         self.noc_memory_map.add_blocks(self.neo0.noc_memory_list)
