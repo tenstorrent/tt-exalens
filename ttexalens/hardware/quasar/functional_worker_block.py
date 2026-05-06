@@ -103,7 +103,7 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             return self.neo2.get_risc_debug(risc_name)
         elif neo_id == self.neo3.neo_id:
             return self.neo3.get_risc_debug(risc_name)
-        elif risc_name.startswith("rocket"):
+        elif neo_id == None:
             return self.overlay.get_risc_debug(risc_name)
         raise ValueError(
             f"RISC debug for {risc_name} [neo: {neo_id}] is not supported in Quasar functional worker block."

@@ -47,9 +47,7 @@ def get_overlay_register_base_address(register_description: RegisterDescription)
         raise ValueError(f"Unknown register description type: {type(register_description)}")
 
 
-overlay_register_store_initialization = RegisterStore.create_initialization(
-    register_map, get_overlay_register_base_address
-)
+register_store_initialization = RegisterStore.create_initialization(register_map, get_overlay_register_base_address)
 
 
 class QuasarFunctionalOverlayBlock(NocBlock):
@@ -64,7 +62,7 @@ class QuasarFunctionalOverlayBlock(NocBlock):
     def __init__(self, noc_block: QuasarFunctionalWorkerBlock):
         self.noc_block = noc_block
 
-        self.overlay_register_store = RegisterStore(overlay_register_store_initialization, noc_block.location)
+        self.register_store = RegisterStore(register_store_initialization, noc_block.location)
 
         self.rocket0 = BabyRiscInfo(
             risc_name="rocket0",
@@ -139,20 +137,17 @@ class QuasarFunctionalOverlayBlock(NocBlock):
             reset_flag_shift=15,
         )
 
-    def get_register_store(self) -> RegisterStore:
-        return self.overlay_register_store
-
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:
         return [
-            QuasarRocketCoreDebug(self.rocket0, self.overlay_register_store),
-            QuasarRocketCoreDebug(self.rocket1, self.overlay_register_store),
-            QuasarRocketCoreDebug(self.rocket2, self.overlay_register_store),
-            QuasarRocketCoreDebug(self.rocket3, self.overlay_register_store),
-            QuasarRocketCoreDebug(self.rocket4, self.overlay_register_store),
-            QuasarRocketCoreDebug(self.rocket5, self.overlay_register_store),
-            QuasarRocketCoreDebug(self.rocket6, self.overlay_register_store),
-            QuasarRocketCoreDebug(self.rocket7, self.overlay_register_store),
+            QuasarRocketCoreDebug(self.rocket0, self.register_store),
+            QuasarRocketCoreDebug(self.rocket1, self.register_store),
+            QuasarRocketCoreDebug(self.rocket2, self.register_store),
+            QuasarRocketCoreDebug(self.rocket3, self.register_store),
+            QuasarRocketCoreDebug(self.rocket4, self.register_store),
+            QuasarRocketCoreDebug(self.rocket5, self.register_store),
+            QuasarRocketCoreDebug(self.rocket6, self.register_store),
+            QuasarRocketCoreDebug(self.rocket7, self.register_store),
         ]
 
     @cache
@@ -169,5 +164,5 @@ class QuasarFunctionalOverlayBlock(NocBlock):
         ]
         for core in rocket_infos:
             if core.risc_name == risc_name:
-                return QuasarRocketCoreDebug(core, self.overlay_register_store)
+                return QuasarRocketCoreDebug(core, self.register_store)
         raise ValueError(f"Rocket core '{risc_name}' not found in overlay block at {self.noc_block.location}")

@@ -17,7 +17,7 @@ class QuasarNocBlock(NocBlock):
 
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
         assert neo_id is None, "Default NOC block does not support neo_id"
-        if noc_id == 0:
+        if noc_id == 0 or noc_id == 1:
             return self.register_store
         else:
             raise ValueError(f"Invalid NOC ID: {noc_id}")
