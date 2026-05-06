@@ -79,7 +79,7 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
         elif neo_id == 3:
             return self.neo3.register_store
         elif neo_id is None:
-            return self.overlay.register_store   
+            return self.overlay.register_store
         return super().get_register_store(noc_id, neo_id)
 
     @cached_property
@@ -107,4 +107,3 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
         raise ValueError(
             f"RISC debug for {risc_name} [neo: {neo_id}] is not supported in Quasar functional worker block."
         )
-    
