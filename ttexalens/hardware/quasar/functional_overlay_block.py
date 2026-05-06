@@ -50,7 +50,7 @@ def get_overlay_register_base_address(register_description: RegisterDescription)
 register_store_initialization = RegisterStore.create_initialization(register_map, get_overlay_register_base_address)
 
 
-class QuasarFunctionalOverlayBlock(NocBlock):
+class QuasarFunctionalOverlayBlock:
     """
     Represents the Quasar overlay cluster: 8 in-order 64-bit Rocket RISC-V
     data-movement cores sharing a 128 KB L2 cache and a 4 MB SRAM region.
