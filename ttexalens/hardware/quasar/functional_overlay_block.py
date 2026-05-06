@@ -8,9 +8,7 @@ from functools import cache, cached_property
 
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
-from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.quasar.functional_overlay_registers import (
-    OverlayDebugRegisterDescription,
     SmnRegisterDescription,
     ControlStatusRegisterDescription,
     ClusterControlRegisterDescription,
@@ -23,6 +21,7 @@ from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWo
 from ttexalens.hardware.quasar.rocket_core_debug import QuasarRocketCoreDebug
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
+    DebugRegisterDescription,
     RegisterDescription,
     RegisterStore,
 )
@@ -37,10 +36,10 @@ def get_overlay_register_base_address(register_description: RegisterDescription)
         return DeviceAddress(noc_address=0x03003000)
     elif isinstance(register_description, RoccAcellRegisterDescription):
         return DeviceAddress(noc_address=0x03004000)
-    elif isinstance(register_description, OverlayDebugRegisterDescription):
+    elif isinstance(register_description, DebugRegisterDescription):
         return DeviceAddress(noc_address=0x0300A000)
     elif isinstance(register_description, SmnRegisterDescription):
-        return DeviceAddress(noc_address=0x03010000)
+        return DeviceAddress(noc_address=0x03010000, noc_id=1)  # These registers are only available through SMN
     elif isinstance(register_description, NeoRegisterDescription):
         return DeviceAddress(noc_address=0x03020000)
     else:
@@ -54,9 +53,6 @@ class QuasarFunctionalOverlayBlock:
     """
     Represents the Quasar overlay cluster: 8 in-order 64-bit Rocket RISC-V
     data-movement cores sharing a 128 KB L2 cache and a 4 MB SRAM region.
-
-    This block is not a separate NOC tile — it lives inside the functional
-    worker tile and is accessed through the same (x, y) NOC coordinate.
     """
 
     def __init__(self, noc_block: QuasarFunctionalWorkerBlock):

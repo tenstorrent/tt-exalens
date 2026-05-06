@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-from ttexalens.register_store import RegisterDescription
+from ttexalens.register_store import DebugRegisterDescription, RegisterDescription
 
 
 class ClusterControlRegisterDescription(RegisterDescription):
@@ -14,10 +14,6 @@ class ControlStatusRegisterDescription(RegisterDescription):
 
 
 class OverlayLlkTileCountersRegisterDescription(RegisterDescription):
-    pass
-
-
-class OverlayDebugRegisterDescription(RegisterDescription):
     pass
 
 
@@ -1266,26 +1262,26 @@ register_map: dict[str, RegisterDescription] = {
     ),
     # ---------------------------------------------------------------------------
     # Debug Module APB registers (TT_DEBUG_MODULE_APB at 0x0300A000).
-    # Offsets are relative to the OverlayDebugRegisterDescription base address 0x0300A000,
+    # Offsets are relative to the DebugRegisterDescription base address 0x0300A000,
     # so each APB register offset = DMI_addr * 4.
     # ---------------------------------------------------------------------------
-    "TT_DEBUG_MODULE_APB_DATA0": OverlayDebugRegisterDescription(offset=0x010),
-    "TT_DEBUG_MODULE_APB_DATA1": OverlayDebugRegisterDescription(offset=0x014),
-    "TT_DEBUG_MODULE_APB_DMCONTROL": OverlayDebugRegisterDescription(offset=0x040),
-    "TT_DEBUG_MODULE_APB_DMSTATUS": OverlayDebugRegisterDescription(offset=0x044),
-    "TT_DEBUG_MODULE_APB_HARTINFO": OverlayDebugRegisterDescription(offset=0x048),
-    "TT_DEBUG_MODULE_APB_HALTSUMMARY1": OverlayDebugRegisterDescription(offset=0x04C),
-    "TT_DEBUG_MODULE_APB_HAWINDOW": OverlayDebugRegisterDescription(offset=0x054),
-    "TT_DEBUG_MODULE_APB_ABSTRACTCS": OverlayDebugRegisterDescription(offset=0x058),
-    "TT_DEBUG_MODULE_APB_COMMAND": OverlayDebugRegisterDescription(offset=0x05C),
-    "TT_DEBUG_MODULE_APB_ABSTRACTAUTO": OverlayDebugRegisterDescription(offset=0x060),
-    "TT_DEBUG_MODULE_APB_PROGBUF0": OverlayDebugRegisterDescription(offset=0x080),
-    "TT_DEBUG_MODULE_APB_SBCS": OverlayDebugRegisterDescription(offset=0x0E0),
-    "TT_DEBUG_MODULE_APB_SBADDR0": OverlayDebugRegisterDescription(offset=0x0E4),
-    "TT_DEBUG_MODULE_APB_SBADDR1": OverlayDebugRegisterDescription(offset=0x0E8),
-    "TT_DEBUG_MODULE_APB_SBDATA0": OverlayDebugRegisterDescription(offset=0x0F0),
-    "TT_DEBUG_MODULE_APB_SBDATA1": OverlayDebugRegisterDescription(offset=0x0F4),
-    "TT_DEBUG_MODULE_APB_HALTSUMMARY0": OverlayDebugRegisterDescription(offset=0x100),
+    "TT_DEBUG_MODULE_APB_DATA0": DebugRegisterDescription(offset=0x010),
+    "TT_DEBUG_MODULE_APB_DATA1": DebugRegisterDescription(offset=0x014),
+    "TT_DEBUG_MODULE_APB_DMCONTROL": DebugRegisterDescription(offset=0x040),
+    "TT_DEBUG_MODULE_APB_DMSTATUS": DebugRegisterDescription(offset=0x044),
+    "TT_DEBUG_MODULE_APB_HARTINFO": DebugRegisterDescription(offset=0x048),
+    "TT_DEBUG_MODULE_APB_HALTSUMMARY1": DebugRegisterDescription(offset=0x04C),
+    "TT_DEBUG_MODULE_APB_HAWINDOW": DebugRegisterDescription(offset=0x054),
+    "TT_DEBUG_MODULE_APB_ABSTRACTCS": DebugRegisterDescription(offset=0x058),
+    "TT_DEBUG_MODULE_APB_COMMAND": DebugRegisterDescription(offset=0x05C),
+    "TT_DEBUG_MODULE_APB_ABSTRACTAUTO": DebugRegisterDescription(offset=0x060),
+    "TT_DEBUG_MODULE_APB_PROGBUF0": DebugRegisterDescription(offset=0x080),
+    "TT_DEBUG_MODULE_APB_SBCS": DebugRegisterDescription(offset=0x0E0),
+    "TT_DEBUG_MODULE_APB_SBADDR0": DebugRegisterDescription(offset=0x0E4),
+    "TT_DEBUG_MODULE_APB_SBADDR1": DebugRegisterDescription(offset=0x0E8),
+    "TT_DEBUG_MODULE_APB_SBDATA0": DebugRegisterDescription(offset=0x0F0),
+    "TT_DEBUG_MODULE_APB_SBDATA1": DebugRegisterDescription(offset=0x0F4),
+    "TT_DEBUG_MODULE_APB_HALTSUMMARY0": DebugRegisterDescription(offset=0x100),
     # ---------------------------------------------------------------------------
     # SmnRegisterDescription registers
     # ---------------------------------------------------------------------------

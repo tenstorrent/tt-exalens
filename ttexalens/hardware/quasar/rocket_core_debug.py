@@ -31,38 +31,30 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
 
     def is_in_reset(self) -> bool:
         reset_bit = 1 << self.baby_risc_info.reset_flag_shift
-        address = self.register_store.get_register_noc_address("SMN_RISC_RESET_REG")
-        assert address is not None, "SMN_RISC_RESET_REG address not found in overlay register store"
-        value = self.location.noc_read32(address, noc_id=1)
+        value = self.register_store.read_register("SMN_RISC_RESET_REG")
         return not bool(value & reset_bit)
 
     def set_reset_signal(self, value: bool) -> None:
         reset_bit = 1 << self.baby_risc_info.reset_flag_shift
-        address = self.register_store.get_register_noc_address("SMN_RISC_RESET_REG")
-        assert address is not None, "SMN_RISC_RESET_REG address not found in overlay register store"
-        current = self.location.noc_read32(address, noc_id=1)
+        current = self.register_store.read_register("SMN_RISC_RESET_REG")
         new_value = (current & ~reset_bit) if value else (current | reset_bit)
-        self.location.noc_write32(address, new_value, noc_id=1)
+        self.register_store.write_register("SMN_RISC_RESET_REG", new_value)
 
     @contextmanager
     def ensure_debug_module_out_of_reset(self) -> Generator[None, Any, None]:
-        address = self.register_store.get_register_noc_address("SMN_RISC_RESET_REG")
-        assert address is not None, "SMN_RISC_RESET_REG address not found in overlay register store"
-        value = self.location.noc_read32(address, noc_id=1)
+        value = self.register_store.read_register("SMN_RISC_RESET_REG")
         dm_was_in_reset = not bool(value & DM_OUT_OF_RESET_BIT)
         if dm_was_in_reset:
-            self.location.noc_write32(address, value | DM_OUT_OF_RESET_BIT, noc_id=1)
+            self.register_store.write_register("SMN_RISC_RESET_REG", value | DM_OUT_OF_RESET_BIT)
         try:
             yield
         finally:
             if dm_was_in_reset:
-                self.location.noc_write32(address, value, noc_id=1)
+                self.register_store.write_register("SMN_RISC_RESET_REG", value)
 
     def is_halted(self) -> bool:
         with self.ensure_debug_module_out_of_reset():
-            address = self.register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
-            assert address is not None, "TT_DEBUG_MODULE_APB_HALTSUMMARY0 address not found in overlay register store"
-            haltsummary = self.location.noc_read32(address, noc_id=1)
+            haltsummary = self.register_store.read_register("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
             return bool(haltsummary & (1 << self.baby_risc_info.risc_id))
 
     def halt(self) -> None:
@@ -70,11 +62,9 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
             if self.is_halted():
                 util.WARN(f"Halt: {self.risc_location.risc_name} at {self.location} is already halted")
                 return
-            address = self.register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_DMCONTROL")
-            assert address is not None, "TT_DEBUG_MODULE_APB_DMCONTROL address not found in overlay register store"
             hartsel = self.baby_risc_info.risc_id << 16
-            self.location.noc_write32(address, DMACTIVE | hartsel | HALTREQ, noc_id=1)
-            self.location.noc_write32(address, DMACTIVE | hartsel, noc_id=1)  # clear haltreq
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | HALTREQ)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
             if not self.is_halted():
                 raise RiscHaltError(self.risc_location.risc_name, self.location)
 
@@ -83,11 +73,9 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
             if not self.is_halted():
                 util.WARN(f"Continue: {self.risc_location.risc_name} at {self.location} is already running")
                 return
-            address = self.register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_DMCONTROL")
-            assert address is not None, "TT_DEBUG_MODULE_APB_DMCONTROL address not found in overlay register store"
             hartsel = self.baby_risc_info.risc_id << 16
-            self.location.noc_write32(address, DMACTIVE | hartsel | RESUMEREQ, noc_id=1)
-            self.location.noc_write32(address, DMACTIVE | hartsel, noc_id=1)  # clear resumereq
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | RESUMEREQ)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
 
     @contextmanager
     def ensure_halted(self) -> Generator[None, Any, None]:
@@ -104,27 +92,10 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
         with self.ensure_debug_module_out_of_reset():
             with self.ensure_halted():
                 hartsel = self.baby_risc_info.risc_id << 16
-                dmcontrol = self.register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_DMCONTROL")
-                assert (
-                    dmcontrol is not None
-                ), "TT_DEBUG_MODULE_APB_DMCONTROL address not found in overlay register store"
-                self.location.noc_write32(dmcontrol, DMACTIVE | hartsel, noc_id=1)
-
-                command = self.register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_COMMAND")
-                assert command is not None, "TT_DEBUG_MODULE_APB_COMMAND address not found in overlay register store"
-                self.location.noc_write32(command, CMD_READ_DPC, noc_id=1)
-
-                abstractcs = self.register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_ABSTRACTCS")
-                assert (
-                    abstractcs is not None
-                ), "TT_DEBUG_MODULE_APB_ABSTRACTCS address not found in overlay register store"
-                while self.location.noc_read32(abstractcs, noc_id=1) & ABSTRACTS_BUSY:
+                self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
+                self.register_store.write_register("TT_DEBUG_MODULE_APB_COMMAND", CMD_READ_DPC)
+                while self.register_store.read_register("TT_DEBUG_MODULE_APB_ABSTRACTCS") & ABSTRACTS_BUSY:
                     pass
-
-                data0 = self.register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_DATA0")
-                assert data0 is not None, "TT_DEBUG_MODULE_APB_DATA0 address not found in overlay register store"
-                data1 = self.register_store.get_register_noc_address("TT_DEBUG_MODULE_APB_DATA1")
-                assert data1 is not None, "TT_DEBUG_MODULE_APB_DATA1 address not found in overlay register store"
-                lo = self.location.noc_read32(data0, noc_id=1)
-                hi = self.location.noc_read32(data1, noc_id=1)
+                lo = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA0")
+                hi = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA1")
                 return (hi << 32) | lo
