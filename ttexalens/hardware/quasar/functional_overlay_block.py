@@ -71,6 +71,7 @@ class QuasarFunctionalOverlayBlock:
             default_code_start_address=None,
             code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_0",
             code_start_address_enable_register=None,
+            debug_hardware_present=True,
         )
         self.rocket1 = BabyRiscInfo(
             risc_name="rocket1",
@@ -83,6 +84,7 @@ class QuasarFunctionalOverlayBlock:
             default_code_start_address=None,
             code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_1",
             code_start_address_enable_register=None,
+            debug_hardware_present=True,
         )
         self.rocket2 = BabyRiscInfo(
             risc_name="rocket2",
@@ -95,6 +97,7 @@ class QuasarFunctionalOverlayBlock:
             default_code_start_address=None,
             code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_2",
             code_start_address_enable_register=None,
+            debug_hardware_present=True,
         )
         self.rocket3 = BabyRiscInfo(
             risc_name="rocket3",
@@ -107,6 +110,7 @@ class QuasarFunctionalOverlayBlock:
             default_code_start_address=None,
             code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_3",
             code_start_address_enable_register=None,
+            debug_hardware_present=True,
         )
         self.rocket4 = BabyRiscInfo(
             risc_name="rocket4",
@@ -119,6 +123,7 @@ class QuasarFunctionalOverlayBlock:
             default_code_start_address=None,
             code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_4",
             code_start_address_enable_register=None,
+            debug_hardware_present=True,
         )
         self.rocket5 = BabyRiscInfo(
             risc_name="rocket5",
@@ -131,6 +136,7 @@ class QuasarFunctionalOverlayBlock:
             default_code_start_address=None,
             code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_5",
             code_start_address_enable_register=None,
+            debug_hardware_present=True,
         )
         self.rocket6 = BabyRiscInfo(
             risc_name="rocket6",
@@ -143,6 +149,7 @@ class QuasarFunctionalOverlayBlock:
             default_code_start_address=None,
             code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_6",
             code_start_address_enable_register=None,
+            debug_hardware_present=True,
         )
         self.rocket7 = BabyRiscInfo(
             risc_name="rocket7",
@@ -155,6 +162,7 @@ class QuasarFunctionalOverlayBlock:
             default_code_start_address=None,
             code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_7",
             code_start_address_enable_register=None,
+            debug_hardware_present=True,
         )
 
     @cached_property

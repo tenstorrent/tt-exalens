@@ -39,10 +39,6 @@ class RiscvCoreSimulator:
         risc_debug = self.noc_block.get_risc_debug(self.risc_name, self.neo_id)
         assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug instance, got {type(risc_debug)}"
         self.risc_debug: BabyRiscDebug = risc_debug
-        debug_bus = self.noc_block.get_debug_bus(self.neo_id)
-        if not "rocket" in self.risc_name.lower():
-            assert debug_bus is not None
-        self.debug_bus_store: DebugBusSignalStore = debug_bus
         self.program_base_address = self.risc_debug.baby_risc_info.get_code_start_address(
             self.risc_debug.register_store
         )
@@ -56,14 +52,23 @@ class RiscvCoreSimulator:
         assert self.risc_debug.debug_hardware is not None
         return self.risc_debug.debug_hardware
 
-    def set_code_start_address(self, address: int):
-        """Set the code start address for the core."""
-        self.risc_debug.set_code_start_address(address)
-        self.program_base_address = address
+    @cached_property
+    def debug_bus_store(self) -> DebugBusSignalStore:
+        assert self.noc_block.get_debug_bus(self.neo_id) is not None
+        return self.noc_block.get_debug_bus(self.neo_id)
 
     def has_debug_hardware(self) -> bool:
         """Check if core has debug hardware available."""
         return self.risc_debug.debug_hardware is not None
+
+    def has_debug_bus(self) -> bool:
+        """Check if core has debug bus available."""
+        return self.noc_block.get_debug_bus(self.neo_id) is not None
+
+    def set_code_start_address(self, address: int):
+        """Set the code start address for the core."""
+        self.risc_debug.set_code_start_address(address)
+        self.program_base_address = address
 
     def write_program(self, addr: int, data: int | list[int]):
         """Write program code data at specified address offset."""
