@@ -150,7 +150,7 @@ class ArcBlock(NocBlock):
         """
         arc_register_store = self.get_register_store()
 
-        iccm_id = re.findall("\d", mem_type)
+        iccm_id = re.findall(r"\d", mem_type)
         if len(iccm_id) == 0:
             iccm_id_int = 0
             assert mem_type == "iccm" or mem_type == "csm"
