@@ -100,8 +100,5 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
                 hi = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA1")
                 return (hi << 32) | lo
 
-    def get_code_start_address(self) -> int:
-        return self.register_store.read_register(f"TT_CLUSTER_CTRL_RESET_VECTOR_{self.baby_risc_info.risc_id}")
-
-    def set_code_start_address(self, address: int) -> None:
-        self.register_store.write_register(f"TT_CLUSTER_CTRL_RESET_VECTOR_{self.baby_risc_info.risc_id}", address)
+    def set_code_start_address(self, address: int | None) -> None:
+        self.baby_risc_info.set_code_start_address(self.register_store, address)

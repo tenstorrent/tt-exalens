@@ -68,6 +68,9 @@ class QuasarFunctionalOverlayBlock:
             l1=noc_block.l1,
             max_watchpoints=0,
             reset_flag_shift=8,
+            default_code_start_address=None,
+            code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_0",
+            code_start_address_enable_register=None,
         )
         self.rocket1 = BabyRiscInfo(
             risc_name="rocket1",
@@ -77,6 +80,9 @@ class QuasarFunctionalOverlayBlock:
             l1=noc_block.l1,
             max_watchpoints=0,
             reset_flag_shift=9,
+            default_code_start_address=None,
+            code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_1",
+            code_start_address_enable_register=None,
         )
         self.rocket2 = BabyRiscInfo(
             risc_name="rocket2",
@@ -86,6 +92,9 @@ class QuasarFunctionalOverlayBlock:
             l1=noc_block.l1,
             max_watchpoints=0,
             reset_flag_shift=10,
+            default_code_start_address=None,
+            code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_2",
+            code_start_address_enable_register=None,
         )
         self.rocket3 = BabyRiscInfo(
             risc_name="rocket3",
@@ -95,6 +104,9 @@ class QuasarFunctionalOverlayBlock:
             l1=noc_block.l1,
             max_watchpoints=0,
             reset_flag_shift=11,
+            default_code_start_address=None,
+            code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_3",
+            code_start_address_enable_register=None,
         )
         self.rocket4 = BabyRiscInfo(
             risc_name="rocket4",
@@ -104,6 +116,9 @@ class QuasarFunctionalOverlayBlock:
             l1=noc_block.l1,
             max_watchpoints=0,
             reset_flag_shift=12,
+            default_code_start_address=None,
+            code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_4",
+            code_start_address_enable_register=None,
         )
         self.rocket5 = BabyRiscInfo(
             risc_name="rocket5",
@@ -113,6 +128,9 @@ class QuasarFunctionalOverlayBlock:
             l1=noc_block.l1,
             max_watchpoints=0,
             reset_flag_shift=13,
+            default_code_start_address=None,
+            code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_5",
+            code_start_address_enable_register=None,
         )
         self.rocket6 = BabyRiscInfo(
             risc_name="rocket6",
@@ -122,6 +140,9 @@ class QuasarFunctionalOverlayBlock:
             l1=noc_block.l1,
             max_watchpoints=0,
             reset_flag_shift=14,
+            default_code_start_address=None,
+            code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_6",
+            code_start_address_enable_register=None,
         )
         self.rocket7 = BabyRiscInfo(
             risc_name="rocket7",
@@ -131,6 +152,9 @@ class QuasarFunctionalOverlayBlock:
             l1=noc_block.l1,
             max_watchpoints=0,
             reset_flag_shift=15,
+            default_code_start_address=None,
+            code_start_address_register="TT_CLUSTER_CTRL_RESET_VECTOR_7",
+            code_start_address_enable_register=None,
         )
 
     @cached_property
