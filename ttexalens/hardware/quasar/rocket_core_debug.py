@@ -7,8 +7,8 @@ from typing import Any, Generator
 
 from ttexalens import util
 from ttexalens.exceptions import RiscHaltError
-from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
+from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
 from ttexalens.register_store import RegisterStore
 
 # RISC-V Debug Spec 0.13 — DMCONTROL bit fields
@@ -24,7 +24,7 @@ ABSTRACTS_BUSY = 1 << 12
 CMD_READ_DPC = (3 << 20) | (1 << 17) | 0x7B1
 
 
-class QuasarRocketCoreDebug(BabyRiscDebug):
+class QuasarRocketCoreDebug(RocketCoreDebug):
     def __init__(self, risc_info: BabyRiscInfo, register_store: RegisterStore, enable_asserts: bool = True):
         super().__init__(risc_info, enable_asserts)
         self.register_store = register_store
@@ -101,4 +101,4 @@ class QuasarRocketCoreDebug(BabyRiscDebug):
                 return (hi << 32) | lo
 
     def set_code_start_address(self, address: int | None) -> None:
-        self.baby_risc_info.set_code_start_address(self.register_store, address)
+        self.baby_risc_info.set_code_start_address(self.register_store, address if address is not None else 0)
