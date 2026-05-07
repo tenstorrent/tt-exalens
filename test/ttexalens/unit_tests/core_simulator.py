@@ -54,8 +54,9 @@ class RiscvCoreSimulator:
 
     @cached_property
     def debug_bus_store(self) -> DebugBusSignalStore:
-        assert self.noc_block.get_debug_bus(self.neo_id) is not None
-        return self.noc_block.get_debug_bus(self.neo_id)
+        debug_bus = self.noc_block.get_debug_bus(self.neo_id)
+        assert debug_bus is not None, "Debug bus is not available for this core"
+        return debug_bus
 
     def has_debug_hardware(self) -> bool:
         """Check if core has debug hardware available."""
