@@ -44,6 +44,14 @@ from ttexalens.exceptions import RiscHaltError
         {"core_desc": "FW0", "risc_name": "TRISC1", "neo_id": 3},
         {"core_desc": "FW0", "risc_name": "TRISC2", "neo_id": 3},
         {"core_desc": "FW0", "risc_name": "TRISC3", "neo_id": 3},
+        {"core_desc": "FW0", "risc_name": "ROCKET0", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "ROCKET1", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "ROCKET2", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "ROCKET3", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "ROCKET4", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "ROCKET5", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "ROCKET6", "neo_id": None},
+        {"core_desc": "FW0", "risc_name": "ROCKET7", "neo_id": None},
     ]
 )
 class TestDebugging(unittest.TestCase):
