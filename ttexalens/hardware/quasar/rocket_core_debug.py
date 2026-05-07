@@ -60,18 +60,20 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
     def halt(self) -> None:
         with self.ensure_debug_module_out_of_reset():
             if self.is_halted():
-                util.WARN(f"Halt: {self.risc_location.risc_name} at {self.location} is already halted")
+                util.WARN(f"Halt: {self.risc_location.risc_name} at {self.risc_location.location} is already halted")
                 return
             hartsel = self.baby_risc_info.risc_id << 16
             self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | HALTREQ)
             self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
             if not self.is_halted():
-                raise RiscHaltError(self.risc_location.risc_name, self.location)
+                raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
 
     def cont(self) -> None:
         with self.ensure_debug_module_out_of_reset():
             if not self.is_halted():
-                util.WARN(f"Continue: {self.risc_location.risc_name} at {self.location} is already running")
+                util.WARN(
+                    f"Continue: {self.risc_location.risc_name} at {self.risc_location.location} is already running"
+                )
                 return
             hartsel = self.baby_risc_info.risc_id << 16
             self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | RESUMEREQ)

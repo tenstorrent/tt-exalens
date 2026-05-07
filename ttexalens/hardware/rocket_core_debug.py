@@ -5,10 +5,18 @@
 from contextlib import contextmanager
 from typing import Any, Generator
 
-from ttexalens.hardware.risc_debug import RiscDebug
+from ttexalens.hardware.baby_risc_info import BabyRiscInfo
+from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation
 
 
 class RocketCoreDebug(RiscDebug):
+    def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool = True):
+        super().__init__(RiscLocation(risc_info.noc_block.location, risc_info.neo_id, risc_info.risc_name), risc_info)
+        register_store = risc_info.noc_block.get_register_store(neo_id=risc_info.neo_id)
+        self.baby_risc_info = risc_info
+        self.register_store = register_store
+        self.enable_asserts = enable_asserts
+
     def is_in_reset(self) -> bool:
         raise NotImplementedError("is_in_reset must be implemented by subclasses of RocketCoreDebug")
 
