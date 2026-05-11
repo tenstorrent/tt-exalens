@@ -241,6 +241,40 @@ class RichFormatter:
             console.print(Columns(tables, equal=True, expand=False))
             console.print()  # blank line
 
+    def display_grouped_data_autoflow(
+        self,
+        data: dict[str, list[tuple[Any, ...]]],
+        columns: list[tuple[str, Any]],
+        simple_print: bool = False,
+        sort_by_height_desc: bool = True,
+    ) -> None:
+        """Display data groups as tables, auto-flowing into rows by terminal width.
+
+        Unlike ``display_grouped_data``, no explicit grouping is required;
+        ``rich.columns.Columns`` packs as many tables side-by-side as fit in
+        the console's available width and wraps the rest. Tables keep their
+        natural widths (``equal=False``) so a wide table and a narrow table
+        can sit next to each other without padding the narrow one.
+
+        Tables are sorted tallest-first by default so short tables don't
+        anchor a row of empty space underneath taller siblings.
+
+        Args:
+            data: Dictionary of data groups (group_name -> rows).
+            columns: Column definitions, same shape as ``display_grouped_data``.
+            simple_print: Whether to use simplified output format.
+            sort_by_height_desc: Sort by row count descending. Disable to
+                keep insertion order.
+        """
+        names = list(data.keys())
+        if sort_by_height_desc:
+            names.sort(key=lambda n: -len(data[n]))
+        tables: list[Panel | Table] = [
+            self.create_data_table(name, columns, data[name], simple_print) for name in names
+        ]
+        console.print(Columns(tables, equal=False, expand=False, padding=(0, 1)))
+        console.print()  # blank line
+
     def display_key_value_table(
         self,
         title: str,

@@ -13,16 +13,24 @@ if TYPE_CHECKING:
     from ttexalens.device import Device
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+    from ttexalens.hardware.perf_counters import TensixPerfCounters
     from ttexalens.hardware.risc_debug import RiscDebug
     from ttexalens.register_store import RegisterStore
     from ttexalens.memory_map import MemoryMap
 
 
 class NocBlock:
-    def __init__(self, location: OnChipCoordinate, block_type: str, debug_bus: DebugBusSignalStore | None = None):
+    def __init__(
+        self,
+        location: OnChipCoordinate,
+        block_type: str,
+        debug_bus: DebugBusSignalStore | None = None,
+        perf_counters: TensixPerfCounters | None = None,
+    ):
         self.location = location
         self.block_type = block_type
         self.debug_bus = debug_bus
+        self.perf_counters = perf_counters
         self.noc_memory_map: MemoryMap = MemoryMap()
 
     @property
@@ -36,6 +44,19 @@ class NocBlock:
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
         if neo_id is None:
             return self.debug_bus
+        return None
+
+    def get_perf_counters(self, neo_id: int | None = None) -> TensixPerfCounters | None:
+        """Return the Tensix perf-counter provider, or None if this block has none.
+
+        WH/BH have one perf-counter provider per functional worker block and
+        ignore ``neo_id`` — passing a non-None value returns None to make
+        Quasar-targeted code explicit when run against a non-Quasar arch.
+        Quasar overrides this method on its functional-worker block to
+        dispatch by ``neo_id`` (Phase 2: not yet implemented).
+        """
+        if neo_id is None:
+            return self.perf_counters
         return None
 
     @cached_property

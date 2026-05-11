@@ -15,6 +15,7 @@ from ttexalens.tt_exalens_init import init_ttexalens
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.elf import read_elf, ParsedElfFile
+from ttexalens.hardware.perf_counters import TensixPerfCounters
 from ttexalens.hardware.risc_debug import CallstackEntry
 from ttexalens.util import TTException, Verbosity, TRACE
 from ttexalens.memory_access import MemoryAccess
@@ -910,3 +911,247 @@ def get_tensix_state(
         register_window_counters=rwc,
         address_counters=adc,
     )
+
+
+# -----------------------------------------------------------------------------
+# Tensix performance counters
+# -----------------------------------------------------------------------------
+
+
+def _resolve_perf_counters(
+    location: str | OnChipCoordinate,
+    *,
+    device_id: int = 0,
+    context: Context | None = None,
+    neo_id: int | None = None,
+) -> tuple[OnChipCoordinate, TensixPerfCounters]:
+    coordinate = convert_coordinate(location, device_id, context)
+    perf = coordinate.noc_block.get_perf_counters(neo_id=neo_id)
+    if perf is None:
+        raise TTException(
+            f"Performance counters are not available on {coordinate.to_user_str()} "
+            f"(block_type={coordinate.noc_block.block_type})."
+        )
+    return coordinate, perf
+
+
+@trace_api
+def init_perf_counters(
+    location: str | OnChipCoordinate,
+    block_name: str | None = None,
+    *,
+    device_id: int = 0,
+    context: Context | None = None,
+    noc_id: int | None = None,
+    neo_id: int | None = None,
+    safe_mode: bool | None = None,
+) -> None:
+    """Initialize Tensix performance counters on a Tensix functional worker.
+
+    Replicates the firmware ``init_perf_counters()`` sequence (REG0=0xFFFFFFFF,
+    REG1=0, REG2=0, REG2=1) from ``trisc.cc`` so callers can baseline the
+    counters from the host side. Useful in post-mortem flows or when firmware
+    has not run.
+
+    Args:
+        location: Tensix core coordinate.
+        block_name: If specified, only initialize that block (e.g. "FPU").
+            If None, initializes all blocks (matching firmware behavior).
+        device_id: Device id (default 0).
+        context: TTExaLens context (default: global).
+        noc_id: NOC id; defaults to context's active NOC.
+        neo_id: NEO id (Quasar only); defaults to None.
+        safe_mode: If specified, override the context's safe_mode for the
+            register writes. Default: honor context.
+    """
+    coordinate, perf = _resolve_perf_counters(location, device_id=device_id, context=context, neo_id=neo_id)
+    noc_id = check_noc_id(noc_id, coordinate.context)
+    if block_name is None:
+        perf.init_all(noc_id=noc_id, safe_mode=safe_mode)
+    else:
+        perf.init_block(block_name, noc_id=noc_id, safe_mode=safe_mode)
+
+
+@trace_api
+def start_perf_counters(
+    location: str | OnChipCoordinate,
+    block_name: str | None = None,
+    *,
+    device_id: int = 0,
+    context: Context | None = None,
+    noc_id: int | None = None,
+    neo_id: int | None = None,
+    safe_mode: bool | None = None,
+) -> None:
+    """Start Tensix performance counters.
+
+    Args:
+        block_name: If None, starts every block (per-block writes — see the
+            note in ``ttexalens.hardware.perf_counters`` on why we don't
+            trust the global PERF_CNT_ALL register). Otherwise starts the
+            named block individually.
+        safe_mode: If specified, override the context's safe_mode for the
+            register writes. Default: honor context.
+    """
+    coordinate, perf = _resolve_perf_counters(location, device_id=device_id, context=context, neo_id=neo_id)
+    noc_id = check_noc_id(noc_id, coordinate.context)
+    if block_name is None:
+        perf.start_all(noc_id=noc_id, safe_mode=safe_mode)
+    else:
+        perf.start_block(block_name, noc_id=noc_id, safe_mode=safe_mode)
+
+
+@trace_api
+def stop_perf_counters(
+    location: str | OnChipCoordinate,
+    block_name: str | None = None,
+    *,
+    device_id: int = 0,
+    context: Context | None = None,
+    noc_id: int | None = None,
+    neo_id: int | None = None,
+    safe_mode: bool | None = None,
+) -> None:
+    """Stop Tensix performance counters.
+
+    Args:
+        block_name: If None, stops every block (per-block writes — see
+            ``start_perf_counters`` for why we don't use PERF_CNT_ALL).
+            Otherwise stops the named block individually.
+        safe_mode: If specified, override the context's safe_mode for the
+            register writes. Default: honor context.
+    """
+    coordinate, perf = _resolve_perf_counters(location, device_id=device_id, context=context, neo_id=neo_id)
+    noc_id = check_noc_id(noc_id, coordinate.context)
+    if block_name is None:
+        perf.stop_all(noc_id=noc_id, safe_mode=safe_mode)
+    else:
+        perf.stop_block(block_name, noc_id=noc_id, safe_mode=safe_mode)
+
+
+def _resolve_perf_targets(
+    location: str | OnChipCoordinate | None,
+    *,
+    device_id: int | None,
+    context: Context | None,
+    neo_id: int | None,
+) -> list[tuple[int, OnChipCoordinate, TensixPerfCounters]]:
+    """Resolve filters into the list of (device_id, coord, perf) triples.
+
+    Behavior:
+      - ``location`` given: single explicit core. Raises ``TTException`` if
+        the core has no perf counters (mirrors ``_resolve_perf_counters``).
+      - ``location`` is None: walk every functional-worker location on each
+        selected device, silently skipping any that don't expose perf
+        counters (e.g. harvested rows). This is the bulk-read default and
+        should never raise on missing perf-counter providers.
+      - ``device_id`` given: only that device.
+      - ``device_id`` is None: every device the context knows about.
+    """
+    ctx = check_context(context)
+
+    if location is not None:
+        coord, perf = _resolve_perf_counters(
+            location,
+            device_id=device_id if device_id is not None else 0,
+            context=ctx,
+            neo_id=neo_id,
+        )
+        return [(coord.device.id, coord, perf)]
+
+    device_ids = [device_id] if device_id is not None else list(ctx.device_ids)
+    targets: list[tuple[int, OnChipCoordinate, TensixPerfCounters]] = []
+    for did in device_ids:
+        device = ctx.find_device_by_id(did)
+        for coord in device.get_block_locations(block_type="functional_workers"):
+            maybe_perf = coord.noc_block.get_perf_counters(neo_id=neo_id)
+            if maybe_perf is None:
+                continue
+            targets.append((did, coord, maybe_perf))
+    return targets
+
+
+@trace_api
+def read_perf_counters(
+    location: str | OnChipCoordinate | None = None,
+    block_name: str | None = None,
+    *,
+    device_id: int | None = None,
+    context: Context | None = None,
+    noc_id: int | None = None,
+    neo_id: int | None = None,
+    safe_mode: bool | None = None,
+) -> dict[tuple[int, OnChipCoordinate, str, int, str], int]:
+    """Read every named counter in the selected scope.
+
+    Defaults walk all devices, all functional-worker locations on those
+    devices, and all blocks. Pass ``location`` and/or ``block_name`` to
+    narrow. Pass ``device_id`` to restrict to a single device.
+
+    Returns a flat dict keyed by
+    ``(device_id, coord, block_name, counter_id, counter_name)`` so callers
+    can compose snapshots and deltas without ceremony::
+
+        snap0 = read_perf_counters()
+        time.sleep(0.1)
+        snap1 = read_perf_counters()
+        delta = {k: (snap1[k] - snap0[k]) & 0xFFFFFFFF for k in snap0}
+
+    Notes:
+      - Counter values are unsigned 32-bit. Subtraction wraps; mask with
+        ``& 0xFFFFFFFF`` when computing deltas.
+      - Each (location, counter) read writes the block's REG1 then reads
+        OUT_H — the same per-counter cost as ``read_perf_counter``.
+      - ``noc_id``/``safe_mode`` apply uniformly across the whole sweep.
+
+    Raises:
+        TTException: if ``location`` is given and that location has no
+            perf-counter provider. With ``location=None`` non-tensix
+            functional-workers (e.g. harvested rows) are silently skipped.
+    """
+    targets = _resolve_perf_targets(location, device_id=device_id, context=context, neo_id=neo_id)
+    if not targets:
+        return {}
+
+    resolved_noc = check_noc_id(noc_id, targets[0][1].context)
+    out: dict[tuple[int, OnChipCoordinate, str, int, str], int] = {}
+    for did, coord, perf in targets:
+        block_names = [block_name] if block_name is not None else perf.block_names
+        for bname in block_names:
+            block = perf.get_block(bname)
+            for cid, cname in block.counters.items():
+                out[(did, coord, bname, cid, cname)] = perf.read_counter(
+                    bname,
+                    cid,
+                    noc_id=resolved_noc,
+                    safe_mode=safe_mode,
+                )
+    return out
+
+
+@trace_api
+def list_perf_counters(
+    location: str | OnChipCoordinate | None = None,
+    *,
+    device_id: int | None = None,
+    context: Context | None = None,
+    neo_id: int | None = None,
+) -> dict[tuple[int, OnChipCoordinate, str], list[tuple[int, str]]]:
+    """Discover which blocks/counters exist at the selected scope.
+
+    Defaults walk all devices and all functional-worker locations. Same
+    filter semantics as :func:`read_perf_counters`. Pure introspection —
+    no register I/O, no ``noc_id`` / ``safe_mode`` parameters.
+
+    Returns ``{(device_id, coord, block_name): [(counter_id, counter_name), ...]}``,
+    sorted by counter id, with empty-counter blocks excluded.
+    """
+    targets = _resolve_perf_targets(location, device_id=device_id, context=context, neo_id=neo_id)
+    out: dict[tuple[int, OnChipCoordinate, str], list[tuple[int, str]]] = {}
+    for did, coord, perf in targets:
+        for bname in perf.block_names:
+            block = perf.get_block(bname)
+            if not block.counters:
+                continue
+            out[(did, coord, bname)] = sorted(block.counters.items())
+    return out
