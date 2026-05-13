@@ -16,6 +16,7 @@ from enum import Enum
 from ttexalens.exceptions import (
     TTException,
     TTFatalException,
+    SimulatorException,
     HardwareError,
     MemoryAccessException,
     DebugSymbolError,
