@@ -1,21 +1,25 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from contextlib import contextmanager
+from __future__ import annotations
 import datetime
 import os
 import threading
 import time
 import traceback
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 import tt_umd
 from ttexalens import util
 from ttexalens.exceptions import TimeoutDeviceRegisterError
+
+if TYPE_CHECKING:
+    from ttexalens.umd_api import UmdApi
 
 
 class UmdDevice:
     def __init__(
         self,
+        api: UmdApi,
         device: tt_umd.TTDevice,
         device_id: int,
         unique_id: int,
@@ -27,6 +31,7 @@ class UmdDevice:
         # This class is a wrapper around tt_umd.TTDevice that allows us to use it over tt-exalens server.
         # It cannot have public members (value attributes) because they won't be serialized by Pyro5.
         # Instead, all public members must be properties with getter/setter methods.
+        self.__api = api
         self.__device = device
         self._arch = device.get_arch()
         self._is_mmio_capable = not device.is_remote()
@@ -266,31 +271,60 @@ class UmdDevice:
             self.__configure_working_active_eth()
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
 
+    def _update_device_after_sigbus(self, new_device: tt_umd.TTDevice):
+        # Device was reset, we did new topology discovery, but we want to reuse the same UmdDevice instance to make it easier for users.
+        self.__device = new_device
+        self._soc_descriptor = tt_umd.SocDescriptor(new_device)
+
+    def __reinit_device_after_sigbus(self):
+        # Device was reset, so we need to reinitialize it. Since this probably hit all devices, we do topology discovery again to be safe.
+        self.__api._reinit_devices_after_sigbus()
+
     def noc_read(
         self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool, dma_threshold: int
     ) -> bytes:
-        """Reads data from address"""
-        self.__select_noc_id(noc_id)
-        return self.__read_from_device_reg_unaligned(noc0_x, noc0_y, address, size, use_4B_mode, dma_threshold)
+        try:
+            """Reads data from address"""
+            self.__select_noc_id(noc_id)
+            return self.__read_from_device_reg_unaligned(noc0_x, noc0_y, address, size, use_4B_mode, dma_threshold)
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during noc_read, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            return self.noc_read(noc_id, noc0_x, noc0_y, address, size, use_4B_mode, dma_threshold)
 
     def noc_write(
         self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
     ):
-        """Writes data to address"""
-        self.__select_noc_id(noc_id)
-        self.__write_to_device_reg_unaligned(noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
+        try:
+            """Writes data to address"""
+            self.__select_noc_id(noc_id)
+            self.__write_to_device_reg_unaligned(noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during noc_write, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            self.noc_write(noc_id, noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
 
     def bar0_read32(self, address: int) -> int:
         """Reads 4 bytes from PCI address"""
         if not self._is_mmio_capable:
             raise RuntimeError("Device is not mmio capable.")
-        return self.__device.bar_read32(address)
+        try:
+            return self.__device.bar_read32(address)
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during bar0_read32, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            return self.__device.bar_read32(address)
 
     def bar0_write32(self, address: int, data: int):
         """Writes 4 bytes to PCI address"""
         if not self._is_mmio_capable:
             raise RuntimeError("Device is not mmio capable.")
-        self.__device.bar_write32(address, data)
+        try:
+            self.__device.bar_write32(address, data)
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during bar0_write32, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            self.__device.bar_write32(address, data)
 
     def convert_from_noc0(self, noc_x: int, noc_y: int, core_type: str, coord_system: str) -> tuple[int, int]:
         """Convert noc0 coordinate into specified coordinate system"""
@@ -311,10 +345,15 @@ class UmdDevice:
         args: Sequence[int],
         timeout: datetime.timedelta | float,
     ) -> tuple[int, int, int]:
-        """Send ARC message"""
-        self.__select_noc_id(noc_id)
-        timeout_ms = timeout.total_seconds() * 1000 if isinstance(timeout, datetime.timedelta) else timeout * 1000
-        return self.__device.arc_msg(msg_code, wait_for_done, args, int(timeout_ms))
+        try:
+            """Send ARC message"""
+            self.__select_noc_id(noc_id)
+            timeout_ms = timeout.total_seconds() * 1000 if isinstance(timeout, datetime.timedelta) else timeout * 1000
+            return self.__device.arc_msg(msg_code, wait_for_done, args, int(timeout_ms))
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during arc_msg, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            return self.arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
 
     def read_arc_telemetry_entry(self, noc_id: int, telemetry_tag: int) -> int:
         """Read ARC telemetry entry"""
@@ -328,13 +367,22 @@ class UmdDevice:
 
         try:
             return do_read(telemetry_tag)
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during read_arc_telemetry_entry, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            return self.read_arc_telemetry_entry(noc_id, telemetry_tag)
         except Exception:
             if not self._is_mmio_capable:
                 raise
-            util.DEBUG(f"Telemetry read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
-            # TODO: We should retry only if it was remote read error
-            self.__configure_working_active_eth()
-            return do_read(telemetry_tag)
+            try:
+                util.DEBUG(f"Telemetry read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
+                # TODO: We should retry only if it was remote read error
+                self.__configure_working_active_eth()
+                return do_read(telemetry_tag)
+            except tt_umd.SigbusError:
+                util.DEBUG("Reset detected during read_arc_telemetry_entry, reinitializing device and retrying...")
+                self.__reinit_device_after_sigbus()
+                return self.read_arc_telemetry_entry(noc_id, telemetry_tag)
 
     def get_firmware_version(self, noc_id: int) -> tt_umd.FirmwareBundleVersion:
         """Returns firmware version"""
@@ -346,13 +394,22 @@ class UmdDevice:
 
         try:
             firmware_version = do_read()
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during get_firmware_version, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            return self.get_firmware_version(noc_id)
         except Exception:
             if not self._is_mmio_capable:
                 raise
-            util.DEBUG(f"Firmware version read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
-            # TODO: We should retry only if it was remote read error
-            self.__configure_working_active_eth()
-            firmware_version = do_read()
+            try:
+                util.DEBUG(f"Firmware version read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
+                # TODO: We should retry only if it was remote read error
+                self.__configure_working_active_eth()
+                firmware_version = do_read()
+            except tt_umd.SigbusError:
+                util.DEBUG("Reset detected during get_firmware_version, reinitializing device and retrying...")
+                self.__reinit_device_after_sigbus()
+                return self.get_firmware_version(noc_id)
         return firmware_version
 
     def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
