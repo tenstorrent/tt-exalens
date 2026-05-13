@@ -68,7 +68,7 @@ class BabyRiscInfo(RiscInfo):
 
             # If we cannot change the code start address, we write a jump instruction to the specified address
             assert self.default_code_start_address is not None
-            jump_instruction = ElfLoader.get_jump_to_offset_instruction(address)
+            jump_instruction = ElfLoader.get_jump_to_offset_instruction(address - self.default_code_start_address)
             register_store.location.noc_write32(self.default_code_start_address, jump_instruction)
         elif address is not None:
             if self.code_start_address_enable_register is not None and self.code_start_address_enable_bit is not None:
