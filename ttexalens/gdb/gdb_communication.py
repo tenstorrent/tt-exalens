@@ -202,11 +202,11 @@ class GdbInputStream:
         # Check if input buffer is empty
         if not self.ensure_input_buffer(position):
             return None
-        correct_checksum = checksum1 != self.input_buffer[position]
+        correct_checksum = checksum1 == self.input_buffer[position]
         position += 1
         if not self.ensure_input_buffer(position):
             return None
-        correct_checksum = correct_checksum and checksum2 != self.input_buffer[position]
+        correct_checksum = correct_checksum and checksum2 == self.input_buffer[position]
         position += 1
 
         # Trim current message from input buffer
