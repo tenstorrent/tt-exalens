@@ -39,8 +39,6 @@ Examples:
   search 0xBEEF -r brisc --read-size 256         # Search brisc private memory with 256-byte reads
 """
 
-import math
-
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
@@ -48,6 +46,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 from ttexalens.cli_commands.read import execute_safe_read, execute_unsafe_read
+from ttexalens.tt_exalens_lib import _auto_pattern_width, _build_pattern_bytes, _find_in_data
 
 command_metadata = CommandMetadata(
     short_name="search",
@@ -58,45 +57,6 @@ command_metadata = CommandMetadata(
 
 _DEFAULT_READ_SIZE = 0x100000  # 1MB default for NOC reads
 _DEFAULT_READ_SIZE_RISC = 4  # 4 bytes default for RISC debug hardware reads
-
-
-def _auto_pattern_width(values: list[int]) -> int:
-    """Return minimum power-of-2 byte count needed to represent the largest element in values."""
-
-    def _min_bytes(v: int) -> int:
-        n = max(1, math.ceil(v.bit_length() / 8))
-        # Round up to the next power of 2
-        return 1 << (n - 1).bit_length()
-
-    return max(_min_bytes(v) for v in values)
-
-
-def _build_pattern_bytes(values: list[int], width: int) -> bytes:
-    """Convert pattern values to a byte string using little-endian encoding with a uniform width.
-
-    Negative values are masked to the given width (two's-complement), so -1 at width 4
-    produces the same bytes as 0xFFFFFFFF.
-    """
-    mask = (1 << (width * 8)) - 1
-    result = b""
-    for v in values:
-        result += (v & mask).to_bytes(width, byteorder="little", signed=False)
-    return result
-
-
-def _find_in_data(data: bytes, pattern: bytes, base_addr: int, max_results: int | None = None) -> list[int]:
-    """Return absolute addresses of occurrences of pattern in data, up to max_results (None = unlimited)."""
-    matches = []
-    start = 0
-    while True:
-        idx = data.find(pattern, start)
-        if idx == -1:
-            break
-        matches.append(base_addr + idx)
-        if max_results is not None and len(matches) >= max_results:
-            break
-        start = idx + 1
-    return matches
 
 
 def _get_noc_search_ranges(
