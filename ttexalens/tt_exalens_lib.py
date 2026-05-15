@@ -1081,7 +1081,7 @@ def read_perf_counters(
     noc_id: int | None = None,
     neo_id: int | None = None,
     safe_mode: bool | None = None,
-) -> dict[tuple[int, OnChipCoordinate, str, int, str], int]:
+) -> dict[tuple[int, OnChipCoordinate, str, int, str], tuple[int, int]]:
     """Read every named counter in the selected scope.
 
     Defaults walk all devices, all functional-worker locations on those
@@ -1089,19 +1089,27 @@ def read_perf_counters(
     narrow. Pass ``device_id`` to restrict to a single device.
 
     Returns a flat dict keyed by
-    ``(device_id, coord, block_name, counter_id, counter_name)`` so callers
-    can compose snapshots and deltas without ceremony::
+    ``(device_id, coord, block_name, counter_id, counter_name)``. Each value
+    is a ``(counter_value, ref_cnt)`` tuple. ``ref_cnt`` is the block's
+    free-running cycle counter (OUT_L) sampled alongside the counter read —
+    so each entry carries its own denominator for utilization ratios::
 
         snap0 = read_perf_counters()
         time.sleep(0.1)
         snap1 = read_perf_counters()
-        delta = {k: (snap1[k] - snap0[k]) & 0xFFFFFFFF for k in snap0}
+        for key in snap0:
+            v0, r0 = snap0[key]
+            v1, r1 = snap1[key]
+            counter_delta = (v1 - v0) & 0xFFFFFFFF
+            ref_delta     = (r1 - r0) & 0xFFFFFFFF
+            utilization   = counter_delta / ref_delta if ref_delta else 0
 
     Notes:
       - Counter values are unsigned 32-bit. Subtraction wraps; mask with
         ``& 0xFFFFFFFF`` when computing deltas.
-      - Each (location, counter) read writes the block's REG1 then reads
-        OUT_H — the same per-counter cost as ``read_perf_counter``.
+      - Each (location, counter) entry does a REG1 write + three OUT_L/OUT_H
+        reads (the read_counter protocol) plus one extra OUT_L read for the
+        paired ``ref_cnt``.
       - ``noc_id``/``safe_mode`` apply uniformly across the whole sweep.
 
     Raises:
@@ -1114,18 +1122,18 @@ def read_perf_counters(
         return {}
 
     resolved_noc = check_noc_id(noc_id, targets[0][1].context)
-    out: dict[tuple[int, OnChipCoordinate, str, int, str], int] = {}
+    out: dict[tuple[int, OnChipCoordinate, str, int, str], tuple[int, int]] = {}
     for did, coord, perf in targets:
         block_names = [block_name] if block_name is not None else perf.block_names
         for bname in block_names:
             block = perf.get_block(bname)
             for cid, cname in block.counters.items():
-                out[(did, coord, bname, cid, cname)] = perf.read_counter(
-                    bname,
-                    cid,
-                    noc_id=resolved_noc,
-                    safe_mode=safe_mode,
-                )
+                value = perf.read_counter(bname, cid, noc_id=resolved_noc, safe_mode=safe_mode)
+                # Sample ref_cnt right after the counter value so the pair is
+                # captured close together in time. OUT_L is independent of
+                # REG1 — the just-completed read_counter doesn't disturb it.
+                ref = perf.read_ref_cnt(bname, noc_id=resolved_noc, safe_mode=safe_mode)
+                out[(did, coord, bname, cid, cname)] = (value, ref)
     return out
 
 

@@ -26,7 +26,6 @@ INSTRN_THREAD = PerfCounterBlockDescription(
     out_l="RISCV_DEBUG_REG_PERF_CNT_OUT_L_INSTRN_THREAD",
     out_h="RISCV_DEBUG_REG_PERF_CNT_OUT_H_INSTRN_THREAD",
     counters={
-        # Instruction ops issued per type, per thread (bank = type_base + thread; thread 3 unused).
         0: "cfg_instrn[0]",
         1: "cfg_instrn[1]",
         2: "cfg_instrn[2]",
@@ -51,11 +50,9 @@ INSTRN_THREAD = PerfCounterBlockDescription(
         28: "pack_instrn[0]",
         29: "pack_instrn[1]",
         30: "pack_instrn[2]",
-        # SyncExu total stall cycles per thread (i_grant tied to 0 — req_cnt only).
         32: "thread_stalls[0]",
         33: "thread_stalls[1]",
         34: "thread_stalls[2]",
-        # Stall-reason banks 36-50 (shared across threads; i_grant tied to 0).
         36: "srca_stall_math",
         37: "dvalid_stall_math",
         38: "srca_stall_unpack",
@@ -71,7 +68,6 @@ INSTRN_THREAD = PerfCounterBlockDescription(
         48: "srcs_stall_pack",
         49: "tile_counter_stall_unpack",
         50: "tile_counter_stall_pack",
-        # Grant mode: ibuffer_rden[thread] (same signal for all 8 instruction types).
         256: "thread_instr[0]",
         257: "thread_instr[1]",
         258: "thread_instr[2]",
@@ -88,7 +84,6 @@ FPU = PerfCounterBlockDescription(
     counters={
         0: "fpu_op_valid",
         1: "sfpu_op_valid",
-        # Grant view: FPU or SFPU instruction issued.
         257: "fpu_or_sfpu_instrn",
     },
 )
@@ -106,18 +101,14 @@ TDMA_UNPACK = PerfCounterBlockDescription(
         1: "unpack_busy[2]",
         2: "unpack_busy[1]",
         3: "unpack_busy[0]",
-        # SrcA/SrcB write requests and math-instruction events.
-        4: "srca_write_req",  # |tdma_srca_regif_wren
-        5: "srcb_write_req",  # |tdma_srcb_regif_wren
-        6: "math_instrn_avail",  # math_instrn_valid
-        7: "math_instrn_started",  # eat_math_instrn_from_m_instrn_pipe_stage
-        # Bank 8 is dead (fidelity_phases_ongoing — RTL FIXME).
-        # Banks 9-10: count non-stall cycles; stall_cycles = ref_cnt - req_cnt.
-        9: "math_no_post_stall",  # math_instrn_valid & ~dest2src_post_stall
-        10: "math_no_data_hazard",  # math_instrn_valid & dec_instr_alu & src_data_ready
-        # Grant counters: actual write completions (id = bank_index + 256 -> mode[16]=1).
-        261: "srca_write",  # bank 5 grant
-        263: "srcb_write",  # bank 7 grant
+        4: "srca_write_req",
+        5: "srcb_write_req",
+        6: "math_instrn_avail",
+        7: "math_instrn_started",
+        9: "math_no_post_stall",
+        10: "math_no_data_hazard",
+        261: "srca_write",
+        263: "srcb_write",
     },
 )
 
@@ -129,11 +120,10 @@ TDMA_PACK = PerfCounterBlockDescription(
     out_l="RISCV_DEBUG_REG_PERF_CNT_OUT_L_TDMA_PACK",
     out_h="RISCV_DEBUG_REG_PERF_CNT_OUT_H_TDMA_PACK",
     counters={
-        0: "packer_dest_read_avail",  # req: tdma_dstac_regif_rden_raw[0]
-        7: "packer_busy",  # req: |tdma_pack_busy
-        # Grant counters (id >= 256 -> mode[16]=1). stall = packer_busy - this value.
-        260: "math_no_dest_wr_stall",  # grant bank 4: ~dest_wr_port_stall
-        261: "math_no_scoreboard_stall",  # grant bank 5: ~dest_reg_deps_scoreboard_stall
+        0: "packer_dest_read_avail",
+        7: "packer_busy",
+        260: "math_no_dest_wr_stall",
+        261: "math_no_scoreboard_stall",
     },
 )
 
