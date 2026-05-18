@@ -333,7 +333,7 @@ def search_noc_memory(
     start_addr: int = 0,
     end_addr: int | None = None,
     width: int | str = "auto",
-    max_results: int | None = 10,
+    max_results: int = 1,
     device_id: int = 0,
     context: Context | None = None,
     chunk_size: int = 0x100000,
@@ -350,7 +350,7 @@ def search_noc_memory(
         start_addr (int): First address to search. Default: 0.
         end_addr (int | None): Exclusive end address, or None to search all contiguous blocks from start_addr. Default: None.
         width (int | str): Bytes per pattern element (little-endian encoding), or "auto" to infer the minimum power-of-2 byte count from the largest value. Ignored when pattern is bytes. Default: "auto".
-        max_results (int | None): Stop after this many matches, or None for unlimited. Default: 10.
+        max_results (int): Stop after this many matches. Must be at least 1. Default: 1.
         device_id (int): ID number of device to search. Default: 0.
         context (Context | None): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None.
         chunk_size (int): Maximum bytes per device read. Default: 1 MB.
@@ -360,6 +360,8 @@ def search_noc_memory(
     """
     if chunk_size < 1:
         raise TTException("chunk_size must be at least 1.")
+    if max_results < 1:
+        raise TTException("max_results must be at least 1.")
 
     if isinstance(pattern, bytes):
         if not pattern:
@@ -401,10 +403,10 @@ def search_noc_memory(
             chunk_bytes = coordinate.noc_read(chunk_addr, read_size, noc_id, use_4B_mode)
             search_data = prev_tail + chunk_bytes
             base = chunk_addr - len(prev_tail)
-            remaining = None if max_results is None else max_results - len(all_matches)
+            remaining = max_results - len(all_matches)
             for addr in _find_in_data(search_data, pattern_bytes, base, remaining):
                 all_matches.append((addr, block_name))
-            if max_results is not None and len(all_matches) >= max_results:
+            if len(all_matches) >= max_results:
                 return all_matches
             prev_tail = search_data[-overlap:] if overlap > 0 else b""
             chunk_addr += len(chunk_bytes)
