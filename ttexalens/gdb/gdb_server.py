@@ -1209,7 +1209,7 @@ class GdbServer(threading.Thread):
                     "pid": pid,
                     "user": self.context.short_name,
                     "cores": process.virtual_core_id,
-                    "device": process.risc_debug.risc_location.location._device._id,
+                    "device": process.risc_debug.risc_location.location.device_id,
                     "core_type": process.core_type,
                     "core_location": process.risc_debug.risc_location.location.to_user_str(),
                     "risc": process.risc_debug.risc_location.risc_name,
