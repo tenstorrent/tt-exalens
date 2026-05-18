@@ -329,7 +329,7 @@ def _find_in_data(data: bytes, pattern: bytes, base_addr: int, max_results: int 
 @trace_api
 def search_noc_memory(
     location: str | OnChipCoordinate,
-    pattern_values: list[int],
+    pattern: int | list[int] | bytes,
     start_addr: int = 0,
     end_addr: int | None = None,
     width: int | str = "auto",
@@ -343,10 +343,13 @@ def search_noc_memory(
 
     Args:
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
-        pattern_values (list[int]): Integer values forming the pattern to search for.
+        pattern (int | list[int] | bytes): Pattern to search for.
+            - int: single integer value, encoded as little-endian per width.
+            - list[int]: sequence of integer values, each encoded per width.
+            - bytes: raw byte pattern used directly (width is ignored).
         start_addr (int): First address to search. Default: 0.
         end_addr (int | None): Exclusive end address, or None to search all contiguous blocks from start_addr. Default: None.
-        width (int | str): Bytes per pattern element (little-endian encoding), or "auto" to infer the minimum power-of-2 byte count from the largest value. Default: "auto".
+        width (int | str): Bytes per pattern element (little-endian encoding), or "auto" to infer the minimum power-of-2 byte count from the largest value. Ignored when pattern is bytes. Default: "auto".
         max_results (int | None): Stop after this many matches, or None for unlimited. Default: 10.
         device_id (int): ID number of device to search. Default: 0.
         context (Context | None): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None.
@@ -355,20 +358,25 @@ def search_noc_memory(
     Returns:
         list[tuple[int, str]]: List of (match_address, block_name) pairs.
     """
-    if not pattern_values:
-        raise TTException("pattern_values must be non-empty.")
     if chunk_size < 1:
         raise TTException("chunk_size must be at least 1.")
 
-    if isinstance(width, str):
-        if width.lower() == "auto":
-            width = _auto_pattern_width(pattern_values)
-        else:
-            raise TTException(f"Invalid width {width!r}. Must be a positive integer or 'auto'.")
-    if width < 1:
-        raise TTException("width must be at least 1.")
-
-    pattern_bytes = _build_pattern_bytes(pattern_values, width)
+    if isinstance(pattern, bytes):
+        if not pattern:
+            raise TTException("pattern must be non-empty.")
+        pattern_bytes = pattern
+    else:
+        pattern_values = [pattern] if isinstance(pattern, int) else pattern
+        if not pattern_values:
+            raise TTException("pattern must be non-empty.")
+        if isinstance(width, str):
+            if width.lower() == "auto":
+                width = _auto_pattern_width(pattern_values)
+            else:
+                raise TTException(f"Invalid width {width!r}. Must be a positive integer or 'auto'.")
+        if width < 1:
+            raise TTException("width must be at least 1.")
+        pattern_bytes = _build_pattern_bytes(pattern_values, width)
     coordinate = convert_coordinate(location, device_id, context)
     noc_id = check_noc_id(None, coordinate.context)
     use_4B_mode = check_4B_mode(None, coordinate.context)
