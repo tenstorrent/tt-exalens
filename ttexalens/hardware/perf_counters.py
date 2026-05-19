@@ -31,6 +31,10 @@ from functools import cached_property
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Mapping
 
+from ttexalens._lib_helpers import trace_api
+from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.util import TTException
+
 if TYPE_CHECKING:
     from ttexalens.hardware.noc_block import NocBlock
     from ttexalens.register_store import RegisterStore
@@ -94,7 +98,7 @@ class TensixPerfCounters:
     """Per-core wrapper over the Tensix perf-counter registers.
 
     Obtain via ``noc_block.get_perf_counters()`` (or the higher-level
-    library helpers in :mod:`ttexalens.tt_exalens_lib`) — do not construct
+    library helpers in :mod:`ttexalens.perf_counters`) — do not construct
     directly. The noc block's ``__init__`` wires this up so NOC routing
     and (for Quasar) per-NEO register-store selection are inherited.
 
@@ -197,8 +201,7 @@ class TensixPerfCounters:
     def start_all(self, *, noc_id: int | None = None, safe_mode: bool | None = None) -> None:
         """Start every known block.
 
-        Iterates per-block rather than using ``PERF_CNT_ALL``; see the module
-        docstring for why we don't trust the global register.
+        Iterates per-block.
         """
         for name in self._blocks:
             self.start_block(name, noc_id=noc_id, safe_mode=safe_mode)
@@ -296,3 +299,4 @@ class TensixPerfCounters:
         return TensixPerfCountersInitialization(
             blocks={b.name: b for b in blocks},
         )
+

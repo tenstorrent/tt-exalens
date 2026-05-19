@@ -53,12 +53,12 @@ from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_d
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
-from ttexalens.hardware.perf_counters import TensixPerfCounters
-from ttexalens.rich_formatters import formatter
-from ttexalens.tt_exalens_lib import (
+from ttexalens.perf_counters import (
+    TensixPerfCounters,
     list_perf_counters,
     read_perf_counters,
 )
+from ttexalens.rich_formatters import formatter
 from ttexalens.uistate import UIState
 
 

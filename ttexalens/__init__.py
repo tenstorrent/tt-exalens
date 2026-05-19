@@ -9,20 +9,15 @@ from .tt_exalens_lib import (
     check_context,
     convert_coordinate,
     coverage,
-    init_perf_counters,
-    list_perf_counters,
     load_elf,
     parse_elf,
     read_arc_telemetry_entry,
     read_from_device,
-    read_perf_counters,
     read_register,
     read_riscv_memory,
     read_word_from_device,
     read_words_from_device,
     run_elf,
-    start_perf_counters,
-    stop_perf_counters,
     top_callstack,
     write_register,
     write_riscv_memory,
@@ -30,7 +25,15 @@ from .tt_exalens_lib import (
     write_words_to_device,
     TensixState,
 )
-from .hardware.perf_counters import PerfCounterBlockDescription, TensixPerfCounters
+from .perf_counters import (
+    init_perf_counters,
+    list_perf_counters,
+    read_perf_counters,
+    start_perf_counters,
+    stop_perf_counters,
+    PerfCounterBlockDescription,
+    TensixPerfCounters,
+)
 from .coordinate import OnChipCoordinate
 from .context import Context
 from .device import Device
@@ -81,7 +84,7 @@ __all__ = [
     "write_riscv_memory",
     "write_to_device",
     "write_words_to_device",
-    # hardware/perf_counters.py
+    # perf_counters.py
     "PerfCounterBlockDescription",
     "TensixPerfCounters",
     # util.py
