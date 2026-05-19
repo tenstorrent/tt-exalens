@@ -830,4 +830,3 @@ def get_tensix_state(
         register_window_counters=rwc,
         address_counters=adc,
     )
-
