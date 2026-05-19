@@ -8,8 +8,10 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.blackhole.baby_risc_debug import BlackholeBabyRiscDebug
+from ttexalens.hardware.blackhole.perf_counters import initialization as perf_counters_initialization
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.perf_counters import TensixPerfCounters
 from ttexalens.memory_map import MemoryMapBlockInfo
 from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
 from ttexalens.hardware.blackhole.functional_worker_registers import register_map
@@ -57,10 +59,19 @@ debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(gro
 
 class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
+        # Construction-order note: the perf-counter register names referenced
+        # by `perf_counters_initialization` (RISCV_DEBUG_REG_PERF_CNT_*) live
+        # in the worker register store assigned at the bottom of this
+        # __init__, NOT in the NIU-only store that BlackholeNocBlock.__init__
+        # creates. TensixPerfCounters resolves register names lazily through
+        # `noc_block.get_register_store(...)` at use time, so this is safe —
+        # but anyone refactoring construction here must keep the lazy
+        # resolution intact.
         super().__init__(
             location,
             block_type="functional_workers",
             debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
+            perf_counters=TensixPerfCounters(perf_counters_initialization, self),
         )
 
         self.l1 = MemoryBlock(
