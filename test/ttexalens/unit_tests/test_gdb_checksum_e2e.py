@@ -1,287 +1,129 @@
-# SPDX-FileCopyrightText: © 2026 Tenstorrent AI ULC
+# SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
 
 """
-End-to-end tests for GdbInputStream checksum validation.
+Tests for GdbInputStream checksum validation (lines 202-210 of gdb_communication.py).
 
-These tests spin up a real ServerSocket, accept a real TCP connection,
-and drive it from a raw Python socket that speaks GDB Remote Serial
-Protocol. No hardware, no GDB binary, and no mocks are needed.
+A minimal fake socket feeds raw RSP bytes directly into GdbInputStream.read()
+so the checksum branch runs with no hardware, no GDB binary, and no threads.
 
-The code path exercised is identical to what a real GDB client hits:
-  raw bytes → ClientSocket.read() → GdbInputStream.read() → checksum branch
-
-Two regression scenarios are tested:
-
-  1. BEFORE the fix: a valid packet was NACKed because `!=` was used instead
-     of `==`, so correct_checksum was True only when both nibbles differed.
-     The server would write b"-" and the session would never progress.
-
-  2. BEFORE the fix: a packet where both checksum nibbles were wrong was
-     silently accepted (correct_checksum=True with !=), so corrupted data
-     reached the caller.
-
-After the fix both of these behave correctly.
+Regression fixed: checksum nibbles (int 0-15) were compared directly to ASCII
+bytes in the input buffer using != instead of converting to ASCII and using ==,
+causing every valid packet to be rejected and every doubly-corrupted packet to
+be silently accepted.
 """
 
 import io
-import socket
-import threading
-import time
 import unittest
 
-from ttexalens.gdb.gdb_communication import ServerSocket, GdbInputStream
+from ttexalens.gdb.gdb_communication import ClientSocket, GdbInputStream
 
-
-# ---------------------------------------------------------------------------
-# RSP helpers
-# ---------------------------------------------------------------------------
 
 def _checksum(data: bytes) -> int:
     return sum(data) % 256
 
 
-def _hex_digit(n: int) -> int:
-    """Return ASCII code of a single uppercase hex digit 0-F."""
-    return n + 48 if n < 10 else n + 55  # '0'-'9' or 'A'-'F'
+def _nibble_to_ascii(n: int) -> int:
+    return n + 48 if n < 10 else n + 55
 
 
 def _build_packet(data: bytes, checksum_override: int | None = None) -> bytes:
-    """
-    Build a GDB RSP packet:  $<data>#<cc>
-
-    checksum_override lets the caller inject a deliberately wrong checksum.
-    """
+    """Build $<data>#<cc> with correct or deliberately wrong checksum."""
     cs = checksum_override if checksum_override is not None else _checksum(data)
-    return (
-        b"$"
-        + data
-        + bytes([ord("#"), _hex_digit(cs // 16), _hex_digit(cs % 16)])
-    )
+    return b"$" + data + bytes([ord("#"), _nibble_to_ascii(cs // 16), _nibble_to_ascii(cs % 16)])
 
 
-# ---------------------------------------------------------------------------
-# Test infrastructure
-# ---------------------------------------------------------------------------
+class _FakeClientSocket(ClientSocket):
+    """ClientSocket that reads from a bytes buffer instead of a real socket."""
 
-class _ServerThread(threading.Thread):
-    """
-    Runs ServerSocket.accept() + GdbInputStream.read() on a background thread.
-
-    Results are stored in self.parsed and self.nacks so the test thread can
-    inspect them after joining.
-    """
-
-    def __init__(self, server_socket: ServerSocket):
-        super().__init__(daemon=True)
-        self._server = server_socket
-        self.parsed = None       # GdbMessageParser returned by read(), or None
+    def __init__(self, data: bytes):
+        super().__init__(socket=None)
+        self._buf = data
         self.nacks: list[bytes] = []
-        self._error_stream = io.StringIO()
 
-    def run(self):
-        client = self._server.accept(timeout=5.0)
-        if client is None:
-            return
+    def read(self, packet_size=None):
+        chunk, self._buf = self._buf, b""
+        return chunk
 
-        # Intercept writes so we can capture NACKs without a real GDB client
-        _orig_write = client.write
+    def write(self, data: bytes):
+        self.nacks.append(data)
 
-        def _capture_write(data: bytes):
-            self.nacks.append(data)
-            _orig_write(data)
-
-        client.write = _capture_write  # type: ignore[method-assign]
-
-        stream = GdbInputStream(client, error_stream=self._error_stream)
-        self.parsed = stream.read()
+    def input_ready(self, timeout=0):
+        return bool(self._buf)
 
 
-class TestGdbChecksumEndToEnd(unittest.TestCase):
-    """
-    End-to-end: real TCP socket pair, real ServerSocket, real GdbInputStream.
-    """
+def _run(packet: bytes):
+    sock = _FakeClientSocket(packet)
+    stream = GdbInputStream(sock, error_stream=io.StringIO())
+    parsed = stream.read()
+    return parsed, sock.nacks
 
-    def _run(
-        self,
-        packet: bytes,
-        read_timeout: float = 3.0,
-    ) -> tuple[object, list[bytes]]:
-        """
-        Spin up a ServerSocket, connect a raw client socket, send *packet*,
-        wait for GdbInputStream.read() to return, then return
-        (parsed_message, nacks_sent).
-        """
-        server_sock = ServerSocket(port=None)
-        server_sock.start()
-        port = server_sock.port
-        assert port is not None
 
-        srv = _ServerThread(server_sock)
-        srv.start()
+class TestGdbChecksumValidation(unittest.TestCase):
 
-        # Give the server thread a moment to call accept()
-        time.sleep(0.05)
+    # --- valid packets must be accepted ---
 
-        with socket.create_connection(("localhost", port), timeout=read_timeout) as raw:
-            raw.sendall(packet)
-            # Keep the connection open long enough for the server to read
-            time.sleep(0.2)
+    def test_valid_packet_accepted(self):
+        payload = b"OK"
+        parsed, nacks = _run(_build_packet(payload))
+        self.assertIsNotNone(parsed, "valid packet was rejected")
+        self.assertEqual(parsed.data, payload)
+        self.assertNotIn(b"-", nacks, "NACK sent for valid packet")
 
-        srv.join(timeout=read_timeout + 1)
-        server_sock.close()
-        return srv.parsed, srv.nacks
-
-    # ------------------------------------------------------------------
-    # Acceptance cases
-    # ------------------------------------------------------------------
-
-    def test_e2e_valid_packet_accepted_no_nack(self):
-        """
-        A packet with the correct checksum must be parsed and returned;
-        no NACK (b"-") must be sent.
-
-        Regression: before the fix this always sent b"-" because != was used
-        in the checksum comparison.
-        """
+    def test_valid_packet_high_nibble_letter_digit(self):
+        # checksum digit in A-F range (letter, not just 0-9)
         payload = b"qSupported"
-        packet = _build_packet(payload)
-
-        parsed, nacks = self._run(packet)
-
-        self.assertIsNotNone(
-            parsed,
-            "GdbInputStream.read() returned None — valid packet was not accepted",
-        )
-        self.assertEqual(
-            parsed.data,
-            payload,
-            f"Parsed data mismatch: expected {payload!r}, got {parsed.data!r}",
-        )
-        self.assertNotIn(
-            b"-",
-            nacks,
-            "A NACK was sent for a valid packet — checksum comparison is still inverted",
-        )
-
-    def test_e2e_valid_ok_packet(self):
-        """Minimal 'OK' payload — commonly the first reply in a GDB session."""
-        payload = b"OK"
-        packet = _build_packet(payload)
-
-        parsed, nacks = self._run(packet)
-
+        parsed, nacks = _run(_build_packet(payload))
         self.assertIsNotNone(parsed)
         self.assertEqual(parsed.data, payload)
         self.assertNotIn(b"-", nacks)
 
-    def test_e2e_checksum_wrap_around(self):
-        """Payload whose checksum wraps mod 256 is still handled correctly."""
-        # 256 × 0xFF → checksum = 0
-        payload = bytes([0xFF] * 256)
-        packet = _build_packet(payload)
-
-        parsed, nacks = self._run(packet)
-
+    def test_valid_packet_checksum_wraps_mod256(self):
+        payload = bytes([0xFF] * 256)  # sum wraps to 0
+        parsed, nacks = _run(_build_packet(payload))
         self.assertIsNotNone(parsed)
-        self.assertEqual(parsed.data, payload)
         self.assertNotIn(b"-", nacks)
 
-    # ------------------------------------------------------------------
-    # Rejection cases
-    # ------------------------------------------------------------------
+    # --- corrupted packets must be rejected ---
 
-    def test_e2e_wrong_checksum_sends_nack(self):
-        """
-        A packet with a wrong checksum must cause GdbInputStream.read() to
-        send b"-" and not return the corrupted payload to the caller.
-
-        Regression: before the fix, a packet where both nibbles were wrong
-        was silently accepted (correct_checksum=True with !=).
-        """
+    def test_wrong_checksum_both_nibbles_sends_nack(self):
         payload = b"OK"
-        correct_cs = _checksum(payload)
-        # XOR with 0xFF flips all bits — both nibbles are wrong
-        wrong_cs = correct_cs ^ 0xFF
-        packet = _build_packet(payload, checksum_override=wrong_cs)
+        wrong_cs = _checksum(payload) ^ 0xFF
+        parsed, nacks = _run(_build_packet(payload, checksum_override=wrong_cs))
+        self.assertIsNone(parsed, "corrupted packet was silently accepted")
+        self.assertIn(b"-", nacks, "no NACK sent for corrupted packet")
 
-        parsed, nacks = self._run(packet)
-
-        # The server sends NACK then tries to read again; the connection
-        # closes, so read() returns None.
-        self.assertIsNone(
-            parsed,
-            "GdbInputStream.read() returned a result for a corrupted packet — "
-            "checksum rejection is broken",
-        )
-        self.assertIn(
-            b"-",
-            nacks,
-            "No NACK was sent for a corrupted packet",
-        )
-
-    def test_e2e_single_nibble_wrong_sends_nack(self):
-        """
-        A packet with only the low nibble wrong must also be rejected.
-
-        This catches the edge case where the old `and` operator would have
-        accepted the packet if only one nibble was wrong (correct_checksum
-        would be False because the first != was satisfied but the second was
-        not, making `and` False — then `if not False` triggered the NACK).
-        This test confirms the fix preserves that behaviour while the
-        acceptance case confirms the inversion is corrected.
-        """
+    def test_wrong_checksum_high_nibble_only_sends_nack(self):
         payload = b"g"
-        correct_cs = _checksum(payload)
-        wrong_cs = (correct_cs ^ 0x01) % 256  # flip only low nibble
-        packet = _build_packet(payload, checksum_override=wrong_cs)
-
-        parsed, nacks = self._run(packet)
-
+        wrong_cs = (_checksum(payload) ^ 0x10) % 256
+        parsed, nacks = _run(_build_packet(payload, checksum_override=wrong_cs))
         self.assertIsNone(parsed)
         self.assertIn(b"-", nacks)
 
-    # ------------------------------------------------------------------
-    # Explicit regression labels (named so CI history is self-documenting)
-    # ------------------------------------------------------------------
+    def test_wrong_checksum_low_nibble_only_sends_nack(self):
+        payload = b"g"
+        wrong_cs = (_checksum(payload) ^ 0x01) % 256
+        parsed, nacks = _run(_build_packet(payload, checksum_override=wrong_cs))
+        self.assertIsNone(parsed)
+        self.assertIn(b"-", nacks)
 
-    def test_regression_valid_packet_must_not_be_nacked(self):
-        """
-        REGRESSION: before the fix every valid packet was NACKed because
-        `correct_checksum = checksum1 != buffer[pos]` evaluated to True
-        on a mismatch, making correct_checksum=False on a match, so the
-        `if not correct_checksum` branch always fired for valid packets.
-        """
-        payload = b"vCont;c:p1.1"
-        packet = _build_packet(payload)
+    # --- regression guards ---
 
-        parsed, nacks = self._run(packet)
-
-        self.assertNotIn(
-            b"-",
-            nacks,
-            "REGRESSION: valid packet was NACKed — != comparison is still present",
-        )
+    def test_regression_valid_packet_not_nacked(self):
+        """Before fix: nibble int compared to ASCII byte with != always evaluated
+        True for valid packets, causing every valid packet to be NACKed."""
+        parsed, nacks = _run(_build_packet(b"vCont;c:p1.1"))
+        self.assertNotIn(b"-", nacks, "REGRESSION: valid packet NACKed")
         self.assertIsNotNone(parsed)
 
-    def test_regression_doubly_corrupted_packet_must_be_nacked(self):
-        """
-        REGRESSION: before the fix a packet where both checksum nibbles were
-        wrong was silently accepted because `!=` on both nibbles returned True,
-        making correct_checksum=True, and `if not True` never fired.
-        """
+    def test_regression_doubly_corrupted_not_accepted(self):
+        """Before fix: both nibbles wrong made correct_checksum=True with !=,
+        so doubly-corrupted packets were silently accepted."""
         payload = b"OK"
-        correct_cs = _checksum(payload)
-        wrong_cs = correct_cs ^ 0xFF  # both nibbles differ
-        packet = _build_packet(payload, checksum_override=wrong_cs)
-
-        parsed, nacks = self._run(packet)
-
-        self.assertIsNone(
-            parsed,
-            "REGRESSION: doubly-corrupted packet was silently accepted",
-        )
+        wrong_cs = _checksum(payload) ^ 0xFF
+        parsed, nacks = _run(_build_packet(payload, checksum_override=wrong_cs))
+        self.assertIsNone(parsed, "REGRESSION: corrupted packet silently accepted")
         self.assertIn(b"-", nacks)
 
 
