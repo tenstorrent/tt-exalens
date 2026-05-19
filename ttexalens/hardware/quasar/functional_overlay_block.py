@@ -19,15 +19,15 @@ from ttexalens.hardware.quasar.functional_overlay_registers import (
     register_map,
 )
 from ttexalens.hardware.quasar.rocket_core_debug import QuasarRocketCoreDebug
-
-if TYPE_CHECKING:
-    from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     DebugRegisterDescription,
     RegisterDescription,
     RegisterStore,
 )
+
+if TYPE_CHECKING:
+    from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
 
 
 def get_overlay_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
