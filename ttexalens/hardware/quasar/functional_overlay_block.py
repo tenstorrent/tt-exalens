@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from functools import cache, cached_property
+from typing import TYPE_CHECKING
 
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
@@ -17,8 +18,10 @@ from ttexalens.hardware.quasar.functional_overlay_registers import (
     RoccAcellRegisterDescription,
     register_map,
 )
-from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
 from ttexalens.hardware.quasar.rocket_core_debug import QuasarRocketCoreDebug
+
+if TYPE_CHECKING:
+    from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     DebugRegisterDescription,
