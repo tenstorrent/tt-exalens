@@ -337,6 +337,7 @@ def search_noc_memory(
     device_id: int = 0,
     context: Context | None = None,
     chunk_size: int = 0x100000,
+    safe_mode: bool | None = None,
 ) -> list[tuple[int, str]]:
     """
     Searches contiguous NOC memory blocks for a byte pattern.
@@ -354,6 +355,7 @@ def search_noc_memory(
         device_id (int): ID number of device to search. Default: 0.
         context (Context | None): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None.
         chunk_size (int): Maximum bytes per device read. Default: 1 MB.
+        safe_mode (bool | None): If False, bypasses safety checks to allow searching restricted memory regions. If None, uses context default. Default: None.
 
     Returns:
         list[tuple[int, str]]: List of (match_address, block_name) pairs.
@@ -400,7 +402,7 @@ def search_noc_memory(
         chunk_addr = current
         while chunk_addr < range_end:
             read_size = min(chunk_size, range_end - chunk_addr)
-            chunk_bytes = coordinate.noc_read(chunk_addr, read_size, noc_id, use_4B_mode)
+            chunk_bytes = coordinate.noc_read(chunk_addr, read_size, noc_id, use_4B_mode, safe_mode=safe_mode)
             search_data = prev_tail + chunk_bytes
             base = chunk_addr - len(prev_tail)
             remaining = max_results - len(all_matches)
