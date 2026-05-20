@@ -196,9 +196,9 @@ class Device:
     def local_device(self) -> Device:
         if self.is_local:
             return self
-        local_tt_device = self._umd_device.get_local_tt_device()
+        local_tt_device_id = self._umd_device.get_local_tt_device_id()
         for device in self._context.devices.values():
-            if device.is_local and device._umd_device.get_local_tt_device() == local_tt_device:
+            if device.is_local and device._umd_device.get_local_tt_device_id() == local_tt_device_id:
                 return device
         raise RuntimeError("Local device not found in context devices")
 
