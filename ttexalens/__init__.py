@@ -9,6 +9,7 @@ from .tt_exalens_lib import (
     check_context,
     convert_coordinate,
     coverage,
+    get_tensix_state,
     load_elf,
     parse_elf,
     read_arc_telemetry_entry,
@@ -32,8 +33,8 @@ from .util import TTException, TTFatalException, Verbosity
 from .exceptions import (
     CoordinateTranslationError,
     RestrictedMemoryAccessError,
-    UnsafeAccessException,
     TimeoutDeviceRegisterError,
+    UnsafeAccessException,
 )
 
 
@@ -41,10 +42,14 @@ __all__ = [
     # context.py
     "Context",
     # coordinate.py
-    "CoordinateTranslationError",
     "OnChipCoordinate",
     # device.py
     "Device",
+    # exceptions.py
+    "CoordinateTranslationError",
+    "RestrictedMemoryAccessError",
+    "TimeoutDeviceRegisterError",
+    "UnsafeAccessException",
     # tt_exalens_init.py
     "init_ttexalens",
     "init_ttexalens_remote",
@@ -55,6 +60,7 @@ __all__ = [
     "check_context",
     "convert_coordinate",
     "coverage",
+    "get_tensix_state",
     "load_elf",
     "parse_elf",
     "read_arc_telemetry_entry",
@@ -74,7 +80,4 @@ __all__ = [
     "TTException",
     "TTFatalException",
     "Verbosity",
-    "RestrictedMemoryAccessError",
-    "UnsafeAccessException",
-    "TimeoutDeviceRegisterError",
 ]
