@@ -64,8 +64,8 @@ def check_context(context: Context | None = None) -> Context:
 
 def check_noc_id(noc_id: int | None, context: Context) -> int:
     if noc_id is None:
-        return 1 if context.use_noc1 else 0
-    assert noc_id in (0, 1), f"Invalid NOC ID {noc_id}. Expected 0 or 1."
+        return int(context.noc_id)
+    assert noc_id in (0, 1, 2), f"Invalid NOC ID {noc_id}. Expected 0, 1, or 2."
     return noc_id
 
 

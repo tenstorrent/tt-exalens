@@ -12,7 +12,7 @@ import tt_umd
 from typing import Callable, Iterable, Sequence, TypeVar
 
 from tabulate import tabulate
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.exceptions import CoordinateTranslationError, UnsafeAccessException
 from ttexalens.hardware.arc_block import ArcBlock
@@ -137,10 +137,12 @@ class Device:
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 
-        # NOC queue used for failover, initialized based on context preference
+        # NOC queue used for failover; overridden by each arch subclass with the appropriate NOC pair.
         # When an operation is attempted, the first NOC in the list is used. If it fails, it is moved to the back of the list
         # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
-        self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
+        self._noc_to_use: list[int] = (
+            [NocId.NOC0, NocId.NOC1] if context.noc_id == NocId.NOC0 else [NocId.NOC1, NocId.NOC0]
+        )
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
 
     @property

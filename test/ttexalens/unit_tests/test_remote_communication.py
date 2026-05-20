@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 import unittest
 
+from ttexalens.context import NocId
+
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 from ttexalens import Context, OnChipCoordinate, Device, read_word_from_device, write_words_to_device
 
@@ -26,7 +28,7 @@ class TestRemoteCommunication(unittest.TestCase):
     def tearDownClass(cls) -> None:
         # If remote device was used, reset UMD to clean up state
         if cls.remote_device_id is not None:
-            cls.context.umd_api.warm_reset(0)
+            cls.context.umd_api.warm_reset(NocId.NOC0)
             cls.context = init_default_test_context()
 
     def test_remote_communication(self):
