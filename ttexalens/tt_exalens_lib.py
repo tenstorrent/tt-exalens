@@ -834,6 +834,7 @@ class TensixState:
     address_counters: dict[str, int]
 
 
+@trace_api
 def get_tensix_state(
     location: str | OnChipCoordinate,
     l1_address: int | None = None,
