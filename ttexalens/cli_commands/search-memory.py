@@ -145,11 +145,10 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     max_results_arg: str = args["--max-results"] if args["--max-results"] else "1"
     try:
         max_results = int(max_results_arg)
+        if max_results < 1:
+            raise ValueError
     except ValueError:
         util.ERROR(f"Invalid --max-results value: {max_results_arg!r}. Must be a positive integer.")
-        return
-    if max_results < 1:
-        util.ERROR(f"--max-results must be at least 1, got {max_results_arg!r}.")
         return
 
     # --- Display pattern summary ---
