@@ -16,7 +16,7 @@ Options:
                      auto = minimum power-of-2 byte count needed to represent the largest element,
                      applied uniformly to all elements.
   --read-size=<rs>   Maximum bytes per device read. Defaults to 1MB.
-  --max-results=<n>  Maximum number of matches to return. [default: 1]
+  --max-results=<n>  Maximum number of matches to return. [default: 10]
   -r <risc_name>     RISC core name to search in private memory instead of NOC memory.
   --unsafe           Expert mode, allow searching everywhere (bypass safety checks).
 
@@ -132,17 +132,16 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     if args["--read-size"]:
         try:
             read_size = int(args["--read-size"], 0)
+            if read_size < 1:
+                raise ValueError
         except ValueError:
             util.ERROR(f"Invalid --read-size value: {args['--read-size']!r}. Must be a positive integer.")
-            return
-        if read_size < 1:
-            util.ERROR(f"--read-size must be at least 1, got {read_size}.")
             return
     else:
         read_size = _DEFAULT_READ_SIZE_RISC if risc_name else _DEFAULT_READ_SIZE
 
     # --- Parse --max-results ---
-    max_results_arg: str = args["--max-results"] if args["--max-results"] else "1"
+    max_results_arg: str = args["--max-results"] if args["--max-results"] else "10"
     try:
         max_results = int(max_results_arg)
         if max_results < 1:

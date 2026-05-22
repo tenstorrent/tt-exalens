@@ -312,7 +312,7 @@ def search_noc_memory(
     pattern: int | list[int] | bytes,
     start_addr: int = 0,
     end_addr: int | None = None,
-    max_results: int = 1,
+    max_results: int = 10,
     device_id: int = 0,
     context: Context | None = None,
     chunk_size: int = 0x100000,
@@ -329,7 +329,7 @@ def search_noc_memory(
             - bytes: raw byte pattern used directly.
         start_addr (int): First address to search. Default: 0.
         end_addr (int | None): Exclusive end address, or None to search all contiguous blocks from start_addr. Default: None.
-        max_results (int): Stop after this many matches. Must be at least 1. Default: 1.
+        max_results (int): Stop after this many matches. Must be at least 1. Default: 10.
         device_id (int): ID number of device to search. Default: 0.
         context (Context | None): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None.
         chunk_size (int): Maximum bytes per device read. Default: 1 MB.
@@ -398,7 +398,7 @@ def search_riscv_memory(
     neo_id: int | None = None,
     start_addr: int = 0,
     end_addr: int | None = None,
-    max_results: int = 1,
+    max_results: int = 10,
     device_id: int = 0,
     context: Context | None = None,
     chunk_size: int = 4,
@@ -417,7 +417,7 @@ def search_riscv_memory(
         neo_id (int | None): NEO ID of the RISC-V core. Default: None.
         start_addr (int): First private address to search. Default: 0.
         end_addr (int | None): Exclusive end private address, or None to search all contiguous blocks from start_addr. Default: None.
-        max_results (int): Stop after this many matches. Must be at least 1. Default: 1.
+        max_results (int): Stop after this many matches. Must be at least 1. Default: 10.
         device_id (int): ID number of device to search. Default: 0.
         context (Context | None): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None.
         chunk_size (int): Maximum bytes per device read. Default: 4 bytes.
