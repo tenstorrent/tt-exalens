@@ -306,6 +306,46 @@ def _find_in_data(data: bytes, pattern: bytes, base_addr: int, max_results: int 
     return matches
 
 
+def _encode_pattern(pattern: int | list[int] | bytes) -> bytes:
+    if isinstance(pattern, bytes):
+        pattern_bytes = pattern
+    elif isinstance(pattern, int):
+        pattern_bytes = pattern.to_bytes(4, "little")
+    else:
+        pattern_bytes = b"".join(v.to_bytes(4, "little") for v in pattern)
+    if not pattern_bytes:
+        raise TTException("pattern must be non-empty.")
+    return pattern_bytes
+
+
+def _search_chunk_range(
+    chunk_start: int,
+    range_end: int,
+    pattern_bytes: bytes,
+    read_fn: Callable[[int, int], bytes],
+    all_matches: list[tuple[int, str]],
+    block_name: str,
+    max_results: int,
+    chunk_size: int,
+) -> bool:
+    """Search one contiguous block range. Returns True if max_results was reached."""
+    overlap = len(pattern_bytes) - 1
+    prev_tail = b""
+    chunk_addr = chunk_start
+    while chunk_addr < range_end:
+        read_size = min(chunk_size, range_end - chunk_addr)
+        chunk_bytes = read_fn(chunk_addr, read_size)
+        search_data = prev_tail + chunk_bytes
+        base = chunk_addr - len(prev_tail)
+        for addr in _find_in_data(search_data, pattern_bytes, base, max_results - len(all_matches)):
+            all_matches.append((addr, block_name))
+        if len(all_matches) >= max_results:
+            return True
+        prev_tail = search_data[-overlap:] if overlap > 0 else b""
+        chunk_addr += len(chunk_bytes)
+    return False
+
+
 @trace_api
 def search_noc_memory(
     location: str | OnChipCoordinate,
@@ -343,21 +383,11 @@ def search_noc_memory(
     if max_results < 1:
         raise TTException("max_results must be at least 1.")
 
-    if isinstance(pattern, bytes):
-        if not pattern:
-            raise TTException("pattern must be non-empty.")
-        pattern_bytes = pattern
-    elif isinstance(pattern, int):
-        pattern_bytes = pattern.to_bytes(4, "little")
-    else:
-        if not pattern:
-            raise TTException("pattern must be non-empty.")
-        pattern_bytes = b"".join(v.to_bytes(4, "little") for v in pattern)
+    pattern_bytes = _encode_pattern(pattern)
     coordinate = convert_coordinate(location, device_id, context)
     noc_id = check_noc_id(None, coordinate.context)
     use_4B_mode = check_4B_mode(None, coordinate.context)
     memory_map = coordinate.noc_block.noc_memory_map
-    overlap = len(pattern_bytes) - 1
     all_matches: list[tuple[int, str]] = []
     current = start_addr
 
@@ -370,20 +400,11 @@ def search_noc_memory(
         block_end = block_info.memory_block.address.noc_address + block_info.memory_block.size
         range_end = block_end if end_addr is None else min(block_end, end_addr)
 
-        prev_tail = b""
-        chunk_addr = current
-        while chunk_addr < range_end:
-            read_size = min(chunk_size, range_end - chunk_addr)
-            chunk_bytes = coordinate.noc_read(chunk_addr, read_size, noc_id, use_4B_mode, safe_mode=safe_mode)
-            search_data = prev_tail + chunk_bytes
-            base = chunk_addr - len(prev_tail)
-            remaining = max_results - len(all_matches)
-            for addr in _find_in_data(search_data, pattern_bytes, base, remaining):
-                all_matches.append((addr, block_name))
-            if len(all_matches) >= max_results:
-                return all_matches
-            prev_tail = search_data[-overlap:] if overlap > 0 else b""
-            chunk_addr += len(chunk_bytes)
+        read_fn = lambda addr, size: coordinate.noc_read(addr, size, noc_id, use_4B_mode, safe_mode=safe_mode)
+        if _search_chunk_range(
+            current, range_end, pattern_bytes, read_fn, all_matches, block_name, max_results, chunk_size
+        ):
+            return all_matches
 
         current = block_end
 
@@ -431,23 +452,12 @@ def search_riscv_memory(
     if max_results < 1:
         raise TTException("max_results must be at least 1.")
 
-    if isinstance(pattern, bytes):
-        if not pattern:
-            raise TTException("pattern must be non-empty.")
-        pattern_bytes = pattern
-    elif isinstance(pattern, int):
-        pattern_bytes = pattern.to_bytes(4, "little")
-    else:
-        if not pattern:
-            raise TTException("pattern must be non-empty.")
-        pattern_bytes = b"".join(v.to_bytes(4, "little") for v in pattern)
-
+    pattern_bytes = _encode_pattern(pattern)
     coordinate = convert_coordinate(location, device_id, context)
     noc_id = check_noc_id(None, coordinate.context)
     use_4B_mode = check_4B_mode(None, coordinate.context)
     risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
     memory_map = risc_debug.risc_info.memory_map
-    overlap = len(pattern_bytes) - 1
     all_matches: list[tuple[int, str]] = []
     current = start_addr
 
@@ -461,24 +471,17 @@ def search_riscv_memory(
         block_end = block_start_private + block_info.memory_block.size
         range_end = block_end if end_addr is None else min(block_end, end_addr)
 
-        prev_tail = b""
-        chunk_addr = current
-        while chunk_addr < range_end:
-            read_size = min(chunk_size, range_end - chunk_addr)
-            if block_info.memory_block.address.noc_address is not None:
-                noc_addr = block_info.memory_block.address.noc_address + (chunk_addr - block_start_private)
-                chunk_bytes = coordinate.noc_read(noc_addr, read_size, noc_id, use_4B_mode, safe_mode=safe_mode)
-            else:
-                chunk_bytes = risc_debug.read_memory_bytes(chunk_addr, read_size, safe_mode=safe_mode)
-            search_data = prev_tail + chunk_bytes
-            base = chunk_addr - len(prev_tail)
-            remaining = max_results - len(all_matches)
-            for addr in _find_in_data(search_data, pattern_bytes, base, remaining):
-                all_matches.append((addr, block_name))
-            if len(all_matches) >= max_results:
-                return all_matches
-            prev_tail = search_data[-overlap:] if overlap > 0 else b""
-            chunk_addr += len(chunk_bytes)
+        if block_info.memory_block.address.noc_address is not None:
+            noc_offset = block_info.memory_block.address.noc_address - block_start_private
+            read_fn = lambda addr, size: coordinate.noc_read(
+                addr + noc_offset, size, noc_id, use_4B_mode, safe_mode=safe_mode
+            )
+        else:
+            read_fn = lambda addr, size: risc_debug.read_memory_bytes(addr, size, safe_mode=safe_mode)
+        if _search_chunk_range(
+            current, range_end, pattern_bytes, read_fn, all_matches, block_name, max_results, chunk_size
+        ):
+            return all_matches
 
         current = block_end
 
