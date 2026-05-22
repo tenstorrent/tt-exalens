@@ -96,9 +96,9 @@ class UmdApi:
                 tt_device.send_tensix_risc_reset(
                     tt_umd.tt_xy_pair(core.x, core.y), tt_umd.TensixSoftResetOptions.TENSIX_DEASSERT_SOFT_RESET
                 )
-            self.devices[0] = UmdDevice(self, tt_device, 0, 0, soc_descriptor=soc_descriptor, is_simulation=True)
-            cluster_descriptor_content = create_simulation_cluster_descriptor(self.devices[0].arch)
+            cluster_descriptor_content = create_simulation_cluster_descriptor(tt_device.get_arch())
             self.cluster_descriptor = tt_umd.ClusterDescriptor.create_from_yaml_content(cluster_descriptor_content)
+            self.devices[0] = UmdDevice(self, tt_device, 0, 0, soc_descriptor=soc_descriptor, cluster_descriptor=self.cluster_descriptor, is_simulation=True)
         else:
             self.discovery_options = tt_umd.TopologyDiscoveryOptions()
             self.discovery_options.cmfw_mismatch_action = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
@@ -117,6 +117,7 @@ class UmdApi:
                 raise RuntimeError("No Tenstorrent devices were detected on this system.")
 
             # Setup used devices
+            eth_connections = self.cluster_descriptor.get_ethernet_connections()
             unique_ids = self.cluster_descriptor.get_chip_unique_ids()
             for chip_id in self.cluster_descriptor.get_all_chips():
                 device = devices[chip_id]
@@ -127,14 +128,20 @@ class UmdApi:
                     soc_descriptor = tt_umd.SocDescriptor(device)
                     mmio_chip_id = self.cluster_descriptor.get_closest_mmio_capable_chip(chip_id)
                     active_eth_channels = self.cluster_descriptor.get_active_eth_channels(mmio_chip_id)
+                    local_chip_eth_channels = set()
+                    for channel in active_eth_channels:
+                        if mmio_chip_id in eth_connections and channel in eth_connections[mmio_chip_id]:
+                            connection = eth_connections[mmio_chip_id][channel]
+                            if connection[0] == chip_id:
+                                local_chip_eth_channels.add(channel)
                     active_eth_cores = soc_descriptor.get_eth_cores_for_channels(
-                        active_eth_channels, tt_umd.CoordSystem.TRANSLATED
+                        local_chip_eth_channels, tt_umd.CoordSystem.TRANSLATED
                     )
-                    active_eth_coords_on_mmio_chip = [(core.x, core.y) for core in active_eth_cores]
+                    active_eth_coords_on_mmio_chip = [(core.x, core.y) for core in sorted(active_eth_cores, key=lambda core: (core.y, core.x))]
                 else:
                     active_eth_coords_on_mmio_chip = []
 
-                wrapped_device = UmdDevice(self, device, chip_id, unique_id, active_eth_coords_on_mmio_chip)
+                wrapped_device = UmdDevice(self, device, chip_id, unique_id, active_eth_coords_on_mmio_chip, cluster_descriptor=self.cluster_descriptor)
                 assert wrapped_device.is_mmio_capable == self.cluster_descriptor.is_chip_mmio_capable(chip_id)
                 self.devices[chip_id] = wrapped_device
                 self.devices[unique_id] = wrapped_device
