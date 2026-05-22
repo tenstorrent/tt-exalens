@@ -31,6 +31,7 @@ from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
 from ttexalens.gdb.gdb_client import get_gdb_callstack
 from ttexalens.gdb.gdb_communication import ServerSocket
 from ttexalens.gdb.gdb_server import GdbServer
+from ttexalens.tt_exalens_lib import _encode_pattern, _find_in_data
 
 
 def invalid_argument_decorator(func):
@@ -1724,3 +1725,187 @@ class TestCallStack(unittest.TestCase):
         # Check for invalid location
         with self.assertRaises((util.TTException, ValueError, FileNotFoundError)):
             lib.callstack(location, elf_paths, offsets, risc_name, None, max_depth, True, device_id, self.context)
+
+
+class TestSearchHelpers(unittest.TestCase):
+    """Tests for _encode_pattern and _find_in_data — no device required."""
+
+    # --- _encode_pattern ---
+
+    def test_encode_int(self):
+        self.assertEqual(_encode_pattern(0xDEADBEEF), b"\xEF\xBE\xAD\xDE")
+
+    def test_encode_zero_int(self):
+        self.assertEqual(_encode_pattern(0), b"\x00\x00\x00\x00")
+
+    def test_encode_list(self):
+        result = _encode_pattern([0x1234, 0x5678])
+        self.assertEqual(result, b"\x34\x12\x00\x00" + b"\x78\x56\x00\x00")
+
+    def test_encode_bytes(self):
+        self.assertEqual(_encode_pattern(b"\x01\x02\x03"), b"\x01\x02\x03")
+
+    def test_encode_empty_bytes_raises(self):
+        with self.assertRaises(util.TTException):
+            _encode_pattern(b"")
+
+    def test_encode_empty_list_raises(self):
+        with self.assertRaises(util.TTException):
+            _encode_pattern([])
+
+    # --- _find_in_data ---
+
+    def test_find_not_found(self):
+        self.assertEqual(_find_in_data(b"\x01\x02\x03\x04", b"\xFF", base_addr=0x100), [])
+
+    def test_find_single(self):
+        data = b"\x00\x00\xBE\xEF\x00"
+        self.assertEqual(_find_in_data(data, b"\xBE\xEF", base_addr=0x200), [0x202])
+
+    def test_find_multiple(self):
+        data = b"\xAA\xBB\xAA\xBB\xAA\xBB"
+        results = _find_in_data(data, b"\xAA\xBB", base_addr=0)
+        self.assertEqual(results, [0, 2, 4])
+
+    def test_find_max_results(self):
+        data = b"\xAA\xBB\xAA\xBB\xAA\xBB"
+        results = _find_in_data(data, b"\xAA\xBB", base_addr=0, max_results=1)
+        self.assertEqual(results, [0])
+
+    def test_find_at_boundary(self):
+        data = b"\xAA" + b"\x00" * 4 + b"\xAA"
+        self.assertEqual(_find_in_data(data, b"\xAA", base_addr=0x10), [0x10, 0x15])
+
+
+class TestSearchMemory(unittest.TestCase):
+    context: Context
+
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_cached_test_context()
+
+    def setUp(self):
+        self.assertIsNotNone(self.context)
+
+    # --- search_noc_memory ---
+
+    def test_search_noc_int(self):
+        location = "0,0"
+        addr = 0x100
+        lib.write_words_to_device(location, addr, 0xDEADBEEF, context=self.context)
+        results = lib.search_noc_memory(location, 0xDEADBEEF, start_addr=addr, end_addr=addr + 4, context=self.context)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0], addr)
+        self.assertIsInstance(results[0][1], str)
+        self.assertTrue(len(results[0][1]) > 0)
+
+    def test_search_noc_bytes(self):
+        location = "0,0"
+        addr = 0x104
+        pattern = b"\x11\x22\x33\x44"
+        lib.write_to_device(location, addr, pattern, context=self.context)
+        results = lib.search_noc_memory(location, pattern, start_addr=addr, end_addr=addr + 4, context=self.context)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0], addr)
+
+    def test_search_noc_list(self):
+        location = "0,0"
+        addr = 0x108
+        words = [0x11223344, 0x55667788]
+        lib.write_words_to_device(location, addr, words, context=self.context)
+        results = lib.search_noc_memory(location, words, start_addr=addr, end_addr=addr + 8, context=self.context)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0], addr)
+
+    def test_search_noc_not_found(self):
+        location = "0,0"
+        addr = 0x110
+        lib.write_words_to_device(location, addr, 0x00000000, context=self.context)
+        results = lib.search_noc_memory(location, 0xDEADBEEF, start_addr=addr, end_addr=addr + 4, context=self.context)
+        self.assertEqual(results, [])
+
+    def test_search_noc_max_results(self):
+        location = "0,0"
+        addr1, addr2 = 0x120, 0x124
+        lib.write_words_to_device(location, addr1, 0xCAFEBABE, context=self.context)
+        lib.write_words_to_device(location, addr2, 0xCAFEBABE, context=self.context)
+        results = lib.search_noc_memory(
+            location, 0xCAFEBABE, start_addr=addr1, end_addr=addr2 + 4, max_results=1, context=self.context
+        )
+        self.assertEqual(len(results), 1)
+
+    def test_search_noc_start_addr(self):
+        location = "0,0"
+        addr_before = 0x130
+        addr_inside = 0x138
+        lib.write_words_to_device(location, addr_before, 0xBEEFBEEF, context=self.context)
+        lib.write_words_to_device(location, addr_inside, 0xBEEFBEEF, context=self.context)
+        results = lib.search_noc_memory(
+            location, 0xBEEFBEEF, start_addr=addr_inside, end_addr=addr_inside + 4, context=self.context
+        )
+        for addr, _ in results:
+            self.assertGreaterEqual(addr, addr_inside)
+
+    def test_search_noc_end_addr(self):
+        location = "0,0"
+        addr_inside = 0x140
+        addr_beyond = 0x148
+        lib.write_words_to_device(location, addr_inside, 0xFACEFACE, context=self.context)
+        lib.write_words_to_device(location, addr_beyond, 0xFACEFACE, context=self.context)
+        results = lib.search_noc_memory(
+            location, 0xFACEFACE, start_addr=addr_inside, end_addr=addr_beyond, context=self.context
+        )
+        for addr, _ in results:
+            self.assertLess(addr, addr_beyond)
+
+    def test_search_noc_invalid_chunk_size(self):
+        with self.assertRaises(util.TTException):
+            lib.search_noc_memory("0,0", 0xDEADBEEF, chunk_size=0, context=self.context)
+
+    def test_search_noc_invalid_max_results(self):
+        with self.assertRaises(util.TTException):
+            lib.search_noc_memory("0,0", 0xDEADBEEF, max_results=0, context=self.context)
+
+    def test_search_noc_empty_bytes(self):
+        with self.assertRaises(util.TTException):
+            lib.search_noc_memory("0,0", b"", context=self.context)
+
+    def test_search_noc_empty_list(self):
+        with self.assertRaises(util.TTException):
+            lib.search_noc_memory("0,0", [], context=self.context)
+
+    # --- search_riscv_memory ---
+
+    def test_search_riscv_int(self):
+        loc = OnChipCoordinate.create("0,0", self.context.devices[0])
+        risc_debug = loc.noc_block.get_risc_debug("brisc")
+        private_memory = risc_debug.get_data_private_memory()
+        assert private_memory is not None and private_memory.address.private_address is not None
+        base_addr = private_memory.address.private_address
+
+        with risc_debug.ensure_private_memory_access():
+            lib.write_riscv_memory(loc, base_addr, 0xCAFEBABE, "brisc", context=self.context)
+            results = lib.search_riscv_memory(
+                loc, 0xCAFEBABE, "brisc", start_addr=base_addr, end_addr=base_addr + 4, context=self.context
+            )
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0][0], base_addr)
+        self.assertIsInstance(results[0][1], str)
+
+    def test_search_riscv_not_found(self):
+        loc = OnChipCoordinate.create("0,0", self.context.devices[0])
+        risc_debug = loc.noc_block.get_risc_debug("brisc")
+        private_memory = risc_debug.get_data_private_memory()
+        assert private_memory is not None and private_memory.address.private_address is not None
+        base_addr = private_memory.address.private_address
+
+        with risc_debug.ensure_private_memory_access():
+            lib.write_riscv_memory(loc, base_addr, 0x00000000, "brisc", context=self.context)
+            results = lib.search_riscv_memory(
+                loc, 0xDEADBEEF, "brisc", start_addr=base_addr, end_addr=base_addr + 4, context=self.context
+            )
+        self.assertEqual(results, [])
+
+    def test_search_riscv_invalid_risc_name(self):
+        with self.assertRaises((util.TTException, ValueError, AttributeError)):
+            lib.search_riscv_memory("0,0", 0xDEADBEEF, "invalid_risc", context=self.context)
