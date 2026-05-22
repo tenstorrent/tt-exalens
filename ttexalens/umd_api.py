@@ -98,7 +98,15 @@ class UmdApi:
                 )
             cluster_descriptor_content = create_simulation_cluster_descriptor(tt_device.get_arch())
             self.cluster_descriptor = tt_umd.ClusterDescriptor.create_from_yaml_content(cluster_descriptor_content)
-            self.devices[0] = UmdDevice(self, tt_device, 0, 0, soc_descriptor=soc_descriptor, cluster_descriptor=self.cluster_descriptor, is_simulation=True)
+            self.devices[0] = UmdDevice(
+                self,
+                tt_device,
+                0,
+                0,
+                soc_descriptor=soc_descriptor,
+                cluster_descriptor=self.cluster_descriptor,
+                is_simulation=True,
+            )
         else:
             self.discovery_options = tt_umd.TopologyDiscoveryOptions()
             self.discovery_options.cmfw_mismatch_action = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
@@ -137,11 +145,20 @@ class UmdApi:
                     active_eth_cores = soc_descriptor.get_eth_cores_for_channels(
                         local_chip_eth_channels, tt_umd.CoordSystem.TRANSLATED
                     )
-                    active_eth_coords_on_mmio_chip = [(core.x, core.y) for core in sorted(active_eth_cores, key=lambda core: (core.y, core.x))]
+                    active_eth_coords_on_mmio_chip = [
+                        (core.x, core.y) for core in sorted(active_eth_cores, key=lambda core: (core.y, core.x))
+                    ]
                 else:
                     active_eth_coords_on_mmio_chip = []
 
-                wrapped_device = UmdDevice(self, device, chip_id, unique_id, active_eth_coords_on_mmio_chip, cluster_descriptor=self.cluster_descriptor)
+                wrapped_device = UmdDevice(
+                    self,
+                    device,
+                    chip_id,
+                    unique_id,
+                    active_eth_coords_on_mmio_chip,
+                    cluster_descriptor=self.cluster_descriptor,
+                )
                 assert wrapped_device.is_mmio_capable == self.cluster_descriptor.is_chip_mmio_capable(chip_id)
                 self.devices[chip_id] = wrapped_device
                 self.devices[unique_id] = wrapped_device

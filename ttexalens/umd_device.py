@@ -48,9 +48,15 @@ class UmdDevice:
         self.__write_timeout_events: list[TimeoutDeviceRegisterError] = []
 
         # On T3K we observed slower communication over default active ETH, so we try to switch to another active ETH if available.
-        if device.is_remote() and cluster_descriptor is not None and cluster_descriptor.get_board_type(device_id) == tt_umd.BoardType.N300:
+        if (
+            device.is_remote()
+            and cluster_descriptor is not None
+            and cluster_descriptor.get_board_type(device_id) == tt_umd.BoardType.N300
+        ):
             if len(active_eth_coords_on_mmio_chip) > 1:
-                self._active_eth_coords_on_mmio_chip = active_eth_coords_on_mmio_chip[1:] + active_eth_coords_on_mmio_chip[:1]
+                self._active_eth_coords_on_mmio_chip = (
+                    active_eth_coords_on_mmio_chip[1:] + active_eth_coords_on_mmio_chip[:1]
+                )
             self.__configure_working_active_eth()
 
     @property
