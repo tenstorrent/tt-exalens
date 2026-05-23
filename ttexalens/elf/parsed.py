@@ -10,6 +10,7 @@ from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 from functools import cache, cached_property
 import os
+import threading
 from ttexalens.server import FileAccessApi
 import ttexalens.util as util
 from ttexalens.elf.dwarf import ElfDwarf, ElfDwarfWithOffset
@@ -147,61 +148,74 @@ class ParsedElfFile:
         self.elf = elf
         self.elf_file_path = elf_file_path
         self.loaded_offset = 0
+        self._lock = threading.RLock()
 
     @cached_property
     def sections(self):
-        return [ParsedElfFileSection(section) for section in self.elf.iter_sections()]
+        with self._lock:
+            return [ParsedElfFileSection(section) for section in self.elf.iter_sections()]
 
     @cached_property
     def _dwarf(self) -> ElfDwarf:
-        dwarf = self.elf.get_dwarf_info(relocate_dwarf_sections=False)
-        return ElfDwarf(dwarf, self)
+        with self._lock:
+            dwarf = self.elf.get_dwarf_info(relocate_dwarf_sections=False)
+            return ElfDwarf(dwarf, self)
 
     @cached_property
     def _recursed_dwarf(self):
-        return recurse_dwarf(self._dwarf)
+        with self._lock:
+            return recurse_dwarf(self._dwarf)
 
     @cached_property
     def variables(self):
-        return self._recursed_dwarf["variable"]
+        with self._lock:
+            return self._recursed_dwarf["variable"]
 
     @cached_property
     def types(self):
-        return self._recursed_dwarf["type"]
+        with self._lock:
+            return self._recursed_dwarf["type"]
 
     @cached_property
     def members(self):
-        return self._recursed_dwarf["member"]
+        with self._lock:
+            return self._recursed_dwarf["member"]
 
     @cached_property
     def enumerators(self):
-        return self._recursed_dwarf["enumerator"]
+        with self._lock:
+            return self._recursed_dwarf["enumerator"]
 
     @cached_property
     def subprograms(self):
-        return self._recursed_dwarf["subprogram"]
+        with self._lock:
+            return self._recursed_dwarf["subprogram"]
 
     @cached_property
     def code_load_address(self) -> int:
         # TODO: Figure out how GDB knows the load address
-        text_sh = self.elf.get_section_by_name(".text")
-        if text_sh is None:
-            text_sh = self.elf.get_section_by_name(".firmware_text")
-        if text_sh is None:
-            raise ValueError(f"Could not locate text section in {self.elf_file_path}.")
-        return int(text_sh["sh_addr"])
+        with self._lock:
+            text_sh = self.elf.get_section_by_name(".text")
+            if text_sh is None:
+                text_sh = self.elf.get_section_by_name(".firmware_text")
+            if text_sh is None:
+                raise ValueError(f"Could not locate text section in {self.elf_file_path}.")
+            return int(text_sh["sh_addr"])
 
     @cached_property
     def symbols(self):
-        return decode_symbols(self.elf)
+        with self._lock:
+            return decode_symbols(self.elf)
 
     @cached_property
     def file_line(self):
-        return decode_file_line(self._dwarf.dwarf)
+        with self._lock:
+            return decode_file_line(self._dwarf.dwarf)
 
     @cached_property
     def frame_info(self) -> FrameInfoProvider:
-        return FrameInfoProvider(self._dwarf.dwarf)
+        with self._lock:
+            return FrameInfoProvider(self._dwarf)
 
     @cache
     def find_die_by_name(self, name: str) -> ElfDie | None:
