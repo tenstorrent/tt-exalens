@@ -5,7 +5,11 @@ cmake_policy(VERSION 3.22)
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/VERSION" TT_EXALENS_VERSION)
 string(STRIP "${TT_EXALENS_VERSION}" TT_EXALENS_VERSION)
 
-project(ttexalens VERSION ${TT_EXALENS_VERSION})
+project(ttexalens VERSION ${TT_EXALENS_VERSION} LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Set default values for variables/options
 set(TTEXALENS_HOME "${PROJECT_SOURCE_DIR}")
@@ -19,6 +23,10 @@ include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
 if(NOT BUILD_PYTHON_WHEEL)
     add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src)
 endif()
+
+# Dependencies for the _native_elf Python extension module, and the module itself.
+include(${PROJECT_SOURCE_DIR}/cmake/native_elf.cmake)
+add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens/cpp/elf)
 
 # Install target for Python wheel: copy GDB binary to source tree
 set(SFPI_GDB_SOURCE "${SFPI_RELEASE_PATH}/compiler/bin/riscv-tt-elf-gdb")

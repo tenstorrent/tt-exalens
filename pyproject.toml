@@ -40,11 +40,15 @@ cmake.build-type = "Release"
 cmake.args = ["-DBUILD_PYTHON_WHEEL=ON", "-DSTRIP_SYMBOLS=ON"]
 wheel.install-dir = "ttexalens"
 wheel.packages = ["ttexalens"]
-wheel.py-api = "py3"
-wheel.platlib = false
+wheel.platlib = true
 experimental = true
+build-dir = "build/{wheel_tag}"
 # Install the python_wheel component for wheel packaging
 install.components = ["python_wheel"]
+
+[tool.scikit-build.editable]
+mode = "redirect"
+rebuild = true
 
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"
