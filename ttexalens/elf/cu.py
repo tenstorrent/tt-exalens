@@ -42,7 +42,7 @@ class ElfCompileUnit:
         with self.dwarf.parsed_elf._lock:
             line_program = self.dwarf.dwarf.line_program_for_CU(self.dwarf_cu)
             if line_program is not None:
-                line_program.get_entries() # Force cache of entries to avoid concurrent access issues later
+                line_program.get_entries()  # Force cache of entries to avoid concurrent access issues later
             return line_program
 
     @cached_property
