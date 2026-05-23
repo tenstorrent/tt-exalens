@@ -132,15 +132,17 @@ def decode_file_line(dwarf: DWARFInfo) -> dict[int, tuple[str, int, int]]:
 
 
 class ParsedElfFileSection:
-    def __init__(self, section):
+    def __init__(self, parsed_elf: "ParsedElfFile", section):
+        self._parsed_elf = parsed_elf
         self._section = section
-        self.name = section.name
+        self.name = str(section.name)
         self.address = int(section.header.sh_addr) if hasattr(section.header, "sh_addr") else None
         self.size = int(section.header.sh_size) if hasattr(section.header, "sh_size") else 0
 
     @cached_property
     def data(self):
-        return self._section.data()
+        with self._parsed_elf._lock:
+            return self._section.data()
 
 
 class ParsedElfFile:
@@ -153,7 +155,7 @@ class ParsedElfFile:
     @cached_property
     def sections(self):
         with self._lock:
-            return [ParsedElfFileSection(section) for section in self.elf.iter_sections()]
+            return {str(section.name): ParsedElfFileSection(self, section) for section in self.elf.iter_sections()}
 
     @cached_property
     def _dwarf(self) -> ElfDwarf:

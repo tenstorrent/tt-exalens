@@ -1525,8 +1525,9 @@ class TestCallStack(unittest.TestCase):
                 self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
 
     def set_recursion_count(self, elf: ParsedElfFile, count: int):
-        text_section = next((s for s in elf.sections if s.name == ".text"), None)
+        text_section = elf.sections.get(".text")
         assert text_section is not None
+        assert text_section.address is not None
 
         address = text_section.address + text_section.size
         self.l1_mem_access.write_word(address, count)
