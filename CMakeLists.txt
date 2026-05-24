@@ -27,6 +27,7 @@ endif()
 # Dependencies for the _native_elf Python extension module, and the module itself.
 include(${PROJECT_SOURCE_DIR}/cmake/native_elf.cmake)
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens/cpp/elf)
+add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens/cpp/native_elf)
 
 # Install target for Python wheel: copy GDB binary to source tree
 set(SFPI_GDB_SOURCE "${SFPI_RELEASE_PATH}/compiler/bin/riscv-tt-elf-gdb")

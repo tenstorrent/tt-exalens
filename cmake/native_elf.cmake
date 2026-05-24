@@ -49,3 +49,16 @@ CPMAddPackage(
         "ENABLE_DECOMPRESSION FALSE"
         "CMAKE_MESSAGE_LOG_LEVEL NOTICE"
 )
+
+# ELFIO — header-only C++ ELF reader. Used for section list + symbol table
+# (libdwarf v2.x doesn't expose those publicly).
+CPMAddPackage(
+    NAME ELFIO
+    GITHUB_REPOSITORY serge1/ELFIO
+    GIT_TAG Release_3.12
+    EXCLUDE_FROM_ALL YES
+    DOWNLOAD_ONLY YES
+)
+# ELFIO's own CMakeLists creates a tests/examples — we only need the headers.
+add_library(elfio INTERFACE)
+target_include_directories(elfio INTERFACE "${ELFIO_SOURCE_DIR}")

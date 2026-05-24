@@ -1,15 +1,11 @@
 # SPDX-FileCopyrightText: © 2026 Tenstorrent AI ULC
 # SPDX-License-Identifier: Apache-2.0
 
-nanobind_add_module(
-    _native_elf
-    STABLE_ABI
-    NB_STATIC
-    bindings.cpp
-)
+# Pure C++ ELF reader library — no Python / nanobind dependency. Wrapped for
+# Python in the sibling `native_elf` subproject.
 
-target_link_libraries(_native_elf PRIVATE libdwarf::dwarf-static)
-
-# scikit-build-core prepends `wheel.install-dir` (= "ttexalens") to DESTINATION,
-# so DESTINATION "." installs the .so at ttexalens/_native_elf*.so inside the wheel.
-install(TARGETS _native_elf LIBRARY DESTINATION "." COMPONENT python_wheel)
+add_library(ttexalens_elf STATIC elf_file.cpp)
+target_compile_features(ttexalens_elf PUBLIC cxx_std_20)
+target_include_directories(ttexalens_elf PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(ttexalens_elf PUBLIC elfio)
+set_target_properties(ttexalens_elf PROPERTIES POSITION_INDEPENDENT_CODE ON)
