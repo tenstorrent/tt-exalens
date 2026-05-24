@@ -10,6 +10,9 @@ core
 .cpmcache
 /build
 
+# Native extension copied into the source tree by the Makefile dev flow
+/ttexalens/_native_elf*.so
+
 __pycache__
 .venv
 

@@ -15,3 +15,17 @@ target_link_libraries(_native_elf PRIVATE ttexalens_elf libdwarf::dwarf-static)
 # scikit-build-core prepends `wheel.install-dir` (= "ttexalens") to DESTINATION,
 # so DESTINATION "." installs the .so at ttexalens/_native_elf*.so inside the wheel.
 install(TARGETS _native_elf LIBRARY DESTINATION "." COMPONENT python_wheel)
+
+# Source-tree dev flow (`make` + `python tt-exalens.py`): drop the freshly
+# built .so next to the Python package so `import ttexalens._native_elf` works
+# without `pip install .`. Skipped when scikit-build-core is driving the build
+# (BUILD_PYTHON_WHEEL is set in pyproject.toml's cmake.args) so wheel builds
+# don't leak artifacts into the source tree.
+if(NOT BUILD_PYTHON_WHEEL)
+    add_custom_command(TARGET _native_elf POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            $<TARGET_FILE:_native_elf>
+            ${PROJECT_SOURCE_DIR}/ttexalens/$<TARGET_FILE_NAME:_native_elf>
+        COMMENT "Copying _native_elf module into source tree for in-place imports"
+    )
+endif()
