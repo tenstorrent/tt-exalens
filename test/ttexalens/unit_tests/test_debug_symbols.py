@@ -31,15 +31,15 @@ class MemoryAccessWrapper(MemoryAccess):
         self.write_count = 0
         self.total_bytes_written = 0
 
-    def read(self, address: int, size_bytes: int) -> bytes:
+    def read(self, private_address: int, size_bytes: int) -> bytes:
         self.read_count += 1
         self.total_bytes_read += size_bytes
-        return self._mem_access.read(address, size_bytes)
+        return self._mem_access.read(private_address, size_bytes)
 
-    def write(self, address: int, data: bytes) -> None:
+    def write(self, private_address: int, data: bytes) -> None:
         self.write_count += 1
         self.total_bytes_written += len(data)
-        return self._mem_access.write(address, data)
+        return self._mem_access.write(private_address, data)
 
     def reset_stats(self):
         """Reset all statistics counters."""
@@ -52,11 +52,11 @@ class MemoryAccessWrapper(MemoryAccess):
 class TimeoutMemoryAccess(MemoryAccess):
     _coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
 
-    def read(self, address: int, size_bytes: int) -> bytes:
-        raise TimeoutDeviceRegisterError(0, self._coord, address, size_bytes, True, 0.0)
+    def read(self, private_address: int, size_bytes: int) -> bytes:
+        raise TimeoutDeviceRegisterError(0, self._coord, private_address, size_bytes, True, 0.0)
 
-    def write(self, address: int, data: bytes) -> None:
-        raise TimeoutDeviceRegisterError(0, self._coord, address, len(data), False, 0.0)
+    def write(self, private_address: int, data: bytes) -> None:
+        raise TimeoutDeviceRegisterError(0, self._coord, private_address, len(data), False, 0.0)
 
 
 class RiscHaltErrorMemoryAccess(MemoryAccess):
@@ -65,10 +65,10 @@ class RiscHaltErrorMemoryAccess(MemoryAccess):
         self._risc_name = "dummy risc"
         self._location = OnChipCoordinate.create("0,0", self._device)
 
-    def read(self, address: int, size_bytes: int) -> bytes:
+    def read(self, private_address: int, size_bytes: int) -> bytes:
         raise RiscHaltError(self._risc_name, self._location)
 
-    def write(self, address: int, data: bytes) -> None:
+    def write(self, private_address: int, data: bytes) -> None:
         raise RiscHaltError(self._risc_name, self._location)
 
 
@@ -212,20 +212,20 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(-123456789, g_global_struct.signed_int_field)
 
     def test_elf_variable_low_level(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None and variable_die.address is not None
         g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
         self.verify_global_struct_low_level(g_global_struct)
 
     def test_elf_variable(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None and variable_die.address is not None
         g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct)
 
     def test_read_elf_variable(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None and variable_die.address is not None
         g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct.read())
 
@@ -258,8 +258,8 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(2.718281828459, self.parsed_elf.get_constant("c_double"))
 
     def test_elf_variable_array_iteration(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None and variable_die.address is not None
         g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
         c_values = [var.read_value() for var in g_global_struct.c]
         self.assertEqual(list(range(16)), c_values)
@@ -271,8 +271,8 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual([i % 2 == 0 for i in range(8)], h_values)
 
     def test_elf_variable_array_as_list(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None and variable_die.address is not None
         g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
         c_values = [var.read_value() for var in g_global_struct.c.as_list()]
         self.assertEqual(list(range(16)), c_values)
@@ -284,8 +284,8 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual([i % 2 == 0 for i in range(8)], h_values)
 
     def test_elf_variable_array_as_value_list(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None and variable_die.address is not None
         g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
         c_values = g_global_struct.c.as_value_list()
         self.assertEqual(list(range(16)), c_values)

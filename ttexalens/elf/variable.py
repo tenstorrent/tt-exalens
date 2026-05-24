@@ -511,8 +511,11 @@ class ElfVariable:
     def __invert__(self):
         """Bitwise inversion operator."""
         value = self.read_value()
-        if isinstance(value, (int, bool)):
-            return ~value
+        if isinstance(value, int):
+            return ~int(value)
+        elif isinstance(value, bool):
+            return not value
+
         raise TypeError(f"bad operand type for unary ~: '{type(value).__name__}'")
 
     def __index__(self) -> int:
