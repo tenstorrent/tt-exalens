@@ -3,23 +3,23 @@
 
 #include <libdwarf.h>
 #include <nanobind/nanobind.h>
-#include <nanobind/stl/optional.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/string_view.h>
-#include <nanobind/stl/vector.h>
 
 #include <cstddef>
 #include <span>
 
+#include "dwarf_info.hpp"
 #include "elf_file.hpp"
 
 namespace nb = nanobind;
 
+using ttexalens::native_elf::NativeDwarfInfo;
 using ttexalens::native_elf::NativeElfFile;
 using ttexalens::native_elf::NativeElfSection;
 
-NB_MODULE(_native_elf, m) {
-    m.doc() = "Native ELF/DWARF parsing backend for ttexalens.elf. Private API.";
+NB_MODULE(_native_ttexalens, m) {
+    m.doc() = "Native code backend for ttexalens. Private API.";
 
     m.def(
         "libdwarf_version", []() { return dwarf_package_version(); },
@@ -43,6 +43,15 @@ NB_MODULE(_native_elf, m) {
                     std::span<const std::byte>(reinterpret_cast<const std::byte*>(data.c_str()), data.size()));
             },
             nb::arg("data"))
-        .def("sections", &NativeElfFile::sections)
-        .def("get_section_by_name", &NativeElfFile::get_section_by_name, nb::arg("name"));
+        .def("get_sections_count", &NativeElfFile::get_sections_count)
+        .def("get_section", &NativeElfFile::get_section, nb::arg("index"), nb::rv_policy::reference_internal)
+        .def("get_section_by_name", &NativeElfFile::get_section_by_name, nb::arg("name"),
+             nb::rv_policy::reference_internal)
+        .def("has_dwarf_info", &NativeElfFile::has_dwarf_info, nb::arg("strict") = false)
+        .def("get_dwarf_info", &NativeElfFile::get_dwarf_info, nb::rv_policy::reference_internal);
+
+    // Opaque handle to a libdwarf Dwarf_Debug. No methods are exposed yet —
+    // future DWARF queries (CU iteration, DIE lookup, line program, ...) will
+    // be added here.
+    nb::class_<NativeDwarfInfo>(m, "NativeDwarfInfo");
 }

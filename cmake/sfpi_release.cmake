@@ -11,8 +11,8 @@ else()
 endif()
 
 set(SFPI_DOWNLOAD_URL "https://github.com/tenstorrent/sfpi/releases/download/${SFPI_VERSION}/sfpi_${SFPI_VERSION}_${SFPI_ARCH}.txz")
-set(SFPI_LOCAL_FILE "${TTEXALENS_HOME}/build/sfpi_${SFPI_VERSION}_${SFPI_ARCH}.txz")
-set(SFPI_RELEASE_PATH "${TTEXALENS_HOME}/build/sfpi")
+set(SFPI_LOCAL_FILE "${TTEXALENS_HOME}/build_riscv/sfpi_${SFPI_VERSION}_${SFPI_ARCH}.txz")
+set(SFPI_RELEASE_PATH "${TTEXALENS_HOME}/build_riscv/sfpi")
 
 if(NOT EXISTS "${SFPI_LOCAL_FILE}")
     message(STATUS "Downloading sfpi release")

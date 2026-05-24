@@ -42,7 +42,9 @@ wheel.install-dir = "ttexalens"
 wheel.packages = ["ttexalens"]
 wheel.platlib = true
 experimental = true
-build-dir = "build/{wheel_tag}"
+# Keep scikit-build-core's build dir distinct from the Makefile-driven `build`
+# symlink (which points to build_debug or build_release).
+build-dir = "build_wheel/{wheel_tag}"
 # Install the python_wheel component for wheel packaging
 install.components = ["python_wheel"]
 

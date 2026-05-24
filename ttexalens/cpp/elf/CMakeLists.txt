@@ -4,8 +4,14 @@
 # Pure C++ ELF reader library — no Python / nanobind dependency. Wrapped for
 # Python in the sibling `native_elf` subproject.
 
-add_library(ttexalens_elf STATIC elf_file.cpp)
+add_library(ttexalens_elf STATIC
+    elf_file.cpp
+    dwarf_info.cpp
+)
 target_compile_features(ttexalens_elf PUBLIC cxx_std_20)
 target_include_directories(ttexalens_elf PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(ttexalens_elf PUBLIC elfio)
+target_link_libraries(ttexalens_elf
+    PUBLIC elfio
+    PRIVATE libdwarf::dwarf-static
+)
 set_target_properties(ttexalens_elf PROPERTIES POSITION_INDEPENDENT_CODE ON)

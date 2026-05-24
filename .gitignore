@@ -9,9 +9,14 @@ core
 
 .cpmcache
 /build
+/build_debug
+/build_release
+/build_riscv
+/build_wheel
+/compile_commands.json
 
 # Native extension copied into the source tree by the Makefile dev flow
-/ttexalens/_native_elf*.so
+/ttexalens/_native_ttexalens*.so
 
 __pycache__
 .venv

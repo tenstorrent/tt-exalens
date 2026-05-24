@@ -7,24 +7,22 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
-#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
-#include <vector>
 
-// Forward declarations — the full ELFIO headers are only included in elf_file.cpp,
-// keeping consumers of this header out of ELFIO's transitive include cost.
+// Forward declarations.
 namespace ELFIO {
-class elfio;
 class section;
 }  // namespace ELFIO
 
 namespace ttexalens::native_elf {
 
+class NativeDwarfInfo;
+
 class NativeElfSection {
    public:
-    NativeElfSection(std::shared_ptr<ELFIO::elfio> elf, unsigned int section_index);
+    explicit NativeElfSection(const ELFIO::section& section);
 
     std::string name() const;
     uint64_t address() const;
@@ -32,26 +30,44 @@ class NativeElfSection {
     std::span<const std::byte> data() const;
 
    private:
-    std::shared_ptr<ELFIO::elfio>
-        elf;  // We need to hold onto the ELFIO instance to ensure the section reference remains valid.
     const ELFIO::section& section;
 };
 
 class NativeElfFile {
    public:
+    class Impl;
+
     explicit NativeElfFile(const std::string& path);
     explicit NativeElfFile(const std::filesystem::path& path);
+
     static NativeElfFile from_bytes(std::span<const std::byte> data);
 
-    const std::vector<NativeElfSection>& sections() const;
-    std::optional<NativeElfSection> get_section_by_name(std::string_view name) const;
+    // Defined out-of-line in elf_file.cpp because Impl needs to be complete
+    // at the point of destruction.
+    ~NativeElfFile();
+    NativeElfFile(NativeElfFile&&) noexcept;
+    NativeElfFile& operator=(NativeElfFile&&) noexcept;
+    NativeElfFile(const NativeElfFile&) = delete;
+    NativeElfFile& operator=(const NativeElfFile&) = delete;
+
+    // Sections are enumerated by index (0 .. get_sections_count()-1). The
+    // pointer-returning accessors hand out a non-owning pointer into the
+    // internal cache; return nullptr when the index is out of range / the
+    // name isn't found.
+    size_t get_sections_count() const;
+    const NativeElfSection* get_section(size_t index) const;
+    const NativeElfSection* get_section_by_name(std::string_view name) const;
+
+    bool has_dwarf_info(bool strict = false) const;
+    // Returns a pointer to the libdwarf-backed handle, or nullptr when the
+    // file has no usable DWARF info (stripped binaries, from_bytes loads,
+    // libdwarf init failures). Pointer is owned by NativeElfFile.
+    const NativeDwarfInfo* get_dwarf_info() const;
 
    private:
-    NativeElfFile();
-    void populate_sections();
+    explicit NativeElfFile(std::unique_ptr<Impl> impl);
 
-    std::shared_ptr<ELFIO::elfio> elf;
-    std::vector<NativeElfSection> section_list;
+    std::unique_ptr<Impl> impl;
 };
 
 }  // namespace ttexalens::native_elf

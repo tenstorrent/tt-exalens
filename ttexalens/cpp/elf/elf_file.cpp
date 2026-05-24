@@ -4,24 +4,28 @@
 #include "elf_file.hpp"
 
 #include <elfio/elfio.hpp>
+#include <fstream>
 #include <ios>
 #include <istream>
+#include <optional>
 #include <stdexcept>
 #include <streambuf>
+#include <string_view>
 #include <utility>
+#include <vector>
+
+#include "dwarf_info.hpp"
+
+using namespace std::string_view_literals;
 
 namespace ttexalens::native_elf {
 
 namespace {
 
-// Read-only std::streambuf that views a contiguous span of bytes without
-// copying. Used to feed an input span into ELFIO::elfio::load(std::istream&).
-// The viewed memory only needs to remain valid for the duration of the load()
-// call — ELFIO copies all section data into its own buffers in non-lazy mode.
+// Read-only std::streambuf that views a contiguous span of bytes without copying.
 class SpanStreamBuf : public std::streambuf {
    public:
     explicit SpanStreamBuf(std::span<const std::byte> data) {
-        // setg expects char*; we promise the stream is read-only.
         char* begin = const_cast<char*>(reinterpret_cast<const char*>(data.data()));
         setg(begin, begin, begin + data.size());
     }
@@ -58,21 +62,9 @@ class SpanStreamBuf : public std::streambuf {
     }
 };
 
-// Looks up the section by index and throws if out of range — ELFIO's
-// Sections::operator[] silently returns nullptr for invalid indices, which
-// would make our reference member undefined behaviour.
-const ELFIO::section& section_at(const ELFIO::elfio& elf, unsigned int index) {
-    ELFIO::section* s = elf.sections[index];
-    if (s == nullptr) {
-        throw std::out_of_range("ELF section index " + std::to_string(index) + " out of range");
-    }
-    return *s;
-}
-
 }  // namespace
 
-NativeElfSection::NativeElfSection(std::shared_ptr<ELFIO::elfio> elf, unsigned int section_index)
-    : elf(std::move(elf)), section(section_at(*this->elf, section_index)) {}
+NativeElfSection::NativeElfSection(const ELFIO::section& section) : section(section) {}
 
 std::string NativeElfSection::name() const { return section.get_name(); }
 
@@ -89,49 +81,148 @@ std::span<const std::byte> NativeElfSection::data() const {
     return {reinterpret_cast<const std::byte*>(p), sz};
 }
 
-NativeElfFile::NativeElfFile() : elf(std::make_shared<ELFIO::elfio>()) {}
+class NativeElfFile::Impl {
+   public:
+    Impl() = default;
+    virtual ~Impl() = default;
+    Impl(const Impl&) = delete;
+    Impl& operator=(const Impl&) = delete;
 
-NativeElfFile::NativeElfFile(const std::string& path) : elf(std::make_shared<ELFIO::elfio>()) {
-    if (!elf->load(path, /*is_lazy=*/true)) {
-        throw std::runtime_error("Failed to load ELF file: " + path);
+    std::vector<NativeElfSection> sections;
+    NativeDwarfInfo* get_dwarf_info() {
+        if (!loaded_dwarf_info) {
+            try_open_dwarf();
+            loaded_dwarf_info = true;
+        }
+
+        return dwarf_info ? &*dwarf_info : nullptr;
     }
-    populate_sections();
-}
 
-NativeElfFile::NativeElfFile(const std::filesystem::path& path) : NativeElfFile(path.string()) {}
-
-NativeElfFile NativeElfFile::from_bytes(std::span<const std::byte> data) {
-    NativeElfFile out;
-    SpanStreamBuf buf(data);
-    std::istream stream(&buf);
-
-    // load() defaults to is_lazy=false: ELFIO copies every section's bytes
-    // into its own per-section buffers during this call, so `data` only needs
-    // to stay valid for the duration of the call — no buffer is held after.
-    if (!out.elf->load(stream, /*is_lazy=*/false)) {
-        throw std::runtime_error("Failed to load ELF from bytes");
-    }
-    out.populate_sections();
-    return out;
-}
-
-void NativeElfFile::populate_sections() {
-    const unsigned int n = elf->sections.size();
-    section_list.reserve(n);
-    for (unsigned int i = 0; i < n; ++i) {
-        section_list.emplace_back(elf, i);
-    }
-}
-
-const std::vector<NativeElfSection>& NativeElfFile::sections() const { return section_list; }
-
-std::optional<NativeElfSection> NativeElfFile::get_section_by_name(std::string_view name) const {
-    for (const auto& s : section_list) {
-        if (s.name() == name) {
-            return s;
+   protected:
+    void populate_sections() {
+        const size_t n = elf.sections.size();
+        sections.reserve(n);
+        for (size_t i = 0; i < n; ++i) {
+            sections.emplace_back(*elf.sections[static_cast<unsigned int>(i)]);
         }
     }
-    return std::nullopt;
+
+    // Identical for path- and bytes-backed sources: both just need elf and
+    // file_size (which the derived ctor sets). Any failure (no DWARF info,
+    // libdwarf init error) leaves dwarf_info null.
+    void try_open_dwarf() {
+        try {
+            dwarf_info.emplace(elf, file_size);
+        } catch (...) {
+        }
+    }
+
+    ELFIO::elfio elf;
+    // Set by the derived constructor — file size on disk (PathImpl) or buffer
+    // size (BytesImpl). Used by ElfObjAccess for libdwarf's filesize callback.
+    uint64_t file_size = 0;
+    std::optional<NativeDwarfInfo> dwarf_info;
+    bool loaded_dwarf_info = false;
+};
+
+namespace {
+
+// ELF loaded from a filesystem path. Owns the ifstream so ELFIO can read
+// lazily through it (file_stream declared before elf -> destroyed after).
+class PathImpl : public NativeElfFile::Impl {
+   public:
+    explicit PathImpl(const std::string& path) {
+        file_stream.open(path, std::ios::in | std::ios::binary);
+        if (!file_stream.is_open()) {
+            throw std::runtime_error("Failed to open ELF file: " + path);
+        }
+        // Stash the file size for libdwarf's filesize callback before ELFIO
+        // starts seeking inside the stream.
+        file_stream.seekg(0, std::ios::end);
+        file_size = static_cast<uint64_t>(file_stream.tellg());
+        file_stream.seekg(0, std::ios::beg);
+        if (!elf.load(file_stream, /*is_lazy=*/true)) {
+            throw std::runtime_error("Failed to load ELF file: " + path);
+        }
+        populate_sections();
+    }
+
+   private:
+    std::ifstream file_stream;
+};
+
+// ELF loaded from an in-memory byte span. Holds a copy of the bytes plus the
+// streambuf/istream that ELFIO reads through, so lazy section reads stay
+// valid for the lifetime of this object.
+//
+// Member declaration order is significant: buffer → buf → stream, so on
+// destruction stream goes first (just an istream object), then buf (a
+// streambuf viewing buffer), then buffer (frees the bytes). ELFIO's internal
+// `pstream` becomes dangling at that point but is never dereferenced again.
+class BytesImpl : public NativeElfFile::Impl {
+   public:
+    explicit BytesImpl(std::span<const std::byte> data) : buffer(data.begin(), data.end()), buf(buffer), stream(&buf) {
+        file_size = static_cast<uint64_t>(buffer.size());
+        if (!elf.load(stream, /*is_lazy=*/true)) {
+            throw std::runtime_error("Failed to load ELF from bytes");
+        }
+        populate_sections();
+    }
+
+   private:
+    std::vector<std::byte> buffer;
+    SpanStreamBuf buf;
+    std::istream stream;
+};
+
+}  // namespace
+
+// Out-of-line so the unique_ptr<Impl> deleter sees the complete type.
+NativeElfFile::~NativeElfFile() = default;
+NativeElfFile::NativeElfFile(NativeElfFile&&) noexcept = default;
+NativeElfFile& NativeElfFile::operator=(NativeElfFile&&) noexcept = default;
+
+NativeElfFile::NativeElfFile(std::unique_ptr<Impl> impl) : impl(std::move(impl)) {}
+
+NativeElfFile::NativeElfFile(const std::string& path) : NativeElfFile(std::make_unique<PathImpl>(path)) {}
+NativeElfFile::NativeElfFile(const std::filesystem::path& path)
+    : NativeElfFile(std::make_unique<PathImpl>(path.string())) {}
+
+NativeElfFile NativeElfFile::from_bytes(std::span<const std::byte> data) {
+    return NativeElfFile(std::make_unique<BytesImpl>(data));
 }
+
+size_t NativeElfFile::get_sections_count() const { return impl->sections.size(); }
+
+const NativeElfSection* NativeElfFile::get_section(size_t index) const {
+    if (index >= impl->sections.size()) {
+        return nullptr;
+    }
+    return &impl->sections[index];
+}
+
+const NativeElfSection* NativeElfFile::get_section_by_name(std::string_view name) const {
+    for (const auto& s : impl->sections) {
+        if (s.name() == name) {
+            return &s;
+        }
+    }
+    return nullptr;
+}
+
+bool NativeElfFile::has_dwarf_info(bool strict) const {
+    for (const auto& s : impl->sections) {
+        const std::string n = s.name();
+        if (n == ".debug_info"sv || n == ".zdebug_info"sv) {
+            return true;
+        }
+        if (!strict && n == ".eh_frame"sv) {
+            return true;
+        }
+    }
+    return false;
+}
+
+const NativeDwarfInfo* NativeElfFile::get_dwarf_info() const { return impl->get_dwarf_info(); }
 
 }  // namespace ttexalens::native_elf
