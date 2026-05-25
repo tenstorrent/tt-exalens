@@ -29,16 +29,6 @@ class ElfLocationParser:
     from ttexalens.elf.die import ElfDie
 
 
-class ElfLocationParser:
-    def __init__(self, dwarf: ElfDwarf):
-        self.dwarf = dwarf
-        self._location_parser = LocationParser(dwarf.location_lists)
-
-    def parse_from_attribute(self, location_attribute, die: ElfDie):
-        with self.dwarf.parsed_elf._lock:
-            return self._location_parser.parse_from_attribute(location_attribute, die.cu.version, die.dwarf_die)
-
-
 class ElfDwarf:
     def __init__(self, dwarf: DWARFInfo, parsed_elf: ParsedElfFile):
         self.dwarf = dwarf
@@ -216,6 +206,7 @@ class ElfDwarfWithOffset(ElfDwarf):
     def iter_CUs(self):
         return self._my_dwarf.iter_CUs()
 
+    @cache
     def find_function_by_address(self, address):
         address += self.loaded_offset
         return self._my_dwarf.find_function_by_address(address)

@@ -61,7 +61,7 @@ class UmdDevice:
             self.__configure_working_active_eth()
 
     @staticmethod
-    def initialize_device_coords_cache(soc_descriptor: tt_umd.SocDescriptor) -> list[list[tt_umd.CoreCoord]]:
+    def initialize_device_coords_cache(soc_descriptor: tt_umd.SocDescriptor) -> list[list[tt_umd.CoreCoord | None]]:
         all_cores = soc_descriptor.get_all_cores(
             coord_system=tt_umd.CoordSystem.NOC0
         ) + soc_descriptor.get_all_harvested_cores(coord_system=tt_umd.CoordSystem.NOC0)
@@ -69,7 +69,7 @@ class UmdDevice:
         max_y = max(core.y for core in all_cores) + 1
         result = []
         for x in range(max_x):
-            row = []
+            row: list[tt_umd.CoreCoord | None] = []
             for y in range(max_y):
                 try:
                     coords = soc_descriptor.translate_chip_coord_to_translated_coord(
@@ -235,6 +235,7 @@ class UmdDevice:
         self, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool, dma_threshold: int
     ) -> bytes:
         coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        assert coord is not None, f"Invalid NoC0 coordinates: ({noc0_x}, {noc0_y})"
         try:
             return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
@@ -293,6 +294,7 @@ class UmdDevice:
         self, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
     ):
         coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        assert coord is not None, f"Invalid NoC0 coordinates: ({noc0_x}, {noc0_y})"
         try:
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
