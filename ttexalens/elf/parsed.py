@@ -10,6 +10,7 @@ from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 from functools import cache, cached_property
 import os
+import threading
 from ttexalens.server import FileAccessApi
 import ttexalens.util as util
 from ttexalens.elf.dwarf import ElfDwarf, ElfDwarfWithOffset
@@ -43,15 +44,17 @@ def decode_symbols(elf_file: ELFFile) -> dict[str, ElfDwarfSymbol]:
 
 
 class ParsedElfFileSection:
-    def __init__(self, section):
+    def __init__(self, parsed_elf: "ParsedElfFile", section):
+        self._parsed_elf = parsed_elf
         self._section = section
-        self.name = section.name
+        self.name = str(section.name)
         self.address = int(section.header.sh_addr) if hasattr(section.header, "sh_addr") else None
         self.size = int(section.header.sh_size) if hasattr(section.header, "sh_size") else 0
 
     @cached_property
     def data(self):
-        return self._section.data()
+        with self._parsed_elf._lock:
+            return self._section.data()
 
 
 class ParsedElfFile:
@@ -59,33 +62,39 @@ class ParsedElfFile:
         self.elf = elf
         self.elf_file_path = elf_file_path
         self.loaded_offset = 0
+        self._lock = threading.RLock()
 
     @cached_property
     def sections(self):
-        return [ParsedElfFileSection(section) for section in self.elf.iter_sections()]
+        with self._lock:
+            return {str(section.name): ParsedElfFileSection(self, section) for section in self.elf.iter_sections()}
 
     @cached_property
     def _dwarf(self) -> ElfDwarf:
-        dwarf = self.elf.get_dwarf_info(relocate_dwarf_sections=False)
-        return ElfDwarf(dwarf, self)
+        with self._lock:
+            dwarf = self.elf.get_dwarf_info(relocate_dwarf_sections=False)
+            return ElfDwarf(dwarf, self)
 
     @cached_property
     def code_load_address(self) -> int:
         # TODO: Figure out how GDB knows the load address
-        text_sh = self.elf.get_section_by_name(".text")
-        if text_sh is None:
-            text_sh = self.elf.get_section_by_name(".firmware_text")
-        if text_sh is None:
-            raise ValueError(f"Could not locate text section in {self.elf_file_path}.")
-        return int(text_sh["sh_addr"])
+        with self._lock:
+            text_sh = self.elf.get_section_by_name(".text")
+            if text_sh is None:
+                text_sh = self.elf.get_section_by_name(".firmware_text")
+            if text_sh is None:
+                raise ValueError(f"Could not locate text section in {self.elf_file_path}.")
+            return int(text_sh["sh_addr"])
 
     @cached_property
     def symbols(self):
-        return decode_symbols(self.elf)
+        with self._lock:
+            return decode_symbols(self.elf)
 
     @cached_property
     def frame_info(self) -> FrameInfoProvider:
-        return FrameInfoProvider(self._dwarf.dwarf)
+        with self._lock:
+            return FrameInfoProvider(self._dwarf)
 
     @cache
     def find_die_by_name(self, name: str) -> ElfDie | None:

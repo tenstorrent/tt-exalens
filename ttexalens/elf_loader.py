@@ -164,14 +164,14 @@ class ElfLoader:
             loader_code_address = loader_code if isinstance(loader_code, int) else None
 
             # Try to find address mapping for loader_data and loader_code
-            for section in elf.sections:
+            for section in elf.sections.values():
                 if section.name == loader_data:
                     loader_data_address = section.address
                 elif section.name == loader_code:
                     loader_code_address = section.address
 
             # Load section into memory
-            for section in elf.sections:
+            for section in elf.sections.values():
                 if section.address is not None and section.name in self.SECTIONS_TO_LOAD and section.data:
                     if section.address % 4 != 0:
                         raise ValueError(

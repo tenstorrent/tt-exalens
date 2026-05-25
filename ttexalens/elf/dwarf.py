@@ -14,31 +14,54 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ttexalens.elf.parsed import ParsedElfFile
+    from ttexalens.elf.die import ElfDie
+
+
+class ElfLocationParser:
+    def __init__(self, dwarf: ElfDwarf):
+        self.dwarf = dwarf
+        self._location_parser = LocationParser(dwarf.location_lists)
+
+    def parse_from_attribute(self, location_attribute, die: ElfDie):
+        with self.dwarf.parsed_elf._lock:
+            return self._location_parser.parse_from_attribute(location_attribute, die.cu.version, die.dwarf_die)
 
 
 class ElfDwarf:
     def __init__(self, dwarf: DWARFInfo, parsed_elf: ParsedElfFile):
         self.dwarf = dwarf
-        self._cus: dict[int, ElfCompileUnit] = {}
         self.parsed_elf = parsed_elf
+        self._cus: dict[int, ElfCompileUnit] = {}
 
     @cached_property
     def range_lists(self):
-        return self.dwarf.range_lists()
+        with self.parsed_elf._lock:
+            return self.dwarf.range_lists()
 
     @cached_property
     def location_lists(self):
-        return self.dwarf.location_lists()
+        with self.parsed_elf._lock:
+            return self.dwarf.location_lists()
 
     @cached_property
     def location_parser(self):
-        return LocationParser(self.location_lists)
+        return ElfLocationParser(self)
+
+    @cached_property
+    def cfi_entries(self):
+        with self.parsed_elf._lock:
+            if self.dwarf.has_CFI():
+                return self.dwarf.CFI_entries()
+            else:
+                return []
 
     def get_cu(self, dwarf_cu: DWARF_CU):
-        cu = self._cus.get(id(dwarf_cu))
-        if cu == None:
-            cu = ElfCompileUnit(self, dwarf_cu)
-            self._cus[id(dwarf_cu)] = cu
+        with self.parsed_elf._lock:
+            cu = self._cus.get(id(dwarf_cu))
+        if cu is None:
+            with self.parsed_elf._lock:
+                cu = ElfCompileUnit(self, dwarf_cu)
+                self._cus[id(dwarf_cu)] = cu
         return cu
 
     def get_die(self, dwarf_die: DWARF_DIE):
@@ -47,8 +70,9 @@ class ElfDwarf:
         return cu.get_die(dwarf_die)
 
     def iter_CUs(self):
-        for cu in self.dwarf.iter_CUs():
-            yield self.get_cu(cu)
+        with self.parsed_elf._lock:
+            for cu in self.dwarf.iter_CUs():
+                yield self.get_cu(cu)
 
     def find_function_by_address(self, address):
         """
@@ -93,38 +117,39 @@ class ElfDwarf:
 
     @cached_property
     def file_lines_ranges(self):
-        result = dict()
-        for cu in self.iter_CUs():
-            lineprog = cu.line_program
-            if lineprog is None:
-                continue
-            delta = 1 if lineprog.header.version < 5 else 0
-            previous_entry = None
-            for entry in lineprog.get_entries():
-                if entry.state is None:
+        with self.parsed_elf._lock:
+            result = dict()
+            for cu in self.iter_CUs():
+                lineprog = cu.line_program
+                if lineprog is None:
                     continue
+                delta = 1 if lineprog.header.version < 5 else 0
+                previous_entry = None
+                for entry in lineprog.get_entries():
+                    if entry.state is None:
+                        continue
 
-                file_entry = lineprog["file_entry"][entry.state.file - delta]
-                directory = lineprog["include_directory"][file_entry.dir_index].decode("utf-8")
-                filename = file_entry.name.decode("utf-8")
-                filename = os.path.join(directory, filename)
-                line = entry.state.line
-                column = entry.state.column
-                current_entry = (entry.state.address, filename, line, column)
+                    file_entry = lineprog["file_entry"][entry.state.file - delta]
+                    directory = lineprog["include_directory"][file_entry.dir_index].decode("utf-8")
+                    filename = file_entry.name.decode("utf-8")
+                    filename = os.path.join(directory, filename)
+                    line = entry.state.line
+                    column = entry.state.column
+                    current_entry = (entry.state.address, filename, line, column)
+                    if previous_entry is not None:
+                        result[(previous_entry[0], current_entry[0])] = (
+                            previous_entry[1],
+                            previous_entry[2],
+                            previous_entry[3],
+                        )
+                    previous_entry = current_entry
                 if previous_entry is not None:
-                    result[(previous_entry[0], current_entry[0])] = (
+                    result[(previous_entry[0], previous_entry[0] + 4)] = (
                         previous_entry[1],
                         previous_entry[2],
                         previous_entry[3],
                     )
-                previous_entry = current_entry
-            if previous_entry is not None:
-                result[(previous_entry[0], previous_entry[0] + 4)] = (
-                    previous_entry[1],
-                    previous_entry[2],
-                    previous_entry[3],
-                )
-        return result
+            return result
 
     def find_file_line_by_address(self, address):
         ranges = self.file_lines_ranges
