@@ -42,27 +42,6 @@ def decode_symbols(elf_file: ELFFile) -> dict[str, ElfDwarfSymbol]:
     return symbols
 
 
-def decode_file_line(dwarf: DWARFInfo) -> dict[int, tuple[str, int, int]]:
-    PC_to_fileline_map = {}
-    for CU in dwarf.iter_CUs():
-        lineprog = dwarf.line_program_for_CU(CU)
-        if lineprog is None:
-            continue
-        delta = 1 if lineprog.header.version < 5 else 0
-        for entry in lineprog.get_entries():
-            if entry.state is None:
-                continue
-
-            file_entry = lineprog["file_entry"][entry.state.file - delta]
-            directory = lineprog["include_directory"][file_entry.dir_index].decode("utf-8")
-            filename = file_entry.name.decode("utf-8")
-            filename = os.path.join(directory, filename)
-            line = entry.state.line
-            column = entry.state.column
-            PC_to_fileline_map[entry.state.address] = (filename, line, column)
-    return PC_to_fileline_map
-
-
 class ParsedElfFileSection:
     def __init__(self, section):
         self._section = section
@@ -103,10 +82,6 @@ class ParsedElfFile:
     @cached_property
     def symbols(self):
         return decode_symbols(self.elf)
-
-    @cached_property
-    def file_line(self):
-        return decode_file_line(self._dwarf.dwarf)
 
     @cached_property
     def frame_info(self) -> FrameInfoProvider:
@@ -216,10 +191,6 @@ class ParsedElfFileWithOffset(ParsedElfFile):
     @cached_property
     def symbols(self):
         return self.parsed_elf.symbols
-
-    @cached_property
-    def file_line(self):
-        return self.parsed_elf.file_line
 
     @cached_property
     def frame_info(self) -> FrameInfoProviderWithOffset:
