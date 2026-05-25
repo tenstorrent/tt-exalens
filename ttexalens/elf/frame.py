@@ -5,7 +5,6 @@
 from __future__ import annotations
 from functools import cached_property
 from elftools.dwarf.callframe import FDE
-from elftools.dwarf.dwarfinfo import DWARFInfo
 from typing import TYPE_CHECKING
 
 from ttexalens.memory_access import MemoryAccess, RestrictedMemoryAccessError

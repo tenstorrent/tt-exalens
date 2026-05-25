@@ -4,7 +4,7 @@
 
 import unittest
 
-from ttexalens.util import HardwareError
+from ttexalens.exceptions import HardwareError
 
 
 class TestHardwareErrorCatchability(unittest.TestCase):

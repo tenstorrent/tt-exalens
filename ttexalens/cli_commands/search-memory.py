@@ -46,6 +46,7 @@ from ttexalens.device import Device
 from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
+from ttexalens.exceptions import TTException
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 from ttexalens.cli_commands.read import execute_safe_read, execute_unsafe_read
 
@@ -118,7 +119,7 @@ def _get_noc_search_ranges(
         block_info = memory_map.find_by_noc_address(current)
         if block_info is None:
             if not ranges:
-                raise util.TTException(f"Address 0x{current:08x} is not in a known NOC memory block")
+                raise TTException(f"Address 0x{current:08x} is not in a known NOC memory block")
             break  # Gap after the last found block — stop here
 
         assert block_info.memory_block.address.noc_address is not None
@@ -150,7 +151,7 @@ def _get_risc_search_ranges(
         block_info = memory_map.find_by_private_address(current)
         if block_info is None:
             if not ranges:
-                raise util.TTException(f"Address 0x{current:08x} is not in a known {risc_name} private memory block")
+                raise TTException(f"Address 0x{current:08x} is not in a known {risc_name} private memory block")
             break  # Gap after the last found block — stop here
 
         assert block_info.memory_block.address.private_address is not None
@@ -192,7 +193,7 @@ def _search_in_range(
                 data, _ = execute_unsafe_read(location, current_addr, chunk_size, risc_name)
             else:
                 data, _ = execute_safe_read(location, current_addr, chunk_size, risc_name)
-        except util.TTException as e:
+        except TTException as e:
             util.DEBUG(f"search: skipping 0x{current_addr:08x}: {e}")
             break
 
@@ -315,7 +316,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     ranges = _get_risc_search_ranges(location, risc_name, start_addr, end_addr, unsafe)
                 else:
                     ranges = _get_noc_search_ranges(location, start_addr, end_addr, unsafe)
-            except util.TTException as e:
+            except TTException as e:
                 util.ERROR(f"Device {device_id_str} | Location {location_str}: {e}")
                 continue
 

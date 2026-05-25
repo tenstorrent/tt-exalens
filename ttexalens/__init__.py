@@ -29,11 +29,13 @@ from .tt_exalens_lib import (
 from .coordinate import OnChipCoordinate
 from .context import Context
 from .device import Device
-from .util import TTException, TTFatalException, Verbosity
+from .util import Verbosity
 from .exceptions import (
     CoordinateTranslationError,
     RestrictedMemoryAccessError,
     TimeoutDeviceRegisterError,
+    TTException,
+    TTFatalException,
     UnsafeAccessException,
 )
 

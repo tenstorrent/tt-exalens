@@ -10,6 +10,7 @@ from sortedcontainers import SortedSet
 import tt_umd
 
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.exceptions import TTException
 from ttexalens import util as util
 
 
@@ -101,7 +102,7 @@ class Context:
         if not device:
             device = self.device_by_unique_id.get(device_id, None)
         if not device:
-            raise util.TTException(f"Invalid device_id {device_id}.")
+            raise TTException(f"Invalid device_id {device_id}.")
         return device
 
     def get_risc_elf_path(self, risc_location: RiscLocation) -> str | None:
