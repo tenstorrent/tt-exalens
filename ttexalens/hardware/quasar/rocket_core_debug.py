@@ -46,6 +46,12 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         dm_was_in_reset = not bool(value & DM_OUT_OF_RESET_BIT)
         if dm_was_in_reset:
             self.register_store.write_register("SMN_RISC_RESET_REG", value | DM_OUT_OF_RESET_BIT)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", 1)
+            while self.register_store.read_register("TT_CLUSTER_CTRL_DEBUG_DMACTIVE") != 1:
+                pass
+            self.register_store.write_register("TT_CLUSTER_CTRL_DEBUG_DMACTIVEACK", 1)
+            value = self.register_store.read_register("SMN_RISC_RESET_REG")
+            assert bool(value & DM_OUT_OF_RESET_BIT), "Failed to take debug module out of reset"
         try:
             yield
         finally:
@@ -65,8 +71,6 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             hartsel = self.baby_risc_info.risc_id << 16
             self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | HALTREQ)
             self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
-            if not self.is_halted():
-                raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
 
     def cont(self) -> None:
         with self.ensure_debug_module_out_of_reset():
