@@ -12,6 +12,7 @@ from ttexalens.hardware.baby_risc_debug import (
     BabyRiscDebugStatus,
     get_register_index,
 )
+from ttexalens.hardware.risc_debug import RiscDebug
 
 
 class RiscvCoreSimulator:
@@ -37,8 +38,8 @@ class RiscvCoreSimulator:
         # Initialize core components
         self.noc_block = self.device.get_block(self.location)
         risc_debug = self.noc_block.get_risc_debug(self.risc_name, self.neo_id)
-        assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug instance, got {type(risc_debug)}"
-        self.risc_debug: BabyRiscDebug = risc_debug
+        assert isinstance(risc_debug, RiscDebug), f"Expected BabyRiscDebug instance, got {type(risc_debug)}"
+        self.risc_debug: RiscDebug = risc_debug
         self.program_base_address = self.risc_debug.baby_risc_info.get_code_start_address(
             self.risc_debug.register_store
         )

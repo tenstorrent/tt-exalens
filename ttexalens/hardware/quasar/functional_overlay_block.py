@@ -194,6 +194,6 @@ class QuasarFunctionalOverlayBlock:
             self.rocket7,
         ]
         for core in rocket_infos:
-            if core.risc_name == risc_name:
+            if core.risc_name == risc_name.lower():
                 return QuasarRocketCoreDebug(core, self.register_store)
         raise ValueError(f"Rocket core '{risc_name}' not found in overlay block at {self.noc_block.location}")
