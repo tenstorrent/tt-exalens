@@ -232,10 +232,8 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         raise ValueError(f"RISC debug for {risc_name} is not supported in Blackhole functional worker block.")
 
     def _update_memory_maps(self):
-        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
-            BlackholeFunctionalWorkerBlock,
-            "noc_memory_map",
-            block_list_lambda=lambda: [
+        self.noc_memory_map.add_blocks(
+            [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
@@ -248,13 +246,11 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
                 MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
-            ],
+            ]
         )
 
-        self.brisc.memory_map = MemoryMap.get_memory_map_from_cache(
-            BlackholeFunctionalWorkerBlock,
-            "brisc_memory_map",
-            block_list_lambda=lambda: [
+        self.brisc.memory_map.add_blocks(
+            [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.brisc.data_private_memory, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
                 MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
@@ -324,13 +320,11 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
                 ),
-            ],
+            ]
         )
 
-        self.trisc0.memory_map = MemoryMap.get_memory_map_from_cache(
-            BlackholeFunctionalWorkerBlock,
-            "trisc0_memory_map",
-            block_list_lambda=lambda: [
+        self.trisc0.memory_map.add_blocks(
+            [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc0.data_private_memory, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
                 MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
@@ -389,13 +383,11 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
                 ),
-            ],
+            ]
         )
 
-        self.trisc1.memory_map = MemoryMap.get_memory_map_from_cache(
-            BlackholeFunctionalWorkerBlock,
-            "trisc1_memory_map",
-            block_list_lambda=lambda: [
+        self.trisc1.memory_map.add_blocks(
+            [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc1.data_private_memory, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
                 MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
@@ -454,13 +446,11 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
                 ),
-            ],
+            ]
         )
 
-        self.trisc2.memory_map = MemoryMap.get_memory_map_from_cache(
-            BlackholeFunctionalWorkerBlock,
-            "trisc2_memory_map",
-            block_list_lambda=lambda: [
+        self.trisc2.memory_map.add_blocks(
+            [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
                 MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
@@ -519,13 +509,11 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
                 ),
-            ],
+            ]
         )
 
-        self.ncrisc.memory_map = MemoryMap.get_memory_map_from_cache(
-            BlackholeFunctionalWorkerBlock,
-            "ncrisc_memory_map",
-            block_list_lambda=lambda: [
+        self.ncrisc.memory_map.add_blocks(
+            [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.ncrisc.data_private_memory, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
@@ -538,5 +526,5 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
                 MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
-            ],
+            ]
         )

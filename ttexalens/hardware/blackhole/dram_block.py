@@ -320,7 +320,7 @@ class BlackholeDramBlock(BlackholeNocBlock):
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
         self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
-            BlackholeDramBlockSim,
+            BlackholeDramBlock,
             "noc_memory_map",
             block_list_lambda=lambda: [
                 MemoryMapBlockInfo("dram_bank", self.dram_bank, safe_to_write=True),
@@ -345,7 +345,7 @@ class BlackholeDramBlock(BlackholeNocBlock):
         )
 
         self.drisc.memory_map = MemoryMap.get_memory_map_from_cache(
-            BlackholeDramBlockSim,
+            BlackholeDramBlock,
             "drisc_memory_map",
             block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
