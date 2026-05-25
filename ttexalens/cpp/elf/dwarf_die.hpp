@@ -15,7 +15,7 @@
 
 namespace ttexalens::native_elf {
 
-class NativeDwarfDie {
+class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
    public:
     NativeDwarfDie(DwarfDieHandle die, std::weak_ptr<NativeDwarfInfo::Impl> info);
 
@@ -62,10 +62,16 @@ class NativeDwarfDie {
     NativeDwarfDiePtr get_first_child() const;
     NativeDwarfDiePtr get_next_sibling() const;
 
+    // Returns this DIE's parent in the .debug_info tree, or nullptr for a CU
+    // root (or if the DIE somehow isn't reachable from any CU).
+    NativeDwarfDiePtr get_parent() const;
+
    private:
     // Cache-interaction helpers.
     static NativeDwarfDiePtr register_die(std::shared_ptr<NativeDwarfInfo::Impl> info, DwarfDieHandle handle);
     static NativeDwarfDiePtr get_or_create_die(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off offset);
+    static NativeDwarfDiePtr find_parent(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off target_offset);
+
     friend class NativeDwarfInfo::Impl;
 
     DwarfDieHandle die;
@@ -75,6 +81,7 @@ class NativeDwarfDie {
     mutable std::optional<NativeDwarfDiePtr> first_child;
     mutable std::optional<NativeDwarfDiePtr> next_sibling;
     mutable std::optional<std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>> address_ranges;
+    mutable std::optional<std::weak_ptr<NativeDwarfDie>> parent;
 };
 
 }  // namespace ttexalens::native_elf

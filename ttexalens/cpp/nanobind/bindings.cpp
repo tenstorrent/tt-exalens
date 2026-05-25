@@ -109,7 +109,8 @@ NB_MODULE(_native_ttexalens, m) {
         .def("is_declaration", &NativeDwarfDie::is_declaration)
         .def("get_address_ranges", &NativeDwarfDie::get_address_ranges)
         .def("get_first_child", &NativeDwarfDie::get_first_child, nb::rv_policy::reference_internal)
-        .def("get_next_sibling", &NativeDwarfDie::get_next_sibling, nb::rv_policy::reference_internal);
+        .def("get_next_sibling", &NativeDwarfDie::get_next_sibling, nb::rv_policy::reference_internal)
+        .def("get_parent", &NativeDwarfDie::get_parent, nb::rv_policy::reference_internal);
 
     nb::class_<NativeDwarfInfo>(m, "NativeDwarfInfo")
         .def("find_file_line_by_address", &NativeDwarfInfo::find_file_line_by_address, nb::arg("address"))

@@ -435,4 +435,47 @@ NativeDwarfDiePtr NativeDwarfDie::get_or_create_die(std::shared_ptr<NativeDwarfI
     return die;
 }
 
+NativeDwarfDiePtr NativeDwarfDie::find_parent(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off target_offset) {
+    for (auto& cu : info->get_cus()) {
+        // Check if target_offset is within this CU's DIE range.
+        // DIEs in a CU live in [cu_root_offset, next_cu_offset).
+        const auto& cu_root = cu.get_die();
+        if (!cu_root) {
+            continue;
+        }
+        const Dwarf_Off cu_root_offset = cu_root->get_offset();
+        if (target_offset < cu_root_offset || target_offset >= cu.get_next_cu_offset()) {
+            continue;
+        }
+        if (target_offset == cu_root_offset) {
+            return nullptr;  // CU root has no parent.
+        }
+
+        // Search the CU's DIE tree for the target DIE, tracking the last DIE whose offset is <= target_offset.
+        NativeDwarfDiePtr current = cu_root;
+        while (current) {
+            NativeDwarfDiePtr last_smaller;
+            for (auto child = current->get_first_child(); child; child = child->get_next_sibling()) {
+                const Dwarf_Off child_offset = child->get_offset();
+                if (child_offset == target_offset) {
+                    // Child is the target — parent is `current`
+                    return current;
+                }
+                if (child_offset > target_offset) {
+                    // Target is inside last_smaller's subtree
+                    break;
+                }
+                last_smaller = child;
+            }
+            if (!last_smaller) {
+                // This should never happen if target_offset is valid
+                return nullptr;
+            }
+            current = std::move(last_smaller);
+        }
+        return nullptr;
+    }
+    return nullptr;
+}
+
 }  // namespace ttexalens::native_elf

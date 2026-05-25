@@ -81,6 +81,9 @@ NativeDwarfDiePtr NativeDwarfDie::get_first_child() const {
         DwarfDieHandle handle(dbg);
         if (dwarf_child(die, &handle, &error) == DW_DLV_OK) {
             result = register_die(std::move(info_ptr), std::move(handle));
+            if (result) {
+                result->parent = std::const_pointer_cast<NativeDwarfDie>(shared_from_this());
+            }
         }
     }
     first_child = result;
@@ -98,10 +101,31 @@ NativeDwarfDiePtr NativeDwarfDie::get_next_sibling() const {
         DwarfDieHandle handle(dbg);
         if (dwarf_siblingof_b(dbg, die, /*is_info=*/true, &handle, &error) == DW_DLV_OK) {
             result = register_die(std::move(info_ptr), std::move(handle));
+            if (result && parent) {
+                result->parent = *parent;
+            }
         }
     }
     next_sibling = result;
     return result;
+}
+
+NativeDwarfDiePtr NativeDwarfDie::get_parent() const {
+    if (parent) {
+        return parent->lock();
+    }
+    NativeDwarfDiePtr result;
+    if (auto info_ptr = info.lock()) {
+        result = find_parent(std::move(info_ptr), get_offset());
+    }
+    // The descent in find_parent typically sets `parent` on us via the
+    // get_first_child / get_next_sibling side effect — but if it didn't (e.g.
+    // target wasn't found), cache the result explicitly so future calls don't
+    // re-walk.
+    if (!parent) {
+        parent = result ? std::weak_ptr<NativeDwarfDie>(result) : std::weak_ptr<NativeDwarfDie>();
+    }
+    return parent->lock();
 }
 
 const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& NativeDwarfDie::get_address_ranges() const {
