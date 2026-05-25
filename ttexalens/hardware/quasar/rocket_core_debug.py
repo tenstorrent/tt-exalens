@@ -41,7 +41,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         new_value = (current & ~reset_bit) if value else (current | reset_bit)
         self.register_store.write_register("SMN_RISC_RESET_REG", new_value)
 
-    def is_debug_module_in_reset(self, value: int | None) -> bool:
+    def is_debug_module_in_reset(self, value: int | None = None) -> bool:
         if value is None:
             value = self.register_store.read_register("SMN_RISC_RESET_REG")
         return not bool(value & DM_OUT_OF_RESET_BIT)
