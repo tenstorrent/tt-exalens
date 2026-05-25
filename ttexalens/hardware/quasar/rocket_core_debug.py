@@ -71,6 +71,8 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             hartsel = self.baby_risc_info.risc_id << 16
             self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | HALTREQ)
             self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
+            if not self.is_halted():
+                raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
 
     def cont(self) -> None:
         with self.ensure_debug_module_out_of_reset():
