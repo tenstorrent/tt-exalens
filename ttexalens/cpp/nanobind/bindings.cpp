@@ -16,6 +16,7 @@
 
 namespace nb = nanobind;
 
+using ttexalens::native_elf::NativeDwarfDie;
 using ttexalens::native_elf::NativeDwarfFileLine;
 using ttexalens::native_elf::NativeDwarfInfo;
 using ttexalens::native_elf::NativeElfFile;
@@ -90,10 +91,27 @@ NB_MODULE(_native_ttexalens, m) {
         .def("get_dwarf_info", &NativeElfFile::get_dwarf_info, nb::rv_policy::reference_internal);
 
     nb::class_<NativeDwarfFileLine>(m, "NativeDwarfFileLine")
-        .def_ro("file", &NativeDwarfFileLine::file)
+        .def_prop_ro("file", [](const NativeDwarfFileLine& f) -> std::string_view { return f.file; })
         .def_ro("line", &NativeDwarfFileLine::line)
         .def_ro("column", &NativeDwarfFileLine::column);
 
+    // Move-only; Python can't construct directly — DIEs are handed out by
+    // NativeDwarfInfo or by other DIEs. keep_alive ties each returned DIE's
+    // lifetime to its parent so the underlying Dwarf_Debug outlives it.
+    // (reference_internal is wrong here: these are by-value returns, not
+    //  references into the parent's storage.)
+    nb::class_<NativeDwarfDie>(m, "NativeDwarfDie")
+        // Convert to std::string inside the lambda so the bytes are copied
+        // into a Python str before the cached NativeDwarfString's lifetime
+        // becomes nanobind's concern.
+        .def_prop_ro("name", [](const NativeDwarfDie& die) -> std::string { return std::string(die.get_name()); })
+        .def("find_child_by_name", &NativeDwarfDie::find_child_by_name, nb::arg("name"), nb::keep_alive<0, 1>())
+        .def("get_die_from_attribute", &NativeDwarfDie::get_die_from_attribute, nb::arg("attribute_tag"),
+             nb::keep_alive<0, 1>())
+        .def("has_attribute", &NativeDwarfDie::has_attribute, nb::arg("attribute_tag"))
+        .def("is_declaration", &NativeDwarfDie::is_declaration);
+
     nb::class_<NativeDwarfInfo>(m, "NativeDwarfInfo")
-        .def("find_file_line_by_address", &NativeDwarfInfo::find_file_line_by_address, nb::arg("address"));
+        .def("find_file_line_by_address", &NativeDwarfInfo::find_file_line_by_address, nb::arg("address"))
+        .def("get_die_by_name", &NativeDwarfInfo::get_die_by_name, nb::arg("name"), nb::keep_alive<0, 1>());
 }

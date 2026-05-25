@@ -132,142 +132,6 @@ class ElfObjAccess {
     Dwarf_Obj_Access_Interface_a iface{};
 };
 
-// CRTP base for libdwarf-owned resources. Holds the value + a `State` blob
-// (defaults to Dwarf_Debug, since most cleanup functions need it) and
-// provides the common RAII surface — destructor, move-only semantics,
-// operator& that resets-and-exposes the slot, implicit conversion, get(),
-// and explicit operator bool().
-//
-// Per-resource policy is supplied by the derived class via a static
-//   static void do_cleanup(State, T);
-// which the base calls from its destructor / move-assign / operator&. State
-// lives in the base, so it stays alive through ~Derived → ~Base ordering.
-//
-// Usage:
-//   class NativeDwarfError : public DwarfHandleBase<NativeDwarfError, Dwarf_Error> {
-//      public:
-//       using Base = DwarfHandleBase<NativeDwarfError, Dwarf_Error>;
-//       using Base::Base;
-//       static void do_cleanup(Dwarf_Debug dbg, Dwarf_Error e) { dwarf_dealloc_error(dbg, e); }
-//   };
-template <typename Derived, typename T, typename State = Dwarf_Debug>
-class DwarfHandleBase {
-   public:
-    template <typename... Args>
-    explicit DwarfHandleBase(Args&&... args) : state(std::forward<Args>(args)...) {}
-
-    ~DwarfHandleBase() { reset(); }
-
-    DwarfHandleBase(const DwarfHandleBase&) = delete;
-    DwarfHandleBase& operator=(const DwarfHandleBase&) = delete;
-
-    DwarfHandleBase(DwarfHandleBase&& other) noexcept : state(std::move(other.state)), value(other.value) {
-        other.value = nullptr;
-    }
-    DwarfHandleBase& operator=(DwarfHandleBase&& other) noexcept {
-        // std::addressof bypasses our custom operator&() which would reset other.
-        if (this != std::addressof(other)) {
-            reset();
-            state = std::move(other.state);
-            value = other.value;
-            other.value = nullptr;
-        }
-        return *this;
-    }
-
-    void reset() {
-        if (value != nullptr) {
-            Derived::do_cleanup(state, value);
-            value = nullptr;
-        }
-    }
-
-    T* operator&() {
-        reset();
-        return &value;
-    }
-
-    T get() const { return value; }
-    operator T() const { return value; }
-    explicit operator bool() const { return value != nullptr; }
-
-   protected:
-    State state;
-    T value = nullptr;
-};
-
-// Empty placeholder for handles that don't carry any per-instance state
-// beyond the value pointer itself.
-struct DwarfHandleNoState {};
-
-// RAII wrappers around libdwarf resources. Each class specifies the cleanup policy via its static do_cleanup method.
-template <typename T, Dwarf_Unsigned DwAllocType>
-class DwarfAllocation : public DwarfHandleBase<DwarfAllocation<T, DwAllocType>, T> {
-   public:
-    explicit DwarfAllocation(Dwarf_Debug dbg) : DwarfHandleBase<DwarfAllocation<T, DwAllocType>, T>(dbg) {}
-    static void do_cleanup(Dwarf_Debug dbg, T v) { dwarf_dealloc(dbg, v, DwAllocType); }
-};
-
-class NativeDwarfError : public DwarfHandleBase<NativeDwarfError, Dwarf_Error> {
-   public:
-    explicit NativeDwarfError(Dwarf_Debug dbg) : DwarfHandleBase(dbg) {}
-    static void do_cleanup(Dwarf_Debug dbg, Dwarf_Error e) { dwarf_dealloc_error(dbg, e); }
-};
-
-class NativeDwarfLineContext : public DwarfHandleBase<NativeDwarfLineContext, Dwarf_Line_Context, DwarfHandleNoState> {
-   public:
-    static void do_cleanup(DwarfHandleNoState, Dwarf_Line_Context ctx) { dwarf_srclines_dealloc_b(ctx); }
-};
-
-class NativeDwarfDie {
-   public:
-    explicit NativeDwarfDie(Dwarf_Debug dbg) : die(dbg) {}
-
-    Dwarf_Die* operator&() { return &die; }
-    operator Dwarf_Die() const { return die.get(); }
-    explicit operator bool() const { return static_cast<bool>(die); }
-
-   private:
-    DwarfAllocation<Dwarf_Die, DW_DLA_DIE> die;
-};
-
-class NativeDwarfCompileUnit {
-   public:
-    explicit NativeDwarfCompileUnit(Dwarf_Debug dbg) : cu_die(dbg), dbg(dbg) {}
-
-    NativeDwarfDie cu_die;
-    Dwarf_Unsigned cu_header_length = 0;
-    Dwarf_Half version = 0;
-    Dwarf_Unsigned abbrev_offset = 0;
-    Dwarf_Half address_size = 0;
-    Dwarf_Half length_size = 0;
-    Dwarf_Half extension_size = 0;
-    Dwarf_Sig8 signature{};
-    Dwarf_Unsigned type_offset = 0;
-    Dwarf_Unsigned next_cu_offset = 0;
-    Dwarf_Half header_cu_type = 0;
-
-    // Lazy line context. First call invokes dwarf_srclines_b; later calls
-    // return the cached context. Test the returned wrapper with operator bool
-    // — empty means dwarf_srclines_b failed (loaded_line_context is set
-    // regardless so we don't retry on every call).
-    NativeDwarfLineContext& get_line_context() {
-        if (!loaded_line_context) {
-            loaded_line_context = true;
-            NativeDwarfError error(dbg);
-            Dwarf_Unsigned line_version = 0;
-            Dwarf_Small table_count = 0;
-            dwarf_srclines_b(cu_die, &line_version, &table_count, &line_context, &error);
-        }
-        return line_context;
-    }
-
-   private:
-    Dwarf_Debug dbg;
-    NativeDwarfLineContext line_context;
-    bool loaded_line_context = false;
-};
-
 }  // namespace
 
 class NativeDwarfInfo::Impl {
@@ -324,16 +188,40 @@ class NativeDwarfInfo::Impl {
 
    private:
     void load_compile_units() {
-        NativeDwarfError error(dbg);
+        DwarfErrorHandle error(dbg);
         while (true) {
-            NativeDwarfCompileUnit cu(dbg);
-            int res =
-                dwarf_next_cu_header_e(dbg, /*is_info=*/true, &cu.cu_die, &cu.cu_header_length, &cu.version,
-                                       &cu.abbrev_offset, &cu.address_size, &cu.length_size, &cu.extension_size,
-                                       &cu.signature, &cu.type_offset, &cu.next_cu_offset, &cu.header_cu_type, &error);
+            // libdwarf wants raw out-parameter slots; we let it write into a
+            // local DwarfDieHandle + scalars, then assemble a
+            // NativeDwarfCompileUnit from them. NativeDwarfCompileUnit /
+            // NativeDwarfDie are immutable after construction.
+            DwarfDieHandle die_handle(dbg);
+            Dwarf_Unsigned header_length = 0;
+            Dwarf_Half version = 0;
+            Dwarf_Unsigned abbrev_offset = 0;
+            Dwarf_Half address_size = 0;
+            Dwarf_Half length_size = 0;
+            Dwarf_Half extension_size = 0;
+            Dwarf_Sig8 signature{};
+            Dwarf_Unsigned type_offset = 0;
+            Dwarf_Unsigned next_cu_offset = 0;
+            Dwarf_Half header_cu_type = 0;
+            int res = dwarf_next_cu_header_e(dbg, /*is_info=*/true, &die_handle, &header_length, &version,
+                                             &abbrev_offset, &address_size, &length_size, &extension_size, &signature,
+                                             &type_offset, &next_cu_offset, &header_cu_type, &error);
             if (res != DW_DLV_OK) {
                 break;  // NO_ENTRY (cursor done) or ERROR (auto-cleaned by ~error)
             }
+            NativeDwarfCompileUnit cu(NativeDwarfDie(std::move(die_handle)));
+            cu.header_length = header_length;
+            cu.version = version;
+            cu.abbrev_offset = abbrev_offset;
+            cu.address_size = address_size;
+            cu.length_size = length_size;
+            cu.extension_size = extension_size;
+            cu.signature = signature;
+            cu.type_offset = type_offset;
+            cu.next_cu_offset = next_cu_offset;
+            cu.header_cu_type = header_cu_type;
             cus.push_back(std::move(cu));
         }
     }
@@ -354,12 +242,12 @@ std::optional<NativeDwarfFileLine> NativeDwarfInfo::find_file_line_by_address(ui
     const Dwarf_Addr target = static_cast<Dwarf_Addr>(address);
 
     for (auto& cu : impl->get_cus()) {
-        NativeDwarfLineContext& line_context = cu.get_line_context();
+        DwarfLineContextHandle& line_context = cu.get_line_context();
         if (!line_context) {
             continue;
         }
 
-        NativeDwarfError error(dbg);
+        DwarfErrorHandle error(dbg);
         Dwarf_Line* lines = nullptr;
         Dwarf_Signed line_count = 0;
         if (dwarf_srclines_from_linecontext(line_context, &lines, &line_count, &error) != DW_DLV_OK ||
@@ -412,17 +300,76 @@ std::optional<NativeDwarfFileLine> NativeDwarfInfo::find_file_line_by_address(ui
         Dwarf_Line match = lines[match_idx];
         Dwarf_Unsigned ln = 0;
         Dwarf_Unsigned col = 0;
-        DwarfAllocation<char*, DW_DLA_STRING> raw_src(dbg);
+        NativeDwarfString src(dbg);
         dwarf_lineno(match, &ln, &error);
         dwarf_lineoff_b(match, &col, &error);
-        std::string src;
-        if (dwarf_linesrc(match, &raw_src, &error) == DW_DLV_OK && raw_src) {
-            src = raw_src;
-        }
+        dwarf_linesrc(match, &src, &error);
         return NativeDwarfFileLine{std::move(src), static_cast<uint32_t>(ln), static_cast<uint32_t>(col)};
     }
 
     return std::nullopt;
+}
+
+std::optional<NativeDwarfDie> NativeDwarfInfo::get_die_by_name(std::string_view name) const {
+    // Split "Foo::Bar::baz" into ["Foo", "Bar", "baz"]. An empty input yields
+    // one empty part and ends up finding nothing.
+    std::vector<std::string_view> parts;
+    size_t start = 0;
+    while (true) {
+        size_t pos = name.find("::", start);
+        if (pos == std::string_view::npos) {
+            parts.push_back(name.substr(start));
+            break;
+        }
+        parts.push_back(name.substr(start, pos - start));
+        start = pos + 2;
+    }
+
+    std::optional<NativeDwarfDie> declaration_die;  // fallback if all matches are declarations
+
+    for (auto& cu : impl->get_cus()) {
+        // First part is matched against the CU's root DIE; subsequent parts
+        // chain off the previous match.
+        auto current = cu.get_die().find_child_by_name(parts[0]);
+        bool matched_all = static_cast<bool>(current);
+        for (size_t i = 1; matched_all && i < parts.size(); ++i) {
+            auto next = current->find_child_by_name(parts[i]);
+            if (!next) {
+                matched_all = false;
+                break;
+            }
+            current = std::move(next);
+        }
+        if (!matched_all) {
+            continue;
+        }
+
+        // Follow DW_AT_abstract_origin OR DW_AT_specification (mutually exclusive).
+        // If the attribute is present but the reference can't be resolved, give up
+        // entirely — matching the Python implementation's defensive behavior.
+        if (current->has_attribute(DW_AT_abstract_origin)) {
+            auto origin = current->get_die_from_attribute(DW_AT_abstract_origin);
+            if (!origin) {
+                return std::nullopt;
+            }
+            current = std::move(origin);
+        } else if (current->has_attribute(DW_AT_specification)) {
+            auto spec = current->get_die_from_attribute(DW_AT_specification);
+            if (!spec) {
+                return std::nullopt;
+            }
+            current = std::move(spec);
+        }
+
+        if (current->is_declaration()) {
+            declaration_die = std::move(current);
+            continue;
+        }
+
+        return current;
+    }
+
+    return declaration_die;
 }
 
 }  // namespace ttexalens::native_elf
