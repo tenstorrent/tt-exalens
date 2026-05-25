@@ -46,7 +46,7 @@ from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
-from ttexalens.tt_exalens_lib import search_noc_memory, search_riscv_memory
+from ttexalens.tt_exalens_lib import search_memory
 
 command_metadata = CommandMetadata(
     short_name="search",
@@ -54,9 +54,6 @@ command_metadata = CommandMetadata(
     description=__doc__,
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
 )
-
-_DEFAULT_READ_SIZE = 0x100000  # 1MB default for NOC reads
-_DEFAULT_READ_SIZE_RISC = 4  # 4 bytes default for RISC debug hardware reads
 
 
 def _auto_pattern_width(values: list[int]) -> int:
@@ -129,6 +126,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     risc_name: str | None = args["-r"]
 
     # --- Parse --read-size ---
+    read_size: int | None = None
     if args["--read-size"]:
         try:
             read_size = int(args["--read-size"], 0)
@@ -137,8 +135,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         except ValueError:
             util.ERROR(f"Invalid --read-size value: {args['--read-size']!r}. Must be a positive integer.")
             return
-    else:
-        read_size = _DEFAULT_READ_SIZE_RISC if risc_name else _DEFAULT_READ_SIZE
 
     # --- Parse --max-results ---
     max_results_arg: str = args["--max-results"] if args["--max-results"] else "10"
@@ -167,31 +163,18 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             location_str = location.to_user_str()
 
             try:
-                if risc_name:
-                    all_matches = search_riscv_memory(
-                        location,
-                        pattern_bytes,
-                        risc_name,
-                        start_addr=start_addr,
-                        end_addr=end_addr,
-                        max_results=max_results,
-                        device_id=device.id,
-                        context=context,
-                        chunk_size=read_size,
-                        safe_mode=safe_mode_arg,
-                    )
-                else:
-                    all_matches = search_noc_memory(
-                        location,
-                        pattern_bytes,
-                        start_addr=start_addr,
-                        end_addr=end_addr,
-                        max_results=max_results,
-                        device_id=device.id,
-                        context=context,
-                        chunk_size=read_size,
-                        safe_mode=safe_mode_arg,
-                    )
+                all_matches = search_memory(
+                    location,
+                    pattern_bytes,
+                    risc_name=risc_name,
+                    start_addr=start_addr,
+                    end_addr=end_addr,
+                    max_results=max_results,
+                    device_id=device.id,
+                    context=context,
+                    chunk_size=read_size,
+                    safe_mode=safe_mode_arg,
+                )
             except util.TTException as e:
                 util.ERROR(f"Device {device_id_str} | Location {location_str}: {e}")
                 continue

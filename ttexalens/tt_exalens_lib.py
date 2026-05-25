@@ -311,8 +311,10 @@ def _encode_pattern(pattern: int | list[int] | bytes) -> bytes:
         pattern_bytes = pattern
     elif isinstance(pattern, int):
         pattern_bytes = pattern.to_bytes(4, "little")
-    else:
+    elif isinstance(pattern, list):
         pattern_bytes = b"".join(v.to_bytes(4, "little") for v in pattern)
+    else:
+        raise TTException(f"pattern must be int, list[int], or bytes, got {type(pattern).__name__}")
     if not pattern_bytes:
         raise TTException("pattern must be non-empty.")
     return pattern_bytes
@@ -323,12 +325,12 @@ def _search_chunk_range(
     range_end: int,
     pattern_bytes: bytes,
     read_fn: Callable[[int, int], bytes],
-    all_matches: list[tuple[int, str]],
     block_name: str,
     max_results: int,
     chunk_size: int,
-) -> bool:
-    """Search one contiguous block range. Returns True if max_results was reached."""
+) -> list[tuple[int, str]]:
+    """Search one contiguous block range. Returns matches found (up to max_results)."""
+    matches: list[tuple[int, str]] = []
     overlap = len(pattern_bytes) - 1
     prev_tail = b""
     chunk_addr = chunk_start
@@ -337,96 +339,82 @@ def _search_chunk_range(
         chunk_bytes = read_fn(chunk_addr, read_size)
         search_data = prev_tail + chunk_bytes
         base = chunk_addr - len(prev_tail)
-        for addr in _find_in_data(search_data, pattern_bytes, base, max_results - len(all_matches)):
-            all_matches.append((addr, block_name))
-        if len(all_matches) >= max_results:
-            return True
+        for addr in _find_in_data(search_data, pattern_bytes, base, max_results - len(matches)):
+            matches.append((addr, block_name))
+        if len(matches) >= max_results:
+            break
         prev_tail = search_data[-overlap:] if overlap > 0 else b""
         chunk_addr += len(chunk_bytes)
-    return False
+    return matches
 
 
-@trace_api
-def search_noc_memory(
-    location: str | OnChipCoordinate,
-    pattern: int | list[int] | bytes,
-    start_addr: int = 0,
-    end_addr: int | None = None,
-    max_results: int = 10,
-    device_id: int = 0,
-    context: Context | None = None,
-    chunk_size: int = 0x100000,
-    safe_mode: bool | None = None,
-) -> list[tuple[int, str]]:
-    """
-    Searches contiguous NOC memory blocks for a byte pattern.
-
-    Args:
-        location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
-        pattern (int | list[int] | bytes): Pattern to search for.
-            - int: single 4-byte little-endian word.
-            - list[int]: sequence of 4-byte little-endian words.
-            - bytes: raw byte pattern used directly.
-        start_addr (int): First address to search. Default: 0.
-        end_addr (int | None): Exclusive end address, or None to search all contiguous blocks from start_addr. Default: None.
-        max_results (int): Stop after this many matches. Must be at least 1. Default: 10.
-        device_id (int): ID number of device to search. Default: 0.
-        context (Context | None): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None.
-        chunk_size (int): Maximum bytes per device read. Default: 1 MB.
-        safe_mode (bool | None): If False, bypasses safety checks to allow searching restricted memory regions. If None, uses context default. Default: None.
-
-    Returns:
-        list[tuple[int, str]]: List of (match_address, block_name) pairs.
-    """
-    if chunk_size < 1:
-        raise TTException("chunk_size must be at least 1.")
-    if max_results < 1:
-        raise TTException("max_results must be at least 1.")
-
-    pattern_bytes = _encode_pattern(pattern)
-    coordinate = convert_coordinate(location, device_id, context)
-    noc_id = check_noc_id(None, coordinate.context)
-    use_4B_mode = check_4B_mode(None, coordinate.context)
-    memory_map = coordinate.noc_block.noc_memory_map
-    all_matches: list[tuple[int, str]] = []
+def _iter_memory_blocks(
+    start_addr: int,
+    end_addr: int | None,
+    coordinate: OnChipCoordinate,
+    risc_name: str | None,
+    neo_id: int | None,
+    noc_id: int,
+    use_4B_mode: bool,
+    safe_mode: bool | None,
+):
+    """Yield (range_start, range_end, block_name, read_fn) for each memory block from start_addr."""
     current = start_addr
-
-    while end_addr is None or current < end_addr:
-        block_info = memory_map.find_by_noc_address(current)
-        if block_info is None:
-            break
-        block_name = block_info.name
-        assert block_info.memory_block.address.noc_address is not None
-        block_end = block_info.memory_block.address.noc_address + block_info.memory_block.size
-        range_end = block_end if end_addr is None else min(block_end, end_addr)
-
-        read_fn = lambda addr, size: coordinate.noc_read(addr, size, noc_id, use_4B_mode, safe_mode=safe_mode)
-        if _search_chunk_range(
-            current, range_end, pattern_bytes, read_fn, all_matches, block_name, max_results, chunk_size
-        ):
-            return all_matches
-
-        current = block_end
-
-    return all_matches
+    if risc_name is not None:
+        risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
+        memory_map = risc_debug.risc_info.memory_map
+        while end_addr is None or current < end_addr:
+            block_info = memory_map.find_by_private_address(current)
+            if block_info is None:
+                break
+            if block_info.memory_block.address.private_address is None:
+                raise TTException(f"Block {block_info.name} has no private address — memory map is inconsistent.")
+            block_start_private = block_info.memory_block.address.private_address
+            block_end = block_start_private + block_info.memory_block.size
+            range_end = block_end if end_addr is None else min(block_end, end_addr)
+            if block_info.memory_block.address.noc_address is not None:
+                noc_offset = block_info.memory_block.address.noc_address - block_start_private
+                read_fn = lambda addr, size, _off=noc_offset: coordinate.noc_read(
+                    addr + _off, size, noc_id, use_4B_mode, safe_mode=safe_mode
+                )
+            else:
+                read_fn = lambda addr, size: risc_debug.read_memory_bytes(addr, size, safe_mode=safe_mode)
+            yield current, range_end, block_info.name, read_fn
+            current = block_end
+    else:
+        memory_map = coordinate.noc_block.noc_memory_map
+        while end_addr is None or current < end_addr:
+            block_info = memory_map.find_by_noc_address(current)
+            if block_info is None:
+                break
+            if block_info.memory_block.address.noc_address is None:
+                raise TTException(f"Block {block_info.name} has no NOC address — memory map is inconsistent.")
+            block_end = block_info.memory_block.address.noc_address + block_info.memory_block.size
+            range_end = block_end if end_addr is None else min(block_end, end_addr)
+            read_fn = lambda addr, size: coordinate.noc_read(addr, size, noc_id, use_4B_mode, safe_mode=safe_mode)
+            yield current, range_end, block_info.name, read_fn
+            current = block_end
 
 
 @trace_api
-def search_riscv_memory(
+def search_memory(
     location: str | OnChipCoordinate,
     pattern: int | list[int] | bytes,
-    risc_name: str,
+    risc_name: str | None = None,
     neo_id: int | None = None,
     start_addr: int = 0,
     end_addr: int | None = None,
     max_results: int = 10,
     device_id: int = 0,
     context: Context | None = None,
-    chunk_size: int = 4,
+    chunk_size: int | None = None,
     safe_mode: bool | None = None,
 ) -> list[tuple[int, str]]:
     """
-    Searches RISC-V private memory blocks for a byte pattern.
+    Searches memory blocks for a byte pattern.
+
+    When risc_name is None, searches NOC memory using the block's NOC memory map.
+    When risc_name is provided, searches RISC-V private memory using the core's private memory map.
 
     Args:
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
@@ -434,19 +422,21 @@ def search_riscv_memory(
             - int: single 4-byte little-endian word.
             - list[int]: sequence of 4-byte little-endian words.
             - bytes: raw byte pattern used directly.
-        risc_name (str): RISC-V core name (e.g. "brisc", "trisc0", etc.).
-        neo_id (int | None): NEO ID of the RISC-V core. Default: None.
-        start_addr (int): First private address to search. Default: 0.
-        end_addr (int | None): Exclusive end private address, or None to search all contiguous blocks from start_addr. Default: None.
+        risc_name (str | None): RISC-V core name (e.g. "brisc", "trisc0", etc.) to search private memory, or None to search NOC memory. Default: None.
+        neo_id (int | None): NEO ID of the RISC-V core. Only used when risc_name is provided. Default: None.
+        start_addr (int): First address to search. Default: 0.
+        end_addr (int | None): Exclusive end address, or None to search all contiguous blocks from start_addr. Default: None.
         max_results (int): Stop after this many matches. Must be at least 1. Default: 10.
         device_id (int): ID number of device to search. Default: 0.
         context (Context | None): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None.
-        chunk_size (int): Maximum bytes per device read. Default: 4 bytes.
+        chunk_size (int | None): Maximum bytes per device read. Default: 1 MB for NOC memory, 4 bytes for RISC-V private memory.
         safe_mode (bool | None): If False, bypasses safety checks to allow searching restricted memory regions. If None, uses context default. Default: None.
 
     Returns:
-        list[tuple[int, str]]: List of (match_address, block_name) pairs, where match_address is the private address.
+        list[tuple[int, str]]: List of (match_address, block_name) pairs.
     """
+    if chunk_size is None:
+        chunk_size = 4 if risc_name is not None else 0x100000
     if chunk_size < 1:
         raise TTException("chunk_size must be at least 1.")
     if max_results < 1:
@@ -456,34 +446,19 @@ def search_riscv_memory(
     coordinate = convert_coordinate(location, device_id, context)
     noc_id = check_noc_id(None, coordinate.context)
     use_4B_mode = check_4B_mode(None, coordinate.context)
-    risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
-    memory_map = risc_debug.risc_info.memory_map
     all_matches: list[tuple[int, str]] = []
     current = start_addr
 
-    while end_addr is None or current < end_addr:
-        block_info = memory_map.find_by_private_address(current)
-        if block_info is None:
-            break
-        block_name = block_info.name
-        assert block_info.memory_block.address.private_address is not None
-        block_start_private = block_info.memory_block.address.private_address
-        block_end = block_start_private + block_info.memory_block.size
-        range_end = block_end if end_addr is None else min(block_end, end_addr)
-
-        if block_info.memory_block.address.noc_address is not None:
-            noc_offset = block_info.memory_block.address.noc_address - block_start_private
-            read_fn = lambda addr, size: coordinate.noc_read(
-                addr + noc_offset, size, noc_id, use_4B_mode, safe_mode=safe_mode
+    for range_start, range_end, block_name, read_fn in _iter_memory_blocks(
+        current, end_addr, coordinate, risc_name, neo_id, noc_id, use_4B_mode, safe_mode
+    ):
+        all_matches.extend(
+            _search_chunk_range(
+                range_start, range_end, pattern_bytes, read_fn, block_name, max_results - len(all_matches), chunk_size
             )
-        else:
-            read_fn = lambda addr, size: risc_debug.read_memory_bytes(addr, size, safe_mode=safe_mode)
-        if _search_chunk_range(
-            current, range_end, pattern_bytes, read_fn, all_matches, block_name, max_results, chunk_size
-        ):
+        )
+        if len(all_matches) >= max_results:
             return all_matches
-
-        current = block_end
 
     return all_matches
 
