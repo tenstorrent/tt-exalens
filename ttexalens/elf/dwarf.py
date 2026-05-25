@@ -7,7 +7,7 @@ from elftools.dwarf.compileunit import CompileUnit as DWARF_CU
 from elftools.dwarf.die import DIE as DWARF_DIE
 from elftools.dwarf.dwarfinfo import DWARFInfo
 from elftools.dwarf.locationlists import LocationParser
-from functools import cached_property
+from functools import cache, cached_property
 import os
 from ttexalens.elf.cu import ElfCompileUnit
 from typing import TYPE_CHECKING
@@ -25,6 +25,8 @@ class ElfLocationParser:
     def parse_from_attribute(self, location_attribute, die: ElfDie):
         with self.dwarf.parsed_elf._lock:
             return self._location_parser.parse_from_attribute(location_attribute, die.cu.version, die.dwarf_die)
+
+    from ttexalens.elf.die import ElfDie
 
 
 class ElfDwarf:
@@ -74,6 +76,7 @@ class ElfDwarf:
             for cu in self.dwarf.iter_CUs():
                 yield self.get_cu(cu)
 
+    @cache
     def find_function_by_address(self, address):
         """
         Given an address, find the function that contains that address. Goes through all CUs and all DIEs and all inlined functions.
@@ -118,13 +121,13 @@ class ElfDwarf:
     @cached_property
     def file_lines_ranges(self):
         with self.parsed_elf._lock:
-            result = dict()
+            result: list[tuple[int, int, str, int, int]] = []
             for cu in self.iter_CUs():
                 lineprog = cu.line_program
                 if lineprog is None:
                     continue
                 delta = 1 if lineprog.header.version < 5 else 0
-                previous_entry = None
+                previous_entry: tuple[int, str, int, int] | None = None
                 for entry in lineprog.get_entries():
                     if entry.state is None:
                         continue
@@ -135,27 +138,44 @@ class ElfDwarf:
                     filename = os.path.join(directory, filename)
                     line = entry.state.line
                     column = entry.state.column
-                    current_entry = (entry.state.address, filename, line, column)
-                    if previous_entry is not None:
-                        result[(previous_entry[0], current_entry[0])] = (
+                    current_entry: tuple[int, str, int, int] = (entry.state.address, filename, line, column)
+                    if previous_entry is not None and previous_entry[0] != current_entry[0]:
+                        result.append(
+                            (
+                                previous_entry[0],
+                                current_entry[0],
+                                previous_entry[1],
+                                previous_entry[2],
+                                previous_entry[3],
+                            )
+                        )
+                    previous_entry = current_entry
+                if previous_entry is not None:
+                    result.append(
+                        (
+                            previous_entry[0],
+                            previous_entry[0] + 4,
                             previous_entry[1],
                             previous_entry[2],
                             previous_entry[3],
                         )
-                    previous_entry = current_entry
-                if previous_entry is not None:
-                    result[(previous_entry[0], previous_entry[0] + 4)] = (
-                        previous_entry[1],
-                        previous_entry[2],
-                        previous_entry[3],
                     )
+            result.sort(key=lambda x: x[0])  # Sort by address
             return result
 
     def find_file_line_by_address(self, address):
-        ranges = self.file_lines_ranges
-        for (start, end), info in ranges.items():
-            if start <= address < end:
-                return info
+        # Binary search for the address in file_lines_ranges
+        file_lines_ranges = self.file_lines_ranges
+        left = 0
+        right = len(file_lines_ranges) - 1
+        while left <= right:
+            mid = (left + right) // 2
+            if file_lines_ranges[mid][0] <= address < file_lines_ranges[mid][1]:
+                return file_lines_ranges[mid][2], file_lines_ranges[mid][3], file_lines_ranges[mid][4]
+            elif address < file_lines_ranges[mid][0]:
+                right = mid - 1
+            else:
+                left = mid + 1
         return None
 
 
@@ -186,6 +206,7 @@ class ElfDwarfWithOffset(ElfDwarf):
     def iter_CUs(self):
         return self._my_dwarf.iter_CUs()
 
+    @cache
     def find_function_by_address(self, address):
         address += self.loaded_offset
         return self._my_dwarf.find_function_by_address(address)
