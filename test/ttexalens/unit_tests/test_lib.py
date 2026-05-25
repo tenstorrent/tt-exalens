@@ -1278,7 +1278,11 @@ class TestRunElf(unittest.TestCase):
 
         # Step 5b: Continue and check that the core reached 0xFFB12088. But first set the breakpoint at
         # function "decrement_mailbox"
-        decrement_mailbox_die = elf.subprograms["decrement_mailbox"]
+        decrement_mailbox_die = elf.find_die_by_name("decrement_mailbox")
+        assert decrement_mailbox_die is not None, "decrement_mailbox function not found in ELF."
+        assert decrement_mailbox_die.tag_is(
+            "subprogram"
+        ), f"decrement_mailbox DIE is not a subprogram, got {decrement_mailbox_die.tag}"
         decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
         decrement_mailbox_address = elf.symbols[decrement_mailbox_linkage_name].value
 
@@ -1525,8 +1529,9 @@ class TestCallStack(unittest.TestCase):
                 self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
 
     def set_recursion_count(self, elf: ParsedElfFile, count: int):
-        text_section = next((s for s in elf.sections if s.name == ".text"), None)
+        text_section = elf.sections.get(".text")
         assert text_section is not None
+        assert text_section.address is not None
 
         address = text_section.address + text_section.size
         self.l1_mem_access.write_word(address, count)

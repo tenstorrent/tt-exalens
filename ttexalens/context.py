@@ -11,7 +11,6 @@ import tt_umd
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
-from ttexalens.firmware import ELF
 
 
 if TYPE_CHECKING:
@@ -96,10 +95,6 @@ class Context:
     @cached_property
     def device_by_unique_id(self) -> dict[int, Device]:
         return {device.unique_id: device for device in self.devices.values()}
-
-    @cached_property
-    def elf(self):
-        return ELF(self.file_api, {}, None)
 
     def find_device_by_id(self, device_id: int) -> Device:
         device = self.devices.get(device_id, None)

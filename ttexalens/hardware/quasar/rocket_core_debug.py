@@ -46,6 +46,12 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         dm_was_in_reset = not bool(value & DM_OUT_OF_RESET_BIT)
         if dm_was_in_reset:
             self.register_store.write_register("SMN_RISC_RESET_REG", value | DM_OUT_OF_RESET_BIT)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", 1)
+            while self.register_store.read_register("TT_CLUSTER_CTRL_DEBUG_DMACTIVE") != 1:
+                pass
+            self.register_store.write_register("TT_CLUSTER_CTRL_DEBUG_DMACTIVEACK", 1)
+            value = self.register_store.read_register("SMN_RISC_RESET_REG")
+            assert bool(value & DM_OUT_OF_RESET_BIT), "Failed to take debug module out of reset"
         try:
             yield
         finally:

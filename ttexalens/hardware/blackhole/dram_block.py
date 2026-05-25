@@ -12,7 +12,7 @@ from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_add
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     DebugRegisterDescription,
@@ -202,13 +202,15 @@ class BlackholeDramBlockSim(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-        self.noc_memory_map.add_blocks(
-            [
+        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
+            BlackholeDramBlockSim,
+            "noc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("dram_bank", self.dram_bank),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs.just_noc_address()),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs.just_noc_address()),
                 MemoryMapBlockInfo("noc_overlay", self.noc_overlay.just_noc_address()),
-            ]
+            ],
         )
 
 
@@ -317,8 +319,10 @@ class BlackholeDramBlock(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-        self.noc_memory_map.add_blocks(
-            [
+        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
+            BlackholeDramBlock,
+            "noc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("dram_bank", self.dram_bank, safe_to_write=True),
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("tx_stream0_regs", self.tx_stream0_regs.just_noc_address()),
@@ -337,11 +341,13 @@ class BlackholeDramBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs.just_noc_address()),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs.just_noc_address()),
                 MemoryMapBlockInfo("noc_overlay", self.noc_overlay.just_noc_address()),
-            ]
+            ],
         )
 
-        self.drisc.memory_map.add_blocks(
-            [
+        self.drisc.memory_map = MemoryMap.get_memory_map_from_cache(
+            BlackholeDramBlock,
+            "drisc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("tx_stream0_regs", self.tx_stream0_regs),
                 MemoryMapBlockInfo("tx_stream1_regs", self.tx_stream1_regs),
@@ -359,7 +365,7 @@ class BlackholeDramBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
                 MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
-            ]
+            ],
         )
 
     @cached_property
