@@ -45,6 +45,12 @@ class NativeDwarfInfo {
     // DW_AT_abstract_origin / DW_AT_specification one hop when present.
     std::optional<NativeDwarfDie> get_die_by_name(std::string_view name) const;
 
+    // Walks every CU and recursively drills into children to find the DIE
+    // whose address range contains `address`. When multiple CUs match (e.g.
+    // overlapping subprograms from inlining), the DIE with the narrowest
+    // range wins. Returns std::nullopt if no DIE covers the address.
+    std::optional<NativeDwarfDie> find_function_by_address(uint64_t address) const;
+
    private:
     class Impl;
     std::unique_ptr<Impl> impl;

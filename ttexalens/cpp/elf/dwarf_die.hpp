@@ -6,6 +6,7 @@
 #include <optional>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "dwarf_handle.hpp"
 #include "dwarf_string.hpp"
@@ -49,6 +50,29 @@ class NativeDwarfDie {
     // True iff DW_AT_declaration is present and set — i.e. the DIE is only a
     // declaration, not a definition.
     bool is_declaration() const;
+
+    // Returns the address ranges this DIE covers, as (start, end) pairs.
+    // Mirrors the existing Python ElfDie.address_ranges:
+    //   1. DW_AT_low_pc + DW_AT_high_pc → one absolute range.
+    //   2. DW_AT_ranges → parsed range list (DWARF 5 .debug_rnglists; DWARF
+    //      <=4 .debug_ranges is not wired up yet, returns empty).
+    //   3. Otherwise → union of every child DIE's address_ranges.
+    std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>> get_address_ranges() const;
+
+    // .debug_info offset of this DIE. Stable identifier — useful as a cache
+    // key for per-DIE state on either side of the binding.
+    Dwarf_Off get_offset() const;
+
+    // Walk this DIE's children one at a time:
+    //
+    //   for (auto child = die.get_first_child(); child;
+    //        child = child->get_next_sibling()) { ... }
+    //
+    // Beats a materialized iter_children() vector when we don't need to keep
+    // every child around at once — and it doesn't run into nanobind's
+    // can't-weak-reference-a-list limitation.
+    std::optional<NativeDwarfDie> get_first_child() const;
+    std::optional<NativeDwarfDie> get_next_sibling() const;
 
    private:
     DwarfDieHandle die;

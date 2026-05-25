@@ -310,6 +310,57 @@ std::optional<NativeDwarfFileLine> NativeDwarfInfo::find_file_line_by_address(ui
     return std::nullopt;
 }
 
+std::optional<NativeDwarfDie> NativeDwarfInfo::find_function_by_address(uint64_t address) const {
+    const Dwarf_Addr target = static_cast<Dwarf_Addr>(address);
+    std::optional<NativeDwarfDie> best;
+    Dwarf_Addr best_width = 0;
+
+    auto range_contains = [target](const std::pair<Dwarf_Addr, Dwarf_Addr>& r) {
+        return r.first <= target && target < r.second;
+    };
+
+    for (auto& cu : impl->get_cus()) {
+        // We can't quickly filter by the CU root's address range because the
+        // CU root typically uses DW_AT_ranges, which our minimal
+        // get_address_ranges doesn't parse yet. Instead, iterate every CU's
+        // children — subprograms (the level we care about) use low_pc/high_pc,
+        // which we DO read.
+        std::optional<NativeDwarfDie> match;
+        std::pair<Dwarf_Addr, Dwarf_Addr> match_range{0, 0};
+        bool found = true;
+        while (found) {
+            found = false;
+            const NativeDwarfDie& current = match ? *match : cu.get_die();
+            for (auto child = current.get_first_child(); child; child = child->get_next_sibling()) {
+                bool child_matches = false;
+                for (auto& r : child->get_address_ranges()) {
+                    if (range_contains(r)) {
+                        match_range = r;
+                        child_matches = true;
+                        break;
+                    }
+                }
+                if (child_matches) {
+                    match = std::move(child);
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if (!match) {
+            continue;
+        }
+        const Dwarf_Addr width = match_range.second - match_range.first;
+        if (!best || width < best_width) {
+            best_width = width;
+            best = std::move(match);
+        }
+    }
+
+    return best;
+}
+
 std::optional<NativeDwarfDie> NativeDwarfInfo::get_die_by_name(std::string_view name) const {
     // Split "Foo::Bar::baz" into ["Foo", "Bar", "baz"]. An empty input yields
     // one empty part and ends up finding nothing.

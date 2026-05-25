@@ -4,6 +4,7 @@
 #include <libdwarf.h>
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/optional.h>
+#include <nanobind/stl/pair.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/string_view.h>
 #include <nanobind/stl/vector.h>
@@ -95,23 +96,22 @@ NB_MODULE(_native_ttexalens, m) {
         .def_ro("line", &NativeDwarfFileLine::line)
         .def_ro("column", &NativeDwarfFileLine::column);
 
-    // Move-only; Python can't construct directly — DIEs are handed out by
-    // NativeDwarfInfo or by other DIEs. keep_alive ties each returned DIE's
-    // lifetime to its parent so the underlying Dwarf_Debug outlives it.
-    // (reference_internal is wrong here: these are by-value returns, not
-    //  references into the parent's storage.)
     nb::class_<NativeDwarfDie>(m, "NativeDwarfDie")
-        // Convert to std::string inside the lambda so the bytes are copied
-        // into a Python str before the cached NativeDwarfString's lifetime
-        // becomes nanobind's concern.
-        .def_prop_ro("name", [](const NativeDwarfDie& die) -> std::string { return std::string(die.get_name()); })
-        .def("find_child_by_name", &NativeDwarfDie::find_child_by_name, nb::arg("name"), nb::keep_alive<0, 1>())
+        .def_prop_ro("name", &NativeDwarfDie::get_name)
+        .def_prop_ro("offset", &NativeDwarfDie::get_offset)
+        .def("find_child_by_name", &NativeDwarfDie::find_child_by_name, nb::arg("name"),
+             nb::rv_policy::reference_internal)
         .def("get_die_from_attribute", &NativeDwarfDie::get_die_from_attribute, nb::arg("attribute_tag"),
-             nb::keep_alive<0, 1>())
+             nb::rv_policy::reference_internal)
         .def("has_attribute", &NativeDwarfDie::has_attribute, nb::arg("attribute_tag"))
-        .def("is_declaration", &NativeDwarfDie::is_declaration);
+        .def("is_declaration", &NativeDwarfDie::is_declaration)
+        .def("get_address_ranges", &NativeDwarfDie::get_address_ranges)
+        .def("get_first_child", &NativeDwarfDie::get_first_child, nb::rv_policy::reference_internal)
+        .def("get_next_sibling", &NativeDwarfDie::get_next_sibling, nb::rv_policy::reference_internal);
 
     nb::class_<NativeDwarfInfo>(m, "NativeDwarfInfo")
         .def("find_file_line_by_address", &NativeDwarfInfo::find_file_line_by_address, nb::arg("address"))
-        .def("get_die_by_name", &NativeDwarfInfo::get_die_by_name, nb::arg("name"), nb::keep_alive<0, 1>());
+        .def("get_die_by_name", &NativeDwarfInfo::get_die_by_name, nb::arg("name"), nb::rv_policy::reference_internal)
+        .def("find_function_by_address", &NativeDwarfInfo::find_function_by_address, nb::arg("address"),
+             nb::rv_policy::reference_internal);
 }
