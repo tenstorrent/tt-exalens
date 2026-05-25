@@ -3,6 +3,7 @@
 
 #include <libdwarf.h>
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/optional.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/string_view.h>
 #include <nanobind/stl/vector.h>
@@ -15,6 +16,7 @@
 
 namespace nb = nanobind;
 
+using ttexalens::native_elf::NativeDwarfFileLine;
 using ttexalens::native_elf::NativeDwarfInfo;
 using ttexalens::native_elf::NativeElfFile;
 using ttexalens::native_elf::NativeElfSection;
@@ -87,8 +89,11 @@ NB_MODULE(_native_ttexalens, m) {
         .def("has_dwarf_info", &NativeElfFile::has_dwarf_info, nb::arg("strict") = false)
         .def("get_dwarf_info", &NativeElfFile::get_dwarf_info, nb::rv_policy::reference_internal);
 
-    // Opaque handle to a libdwarf Dwarf_Debug. No methods are exposed yet —
-    // future DWARF queries (CU iteration, DIE lookup, line program, ...) will
-    // be added here.
-    nb::class_<NativeDwarfInfo>(m, "NativeDwarfInfo");
+    nb::class_<NativeDwarfFileLine>(m, "NativeDwarfFileLine")
+        .def_ro("file", &NativeDwarfFileLine::file)
+        .def_ro("line", &NativeDwarfFileLine::line)
+        .def_ro("column", &NativeDwarfFileLine::column);
+
+    nb::class_<NativeDwarfInfo>(m, "NativeDwarfInfo")
+        .def("find_file_line_by_address", &NativeDwarfInfo::find_file_line_by_address, nb::arg("address"));
 }

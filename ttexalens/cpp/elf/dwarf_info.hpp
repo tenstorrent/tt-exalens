@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <string>
 
 namespace ELFIO {
 class elfio;
@@ -12,23 +14,27 @@ class elfio;
 
 namespace ttexalens::native_elf {
 
-// RAII wrapper around a libdwarf Dwarf_Debug handle. Construction opens the
-// handle via dwarf_object_init_b backed by an ElfObjAccess adapter (no file
-// re-open). Destruction closes via dwarf_object_finish.
-//
-// The held ElfObjAccess references the supplied ELFIO::elfio, so that elfio
-// must outlive this NativeDwarfInfo.
+// Source location for a particular program counter — returned by
+// NativeDwarfInfo::find_file_line_by_address.
+struct NativeDwarfFileLine {
+    std::string file;
+    uint32_t line;
+    uint32_t column;
+};
+
 class NativeDwarfInfo {
    public:
     NativeDwarfInfo(ELFIO::elfio& elf, uint64_t file_size);
 
-    // Defined out-of-line in dwarf_info.cpp because Impl needs to be complete
-    // at the point of destruction.
     ~NativeDwarfInfo();
-    NativeDwarfInfo(NativeDwarfInfo&&) noexcept;
-    NativeDwarfInfo& operator=(NativeDwarfInfo&&) noexcept;
     NativeDwarfInfo(const NativeDwarfInfo&) = delete;
     NativeDwarfInfo& operator=(const NativeDwarfInfo&) = delete;
+    NativeDwarfInfo(NativeDwarfInfo&& other) noexcept;
+    NativeDwarfInfo& operator=(NativeDwarfInfo&& other) noexcept;
+
+    // Maps a PC to its source location via the .debug_line program. Returns
+    // std::nullopt if no line entry covers the address.
+    std::optional<NativeDwarfFileLine> find_file_line_by_address(uint64_t address) const;
 
    private:
     class Impl;
