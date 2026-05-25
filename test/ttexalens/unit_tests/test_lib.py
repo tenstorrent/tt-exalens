@@ -1278,7 +1278,11 @@ class TestRunElf(unittest.TestCase):
 
         # Step 5b: Continue and check that the core reached 0xFFB12088. But first set the breakpoint at
         # function "decrement_mailbox"
-        decrement_mailbox_die = elf.subprograms["decrement_mailbox"]
+        decrement_mailbox_die = elf.find_die_by_name("decrement_mailbox")
+        assert decrement_mailbox_die is not None, "decrement_mailbox function not found in ELF."
+        assert decrement_mailbox_die.tag_is(
+            "subprogram"
+        ), f"decrement_mailbox DIE is not a subprogram, got {decrement_mailbox_die.tag}"
         decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
         decrement_mailbox_address = elf.symbols[decrement_mailbox_linkage_name].value
 
