@@ -95,8 +95,6 @@ class ParsedElfFile:
     def frame_info(self) -> FrameInfoProvider:
         with self._lock:
             return FrameInfoProvider(self._dwarf)
-        with self._lock:
-            return FrameInfoProvider(self._dwarf)
 
     @cache
     def find_die_by_name(self, name: str) -> ElfDie | None:
