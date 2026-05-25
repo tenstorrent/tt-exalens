@@ -3,11 +3,14 @@
 
 #include "dwarf_die.hpp"
 
-#include <dwarf.h>  // DW_AT_* constants
+#include <dwarf.h>  // DW_AT_* / DW_RLE_* / DW_FORM_* constants
 
 #include <utility>
 
 namespace ttexalens::native_elf {
+
+NativeDwarfDie::NativeDwarfDie(DwarfDieHandle die, std::weak_ptr<NativeDwarfInfo::Impl> info)
+    : die(std::move(die)), info(std::move(info)) {}
 
 std::string_view NativeDwarfDie::get_name() const {
     if (!name) {
@@ -18,6 +21,14 @@ std::string_view NativeDwarfDie::get_name() const {
         name = std::move(s);
     }
     return *name;
+}
+
+Dwarf_Off NativeDwarfDie::get_offset() const {
+    Dwarf_Debug dbg = die.get_state();
+    DwarfErrorHandle error(dbg);
+    Dwarf_Off offset = 0;
+    dwarf_dieoffset(die, &offset, &error);
+    return offset;
 }
 
 bool NativeDwarfDie::has_attribute(Dwarf_Half attribute_tag) const {
@@ -41,26 +52,63 @@ bool NativeDwarfDie::is_declaration() const {
     return flag != 0;
 }
 
-std::optional<NativeDwarfDie> NativeDwarfDie::get_die_from_attribute(Dwarf_Half attribute_tag) const {
+NativeDwarfDiePtr NativeDwarfDie::get_die_from_attribute(Dwarf_Half attribute_tag) const {
+    auto info_ptr = info.lock();
+    if (!info_ptr) {
+        return nullptr;
+    }
     Dwarf_Debug dbg = die.get_state();
     DwarfErrorHandle error(dbg);
     DwarfAttributeHandle attr(dbg);
     if (dwarf_attr(die, attribute_tag, &attr, &error) != DW_DLV_OK) {
-        return std::nullopt;
+        return nullptr;
     }
     Dwarf_Off offset = 0;
     if (dwarf_global_formref(attr, &offset, &error) != DW_DLV_OK) {
-        return std::nullopt;
+        return nullptr;
     }
-    DwarfDieHandle target(dbg);
-    if (dwarf_offdie_b(dbg, offset, /*is_info=*/true, &target, &error) != DW_DLV_OK) {
-        return std::nullopt;
-    }
-    return NativeDwarfDie(std::move(target));
+    return get_or_create_die(std::move(info_ptr), offset);
 }
 
-std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>> NativeDwarfDie::get_address_ranges() const {
-    std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>> ranges;
+NativeDwarfDiePtr NativeDwarfDie::get_first_child() const {
+    if (first_child) {
+        return *first_child;
+    }
+    NativeDwarfDiePtr result;
+    if (auto info_ptr = info.lock()) {
+        Dwarf_Debug dbg = die.get_state();
+        DwarfErrorHandle error(dbg);
+        DwarfDieHandle handle(dbg);
+        if (dwarf_child(die, &handle, &error) == DW_DLV_OK) {
+            result = register_die(std::move(info_ptr), std::move(handle));
+        }
+    }
+    first_child = result;
+    return result;
+}
+
+NativeDwarfDiePtr NativeDwarfDie::get_next_sibling() const {
+    if (next_sibling) {
+        return *next_sibling;
+    }
+    NativeDwarfDiePtr result;
+    if (auto info_ptr = info.lock()) {
+        Dwarf_Debug dbg = die.get_state();
+        DwarfErrorHandle error(dbg);
+        DwarfDieHandle handle(dbg);
+        if (dwarf_siblingof_b(dbg, die, /*is_info=*/true, &handle, &error) == DW_DLV_OK) {
+            result = register_die(std::move(info_ptr), std::move(handle));
+        }
+    }
+    next_sibling = result;
+    return result;
+}
+
+const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& NativeDwarfDie::get_address_ranges() const {
+    if (address_ranges) {
+        return *address_ranges;
+    }
+    auto& ranges = address_ranges.emplace();
     Dwarf_Debug dbg = die.get_state();
     DwarfErrorHandle error(dbg);
 
@@ -71,13 +119,10 @@ std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>> NativeDwarfDie::get_address_range
         enum Dwarf_Form_Class hp_class = DW_FORM_CLASS_UNKNOWN;
         Dwarf_Addr high_pc = 0;
         if (dwarf_highpc_b(die, &high_pc, &hp_form, &hp_class, &error) == DW_DLV_OK) {
-            // DW_AT_high_pc is either an absolute address (class addrptr) or
-            // an offset from low_pc (class constant) per DWARF 4+.
             Dwarf_Addr end = (hp_class == DW_FORM_CLASS_ADDRESS) ? high_pc : (low_pc + high_pc);
             ranges.emplace_back(low_pc, end);
             return ranges;
         }
-        // Has low_pc but no high_pc — odd, but fall through to DW_AT_ranges.
     }
 
     // 2. DW_AT_ranges (DWARF 5 .debug_rnglists). Use libdwarf's "cooked"
@@ -86,12 +131,9 @@ std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>> NativeDwarfDie::get_address_range
     if (dwarf_attr(die, DW_AT_ranges, &attr, &error) == DW_DLV_OK) {
         Dwarf_Half version = 0;
         Dwarf_Half offset_size = 0;
-        // dwarf_get_version_of_die: which DWARF version owns this DIE?
         if (dwarf_get_version_of_die(die, &version, &offset_size) == DW_DLV_OK && version >= 5) {
             Dwarf_Half form = 0;
             if (dwarf_whatform(attr, &form, &error) == DW_DLV_OK) {
-                // DW_FORM_rnglistx is an index into the CU's rnglists base;
-                // everything else here is a sec_offset.
                 Dwarf_Unsigned attr_value = 0;
                 bool have_value = false;
                 if (form == DW_FORM_rnglistx) {
@@ -126,8 +168,6 @@ std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>> NativeDwarfDie::get_address_range
                             }
                             if (addr_unavailable) continue;
                             if (rle_code == DW_RLE_end_of_list) break;
-                            // Base-address selection entries are folded into
-                            // the cooked values by libdwarf; nothing to emit.
                             if (rle_code == DW_RLE_base_address || rle_code == DW_RLE_base_addressx) {
                                 continue;
                             }
@@ -138,55 +178,25 @@ std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>> NativeDwarfDie::get_address_range
                 }
             }
         }
-        // TODO: DWARF <=4 .debug_ranges via dwarf_get_ranges_b. Requires
-        // walking up to the CU root for the base address; we don't have a
-        // parent pointer yet, so leave it for when we hit an ELF that needs it.
+        // TODO: DWARF <=4 .debug_ranges via dwarf_get_ranges_b.
         return ranges;
     }
 
     // 3. No address attributes on this DIE — union of children's ranges.
     for (auto child = get_first_child(); child; child = child->get_next_sibling()) {
-        auto child_ranges = child->get_address_ranges();
+        const auto& child_ranges = child->get_address_ranges();
         ranges.insert(ranges.end(), child_ranges.begin(), child_ranges.end());
     }
     return ranges;
 }
 
-Dwarf_Off NativeDwarfDie::get_offset() const {
-    Dwarf_Debug dbg = die.get_state();
-    DwarfErrorHandle error(dbg);
-    Dwarf_Off offset = 0;
-    dwarf_dieoffset(die, &offset, &error);
-    return offset;
-}
-
-std::optional<NativeDwarfDie> NativeDwarfDie::get_first_child() const {
-    Dwarf_Debug dbg = die.get_state();
-    DwarfErrorHandle error(dbg);
-    DwarfDieHandle child(dbg);
-    if (dwarf_child(die, &child, &error) != DW_DLV_OK) {
-        return std::nullopt;
-    }
-    return NativeDwarfDie(std::move(child));
-}
-
-std::optional<NativeDwarfDie> NativeDwarfDie::get_next_sibling() const {
-    Dwarf_Debug dbg = die.get_state();
-    DwarfErrorHandle error(dbg);
-    DwarfDieHandle next(dbg);
-    if (dwarf_siblingof_b(dbg, die, /*is_info=*/true, &next, &error) != DW_DLV_OK) {
-        return std::nullopt;
-    }
-    return NativeDwarfDie(std::move(next));
-}
-
-std::optional<NativeDwarfDie> NativeDwarfDie::find_child_by_name(std::string_view target) const {
+NativeDwarfDiePtr NativeDwarfDie::find_child_by_name(std::string_view target) const {
     for (auto child = get_first_child(); child; child = child->get_next_sibling()) {
         if (child->get_name() == target) {
             return child;
         }
     }
-    return std::nullopt;
+    return nullptr;
 }
 
 }  // namespace ttexalens::native_elf

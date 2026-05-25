@@ -12,8 +12,12 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
+
+#include "dwarf_cu.hpp"
+#include "dwarf_die.hpp"
 
 namespace ttexalens::native_elf {
 
@@ -134,7 +138,7 @@ class ElfObjAccess {
 
 }  // namespace
 
-class NativeDwarfInfo::Impl {
+class NativeDwarfInfo::Impl : public std::enable_shared_from_this<NativeDwarfInfo::Impl> {
    public:
     Impl(ELFIO::elfio& elf, uint64_t file_size) : obj_access(elf, file_size) {
         Dwarf_Error error = nullptr;
@@ -160,8 +164,11 @@ class NativeDwarfInfo::Impl {
     }
 
     ~Impl() {
-        // CU DIE allocations must be released before dwarf_object_finish
-        // invalidates dbg.
+        // DIE allocations must be released before dwarf_object_finish
+        // invalidates dbg. Caller MUST not keep DIE shared_ptrs alive past
+        // ~NativeDwarfInfo — nanobind's reference_internal handles this
+        // automatically on the Python side.
+        die_cache.clear();
         cus.clear();
         if (dbg != nullptr) {
             dwarf_object_finish(dbg);
@@ -171,10 +178,7 @@ class NativeDwarfInfo::Impl {
     Impl(const Impl&) = delete;
     Impl& operator=(const Impl&) = delete;
 
-    // Lazy CU cache. First call walks libdwarf's stateful CU cursor to
-    // completion; later calls return the cached vector. loaded_cus is set
-    // before the walk so a mid-walk throw doesn't trigger an infinite
-    // reload against a mid-iteration cursor.
+    // Lazy CU cache (libdwarf's CU cursor is stateful and one-shot).
     std::vector<NativeDwarfCompileUnit>& get_cus() {
         if (!loaded_cus) {
             loaded_cus = true;
@@ -187,51 +191,32 @@ class NativeDwarfInfo::Impl {
     Dwarf_Debug dbg = nullptr;
 
    private:
+    friend class NativeDwarfDie;
+
     void load_compile_units() {
         DwarfErrorHandle error(dbg);
         while (true) {
-            // libdwarf wants raw out-parameter slots; we let it write into a
-            // local DwarfDieHandle + scalars, then assemble a
-            // NativeDwarfCompileUnit from them. NativeDwarfCompileUnit /
-            // NativeDwarfDie are immutable after construction.
             DwarfDieHandle die_handle(dbg);
-            Dwarf_Unsigned header_length = 0;
-            Dwarf_Half version = 0;
-            Dwarf_Unsigned abbrev_offset = 0;
-            Dwarf_Half address_size = 0;
-            Dwarf_Half length_size = 0;
-            Dwarf_Half extension_size = 0;
-            Dwarf_Sig8 signature{};
-            Dwarf_Unsigned type_offset = 0;
-            Dwarf_Unsigned next_cu_offset = 0;
-            Dwarf_Half header_cu_type = 0;
-            int res = dwarf_next_cu_header_e(dbg, /*is_info=*/true, &die_handle, &header_length, &version,
-                                             &abbrev_offset, &address_size, &length_size, &extension_size, &signature,
-                                             &type_offset, &next_cu_offset, &header_cu_type, &error);
+            NativeDwarfCompileUnit cu;
+            int res =
+                dwarf_next_cu_header_e(dbg, /*is_info=*/true, &die_handle, &cu.header_length, &cu.version,
+                                       &cu.abbrev_offset, &cu.address_size, &cu.length_size, &cu.extension_size,
+                                       &cu.signature, &cu.type_offset, &cu.next_cu_offset, &cu.header_cu_type, &error);
             if (res != DW_DLV_OK) {
                 break;  // NO_ENTRY (cursor done) or ERROR (auto-cleaned by ~error)
             }
-            NativeDwarfCompileUnit cu(NativeDwarfDie(std::move(die_handle)));
-            cu.header_length = header_length;
-            cu.version = version;
-            cu.abbrev_offset = abbrev_offset;
-            cu.address_size = address_size;
-            cu.length_size = length_size;
-            cu.extension_size = extension_size;
-            cu.signature = signature;
-            cu.type_offset = type_offset;
-            cu.next_cu_offset = next_cu_offset;
-            cu.header_cu_type = header_cu_type;
+            cu.die = NativeDwarfDie::register_die(shared_from_this(), std::move(die_handle));
             cus.push_back(std::move(cu));
         }
     }
 
     std::vector<NativeDwarfCompileUnit> cus;
+    std::unordered_map<Dwarf_Off, NativeDwarfDiePtr> die_cache;
     bool loaded_cus = false;
 };
 
 NativeDwarfInfo::NativeDwarfInfo(ELFIO::elfio& elf, uint64_t file_size)
-    : impl(std::make_unique<Impl>(elf, file_size)) {}
+    : impl(std::make_shared<Impl>(elf, file_size)) {}
 
 NativeDwarfInfo::~NativeDwarfInfo() = default;
 NativeDwarfInfo::NativeDwarfInfo(NativeDwarfInfo&&) noexcept = default;
@@ -310,9 +295,9 @@ std::optional<NativeDwarfFileLine> NativeDwarfInfo::find_file_line_by_address(ui
     return std::nullopt;
 }
 
-std::optional<NativeDwarfDie> NativeDwarfInfo::find_function_by_address(uint64_t address) const {
+NativeDwarfDiePtr NativeDwarfInfo::find_function_by_address(uint64_t address) const {
     const Dwarf_Addr target = static_cast<Dwarf_Addr>(address);
-    std::optional<NativeDwarfDie> best;
+    NativeDwarfDiePtr best;
     Dwarf_Addr best_width = 0;
 
     auto range_contains = [target](const std::pair<Dwarf_Addr, Dwarf_Addr>& r) {
@@ -320,17 +305,12 @@ std::optional<NativeDwarfDie> NativeDwarfInfo::find_function_by_address(uint64_t
     };
 
     for (auto& cu : impl->get_cus()) {
-        // We can't quickly filter by the CU root's address range because the
-        // CU root typically uses DW_AT_ranges, which our minimal
-        // get_address_ranges doesn't parse yet. Instead, iterate every CU's
-        // children — subprograms (the level we care about) use low_pc/high_pc,
-        // which we DO read.
-        std::optional<NativeDwarfDie> match;
+        NativeDwarfDiePtr match;
         std::pair<Dwarf_Addr, Dwarf_Addr> match_range{0, 0};
         bool found = true;
         while (found) {
             found = false;
-            const NativeDwarfDie& current = match ? *match : cu.get_die();
+            const NativeDwarfDie& current = match ? *match : *cu.get_die();
             for (auto child = current.get_first_child(); child; child = child->get_next_sibling()) {
                 bool child_matches = false;
                 for (auto& r : child->get_address_ranges()) {
@@ -361,7 +341,7 @@ std::optional<NativeDwarfDie> NativeDwarfInfo::find_function_by_address(uint64_t
     return best;
 }
 
-std::optional<NativeDwarfDie> NativeDwarfInfo::get_die_by_name(std::string_view name) const {
+NativeDwarfDiePtr NativeDwarfInfo::get_die_by_name(std::string_view name) const {
     // Split "Foo::Bar::baz" into ["Foo", "Bar", "baz"]. An empty input yields
     // one empty part and ends up finding nothing.
     std::vector<std::string_view> parts;
@@ -376,12 +356,12 @@ std::optional<NativeDwarfDie> NativeDwarfInfo::get_die_by_name(std::string_view 
         start = pos + 2;
     }
 
-    std::optional<NativeDwarfDie> declaration_die;  // fallback if all matches are declarations
+    NativeDwarfDiePtr declaration_die;  // fallback if all matches are declarations
 
     for (auto& cu : impl->get_cus()) {
         // First part is matched against the CU's root DIE; subsequent parts
         // chain off the previous match.
-        auto current = cu.get_die().find_child_by_name(parts[0]);
+        auto current = cu.get_die()->find_child_by_name(parts[0]);
         bool matched_all = static_cast<bool>(current);
         for (size_t i = 1; matched_all && i < parts.size(); ++i) {
             auto next = current->find_child_by_name(parts[i]);
@@ -401,13 +381,13 @@ std::optional<NativeDwarfDie> NativeDwarfInfo::get_die_by_name(std::string_view 
         if (current->has_attribute(DW_AT_abstract_origin)) {
             auto origin = current->get_die_from_attribute(DW_AT_abstract_origin);
             if (!origin) {
-                return std::nullopt;
+                return nullptr;
             }
             current = std::move(origin);
         } else if (current->has_attribute(DW_AT_specification)) {
             auto spec = current->get_die_from_attribute(DW_AT_specification);
             if (!spec) {
-                return std::nullopt;
+                return nullptr;
             }
             current = std::move(spec);
         }
@@ -421,6 +401,38 @@ std::optional<NativeDwarfDie> NativeDwarfInfo::get_die_by_name(std::string_view 
     }
 
     return declaration_die;
+}
+
+// Cache-interaction helpers for NativeDwarfDie. Defined here because they
+// touch Impl's die_cache (private; NativeDwarfDie is a friend). The dwarf
+// logic that calls these lives in dwarf_die.cpp.
+
+NativeDwarfDiePtr NativeDwarfDie::register_die(std::shared_ptr<NativeDwarfInfo::Impl> info, DwarfDieHandle handle) {
+    DwarfErrorHandle error(info->dbg);
+    Dwarf_Off offset = 0;
+    dwarf_dieoffset(handle, &offset, &error);
+    auto it = info->die_cache.find(offset);
+    if (it != info->die_cache.end()) {
+        return it->second;  // libdwarf hands out a fresh Dwarf_Die per call — drop the dup
+    }
+    auto die = std::make_shared<NativeDwarfDie>(std::move(handle), info);
+    info->die_cache.emplace(offset, die);
+    return die;
+}
+
+NativeDwarfDiePtr NativeDwarfDie::get_or_create_die(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off offset) {
+    auto it = info->die_cache.find(offset);
+    if (it != info->die_cache.end()) {
+        return it->second;
+    }
+    DwarfErrorHandle error(info->dbg);
+    DwarfDieHandle handle(info->dbg);
+    if (dwarf_offdie_b(info->dbg, offset, /*is_info=*/true, &handle, &error) != DW_DLV_OK) {
+        return nullptr;
+    }
+    auto die = std::make_shared<NativeDwarfDie>(std::move(handle), info);
+    info->die_cache.emplace(offset, die);
+    return die;
 }
 
 }  // namespace ttexalens::native_elf

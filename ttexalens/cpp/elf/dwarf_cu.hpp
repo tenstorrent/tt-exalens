@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include <utility>
-
 #include "dwarf_die.hpp"
 #include "dwarf_handle.hpp"
 
@@ -14,7 +12,7 @@ class NativeDwarfInfo;
 
 class NativeDwarfCompileUnit {
    public:
-    const NativeDwarfDie& get_die() const { return die; }
+    NativeDwarfDiePtr get_die() const { return die; }
     Dwarf_Unsigned get_header_length() const { return header_length; }
     Dwarf_Half get_version() const { return version; }
     Dwarf_Unsigned get_abbrev_offset() const { return abbrev_offset; }
@@ -29,7 +27,7 @@ class NativeDwarfCompileUnit {
    private:
     friend class NativeDwarfInfo;
 
-    explicit NativeDwarfCompileUnit(NativeDwarfDie die) : die(std::move(die)) {}
+    NativeDwarfCompileUnit() = default;
 
     // Lazy line context. First call invokes dwarf_srclines_b; later calls
     // return the cached context. Test the returned wrapper with operator bool
@@ -38,15 +36,15 @@ class NativeDwarfCompileUnit {
     DwarfLineContextHandle& get_line_context() {
         if (!loaded_line_context) {
             loaded_line_context = true;
-            DwarfErrorHandle error(die.get_state());
+            DwarfErrorHandle error(die->get_state());
             Dwarf_Unsigned line_version = 0;
             Dwarf_Small table_count = 0;
-            dwarf_srclines_b(die, &line_version, &table_count, &line_context, &error);
+            dwarf_srclines_b(*die, &line_version, &table_count, &line_context, &error);
         }
         return line_context;
     }
 
-    NativeDwarfDie die;
+    NativeDwarfDiePtr die;
     Dwarf_Unsigned header_length = 0;
     Dwarf_Half version = 0;
     Dwarf_Unsigned abbrev_offset = 0;

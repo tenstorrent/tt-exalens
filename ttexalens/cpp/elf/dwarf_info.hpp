@@ -9,14 +9,19 @@
 #include <string>
 #include <string_view>
 
-#include "dwarf_cu.hpp"
-#include "dwarf_die.hpp"
+#include "dwarf_string.hpp"
 
 namespace ELFIO {
 class elfio;
 }  // namespace ELFIO
 
 namespace ttexalens::native_elf {
+
+// Forward-declared so this header doesn't pull in dwarf_die.hpp. (DIE methods
+// need to reach NativeDwarfInfo::Impl, so dwarf_die.hpp includes this header
+// — including dwarf_die.hpp here would create a cycle.)
+class NativeDwarfDie;
+using NativeDwarfDiePtr = std::shared_ptr<NativeDwarfDie>;
 
 // Source location for a particular program counter — returned by
 // NativeDwarfInfo::find_file_line_by_address.
@@ -28,6 +33,8 @@ struct NativeDwarfFileLine {
 
 class NativeDwarfInfo {
    public:
+    class Impl;
+
     NativeDwarfInfo(ELFIO::elfio& elf, uint64_t file_size);
 
     ~NativeDwarfInfo();
@@ -43,17 +50,16 @@ class NativeDwarfInfo {
     // Resolves a "Foo::Bar::baz" path against every CU's DIE tree and returns
     // the first non-declaration match (or a declaration as fallback). Follows
     // DW_AT_abstract_origin / DW_AT_specification one hop when present.
-    std::optional<NativeDwarfDie> get_die_by_name(std::string_view name) const;
+    NativeDwarfDiePtr get_die_by_name(std::string_view name) const;
 
     // Walks every CU and recursively drills into children to find the DIE
     // whose address range contains `address`. When multiple CUs match (e.g.
     // overlapping subprograms from inlining), the DIE with the narrowest
-    // range wins. Returns std::nullopt if no DIE covers the address.
-    std::optional<NativeDwarfDie> find_function_by_address(uint64_t address) const;
+    // range wins. Returns nullptr if no DIE covers the address.
+    NativeDwarfDiePtr find_function_by_address(uint64_t address) const;
 
    private:
-    class Impl;
-    std::unique_ptr<Impl> impl;
+    std::shared_ptr<Impl> impl;
 };
 
 }  // namespace ttexalens::native_elf
