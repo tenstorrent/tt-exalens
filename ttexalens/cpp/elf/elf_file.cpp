@@ -89,6 +89,38 @@ class NativeElfFile::Impl {
     Impl& operator=(const Impl&) = delete;
 
     std::vector<NativeElfSection> sections;
+
+    std::vector<NativeElfSymbol> read_symbol_table_section(std::string_view section_name) {
+        std::vector<NativeElfSymbol> result;
+        ELFIO::section* sym_sec = elf.sections[section_name];
+        if (sym_sec == nullptr) {
+            return result;
+        }
+        ELFIO::symbol_section_accessor accessor(elf, sym_sec);
+        const auto n = accessor.get_symbols_num();
+        result.reserve(n);
+        for (ELFIO::Elf_Xword i = 0; i < n; ++i) {
+            std::string name;
+            ELFIO::Elf64_Addr value = 0;
+            ELFIO::Elf_Xword size = 0;
+            unsigned char bind = 0;
+            unsigned char type = 0;
+            ELFIO::Elf_Half section_index = 0;
+            unsigned char other = 0;
+            if (!accessor.get_symbol(i, name, value, size, bind, type, section_index, other)) {
+                continue;
+            }
+            result.push_back(NativeElfSymbol{
+                std::move(name),
+                static_cast<uint64_t>(value),
+                static_cast<uint64_t>(size),
+                static_cast<NativeElfSymbolType>(type),
+                static_cast<NativeElfSymbolBinding>(bind),
+            });
+        }
+        return result;
+    }
+
     NativeDwarfInfo* get_dwarf_info() {
         if (!loaded_dwarf_info) {
             try_open_dwarf();
@@ -208,6 +240,10 @@ const NativeElfSection* NativeElfFile::get_section_by_name(std::string_view name
         }
     }
     return nullptr;
+}
+
+std::vector<NativeElfSymbol> NativeElfFile::read_symbol_table_section(std::string_view section_name) const {
+    return impl->read_symbol_table_section(section_name);
 }
 
 bool NativeElfFile::has_dwarf_info(bool strict) const {
