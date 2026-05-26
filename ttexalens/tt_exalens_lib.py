@@ -363,6 +363,8 @@ def _iter_memory_blocks(
     if risc_name is not None:
         risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
         memory_map = risc_debug.risc_info.memory_map
+        if memory_map.find_by_private_address(start_addr) is None:
+            raise TTException(f"start_addr {hex(start_addr)} is not within any known RISC-V private memory block.")
         while end_addr is None or current < end_addr:
             block_info = memory_map.find_by_private_address(current)
             if block_info is None:
@@ -383,6 +385,8 @@ def _iter_memory_blocks(
             current = block_end
     else:
         memory_map = coordinate.noc_block.noc_memory_map
+        if memory_map.find_by_noc_address(start_addr) is None:
+            raise TTException(f"start_addr {hex(start_addr)} is not within any known NOC memory block.")
         while end_addr is None or current < end_addr:
             block_info = memory_map.find_by_noc_address(current)
             if block_info is None:

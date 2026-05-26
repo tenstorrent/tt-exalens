@@ -1874,6 +1874,10 @@ class TestSearchMemory(unittest.TestCase):
         with self.assertRaises(util.TTException):
             lib.search_memory("0,0", [], context=self.context)
 
+    def test_search_noc_invalid_start_addr(self):
+        with self.assertRaises(util.TTException):
+            lib.search_memory("0,0", 0xDEADBEEF, start_addr=0xDEAD0000, context=self.context)
+
     # --- RISC-V private memory (risc_name="brisc") ---
 
     def test_search_riscv_int(self):
@@ -1909,3 +1913,7 @@ class TestSearchMemory(unittest.TestCase):
     def test_search_riscv_invalid_risc_name(self):
         with self.assertRaises((util.TTException, ValueError, AttributeError)):
             lib.search_memory("0,0", 0xDEADBEEF, risc_name="invalid_risc", context=self.context)
+
+    def test_search_riscv_invalid_start_addr(self):
+        with self.assertRaises(util.TTException):
+            lib.search_memory("0,0", 0xDEADBEEF, risc_name="brisc", start_addr=0xFFA00000, context=self.context)
