@@ -4,6 +4,7 @@
 
 from contextlib import contextmanager
 from typing import Any, Generator
+import time
 
 from ttexalens import util
 from ttexalens.exceptions import RiscHaltError
@@ -40,22 +41,39 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         new_value = (current & ~reset_bit) if value else (current | reset_bit)
         self.register_store.write_register("SMN_RISC_RESET_REG", new_value)
 
+    def is_debug_module_in_reset(self, value: int | None = None) -> bool:
+        if value is None:
+            value = self.register_store.read_register("SMN_RISC_RESET_REG")
+        return not bool(value & DM_OUT_OF_RESET_BIT)
+
+    def _wait_for_debug_module_to_be_active(self, timeout=10) -> None:
+        start_time = time.time()
+        while self.register_store.read_register("TT_CLUSTER_CTRL_DEBUG_DMACTIVE") != 1:
+            if time.time() - start_time > timeout:
+                raise Exception("Timeout waiting for debug module to be active")
+            time.sleep(0.01)
+        # Acknowledge that debug module is active
+        self.register_store.write_register("TT_CLUSTER_CTRL_DEBUG_DMACTIVEACK", 1)
+
+    def take_debug_module_out_of_reset(self, value: int | None = None) -> None:
+        if value is None:
+            value = self.register_store.read_register("SMN_RISC_RESET_REG")
+        self.register_store.write_register("SMN_RISC_RESET_REG", value | DM_OUT_OF_RESET_BIT)
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", 1)
+        self._wait_for_debug_module_to_be_active()
+        assert not self.is_debug_module_in_reset(), "Debug module should be out of reset"
+
     @contextmanager
     def ensure_debug_module_out_of_reset(self) -> Generator[None, Any, None]:
         value = self.register_store.read_register("SMN_RISC_RESET_REG")
-        dm_was_in_reset = not bool(value & DM_OUT_OF_RESET_BIT)
+        dm_was_in_reset = self.is_debug_module_in_reset(value)
         if dm_was_in_reset:
-            self.register_store.write_register("SMN_RISC_RESET_REG", value | DM_OUT_OF_RESET_BIT)
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", 1)
-            while self.register_store.read_register("TT_CLUSTER_CTRL_DEBUG_DMACTIVE") != 1:
-                pass
-            self.register_store.write_register("TT_CLUSTER_CTRL_DEBUG_DMACTIVEACK", 1)
-            value = self.register_store.read_register("SMN_RISC_RESET_REG")
-            assert bool(value & DM_OUT_OF_RESET_BIT), "Failed to take debug module out of reset"
+            self.take_debug_module_out_of_reset(value)
         try:
             yield
         finally:
             if dm_was_in_reset:
+                # Put register in initial state
                 self.register_store.write_register("SMN_RISC_RESET_REG", value)
 
     def is_halted(self) -> bool:
