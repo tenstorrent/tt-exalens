@@ -31,6 +31,14 @@ Dwarf_Off NativeDwarfDie::get_offset() const {
     return offset;
 }
 
+Dwarf_Half NativeDwarfDie::get_tag() const {
+    Dwarf_Debug dbg = die.get_state();
+    DwarfErrorHandle error(dbg);
+    Dwarf_Half value = 0;
+    dwarf_tag(die, &value, &error);
+    return value;
+}
+
 bool NativeDwarfDie::has_attribute(Dwarf_Half attribute_tag) const {
     Dwarf_Debug dbg = die.get_state();
     DwarfErrorHandle error(dbg);

@@ -31,6 +31,12 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // .debug_info offset of this DIE — stable id, used as the cache key.
     Dwarf_Off get_offset() const;
 
+    // DWARF tag (DW_TAG_*). Always asks libdwarf — the call is just a
+    // field read. Compare against DW_TAG_* constants directly (e.g.
+    // die.get_tag() == DW_TAG_subprogram). The nanobind layer exposes it
+    // alongside the NativeDwarfDieTag namespace of named constants.
+    Dwarf_Half get_tag() const;
+
     // Walks the direct children of this DIE and returns the first whose
     // DW_AT_name matches `name`. nullptr on miss.
     NativeDwarfDiePtr find_child_by_name(std::string_view name) const;

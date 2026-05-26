@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: © 2026 Tenstorrent AI ULC
 // SPDX-License-Identifier: Apache-2.0
 
+#include <dwarf.h>  // DW_TAG_* / DW_AT_* constants
 #include <libdwarf.h>
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/function.h>
@@ -37,6 +38,48 @@ NB_MODULE(_native_ttexalens, m) {
     m.def(
         "libdwarf_version", []() { return dwarf_package_version(); },
         "Return the linked libdwarf version string. Smoke test that the native module is reachable.");
+
+    // DWARF DIE tag values exposed as a Python-side namespace. Use with
+    //   from ttexalens._native_ttexalens import NativeDwarfDieTag as tag
+    //   if die.tag == tag.subprogram: ...
+    // Values are plain ints (Dwarf_Half) so comparison against the int
+    // returned by NativeDwarfDie.tag is direct.
+    nb::module_ tag_mod = m.def_submodule("NativeDwarfDieTag", "DW_TAG_* constants for NativeDwarfDie.tag");
+#define EXPOSE_TAG(short_name, dw_name) tag_mod.attr(short_name) = static_cast<int>(dw_name)
+    EXPOSE_TAG("array_type", DW_TAG_array_type);
+    EXPOSE_TAG("base_type", DW_TAG_base_type);
+    EXPOSE_TAG("call_site", DW_TAG_call_site);
+    EXPOSE_TAG("class_type", DW_TAG_class_type);
+    EXPOSE_TAG("compile_unit", DW_TAG_compile_unit);
+    EXPOSE_TAG("const_type", DW_TAG_const_type);
+    EXPOSE_TAG("enumeration_type", DW_TAG_enumeration_type);
+    EXPOSE_TAG("enumerator", DW_TAG_enumerator);
+    EXPOSE_TAG("formal_parameter", DW_TAG_formal_parameter);
+    EXPOSE_TAG("GNU_call_site", DW_TAG_GNU_call_site);
+    EXPOSE_TAG("GNU_formal_parameter_pack", DW_TAG_GNU_formal_parameter_pack);
+    EXPOSE_TAG("GNU_template_parameter_pack", DW_TAG_GNU_template_parameter_pack);
+    EXPOSE_TAG("imported_declaration", DW_TAG_imported_declaration);
+    EXPOSE_TAG("imported_module", DW_TAG_imported_module);
+    EXPOSE_TAG("inheritance", DW_TAG_inheritance);
+    EXPOSE_TAG("inlined_subroutine", DW_TAG_inlined_subroutine);
+    EXPOSE_TAG("label", DW_TAG_label);
+    EXPOSE_TAG("lexical_block", DW_TAG_lexical_block);
+    EXPOSE_TAG("member", DW_TAG_member);
+    EXPOSE_TAG("namespace", DW_TAG_namespace);
+    EXPOSE_TAG("pointer_type", DW_TAG_pointer_type);
+    EXPOSE_TAG("reference_type", DW_TAG_reference_type);
+    EXPOSE_TAG("structure_type", DW_TAG_structure_type);
+    EXPOSE_TAG("subprogram", DW_TAG_subprogram);
+    EXPOSE_TAG("subrange_type", DW_TAG_subrange_type);
+    EXPOSE_TAG("subroutine_type", DW_TAG_subroutine_type);
+    EXPOSE_TAG("template_type_parameter", DW_TAG_template_type_parameter);
+    EXPOSE_TAG("template_value_parameter", DW_TAG_template_value_parameter);
+    EXPOSE_TAG("typedef", DW_TAG_typedef);
+    EXPOSE_TAG("union_type", DW_TAG_union_type);
+    EXPOSE_TAG("unspecified_parameters", DW_TAG_unspecified_parameters);
+    EXPOSE_TAG("variable", DW_TAG_variable);
+    EXPOSE_TAG("volatile_type", DW_TAG_volatile_type);
+#undef EXPOSE_TAG
 
     nb::class_<NativeElfSection>(m, "NativeElfSection")
         .def_prop_ro("name", &NativeElfSection::name)
@@ -104,6 +147,7 @@ NB_MODULE(_native_ttexalens, m) {
     nb::class_<NativeDwarfDie>(m, "NativeDwarfDie")
         .def_prop_ro("name", &NativeDwarfDie::get_name)
         .def_prop_ro("offset", &NativeDwarfDie::get_offset)
+        .def_prop_ro("tag", &NativeDwarfDie::get_tag)
         .def("find_child_by_name", &NativeDwarfDie::find_child_by_name, nb::arg("name"),
              nb::rv_policy::reference_internal)
         .def("get_die_from_attribute", &NativeDwarfDie::get_die_from_attribute, nb::arg("attribute_tag"),
