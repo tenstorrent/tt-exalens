@@ -6,7 +6,7 @@
 import os
 import time
 from ttexalens.context import Context
-from ttexalens.util import TTException
+from ttexalens.exceptions import TTException
 from ttexalens.tt_exalens_lib import check_context
 
 

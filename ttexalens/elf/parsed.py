@@ -5,14 +5,11 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import struct
-from elftools.dwarf.dwarfinfo import DWARFInfo
 from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 from functools import cache, cached_property
-import os
 import threading
 from ttexalens.server import FileAccessApi
-import ttexalens.util as util
 from ttexalens.elf.dwarf import ElfDwarf, ElfDwarfWithOffset
 from ttexalens.elf.frame import FrameInfoProvider, FrameInfoProviderWithOffset
 from ttexalens.elf.variable import ElfVariable

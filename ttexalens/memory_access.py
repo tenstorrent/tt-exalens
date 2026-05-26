@@ -11,7 +11,7 @@ from ttexalens.exceptions import ReadOnlyMemoryError, RestrictedMemoryAccessErro
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
-    from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation
+    from ttexalens.hardware.risc_debug import RiscDebug
 
 
 class MemoryAccess(ABC):

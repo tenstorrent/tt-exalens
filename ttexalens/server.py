@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 from ttexalens import util as util
 import tt_umd
 
-from ttexalens.umd_device import UmdDevice
 
 if TYPE_CHECKING:
     from ttexalens.context import Context
