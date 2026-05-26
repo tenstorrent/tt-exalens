@@ -184,7 +184,7 @@ class TestDebugging(unittest.TestCase):
         assert noc_addr is not None, "Translated NOC address should not be None."
 
         # Write our data to memory
-        # self.core_sim.write_data_checked(noc_addr, 0x12345678)
+        self.core_sim.write_data_checked(noc_addr, 0x12345678)
 
         # Write code for brisc core at address 0
         # C++:
