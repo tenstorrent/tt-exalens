@@ -39,25 +39,155 @@ Dwarf_Half NativeDwarfDie::get_tag() const {
     return value;
 }
 
-bool NativeDwarfDie::has_attribute(Dwarf_Half attribute_tag) const {
-    Dwarf_Debug dbg = die.get_state();
+namespace {
+
+// Decode a single libdwarf attribute into our variant. We dispatch on
+// DW_FORM_* (not DW_AT_*) because the form fully determines the storage —
+// the same tag (e.g. DW_AT_location) can be encoded with several forms
+// across DWARF versions.
+NativeDwarfAttribute::Value decode_attribute_value(Dwarf_Debug dbg, Dwarf_Attribute attr, Dwarf_Half form) {
     DwarfErrorHandle error(dbg);
-    DwarfAttributeHandle attr(dbg);
-    return dwarf_attr(die, attribute_tag, &attr, &error) == DW_DLV_OK;
+    switch (form) {
+        case DW_FORM_addr:
+        case DW_FORM_addrx:
+        case DW_FORM_addrx1:
+        case DW_FORM_addrx2:
+        case DW_FORM_addrx3:
+        case DW_FORM_addrx4:
+        case DW_FORM_GNU_addr_index: {
+            Dwarf_Addr a = 0;
+            if (dwarf_formaddr(attr, &a, &error) == DW_DLV_OK) {
+                return static_cast<uint64_t>(a);
+            }
+            return std::monostate{};
+        }
+        case DW_FORM_flag:
+        case DW_FORM_flag_present: {
+            Dwarf_Bool b = 0;
+            if (dwarf_formflag(attr, &b, &error) == DW_DLV_OK) {
+                return b != 0;
+            }
+            return std::monostate{};
+        }
+        case DW_FORM_string:
+        case DW_FORM_strp:
+        case DW_FORM_strp_sup:
+        case DW_FORM_GNU_strp_alt:
+        case DW_FORM_line_strp:
+        case DW_FORM_strx:
+        case DW_FORM_strx1:
+        case DW_FORM_strx2:
+        case DW_FORM_strx3:
+        case DW_FORM_strx4:
+        case DW_FORM_GNU_str_index: {
+            char* s = nullptr;
+            if (dwarf_formstring(attr, &s, &error) == DW_DLV_OK && s != nullptr) {
+                return std::string(s);
+            }
+            return std::monostate{};
+        }
+        case DW_FORM_sdata: {
+            Dwarf_Signed v = 0;
+            if (dwarf_formsdata(attr, &v, &error) == DW_DLV_OK) {
+                return static_cast<int64_t>(v);
+            }
+            return std::monostate{};
+        }
+        case DW_FORM_data1:
+        case DW_FORM_data2:
+        case DW_FORM_data4:
+        case DW_FORM_data8:
+        case DW_FORM_data16:
+        case DW_FORM_udata:
+        case DW_FORM_implicit_const:
+        case DW_FORM_sec_offset:
+        case DW_FORM_loclistx:
+        case DW_FORM_rnglistx: {
+            Dwarf_Unsigned v = 0;
+            if (dwarf_formudata(attr, &v, &error) == DW_DLV_OK) {
+                return static_cast<uint64_t>(v);
+            }
+            return std::monostate{};
+        }
+        case DW_FORM_ref1:
+        case DW_FORM_ref2:
+        case DW_FORM_ref4:
+        case DW_FORM_ref8:
+        case DW_FORM_ref_udata:
+        case DW_FORM_ref_addr:
+        case DW_FORM_ref_sig8:
+        case DW_FORM_ref_sup4:
+        case DW_FORM_ref_sup8:
+        case DW_FORM_GNU_ref_alt: {
+            // Always hand back a global .debug_info offset so callers can
+            // feed it to get_or_create_die without knowing the encoding.
+            Dwarf_Off off = 0;
+            if (dwarf_global_formref(attr, &off, &error) == DW_DLV_OK) {
+                return static_cast<uint64_t>(off);
+            }
+            return std::monostate{};
+        }
+        case DW_FORM_block:
+        case DW_FORM_block1:
+        case DW_FORM_block2:
+        case DW_FORM_block4:
+        case DW_FORM_exprloc: {
+            DwarfBlockHandle block(dbg);
+            if (dwarf_formblock(attr, &block, &error) == DW_DLV_OK && block) {
+                Dwarf_Block* b = block.get();
+                const auto* data = static_cast<const uint8_t*>(b->bl_data);
+                return std::vector<uint8_t>(data, data + b->bl_len);
+            }
+            return std::monostate{};
+        }
+        default:
+            return std::monostate{};
+    }
 }
 
-bool NativeDwarfDie::is_declaration() const {
+}  // namespace
+
+const std::vector<NativeDwarfAttribute>& NativeDwarfDie::get_attributes() const {
+    if (attributes) {
+        return *attributes;
+    }
+    auto& vec = attributes.emplace();
     Dwarf_Debug dbg = die.get_state();
     DwarfErrorHandle error(dbg);
-    DwarfAttributeHandle attr(dbg);
-    if (dwarf_attr(die, DW_AT_declaration, &attr, &error) != DW_DLV_OK) {
+    DwarfAttributeListHandle attrs(dbg);
+    if (dwarf_attrlist(die, &attrs, attrs.count_ptr(), &error) != DW_DLV_OK) {
+        return *attributes;
+    }
+    vec.reserve(static_cast<size_t>(attrs.size()));
+    for (Dwarf_Signed i = 0; i < attrs.size(); ++i) {
+        Dwarf_Attribute attr = attrs[i];
+        Dwarf_Half tag_value = 0;
+        Dwarf_Half form = 0;
+        if (dwarf_whatattr(attr, &tag_value, &error) == DW_DLV_OK && dwarf_whatform(attr, &form, &error) == DW_DLV_OK) {
+            vec.emplace_back(tag_value, form, decode_attribute_value(dbg, attr, form));
+        }
+    }
+    return *attributes;
+}
+
+const NativeDwarfAttribute* NativeDwarfDie::get_attribute(Dwarf_Half attribute_tag) const {
+    for (const auto& attr : get_attributes()) {
+        if (attr.get_tag() == attribute_tag) {
+            return &attr;
+        }
+    }
+    return nullptr;
+}
+
+bool NativeDwarfDie::has_attribute(Dwarf_Half attribute_tag) const { return get_attribute(attribute_tag) != nullptr; }
+
+bool NativeDwarfDie::is_declaration() const {
+    const auto* attr = get_attribute(DW_AT_declaration);
+    if (attr == nullptr) {
         return false;
     }
-    Dwarf_Bool flag = 0;
-    if (dwarf_formflag(attr, &flag, &error) != DW_DLV_OK) {
-        return false;
-    }
-    return flag != 0;
+    const auto* flag = std::get_if<bool>(&attr->get_value());
+    return flag != nullptr && *flag;
 }
 
 NativeDwarfDiePtr NativeDwarfDie::get_die_from_attribute(Dwarf_Half attribute_tag) const {

@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include "dwarf_attribute.hpp"
 #include "dwarf_handle.hpp"
 #include "dwarf_info.hpp"  // for NativeDwarfInfo::Impl + NativeDwarfDiePtr
 #include "dwarf_string.hpp"
@@ -36,6 +37,16 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // die.get_tag() == DW_TAG_subprogram). The nanobind layer exposes it
     // alongside the NativeDwarfDieTag namespace of named constants.
     Dwarf_Half get_tag() const;
+
+    // Lazily walks every attribute on this DIE, decodes each into a
+    // NativeDwarfAttribute, and caches the result. DIEs typically carry a
+    // handful of attributes, so a flat vector + linear scan beats a hash
+    // map. Reference is stable for the lifetime of this NativeDwarfDie.
+    // Pair with get_attribute() for tag-keyed lookup.
+    const std::vector<NativeDwarfAttribute>& get_attributes() const;
+
+    // Returns the cached attribute with the given DW_AT_* tag, or nullptr.
+    const NativeDwarfAttribute* get_attribute(Dwarf_Half attribute_tag) const;
 
     // Walks the direct children of this DIE and returns the first whose
     // DW_AT_name matches `name`. nullptr on miss.
@@ -84,6 +95,7 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     std::weak_ptr<NativeDwarfInfo::Impl> info;
 
     mutable std::optional<NativeDwarfString> name;
+    mutable std::optional<std::vector<NativeDwarfAttribute>> attributes;
     mutable std::optional<NativeDwarfDiePtr> first_child;
     mutable std::optional<NativeDwarfDiePtr> next_sibling;
     mutable std::optional<std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>> address_ranges;

@@ -100,5 +100,35 @@ class DwarfAllocationHandle : public DwarfHandleBase<DwarfAllocationHandle<T, Dw
 using DwarfDieHandle = DwarfAllocationHandle<Dwarf_Die, DW_DLA_DIE>;
 using DwarfStringHandle = DwarfAllocationHandle<char*, DW_DLA_STRING>;
 using DwarfAttributeHandle = DwarfAllocationHandle<Dwarf_Attribute, DW_DLA_ATTR>;
+using DwarfBlockHandle = DwarfAllocationHandle<Dwarf_Block*, DW_DLA_BLOCK>;
+
+struct DwarfAttributeListState {
+    Dwarf_Debug dbg = nullptr;
+    Dwarf_Signed count = 0;
+};
+
+// RAII for the (list, count) pair returned by dwarf_attrlist.
+class DwarfAttributeListHandle
+    : public DwarfHandleBase<DwarfAttributeListHandle, Dwarf_Attribute*, DwarfAttributeListState> {
+   public:
+    explicit DwarfAttributeListHandle(Dwarf_Debug dbg)
+        : DwarfHandleBase<DwarfAttributeListHandle, Dwarf_Attribute*, DwarfAttributeListState>(
+              DwarfAttributeListState{dbg, 0}) {}
+
+    static void do_cleanup(DwarfAttributeListState state, Dwarf_Attribute* list) {
+        for (Dwarf_Signed i = 0; i < state.count; ++i) {
+            if (list[i] != nullptr) {
+                dwarf_dealloc(state.dbg, list[i], DW_DLA_ATTR);
+            }
+        }
+        dwarf_dealloc(state.dbg, list, DW_DLA_LIST);
+    }
+
+    // dwarf_attrlist writes the entry count through this slot.
+    Dwarf_Signed* count_ptr() { return &state.count; }
+
+    Dwarf_Signed size() const { return state.count; }
+    Dwarf_Attribute operator[](Dwarf_Signed i) const { return get()[i]; }
+};
 
 }  // namespace ttexalens::native_elf

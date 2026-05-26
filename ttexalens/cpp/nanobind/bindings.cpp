@@ -10,11 +10,13 @@
 #include <nanobind/stl/shared_ptr.h>
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/string_view.h>
+#include <nanobind/stl/variant.h>
 #include <nanobind/stl/vector.h>
 
 #include <cstddef>
 #include <span>
 
+#include "dwarf_attribute.hpp"
 #include "dwarf_cfi.hpp"
 #include "dwarf_die.hpp"
 #include "dwarf_info.hpp"
@@ -22,6 +24,7 @@
 
 namespace nb = nanobind;
 
+using ttexalens::native_elf::NativeDwarfAttribute;
 using ttexalens::native_elf::NativeDwarfDie;
 using ttexalens::native_elf::NativeDwarfFileLine;
 using ttexalens::native_elf::NativeDwarfInfo;
@@ -80,6 +83,121 @@ NB_MODULE(_native_ttexalens, m) {
     EXPOSE_TAG("variable", DW_TAG_variable);
     EXPOSE_TAG("volatile_type", DW_TAG_volatile_type);
 #undef EXPOSE_TAG
+
+    // DW_AT_* constants exposed the same way as DW_TAG_*. Use with
+    //   from ttexalens._native_ttexalens import NativeDwarfAttributeTag as at
+    //   if at.declaration in die.attributes: ...
+    nb::module_ at_mod =
+        m.def_submodule("NativeDwarfAttributeTag", "DW_AT_* constants for keys in NativeDwarfDie.attributes");
+#define EXPOSE_AT(short_name, dw_name) at_mod.attr(short_name) = static_cast<int>(dw_name)
+    EXPOSE_AT("abstract_origin", DW_AT_abstract_origin);
+    EXPOSE_AT("artificial", DW_AT_artificial);
+    EXPOSE_AT("byte_size", DW_AT_byte_size);
+    EXPOSE_AT("call_column", DW_AT_call_column);
+    EXPOSE_AT("call_file", DW_AT_call_file);
+    EXPOSE_AT("call_line", DW_AT_call_line);
+    EXPOSE_AT("const_expr", DW_AT_const_expr);
+    EXPOSE_AT("const_value", DW_AT_const_value);
+    EXPOSE_AT("data_member_location", DW_AT_data_member_location);
+    EXPOSE_AT("decl_column", DW_AT_decl_column);
+    EXPOSE_AT("decl_file", DW_AT_decl_file);
+    EXPOSE_AT("decl_line", DW_AT_decl_line);
+    EXPOSE_AT("declaration", DW_AT_declaration);
+    EXPOSE_AT("encoding", DW_AT_encoding);
+    EXPOSE_AT("frame_base", DW_AT_frame_base);
+    EXPOSE_AT("high_pc", DW_AT_high_pc);
+    EXPOSE_AT("linkage_name", DW_AT_linkage_name);
+    EXPOSE_AT("location", DW_AT_location);
+    EXPOSE_AT("low_pc", DW_AT_low_pc);
+    EXPOSE_AT("name", DW_AT_name);
+    EXPOSE_AT("ranges", DW_AT_ranges);
+    EXPOSE_AT("specification", DW_AT_specification);
+    EXPOSE_AT("type", DW_AT_type);
+    EXPOSE_AT("upper_bound", DW_AT_upper_bound);
+#undef EXPOSE_AT
+
+    // DW_FORM_* constants. The form tells you which std::variant alternative
+    // NativeDwarfAttribute.value will hold:
+    //   addr / addrx*           -> uint64_t (address)
+    //   flag / flag_present     -> bool
+    //   string / strp / strx*   -> str
+    //   sdata                   -> int (signed)
+    //   data*/udata/sec_offset  -> int (unsigned)
+    //   ref* / ref_addr / ...   -> int (global .debug_info offset)
+    //   block* / exprloc        -> bytes
+    nb::module_ form_mod =
+        m.def_submodule("NativeDwarfAttributeForm", "DW_FORM_* constants for NativeDwarfAttribute.form");
+#define EXPOSE_FORM(short_name, dw_name) form_mod.attr(short_name) = static_cast<int>(dw_name)
+    EXPOSE_FORM("addr", DW_FORM_addr);
+    EXPOSE_FORM("addrx", DW_FORM_addrx);
+    EXPOSE_FORM("addrx1", DW_FORM_addrx1);
+    EXPOSE_FORM("addrx2", DW_FORM_addrx2);
+    EXPOSE_FORM("addrx3", DW_FORM_addrx3);
+    EXPOSE_FORM("addrx4", DW_FORM_addrx4);
+    EXPOSE_FORM("GNU_addr_index", DW_FORM_GNU_addr_index);
+    EXPOSE_FORM("block", DW_FORM_block);
+    EXPOSE_FORM("block1", DW_FORM_block1);
+    EXPOSE_FORM("block2", DW_FORM_block2);
+    EXPOSE_FORM("block4", DW_FORM_block4);
+    EXPOSE_FORM("data1", DW_FORM_data1);
+    EXPOSE_FORM("data2", DW_FORM_data2);
+    EXPOSE_FORM("data4", DW_FORM_data4);
+    EXPOSE_FORM("data8", DW_FORM_data8);
+    EXPOSE_FORM("data16", DW_FORM_data16);
+    EXPOSE_FORM("exprloc", DW_FORM_exprloc);
+    EXPOSE_FORM("flag", DW_FORM_flag);
+    EXPOSE_FORM("flag_present", DW_FORM_flag_present);
+    EXPOSE_FORM("implicit_const", DW_FORM_implicit_const);
+    EXPOSE_FORM("line_strp", DW_FORM_line_strp);
+    EXPOSE_FORM("loclistx", DW_FORM_loclistx);
+    EXPOSE_FORM("ref1", DW_FORM_ref1);
+    EXPOSE_FORM("ref2", DW_FORM_ref2);
+    EXPOSE_FORM("ref4", DW_FORM_ref4);
+    EXPOSE_FORM("ref8", DW_FORM_ref8);
+    EXPOSE_FORM("ref_addr", DW_FORM_ref_addr);
+    EXPOSE_FORM("ref_sig8", DW_FORM_ref_sig8);
+    EXPOSE_FORM("ref_sup4", DW_FORM_ref_sup4);
+    EXPOSE_FORM("ref_sup8", DW_FORM_ref_sup8);
+    EXPOSE_FORM("ref_udata", DW_FORM_ref_udata);
+    EXPOSE_FORM("GNU_ref_alt", DW_FORM_GNU_ref_alt);
+    EXPOSE_FORM("rnglistx", DW_FORM_rnglistx);
+    EXPOSE_FORM("sdata", DW_FORM_sdata);
+    EXPOSE_FORM("sec_offset", DW_FORM_sec_offset);
+    EXPOSE_FORM("string", DW_FORM_string);
+    EXPOSE_FORM("strp", DW_FORM_strp);
+    EXPOSE_FORM("strp_sup", DW_FORM_strp_sup);
+    EXPOSE_FORM("GNU_strp_alt", DW_FORM_GNU_strp_alt);
+    EXPOSE_FORM("strx", DW_FORM_strx);
+    EXPOSE_FORM("strx1", DW_FORM_strx1);
+    EXPOSE_FORM("strx2", DW_FORM_strx2);
+    EXPOSE_FORM("strx3", DW_FORM_strx3);
+    EXPOSE_FORM("strx4", DW_FORM_strx4);
+    EXPOSE_FORM("GNU_str_index", DW_FORM_GNU_str_index);
+    EXPOSE_FORM("udata", DW_FORM_udata);
+#undef EXPOSE_FORM
+
+    nb::class_<NativeDwarfAttribute>(m, "NativeDwarfAttribute")
+        .def_prop_ro("tag", &NativeDwarfAttribute::get_tag)
+        .def_prop_ro("form", &NativeDwarfAttribute::get_form)
+        // Variant alternatives map to bool / int / str / bytes / None. Default
+        // nanobind would expose std::vector<uint8_t> as a Python list[int],
+        // but DW_FORM_block* / exprloc payloads are conceptually opaque byte
+        // strings — hand them out as nb::bytes so callers don't have to
+        // wrap with bytes(...) before struct.unpack / hash / etc.
+        .def_prop_ro("value", [](const NativeDwarfAttribute& a) -> nb::object {
+            return std::visit(
+                [](const auto& v) -> nb::object {
+                    using T = std::decay_t<decltype(v)>;
+                    if constexpr (std::is_same_v<T, std::monostate>) {
+                        return nb::none();
+                    } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
+                        return nb::bytes(reinterpret_cast<const char*>(v.data()), v.size());
+                    } else {
+                        return nb::cast(v);
+                    }
+                },
+                a.get_value());
+        });
 
     nb::class_<NativeElfSection>(m, "NativeElfSection")
         .def_prop_ro("name", &NativeElfSection::name)
@@ -148,6 +266,9 @@ NB_MODULE(_native_ttexalens, m) {
         .def_prop_ro("name", &NativeDwarfDie::get_name)
         .def_prop_ro("offset", &NativeDwarfDie::get_offset)
         .def_prop_ro("tag", &NativeDwarfDie::get_tag)
+        .def_prop_ro("attributes", &NativeDwarfDie::get_attributes, nb::rv_policy::reference_internal)
+        .def("get_attribute", &NativeDwarfDie::get_attribute, nb::arg("attribute_tag"),
+             nb::rv_policy::reference_internal)
         .def("find_child_by_name", &NativeDwarfDie::find_child_by_name, nb::arg("name"),
              nb::rv_policy::reference_internal)
         .def("get_die_from_attribute", &NativeDwarfDie::get_die_from_attribute, nb::arg("attribute_tag"),
