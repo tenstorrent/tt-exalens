@@ -67,6 +67,16 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // nothing more specific is reachable.
     NativeDwarfDiePtr get_resolved_type() const;
 
+    // If this DIE is DW_TAG_pointer_type or DW_TAG_reference_type, follows
+    // DW_AT_type and runs get_resolved_type on the result so callers see
+    // the ultimate pointee type (not an intervening typedef). nullptr for
+    // any other tag or when DW_AT_type is absent.
+    NativeDwarfDiePtr get_dereference_type() const;
+
+    // If this DIE is DW_TAG_array_type, follows DW_AT_type to the element
+    // DIE and runs get_resolved_type on it. nullptr for any other tag.
+    NativeDwarfDiePtr get_array_element_type() const;
+
     // Walks the direct children of this DIE and returns the first whose
     // DW_AT_name matches `name`. nullptr on miss.
     NativeDwarfDiePtr find_child_by_name(std::string_view name) const;

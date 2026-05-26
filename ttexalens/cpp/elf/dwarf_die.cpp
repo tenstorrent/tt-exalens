@@ -355,6 +355,31 @@ NativeDwarfDiePtr NativeDwarfDie::get_resolved_type() const {
     return is_type_wrapper(current->get_tag()) ? current : nullptr;
 }
 
+NativeDwarfDiePtr NativeDwarfDie::get_dereference_type() const {
+    const Dwarf_Half tag = get_tag();
+    if (tag != DW_TAG_pointer_type && tag != DW_TAG_reference_type) {
+        return nullptr;
+    }
+    auto pointee = get_die_from_attribute(DW_AT_type);
+    if (!pointee) {
+        return nullptr;
+    }
+    auto resolved = pointee->get_resolved_type();
+    return resolved ? resolved : pointee;
+}
+
+NativeDwarfDiePtr NativeDwarfDie::get_array_element_type() const {
+    if (get_tag() != DW_TAG_array_type) {
+        return nullptr;
+    }
+    auto element = get_die_from_attribute(DW_AT_type);
+    if (!element) {
+        return nullptr;
+    }
+    auto resolved = element->get_resolved_type();
+    return resolved ? resolved : element;
+}
+
 bool NativeDwarfDie::is_declaration() const {
     const auto* attr = get_attribute(DW_AT_declaration);
     if (attr == nullptr) {

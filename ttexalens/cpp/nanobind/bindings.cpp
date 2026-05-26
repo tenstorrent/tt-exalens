@@ -283,6 +283,8 @@ NB_MODULE(_native_ttexalens, m) {
                      d.get_constant_value());
              })
         .def("get_resolved_type", &NativeDwarfDie::get_resolved_type, nb::rv_policy::reference_internal)
+        .def("get_dereference_type", &NativeDwarfDie::get_dereference_type, nb::rv_policy::reference_internal)
+        .def("get_array_element_type", &NativeDwarfDie::get_array_element_type, nb::rv_policy::reference_internal)
         .def("find_child_by_name", &NativeDwarfDie::find_child_by_name, nb::arg("name"),
              nb::rv_policy::reference_internal)
         .def("get_die_from_attribute", &NativeDwarfDie::get_die_from_attribute, nb::arg("attribute_tag"),
