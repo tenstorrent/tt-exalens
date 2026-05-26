@@ -17,7 +17,7 @@ Options:
                      applied uniformly to all elements.
   --read-size=<rs>   Maximum bytes per device read. Defaults to 4 when -r is used (RISC debug hardware),
                      or 1MB otherwise.
-  --max-results=<n>  Maximum number of matches to return. [default: 1]
+  --max-results=<n>  Limit the number of matches displayed, or 'all' to show every match. [default: 1]
   -r <risc_name>     RISC core name to search in private memory instead of NOC memory.
   --unsafe           Expert mode, allow searching everywhere (bypass safety checks).
 
@@ -141,13 +141,17 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     # --- Parse --max-results ---
     max_results_arg: str = args["--max-results"] if args["--max-results"] else "1"
-    try:
-        max_results = int(max_results_arg)
-        if max_results < 1:
-            raise ValueError
-    except ValueError:
-        util.ERROR(f"Invalid --max-results value: {max_results_arg!r}. Must be a positive integer.")
-        return
+    max_results: int | None  # None means unlimited
+    if max_results_arg == "all":
+        max_results = None
+    else:
+        try:
+            max_results = int(max_results_arg)
+            if max_results < 1:
+                raise ValueError
+        except ValueError:
+            util.ERROR(f"Invalid --max-results value: {max_results_arg!r}. Must be a positive integer or 'all'.")
+            return
 
     # --- Display pattern summary ---
     pattern_hex = " ".join(f"0x{b:02x}" for b in pattern_bytes)
@@ -172,7 +176,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     risc_name=risc_name,
                     start_addr=start_addr,
                     end_addr=end_addr,
-                    max_results=max_results,
                     device_id=device.id,
                     context=context,
                     chunk_size=read_size,
@@ -181,6 +184,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             except util.TTException as e:
                 util.ERROR(f"Device {device_id_str} | Location {location_str}: {e}")
                 continue
+
+            if max_results is not None:
+                all_matches = all_matches[:max_results]
 
             header = f"Device {device_id_str} | Location {location_str}"
             if all_matches:

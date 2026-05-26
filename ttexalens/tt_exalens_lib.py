@@ -326,10 +326,9 @@ def _search_chunk_range(
     pattern_bytes: bytes,
     read_fn: Callable[[int, int], bytes],
     block_name: str,
-    max_results: int,
     chunk_size: int,
 ) -> list[tuple[int, str]]:
-    """Search one contiguous block range. Returns matches found (up to max_results)."""
+    """Search one contiguous block range. Returns all matches found."""
     matches: list[tuple[int, str]] = []
     overlap = len(pattern_bytes) - 1
     prev_tail = b""
@@ -339,10 +338,8 @@ def _search_chunk_range(
         chunk_bytes = read_fn(chunk_addr, read_size)
         search_data = prev_tail + chunk_bytes
         base = chunk_addr - len(prev_tail)
-        for addr in _find_in_data(search_data, pattern_bytes, base, max_results - len(matches)):
+        for addr in _find_in_data(search_data, pattern_bytes, base):
             matches.append((addr, block_name))
-        if len(matches) >= max_results:
-            break
         prev_tail = search_data[-overlap:] if overlap > 0 else b""
         chunk_addr += len(chunk_bytes)
     return matches
@@ -416,7 +413,6 @@ def search_memory(
     neo_id: int | None = None,
     start_addr: int = 0,
     end_addr: int | str | None = None,
-    max_results: int = 10,
     device_id: int = 0,
     context: Context | None = None,
     chunk_size: int | None = None,
@@ -441,7 +437,6 @@ def search_memory(
             None (default) — search only the block containing start_addr.
             "all"           — search all contiguous blocks from start_addr.
             int ≥ 0        — exclusive end address; may span multiple blocks if the range crosses a block boundary.
-        max_results (int): Stop after this many matches. Must be at least 1. Default: 10.
         device_id (int): ID number of device to search. Default: 0.
         context (Context | None): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None.
         chunk_size (int | None): Maximum bytes per device read. Default: 1 MB for NOC memory, 4 bytes for RISC-V private memory.
@@ -454,26 +449,17 @@ def search_memory(
         chunk_size = 4 if risc_name is not None else 0x100000
     if chunk_size < 1:
         raise TTException("chunk_size must be at least 1.")
-    if max_results < 1:
-        raise TTException("max_results must be at least 1.")
 
     pattern_bytes = _encode_pattern(pattern)
     coordinate = convert_coordinate(location, device_id, context)
     noc_id = check_noc_id(None, coordinate.context)
     use_4B_mode = check_4B_mode(None, coordinate.context)
     all_matches: list[tuple[int, str]] = []
-    current = start_addr
 
     for range_start, range_end, block_name, read_fn in _iter_memory_blocks(
-        current, end_addr, coordinate, risc_name, neo_id, noc_id, use_4B_mode, safe_mode
+        start_addr, end_addr, coordinate, risc_name, neo_id, noc_id, use_4B_mode, safe_mode
     ):
-        all_matches.extend(
-            _search_chunk_range(
-                range_start, range_end, pattern_bytes, read_fn, block_name, max_results - len(all_matches), chunk_size
-            )
-        )
-        if len(all_matches) >= max_results:
-            return all_matches
+        all_matches.extend(_search_chunk_range(range_start, range_end, pattern_bytes, read_fn, block_name, chunk_size))
 
     return all_matches
 

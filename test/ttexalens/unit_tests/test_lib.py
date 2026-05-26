@@ -1824,15 +1824,13 @@ class TestSearchMemory(unittest.TestCase):
         results = lib.search_memory(location, 0xDEADBEEF, start_addr=addr, end_addr=addr + 4, context=self.context)
         self.assertEqual(results, [])
 
-    def test_search_noc_max_results(self):
+    def test_search_noc_multiple_results(self):
         location = "0,0"
         addr1, addr2 = 0x120, 0x124
         lib.write_words_to_device(location, addr1, 0xCAFEBABE, context=self.context)
         lib.write_words_to_device(location, addr2, 0xCAFEBABE, context=self.context)
-        results = lib.search_memory(
-            location, 0xCAFEBABE, start_addr=addr1, end_addr=addr2 + 4, max_results=1, context=self.context
-        )
-        self.assertEqual(len(results), 1)
+        results = lib.search_memory(location, 0xCAFEBABE, start_addr=addr1, end_addr=addr2 + 4, context=self.context)
+        self.assertEqual(len(results), 2)
 
     def test_search_noc_start_addr(self):
         location = "0,0"
@@ -1861,10 +1859,6 @@ class TestSearchMemory(unittest.TestCase):
     def test_search_noc_invalid_chunk_size(self):
         with self.assertRaises(util.TTException):
             lib.search_memory("0,0", 0xDEADBEEF, chunk_size=0, context=self.context)
-
-    def test_search_noc_invalid_max_results(self):
-        with self.assertRaises(util.TTException):
-            lib.search_memory("0,0", 0xDEADBEEF, max_results=0, context=self.context)
 
     def test_search_noc_empty_bytes(self):
         with self.assertRaises(util.TTException):
