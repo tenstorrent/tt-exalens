@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -22,6 +23,8 @@ namespace ttexalens::native_elf {
 // — including dwarf_die.hpp here would create a cycle.)
 class NativeDwarfDie;
 using NativeDwarfDiePtr = std::shared_ptr<NativeDwarfDie>;
+
+class NativeFrameDescription;  // see dwarf_cfi.hpp
 
 // Source location for a particular program counter — returned by
 // NativeDwarfInfo::find_file_line_by_address.
@@ -57,6 +60,17 @@ class NativeDwarfInfo {
     // overlapping subprograms from inlining), the DIE with the narrowest
     // range wins. Returns nullptr if no DIE covers the address.
     NativeDwarfDiePtr find_function_by_address(uint64_t address) const;
+
+    // Locates the FDE covering `pc` in .debug_frame (falling back to
+    // .eh_frame) and returns a NativeFrameDescription bound to the given
+    // callbacks. Callbacks are invoked by NativeFrameDescription's methods
+    // (read_register / read_previous_cfa) to fetch live machine state:
+    //   read_gpr(reg_index) -> register value
+    //   read_memory(address) -> optional<word> (nullopt = access denied)
+    // Returns nullopt if no FDE covers `pc`.
+    std::optional<NativeFrameDescription> get_frame_description(
+        uint64_t pc, std::function<uint64_t(int)> read_gpr,
+        std::function<std::optional<uint64_t>(uint64_t)> read_memory) const;
 
    private:
     std::shared_ptr<Impl> impl;

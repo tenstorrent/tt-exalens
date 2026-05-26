@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "dwarf_cfi.hpp"
 #include "dwarf_cu.hpp"
 #include "dwarf_die.hpp"
 
@@ -170,6 +171,9 @@ class NativeDwarfInfo::Impl : public std::enable_shared_from_this<NativeDwarfInf
         // automatically on the Python side.
         die_cache.clear();
         cus.clear();
+        if (fdes != nullptr || cies != nullptr) {
+            dwarf_dealloc_fde_cie_list(dbg, cies, cie_count, fdes, fde_count);
+        }
         if (dbg != nullptr) {
             dwarf_object_finish(dbg);
         }
@@ -185,6 +189,33 @@ class NativeDwarfInfo::Impl : public std::enable_shared_from_this<NativeDwarfInf
             load_compile_units();
         }
         return cus;
+    }
+
+    // Lazy CFI loader. Returns the FDE array (libdwarf-owned, lifetime tied
+    // to ~Impl) plus its count. Tries .debug_frame first, then .eh_frame —
+    // both produce the same Dwarf_Fde shape, so callers don't care which.
+    // Returns (nullptr, 0) when neither section is present.
+    std::pair<Dwarf_Fde*, Dwarf_Signed> get_fdes() {
+        if (!loaded_cfi) {
+            loaded_cfi = true;
+            DwarfErrorHandle error(dbg);
+            int res = dwarf_get_fde_list(dbg, &cies, &cie_count, &fdes, &fde_count, &error);
+            if (res != DW_DLV_OK) {
+                // Reset on partial failure so the EH path starts clean.
+                cies = nullptr;
+                cie_count = 0;
+                fdes = nullptr;
+                fde_count = 0;
+                DwarfErrorHandle eh_error(dbg);
+                if (dwarf_get_fde_list_eh(dbg, &cies, &cie_count, &fdes, &fde_count, &eh_error) != DW_DLV_OK) {
+                    cies = nullptr;
+                    cie_count = 0;
+                    fdes = nullptr;
+                    fde_count = 0;
+                }
+            }
+        }
+        return {fdes, fde_count};
     }
 
     ElfObjAccess obj_access;
@@ -213,6 +244,17 @@ class NativeDwarfInfo::Impl : public std::enable_shared_from_this<NativeDwarfInf
     std::vector<NativeDwarfCompileUnit> cus;
     std::unordered_map<Dwarf_Off, NativeDwarfDiePtr> die_cache;
     bool loaded_cus = false;
+
+    // Call Frame Information state. cies/fdes are libdwarf-owned arrays
+    // (allocated by dwarf_get_fde_list[_eh]) freed in ~Impl via
+    // dwarf_dealloc_fde_cie_list. The pointers themselves are stable for
+    // Impl's lifetime, so we hand raw Dwarf_Fde out to NativeFrameDescription
+    // — its weak_ptr<Impl> gates whether they're still valid.
+    Dwarf_Cie* cies = nullptr;
+    Dwarf_Signed cie_count = 0;
+    Dwarf_Fde* fdes = nullptr;
+    Dwarf_Signed fde_count = 0;
+    bool loaded_cfi = false;
 };
 
 NativeDwarfInfo::NativeDwarfInfo(ELFIO::elfio& elf, uint64_t file_size)
@@ -401,6 +443,23 @@ NativeDwarfDiePtr NativeDwarfInfo::get_die_by_name(std::string_view name) const 
     }
 
     return declaration_die;
+}
+
+std::optional<NativeFrameDescription> NativeDwarfInfo::get_frame_description(
+    uint64_t pc, std::function<uint64_t(int)> read_gpr,
+    std::function<std::optional<uint64_t>(uint64_t)> read_memory) const {
+    auto [fdes, fde_count] = impl->get_fdes();
+    if (fdes == nullptr || fde_count == 0) {
+        return std::nullopt;
+    }
+    DwarfErrorHandle error(impl->dbg);
+    Dwarf_Fde fde = nullptr;
+    Dwarf_Addr lopc = 0;
+    Dwarf_Addr hipc = 0;
+    if (dwarf_get_fde_at_pc(fdes, static_cast<Dwarf_Addr>(pc), &fde, &lopc, &hipc, &error) != DW_DLV_OK) {
+        return std::nullopt;
+    }
+    return NativeFrameDescription(impl, impl->dbg, fde, pc, std::move(read_gpr), std::move(read_memory));
 }
 
 // Cache-interaction helpers for NativeDwarfDie. Defined here because they

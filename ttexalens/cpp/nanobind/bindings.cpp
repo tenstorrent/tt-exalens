@@ -3,6 +3,7 @@
 
 #include <libdwarf.h>
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/function.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/pair.h>
 #include <nanobind/stl/shared_ptr.h>
@@ -13,6 +14,7 @@
 #include <cstddef>
 #include <span>
 
+#include "dwarf_cfi.hpp"
 #include "dwarf_die.hpp"
 #include "dwarf_info.hpp"
 #include "elf_file.hpp"
@@ -27,6 +29,7 @@ using ttexalens::native_elf::NativeElfSection;
 using ttexalens::native_elf::NativeElfSymbol;
 using ttexalens::native_elf::NativeElfSymbolBinding;
 using ttexalens::native_elf::NativeElfSymbolType;
+using ttexalens::native_elf::NativeFrameDescription;
 
 NB_MODULE(_native_ttexalens, m) {
     m.doc() = "Native code backend for ttexalens. Private API.";
@@ -116,5 +119,14 @@ NB_MODULE(_native_ttexalens, m) {
         .def("find_file_line_by_address", &NativeDwarfInfo::find_file_line_by_address, nb::arg("address"))
         .def("get_die_by_name", &NativeDwarfInfo::get_die_by_name, nb::arg("name"), nb::rv_policy::reference_internal)
         .def("find_function_by_address", &NativeDwarfInfo::find_function_by_address, nb::arg("address"),
-             nb::rv_policy::reference_internal);
+             nb::rv_policy::reference_internal)
+        .def("get_frame_description", &NativeDwarfInfo::get_frame_description, nb::arg("pc"), nb::arg("read_gpr"),
+             nb::arg("read_memory"));
+
+    nb::class_<NativeFrameDescription>(m, "NativeFrameDescription")
+        .def_prop_ro("pc", &NativeFrameDescription::get_pc)
+        .def("read_register", &NativeFrameDescription::read_register, nb::arg("register_index"), nb::arg("cfa"))
+        .def("try_read_register", &NativeFrameDescription::try_read_register, nb::arg("register_index"),
+             nb::arg("cfa").none())
+        .def("read_previous_cfa", &NativeFrameDescription::read_previous_cfa, nb::arg("current_cfa").none());
 }
