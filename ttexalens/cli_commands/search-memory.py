@@ -15,8 +15,9 @@ Options:
   --width=<width>    Bytes per pattern element (any positive integer) or auto. [default: auto]
                      auto = minimum power-of-2 byte count needed to represent the largest element,
                      applied uniformly to all elements.
-  --read-size=<rs>   Maximum bytes per device read. Defaults to 1MB.
-  --max-results=<n>  Maximum number of matches to return. [default: 10]
+  --read-size=<rs>   Maximum bytes per device read. Defaults to 4 when -r is used (RISC debug hardware),
+                     or 1MB otherwise.
+  --max-results=<n>  Maximum number of matches to return. [default: 1]
   -r <risc_name>     RISC core name to search in private memory instead of NOC memory.
   --unsafe           Expert mode, allow searching everywhere (bypass safety checks).
 
@@ -137,7 +138,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             return
 
     # --- Parse --max-results ---
-    max_results_arg: str = args["--max-results"] if args["--max-results"] else "10"
+    max_results_arg: str = args["--max-results"] if args["--max-results"] else "1"
     try:
         max_results = int(max_results_arg)
         if max_results < 1:
