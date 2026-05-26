@@ -36,7 +36,7 @@ import tabulate
 from ttexalens import util
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore, SignalGroupSample
+from ttexalens.debug_bus_signal_store import DebugBusSignalStore, SignalGroupSample
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
 from ttexalens.device import Device

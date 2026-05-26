@@ -7,7 +7,7 @@ from ttexalens.hardware.blackhole.niu_registers import get_niu_register_store_in
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from ttexalens.register_store import RegisterStore
 
 register_store_noc0_initialization = get_niu_register_store_initialization(
@@ -26,8 +26,10 @@ class BlackholePcieBlock(BlackholeNocBlock):
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
         self.noc_regs = MemoryBlock(size=0x10000, address=DeviceAddress(noc_address=0xFFFFFFFF_FF000000))
-        self.noc_memory_map.add_blocks(
-            [
+        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
+            BlackholePcieBlock,
+            "noc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("noc_regs", self.noc_regs),
-            ]
+            ],
         )

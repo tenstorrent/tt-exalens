@@ -31,12 +31,11 @@ class TTExaLensCompleter(Completer):
         return completions
 
     def fuzzy_lookup_addresses(self, addr):
-        completions = self.context.elf.fuzzy_find_multiple(addr, limit=30)
-        return completions
+        return []
 
     def get_completions(self, document, complete_event):
         if complete_event.completion_requested:
-            prompt_current_word = document.get_word_before_cursor(pattern=self.context.elf.name_word_pattern)
+            prompt_current_word = document.get_word_before_cursor()
             prompt_text = document.text_before_cursor
             # 1. If it is the first word, complete with the list of commands (lookup_commands)
             if " " not in prompt_text:

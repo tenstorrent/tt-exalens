@@ -8,19 +8,12 @@ from typing import Any, Iterator, TYPE_CHECKING
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
-import traceback, socket
+import traceback
 import ryml, yaml
 from fnmatch import fnmatch
 from enum import Enum
 
-from ttexalens.exceptions import (
-    TTException,
-    TTFatalException,
-    HardwareError,
-    MemoryAccessException,
-    DebugSymbolError,
-    CoordinateError,
-)
+from ttexalens.exceptions import TTFatalException
 
 if TYPE_CHECKING:
     from ttexalens.server import FileAccessApi

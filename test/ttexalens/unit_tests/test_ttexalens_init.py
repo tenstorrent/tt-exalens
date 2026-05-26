@@ -13,7 +13,6 @@ from ttexalens import (
     read_word_from_device,
     write_to_device,
 )
-from ttexalens.umd_api import local_init
 from ttexalens.server import TTExaLensServer, start_server
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 

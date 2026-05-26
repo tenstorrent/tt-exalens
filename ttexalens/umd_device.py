@@ -25,6 +25,7 @@ class UmdDevice:
         unique_id: int,
         active_eth_coords_on_mmio_chip: list[tuple[int, int]] = [],
         soc_descriptor: tt_umd.SocDescriptor | None = None,
+        cluster_descriptor: tt_umd.ClusterDescriptor | None = None,
         is_simulation: bool = False,
     ):
         # IMPORTANT:
@@ -41,10 +42,44 @@ class UmdDevice:
         self._unique_id = unique_id
         self._active_eth_coords_on_mmio_chip = active_eth_coords_on_mmio_chip  # in translated coords
         self._is_simulation = is_simulation
+        self.__device_coords = UmdDevice.initialize_device_coords_cache(self._soc_descriptor)
 
         # TODO: Until UMD implements timeout exception, we measure time here
         self.__write_timeout_lock = threading.Lock()
         self.__write_timeout_events: list[TimeoutDeviceRegisterError] = []
+
+        # On T3K we observed slower communication over default active ETH, so we try to switch to another active ETH if available.
+        if (
+            device.is_remote()
+            and cluster_descriptor is not None
+            and cluster_descriptor.get_board_type(device_id) == tt_umd.BoardType.N300
+        ):
+            if len(active_eth_coords_on_mmio_chip) > 1:
+                self._active_eth_coords_on_mmio_chip = (
+                    active_eth_coords_on_mmio_chip[1:] + active_eth_coords_on_mmio_chip[:1]
+                )
+            self.__configure_working_active_eth()
+
+    @staticmethod
+    def initialize_device_coords_cache(soc_descriptor: tt_umd.SocDescriptor) -> list[list[tt_umd.CoreCoord | None]]:
+        all_cores = soc_descriptor.get_all_cores(
+            coord_system=tt_umd.CoordSystem.NOC0
+        ) + soc_descriptor.get_all_harvested_cores(coord_system=tt_umd.CoordSystem.NOC0)
+        max_x = max(core.x for core in all_cores) + 1
+        max_y = max(core.y for core in all_cores) + 1
+        result = []
+        for x in range(max_x):
+            row: list[tt_umd.CoreCoord | None] = []
+            for y in range(max_y):
+                try:
+                    coords = soc_descriptor.translate_chip_coord_to_translated_coord(
+                        soc_descriptor.get_coord_at(tt_umd.tt_xy_pair(x, y), tt_umd.CoordSystem.NOC0)
+                    )
+                    row.append(coords)
+                except Exception:
+                    row.append(None)
+            result.append(row)
+        return result
 
     @property
     def device_id(self) -> int:
@@ -97,9 +132,7 @@ class UmdDevice:
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
     def __convert_noc0_to_device_coords(self, noc0_x: int, noc0_y: int):
-        return self._soc_descriptor.translate_chip_coord_to_translated_coord(
-            self._soc_descriptor.get_coord_at(tt_umd.tt_xy_pair(noc0_x, noc0_y), tt_umd.CoordSystem.NOC0)
-        )
+        return self.__device_coords[noc0_x][noc0_y]
 
     READ_TIMEOUT = float(os.environ.get("TT_EXALENS_READ_TIMEOUT_MS", 2)) / 1_000  # seconds
     WRITE_TIMEOUT = float(os.environ.get("TT_EXALENS_WRITE_TIMEOUT_MS", 2)) / 1_000  # seconds
@@ -202,6 +235,7 @@ class UmdDevice:
         self, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool, dma_threshold: int
     ) -> bytes:
         coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        assert coord is not None, f"Invalid NoC0 coordinates: ({noc0_x}, {noc0_y})"
         try:
             return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
@@ -260,6 +294,7 @@ class UmdDevice:
         self, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
     ):
         coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        assert coord is not None, f"Invalid NoC0 coordinates: ({noc0_x}, {noc0_y})"
         try:
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:

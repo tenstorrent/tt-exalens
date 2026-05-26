@@ -11,6 +11,7 @@ from ttexalens.memory_access import MemoryAccess, RestrictedMemoryAccessError
 
 if TYPE_CHECKING:
     from ttexalens.hardware.risc_debug import RiscDebug
+    from ttexalens.elf.dwarf import ElfDwarf
 
 
 class FrameDescription:
@@ -103,29 +104,28 @@ class FrameInspection:
 
 
 class FrameInfoProvider:
-    def __init__(self, dwarf_info):
-        self.dwarf_info = dwarf_info
+    def __init__(self, dwarf: ElfDwarf):
+        self.dwarf = dwarf
         self.fdes = []
 
-        # Check if we have dwarf_frame CFI section
-        if dwarf_info.has_CFI():
-            for entry in dwarf_info.CFI_entries():
-                if not isinstance(entry, FDE):
-                    continue
-                start_address = entry.header["initial_location"]
-                end_address = start_address + entry.header["address_range"]
-                self.fdes.append((start_address, end_address, entry))
+        for entry in dwarf.cfi_entries:
+            if not isinstance(entry, FDE):
+                continue
+            start_address = entry.header["initial_location"]
+            end_address = start_address + entry.header["address_range"]
+            self.fdes.append((start_address, end_address, entry))
 
     def get_frame_description(self, pc, risc_debug) -> FrameDescription | None:
         for start_address, end_address, fde in self.fdes:
             if start_address <= pc < end_address:
-                return FrameDescription(pc, fde, risc_debug)
+                with self.dwarf.parsed_elf._lock:
+                    return FrameDescription(pc, fde, risc_debug)
         return None
 
 
 class FrameInfoProviderWithOffset(FrameInfoProvider):
     def __init__(self, frame_info: FrameInfoProvider, loaded_offset: int):
-        self.dwarf_info = frame_info.dwarf_info
+        self.dwarf = frame_info.dwarf
         self.fdes = frame_info.fdes
         self._frame_info = frame_info
         self.loaded_offset = loaded_offset
