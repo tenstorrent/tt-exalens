@@ -9,6 +9,12 @@ constexpr uint32_t c_uint32_t = 0x11223344;
 constexpr uint64_t c_uint64_t = 0x5566778899AABBCC;
 constexpr float c_float = 0.5f;
 constexpr double c_double = 2.718281828459;
+constexpr bool c_bool_true = true;
+constexpr bool c_bool_false = false;
+constexpr int8_t c_int8_t = -100;
+constexpr int16_t c_int16_t = -12345;
+constexpr int32_t c_int32_t = -1234567;
+constexpr int64_t c_int64_t = -1234567890123456789;
 
 enum class EnumClass : uint32_t { VALUE_A = 0, VALUE_B = 1, VALUE_C = 2, VALUE_D = 3 };
 

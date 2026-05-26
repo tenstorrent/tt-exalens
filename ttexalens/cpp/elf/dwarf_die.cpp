@@ -5,6 +5,8 @@
 
 #include <dwarf.h>  // DW_AT_* / DW_RLE_* / DW_FORM_* constants
 
+#include <bit>
+#include <cstring>
 #include <utility>
 
 namespace ttexalens::native_elf {
@@ -180,6 +182,178 @@ const NativeDwarfAttribute* NativeDwarfDie::get_attribute(Dwarf_Half attribute_t
 }
 
 bool NativeDwarfDie::has_attribute(Dwarf_Half attribute_tag) const { return get_attribute(attribute_tag) != nullptr; }
+
+namespace {
+
+// IEEE-754 reinterpret helpers. The raw constant value can arrive as either
+// a packed integer (DW_FORM_data4 / data8) or a block of little-endian bytes
+// (DW_FORM_block*). Both encode the same bit pattern; we just need to fish
+// out the right width.
+float bits_to_float(uint64_t bits) { return std::bit_cast<float>(static_cast<uint32_t>(bits)); }
+double bits_to_double(uint64_t bits) { return std::bit_cast<double>(bits); }
+float bytes_to_float(const std::vector<uint8_t>& bytes) {
+    uint32_t bits = 0;
+    if (bytes.size() >= sizeof(bits)) {
+        std::memcpy(&bits, bytes.data(), sizeof(bits));
+    }
+    return std::bit_cast<float>(bits);
+}
+double bytes_to_double(const std::vector<uint8_t>& bytes) {
+    uint64_t bits = 0;
+    if (bytes.size() >= sizeof(bits)) {
+        std::memcpy(&bits, bytes.data(), sizeof(bits));
+    }
+    return std::bit_cast<double>(bits);
+}
+
+NativeDwarfDie::ConstantValue passthrough_constant(const NativeDwarfAttribute::Value& raw) {
+    if (const auto* b = std::get_if<bool>(&raw)) return *b;
+    if (const auto* s = std::get_if<int64_t>(&raw)) return *s;
+    if (const auto* u = std::get_if<uint64_t>(&raw)) return *u;
+    return std::monostate{};
+}
+
+NativeDwarfDie::ConstantValue retype_constant(const NativeDwarfAttribute::Value& raw, std::string_view type_name) {
+    if (type_name == "bool") {
+        if (const auto* u = std::get_if<uint64_t>(&raw)) return *u != 0;
+        if (const auto* s = std::get_if<int64_t>(&raw)) return *s != 0;
+        if (const auto* b = std::get_if<bool>(&raw)) return *b;
+        if (const auto* bytes = std::get_if<std::vector<uint8_t>>(&raw)) return !bytes->empty() && (*bytes)[0] != 0;
+        return std::monostate{};
+    }
+    if (type_name == "float") {
+        if (const auto* u = std::get_if<uint64_t>(&raw)) return bits_to_float(*u);
+        if (const auto* bytes = std::get_if<std::vector<uint8_t>>(&raw)) return bytes_to_float(*bytes);
+        return std::monostate{};
+    }
+    if (type_name == "double") {
+        if (const auto* u = std::get_if<uint64_t>(&raw)) return bits_to_double(*u);
+        if (const auto* bytes = std::get_if<std::vector<uint8_t>>(&raw)) return bytes_to_double(*bytes);
+        return std::monostate{};
+    }
+    return passthrough_constant(raw);
+}
+
+}  // namespace
+
+NativeDwarfDie::ConstantValue NativeDwarfDie::get_constant_value() const {
+    const NativeDwarfAttribute* attr = get_attribute(DW_AT_const_value);
+    if (attr == nullptr) {
+        attr = get_attribute(DW_AT_const_expr);
+    }
+    if (attr == nullptr) {
+        if (auto origin = get_die_from_attribute(DW_AT_abstract_origin)) {
+            return origin->get_constant_value();
+        }
+        return std::monostate{};
+    }
+
+    if (auto type_die = get_resolved_type(); type_die && type_die->get_tag() == DW_TAG_base_type) {
+        return retype_constant(attr->get_value(), type_die->get_name());
+    }
+    return passthrough_constant(attr->get_value());
+}
+
+namespace {
+
+bool is_type_tag(Dwarf_Half tag) {
+    switch (tag) {
+        case DW_TAG_typedef:
+        case DW_TAG_namespace:
+        case DW_TAG_array_type:
+        case DW_TAG_base_type:
+        case DW_TAG_class_type:
+        case DW_TAG_const_type:
+        case DW_TAG_enumeration_type:
+        case DW_TAG_pointer_type:
+        case DW_TAG_ptr_to_member_type:
+        case DW_TAG_reference_type:
+        case DW_TAG_rvalue_reference_type:
+        case DW_TAG_string_type:
+        case DW_TAG_structure_type:
+        case DW_TAG_subrange_type:
+        case DW_TAG_subroutine_type:
+        case DW_TAG_thrown_type:
+        case DW_TAG_union_type:
+        case DW_TAG_unspecified_type:
+        case DW_TAG_volatile_type:
+        case DW_TAG_packed_type:
+        case DW_TAG_restrict_type:
+        case DW_TAG_atomic_type:
+        case DW_TAG_immutable_type:
+        case DW_TAG_shared_type:
+        case DW_TAG_interface_type:
+        case DW_TAG_set_type:
+        case DW_TAG_coarray_type:
+        case DW_TAG_dynamic_type:
+            return true;
+        default:
+            return false;
+    }
+}
+
+bool is_type_wrapper(Dwarf_Half tag) {
+    return tag == DW_TAG_typedef || tag == DW_TAG_const_type || tag == DW_TAG_volatile_type;
+}
+
+}  // namespace
+
+NativeDwarfDiePtr NativeDwarfDie::get_resolved_type() const {
+    auto current = std::const_pointer_cast<NativeDwarfDie>(shared_from_this());
+    while (current) {
+        const Dwarf_Half tag = current->get_tag();
+
+        if (is_type_wrapper(tag)) {
+            auto next = current->get_die_from_attribute(DW_AT_type);
+            if (!next) {
+                break;
+            }
+            if (is_type_wrapper(next->get_tag())) {
+                current = std::move(next);
+                continue;
+            }
+            return next;
+        }
+
+        // Check DW_AT_type for non-type DIEs
+        if (!is_type_tag(tag) && current->has_attribute(DW_AT_type)) {
+            auto next = current->get_die_from_attribute(DW_AT_type);
+            if (!next) {
+                break;
+            }
+            if (is_type_wrapper(next->get_tag())) {
+                current = std::move(next);
+                continue;
+            }
+            return next;
+        }
+
+        // Check DW_AT_specification
+        if (auto spec = current->get_die_from_attribute(DW_AT_specification)) {
+            current = std::move(spec);
+            continue;
+        }
+
+        // Check DW_AT_abstract_origin
+        if (auto origin = current->get_die_from_attribute(DW_AT_abstract_origin)) {
+            current = std::move(origin);
+            continue;
+        }
+
+        // Check DW_AT_type for enumeration_type
+        if (tag == DW_TAG_enumeration_type) {
+            if (auto next = current->get_die_from_attribute(DW_AT_type)) {
+                current = std::move(next);
+                continue;
+            }
+        }
+
+        break;
+    }
+    // Only meaningful stuck case is a wrapper that ran out of DW_AT_type;
+    // hand it back. Anything else means we couldn't reach a type at all.
+    return is_type_wrapper(current->get_tag()) ? current : nullptr;
+}
 
 bool NativeDwarfDie::is_declaration() const {
     const auto* attr = get_attribute(DW_AT_declaration);

@@ -256,6 +256,12 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(0x5566778899AABBCC, self.parsed_elf.get_constant("c_uint64_t"))
         self.assertEqual(0.5, self.parsed_elf.get_constant("c_float"))
         self.assertEqual(2.718281828459, self.parsed_elf.get_constant("c_double"))
+        self.assertIs(True, self.parsed_elf.get_constant("c_bool_true"))
+        self.assertIs(False, self.parsed_elf.get_constant("c_bool_false"))
+        self.assertEqual(-100, self.parsed_elf.get_constant("c_int8_t"))
+        self.assertEqual(-12345, self.parsed_elf.get_constant("c_int16_t"))
+        self.assertEqual(-1234567, self.parsed_elf.get_constant("c_int32_t"))
+        self.assertEqual(-1234567890123456789, self.parsed_elf.get_constant("c_int64_t"))
 
     def test_elf_variable_array_iteration(self):
         variable_die = self.parsed_elf.find_die_by_name("g_global_struct")

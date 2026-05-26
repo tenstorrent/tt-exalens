@@ -193,7 +193,7 @@ NB_MODULE(_native_ttexalens, m) {
                     } else if constexpr (std::is_same_v<T, std::vector<uint8_t>>) {
                         return nb::bytes(reinterpret_cast<const char*>(v.data()), v.size());
                     } else {
-                        return nb::cast(v);
+                        return nb::cast(v);  // bool, ints, double, str
                     }
                 },
                 a.get_value());
@@ -269,6 +269,20 @@ NB_MODULE(_native_ttexalens, m) {
         .def_prop_ro("attributes", &NativeDwarfDie::get_attributes, nb::rv_policy::reference_internal)
         .def("get_attribute", &NativeDwarfDie::get_attribute, nb::arg("attribute_tag"),
              nb::rv_policy::reference_internal)
+        .def("get_constant_value",
+             [](const NativeDwarfDie& d) -> nb::object {
+                 return std::visit(
+                     [](const auto& v) -> nb::object {
+                         using T = std::decay_t<decltype(v)>;
+                         if constexpr (std::is_same_v<T, std::monostate>) {
+                             return nb::none();
+                         } else {
+                             return nb::cast(v);
+                         }
+                     },
+                     d.get_constant_value());
+             })
+        .def("get_resolved_type", &NativeDwarfDie::get_resolved_type, nb::rv_policy::reference_internal)
         .def("find_child_by_name", &NativeDwarfDie::find_child_by_name, nb::arg("name"),
              nb::rv_policy::reference_internal)
         .def("get_die_from_attribute", &NativeDwarfDie::get_die_from_attribute, nb::arg("attribute_tag"),

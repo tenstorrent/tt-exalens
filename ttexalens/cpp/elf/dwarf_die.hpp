@@ -48,6 +48,25 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // Returns the cached attribute with the given DW_AT_* tag, or nullptr.
     const NativeDwarfAttribute* get_attribute(Dwarf_Half attribute_tag) const;
 
+    // Compile-time constant value for this DIE (e.g. constexpr globals,
+    // enumerators). Walks DW_AT_const_value, then DW_AT_const_expr, and
+    // finally follows DW_AT_abstract_origin one hop if neither is present.
+    // Returns std::monostate when no constant value is found.
+    //
+    // When the DIE's resolved type is a base type named "bool" / "float" /
+    // "double" the raw DWARF encoding (often packed integer or bytes) is
+    // reinterpreted so callers get a usable bool / float / double instead
+    // of the underlying bit pattern.
+    using ConstantValue = std::variant<std::monostate, bool, int64_t, uint64_t, float, double>;
+    ConstantValue get_constant_value() const;
+
+    // Peels typedef / const_type / volatile_type wrappers off a type, or
+    // follows DW_AT_type from a non-type DIE (variable, member, …) to its
+    // type and then peels. Also follows DW_AT_specification /
+    // DW_AT_abstract_origin when present. Returns the original DIE if
+    // nothing more specific is reachable.
+    NativeDwarfDiePtr get_resolved_type() const;
+
     // Walks the direct children of this DIE and returns the first whose
     // DW_AT_name matches `name`. nullptr on miss.
     NativeDwarfDiePtr find_child_by_name(std::string_view name) const;
