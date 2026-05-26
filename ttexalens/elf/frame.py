@@ -116,7 +116,7 @@ class FrameInfoProvider:
             end_address = start_address + entry.header["address_range"]
             self.fdes.append((start_address, end_address, entry))
 
-    def get_frame_description(self, pc, risc_debug) -> FrameDescription | None:
+    def get_frame_description(self, pc: int, risc_debug: RiscDebug) -> FrameDescription | None:
         for start_address, end_address, fde in self.fdes:
             if start_address <= pc < end_address:
                 with self.dwarf.parsed_elf._lock:
