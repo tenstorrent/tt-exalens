@@ -350,7 +350,7 @@ def _search_chunk_range(
 
 def _iter_memory_blocks(
     start_addr: int,
-    end_addr: int | None,
+    end_addr: int | str | None,
     coordinate: OnChipCoordinate,
     risc_name: str | None,
     neo_id: int | None,
@@ -358,14 +358,18 @@ def _iter_memory_blocks(
     use_4B_mode: bool,
     safe_mode: bool | None,
 ):
-    """Yield (range_start, range_end, block_name, read_fn) for each memory block from start_addr."""
+    """Yield (range_start, range_end, block_name, read_fn) for each memory block from start_addr.
+
+    end_addr=None stops after the first block; end_addr="all" walks all contiguous blocks.
+    """
+    effective_end: int | None = None if end_addr == "all" else end_addr
     current = start_addr
     if risc_name is not None:
         risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
         memory_map = risc_debug.risc_info.memory_map
         if memory_map.find_by_private_address(start_addr) is None:
             raise TTException(f"start_addr {hex(start_addr)} is not within any known RISC-V private memory block.")
-        while end_addr is None or current < end_addr:
+        while effective_end is None or current < effective_end:
             block_info = memory_map.find_by_private_address(current)
             if block_info is None:
                 break
@@ -373,7 +377,7 @@ def _iter_memory_blocks(
                 raise TTException(f"Block {block_info.name} has no private address — memory map is inconsistent.")
             block_start_private = block_info.memory_block.address.private_address
             block_end = block_start_private + block_info.memory_block.size
-            range_end = block_end if end_addr is None else min(block_end, end_addr)
+            range_end = block_end if effective_end is None else min(block_end, effective_end)
             if block_info.memory_block.address.noc_address is not None:
                 noc_offset = block_info.memory_block.address.noc_address - block_start_private
                 read_fn = lambda addr, size, _off=noc_offset: coordinate.noc_read(
@@ -382,21 +386,25 @@ def _iter_memory_blocks(
             else:
                 read_fn = lambda addr, size: risc_debug.read_memory_bytes(addr, size, safe_mode=safe_mode)
             yield current, range_end, block_info.name, read_fn
+            if end_addr is None:
+                return
             current = block_end
     else:
         memory_map = coordinate.noc_block.noc_memory_map
         if memory_map.find_by_noc_address(start_addr) is None:
             raise TTException(f"start_addr {hex(start_addr)} is not within any known NOC memory block.")
-        while end_addr is None or current < end_addr:
+        while effective_end is None or current < effective_end:
             block_info = memory_map.find_by_noc_address(current)
             if block_info is None:
                 break
             if block_info.memory_block.address.noc_address is None:
                 raise TTException(f"Block {block_info.name} has no NOC address — memory map is inconsistent.")
             block_end = block_info.memory_block.address.noc_address + block_info.memory_block.size
-            range_end = block_end if end_addr is None else min(block_end, end_addr)
+            range_end = block_end if effective_end is None else min(block_end, effective_end)
             read_fn = lambda addr, size: coordinate.noc_read(addr, size, noc_id, use_4B_mode, safe_mode=safe_mode)
             yield current, range_end, block_info.name, read_fn
+            if end_addr is None:
+                return
             current = block_end
 
 
@@ -407,7 +415,7 @@ def search_memory(
     risc_name: str | None = None,
     neo_id: int | None = None,
     start_addr: int = 0,
-    end_addr: int | None = None,
+    end_addr: int | str | None = None,
     max_results: int = 10,
     device_id: int = 0,
     context: Context | None = None,
@@ -429,7 +437,10 @@ def search_memory(
         risc_name (str | None): RISC-V core name (e.g. "brisc", "trisc0", etc.) to search private memory, or None to search NOC memory. Default: None.
         neo_id (int | None): NEO ID of the RISC-V core. Only used when risc_name is provided. Default: None.
         start_addr (int): First address to search. Default: 0.
-        end_addr (int | None): Exclusive end address, or None to search all contiguous blocks from start_addr. Default: None.
+        end_addr (int | str | None):
+            None (default) — search only the block containing start_addr.
+            "all"           — search all contiguous blocks from start_addr.
+            int ≥ 0        — exclusive end address; may span multiple blocks if the range crosses a block boundary.
         max_results (int): Stop after this many matches. Must be at least 1. Default: 10.
         device_id (int): ID number of device to search. Default: 0.
         context (Context | None): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None.

@@ -10,8 +10,8 @@ Arguments:
 
 Options:
   --start=<start>    Start address for the search. Defaults to 0, or to the start of RISC private memory if -r is specified.
-  --end=<end>        End address (exclusive) or 'all'. If omitted, searches all contiguous blocks from --start.
-                     'all' searches all blocks from --start onwards.
+  --end=<end>        End address (exclusive) or 'all'. If omitted, searches only the block containing --start.
+                     'all' searches all contiguous blocks from --start onwards.
   --width=<width>    Bytes per pattern element (any positive integer) or auto. [default: auto]
                      auto = minimum power-of-2 byte count needed to represent the largest element,
                      applied uniformly to all elements.
@@ -28,9 +28,9 @@ Description:
   applied uniformly to all elements.
 
 Examples:
-  search 0xDEADBEEF                              # Search for pattern in all blocks from address 0
-  search 0xDEADBEEF --end all                    # Search all accessible blocks
-  search 0xDEADBEEF --start 0x10000 --end all    # Search all blocks from 0x10000 onwards
+  search 0xDEADBEEF                              # Search for pattern in the block containing address 0
+  search 0xDEADBEEF --end all                    # Search all contiguous blocks from address 0
+  search 0xDEADBEEF --start 0x10000 --end all    # Search all contiguous blocks from 0x10000 onwards
   search 0x1234 --start 0 --end 0xFFFF           # Search from address 0 to 0xFFFF
   search 0x1234 0x5678 --width 2                 # Search for two 2-byte LE values (0x34 0x12 0x78 0x56)
   search 0xDEADBEEF --read-size 64               # Search using 64-byte reads
@@ -116,8 +116,10 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     start_addr = int(args["--start"], 0) if args["--start"] else 0
     end_arg: str | None = args["--end"]
 
-    end_addr: int | None = None
-    if end_arg and end_arg != "all":
+    end_addr: int | str | None = None  # None → single block (default)
+    if end_arg == "all":
+        end_addr = "all"
+    elif end_arg:
         end_addr = int(end_arg, 0)
         if end_addr <= start_addr:
             util.ERROR(f"End address 0x{end_addr:08x} must be greater than start address 0x{start_addr:08x}.")
