@@ -3,6 +3,7 @@
 
 #include <dwarf.h>  // DW_TAG_* / DW_AT_* constants
 #include <libdwarf.h>
+#include <nanobind/make_iterator.h>
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/function.h>
 #include <nanobind/stl/optional.h>
@@ -37,6 +38,33 @@ using ttexalens::native_elf::NativeElfSymbol;
 using ttexalens::native_elf::NativeElfSymbolBinding;
 using ttexalens::native_elf::NativeElfSymbolType;
 using ttexalens::native_elf::NativeFrameDescription;
+
+namespace {
+
+// Forward iterator over a DIE's direct children, walking the
+// first_child/next_sibling linked-list. Used by NativeDwarfDie.iter_children's
+// nb::make_iterator binding to produce a Python iterator for
+// `for child in die.iter_children():`.
+class DieChildIterator {
+   public:
+    DieChildIterator() = default;
+    explicit DieChildIterator(ttexalens::native_elf::NativeDwarfDiePtr c) : current(std::move(c)) {}
+
+    const ttexalens::native_elf::NativeDwarfDiePtr& operator*() const { return current; }
+    DieChildIterator& operator++() {
+        if (current) {
+            current = current->get_next_sibling();
+        }
+        return *this;
+    }
+    bool operator==(const DieChildIterator& other) const { return current == other.current; }
+    bool operator!=(const DieChildIterator& other) const { return !(*this == other); }
+
+   private:
+    ttexalens::native_elf::NativeDwarfDiePtr current;
+};
+
+}  // namespace
 
 NB_MODULE(_native_ttexalens, m) {
     m.doc() = "Native code backend for ttexalens. Private API.";
@@ -313,7 +341,15 @@ NB_MODULE(_native_ttexalens, m) {
         .def("get_address_ranges", &NativeDwarfDie::get_address_ranges)
         .def("get_first_child", &NativeDwarfDie::get_first_child, nb::rv_policy::reference_internal)
         .def("get_next_sibling", &NativeDwarfDie::get_next_sibling, nb::rv_policy::reference_internal)
-        .def("get_parent", &NativeDwarfDie::get_parent, nb::rv_policy::reference_internal);
+        .def("get_parent", &NativeDwarfDie::get_parent, nb::rv_policy::reference_internal)
+        .def(
+            "iter_children",
+            [](NativeDwarfDie& self) {
+                return nb::make_iterator<nb::rv_policy::reference_internal>(
+                    nb::type<NativeDwarfDie>(), "DieChildIterator", DieChildIterator(self.get_first_child()),
+                    DieChildIterator());
+            },
+            nb::rv_policy::reference_internal);
 
     nb::class_<NativeDwarfInfo>(m, "NativeDwarfInfo")
         .def("find_file_line_by_address", &NativeDwarfInfo::find_file_line_by_address, nb::arg("address"))
