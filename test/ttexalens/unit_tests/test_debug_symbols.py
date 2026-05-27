@@ -11,7 +11,7 @@ from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.elf import ElfVariable, ParsedElfFile
-from ttexalens.hardware.risc_debug import RiscHaltError
+from ttexalens.exceptions import RiscHaltError
 from ttexalens.memory_access import MemoryAccess, RestrictedMemoryAccessError
 from ttexalens.umd_device import TimeoutDeviceRegisterError
 

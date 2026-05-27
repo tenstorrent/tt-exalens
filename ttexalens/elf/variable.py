@@ -523,7 +523,7 @@ class ElfVariable:
         Allow ElfVariable to be used as an index in sequences (lists, tuples, etc.)
         This enables usage like: a[elf_var] instead of a[elf_var.value()]
         """
-        from ttexalens.hardware.risc_debug import RiscHaltError
+        from ttexalens.exceptions import RiscHaltError
 
         try:
             value = self.read_value()

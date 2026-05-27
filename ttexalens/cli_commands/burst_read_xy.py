@@ -38,6 +38,7 @@ from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import read_words_from_device, read_word_from_device
 from ttexalens import util as util
+from ttexalens.exceptions import TTException
 from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
 
 command_metadata = CommandMetadata(
@@ -71,7 +72,7 @@ def _resolve_brxy_positionals(slots: list[str], device: Device) -> tuple[OnChipC
     match len(slots):
         # No positional arguments -> error
         case 0:
-            raise util.TTException("brxy: address omitted; give at least one positional argument (the address).")
+            raise TTException("brxy: address omitted; give at least one positional argument (the address).")
         # One positional argument -> addr only
         case 1:
             addr_str = slots[0]
@@ -80,34 +81,34 @@ def _resolve_brxy_positionals(slots: list[str], device: Device) -> tuple[OnChipC
             try:
                 noc_loc = OnChipCoordinate.create(slots[0], device=device)
                 addr_str = slots[1]
-            except util.TTException:
+            except TTException:
                 addr_str = slots[0]
                 word_count_str = slots[1]
         # Three positional arguments -> noc-loc, addr, word-count
         case 3:
             try:
                 noc_loc, addr_str, word_count_str = OnChipCoordinate.create(slots[0], device=device), slots[1], slots[2]
-            except util.TTException:
-                raise util.TTException(
+            except TTException:
+                raise TTException(
                     f"brxy: first argument must be a valid noc location or dram channel; got {slots[0]!r}."
                 )
         case _:
-            raise util.TTException(
+            raise TTException(
                 f"brxy: at most three positional arguments (noc-loc, address, word-count); got {len(slots)}: {' '.join(slots)}."
             )
     try:
         addr = int(addr_str, 0)
         if addr < 0:
-            raise util.TTException(f"brxy: address must be non-negative; got {addr_str!r}.")
+            raise TTException(f"brxy: address must be non-negative; got {addr_str!r}.")
     except ValueError:
-        raise util.TTException(f"brxy: address must be an integer; got {addr_str!r}.")
+        raise TTException(f"brxy: address must be an integer; got {addr_str!r}.")
     try:
         word_count = int(word_count_str, 0) if word_count_str else 1
         if word_count < 1:
             util.WARN(f"brxy: word count must be a positive integer, defaulting to 1.")
             word_count = 1
     except ValueError:
-        raise util.TTException(f"brxy: word count must be an integer; got {word_count_str!r}.")
+        raise TTException(f"brxy: word count must be an integer; got {word_count_str!r}.")
     return noc_loc, addr, word_count
 
 
@@ -122,7 +123,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     sample = float(args["--sample"]) if args["--sample"] else 0
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
-        raise util.TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
+        raise TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
 
     def do_burst_read(device: Device, location: OnChipCoordinate):
         addr = addr_arg

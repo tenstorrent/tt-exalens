@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from ttexalens import util
+from ttexalens.exceptions import TTException
 from ttexalens.elf.parsed import ParsedElfFile
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebug
@@ -199,7 +200,7 @@ class ElfLoader:
                             )
         except Exception as e:
             util.ERROR(e)
-            raise util.TTException(f"Error loading elf file {elf_path}")
+            raise TTException(f"Error loading elf file {elf_path}")
 
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address

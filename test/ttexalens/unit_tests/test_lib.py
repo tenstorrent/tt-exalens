@@ -13,6 +13,7 @@ from parameterized import parameterized, parameterized_class
 from test.ttexalens.unit_tests.test_base import get_core_location, get_parsed_elf_file, init_cached_test_context
 import ttexalens as lib
 from ttexalens import util
+from ttexalens.exceptions import TTException
 from ttexalens.elf.parsed import ParsedElfFile
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 
@@ -245,9 +246,9 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_inputs_read(self, location, address, device_id, word_count):
         """Test invalid inputs for read functions."""
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.read_words_from_device(location, address, device_id, word_count)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             # word_count can be used as num_bytes
             lib.read_from_device(location, address, device_id, word_count)
 
@@ -262,7 +263,7 @@ class TestReadWrite(unittest.TestCase):
         ]
     )
     def test_invalid_write_word(self, location, address, data, device_id):
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_words_to_device(location, address, data, device_id)
 
     @parameterized.expand(
@@ -278,7 +279,7 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_write(self, location, address, data, device_id):
         """Test invalid inputs for write function."""
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_to_device(location, address, data, device_id)
 
     def test_unaligned_read(self):
@@ -459,9 +460,9 @@ class TestReadWrite(unittest.TestCase):
         """Test invalid inputs for tensix register read and write functions."""
 
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
-            with self.assertRaises((util.TTException, ValueError)):
+            with self.assertRaises((TTException, ValueError)):
                 lib.read_register(location, register, device_id)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_register(location, register, value, device_id)
 
     @parameterized.expand(
@@ -615,9 +616,9 @@ class TestReadWrite(unittest.TestCase):
     def test_invalid_read_private_memory(self, location: str, address: int, value: int, risc_name="brisc", device_id=0):
         """Test invalid inputs for reading private memory."""
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
-            with self.assertRaises((util.TTException, ValueError)):
+            with self.assertRaises((TTException, ValueError)):
                 lib.read_riscv_memory(location, address, risc_name, None, device_id)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_riscv_memory(location, address, value, risc_name, None, device_id)
 
     @parameterized.expand(
@@ -1198,7 +1199,7 @@ class TestRunElf(unittest.TestCase):
     def test_run_elf_invalid(self, elf_file, location, risc_name, device_id):
         if elf_file is None:
             elf_file = self.get_elf_path("run_elf_test.debug", "brisc")
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.run_elf(elf_file, location, risc_name, None, device_id, context=self.context)
 
     @parameterized.expand(
@@ -1727,5 +1728,5 @@ class TestCallStack(unittest.TestCase):
         """Test invalid inputs for callstack function."""
 
         # Check for invalid location
-        with self.assertRaises((util.TTException, ValueError, FileNotFoundError)):
+        with self.assertRaises((TTException, ValueError, FileNotFoundError)):
             lib.callstack(location, elf_paths, offsets, risc_name, None, max_depth, True, device_id, self.context)

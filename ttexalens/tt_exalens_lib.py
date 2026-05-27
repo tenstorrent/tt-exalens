@@ -16,7 +16,8 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.elf import read_elf, ParsedElfFile
 from ttexalens.hardware.risc_debug import CallstackEntry
-from ttexalens.util import TTException, Verbosity, TRACE
+from ttexalens.exceptions import TTException
+from ttexalens.util import Verbosity, TRACE
 from ttexalens.memory_access import MemoryAccess
 
 # Parameter name to formatter function mapping for trace_api decorator

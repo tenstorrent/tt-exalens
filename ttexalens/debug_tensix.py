@@ -2,13 +2,11 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from enum import Enum
-import struct
 
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.context import Context
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
-from ttexalens.util import WARN, TTException
-from ttexalens.device import Device
+from ttexalens.exceptions import TTException
+from ttexalens.util import WARN
 from ttexalens.pack_unpack_regfile import (
     unpack_data,
     unpack_data_direct_access,

@@ -2,15 +2,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
-import shutil
-import socket
 import subprocess
 import tempfile
 import textwrap
 import time
 import unittest
-from contextlib import contextmanager
-from typing import Iterator
 
 from parameterized import parameterized
 
@@ -27,11 +23,7 @@ from ttexalens.gdb.gdb_client import get_gdb_client_path
 from ttexalens.gdb.gdb_server import GdbServer
 from ttexalens.gdb.gdb_communication import (
     ServerSocket,
-    GDB_ASCII_DOLLAR,
-    GDB_ASCII_HASH,
 )
-from ttexalens.gdb.gdb_data import GdbProcess
-from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.tt_exalens_lib import run_elf
 
 
