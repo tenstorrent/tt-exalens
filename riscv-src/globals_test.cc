@@ -5,6 +5,39 @@
 // An example RISC-V program that is used to debug memory access to global variables.
 #include <cstdint>
 
+// Testing global variables that don't have DW_AT_location attributes, so
+// their addresses have to be resolved via .symtab name or linkage name
+// matching. C++ side declares them `extern`, so the compiler emits DIEs
+// without DW_AT_location. The actual definitions are emitted via top-level
+// asm() below without the compiler seeing their addresses.
+extern "C" volatile uint32_t g_symtab_var_by_name;
+namespace ttexalens_symtab_test {
+extern volatile uint32_t g_symtab_var_by_linkage;
+}
+
+// Itanium-ABI mangling of `ttexalens_symtab_test::g_symtab_var_by_linkage`
+// is _ZN<21>ttexalens_symtab_test<23>g_symtab_var_by_linkageE.
+asm(R"(
+.pushsection .data,"aw",@progbits
+.global g_symtab_var_by_name
+.type   g_symtab_var_by_name, @object
+.size   g_symtab_var_by_name, 4
+g_symtab_var_by_name: .word 0x11223344
+
+.global _ZN21ttexalens_symtab_test23g_symtab_var_by_linkageE
+.type   _ZN21ttexalens_symtab_test23g_symtab_var_by_linkageE, @object
+.size   _ZN21ttexalens_symtab_test23g_symtab_var_by_linkageE, 4
+_ZN21ttexalens_symtab_test23g_symtab_var_by_linkageE: .word 0x55667788
+.popsection
+)");
+
+// These anchors for linking are never actually read by the test.
+[[gnu::used]] static volatile uintptr_t g_symtab_test_anchors[] = {
+    reinterpret_cast<uintptr_t>(&g_symtab_var_by_name),
+    reinterpret_cast<uintptr_t>(&ttexalens_symtab_test::g_symtab_var_by_linkage),
+};
+
+// Tests for constants.
 constexpr uint32_t c_uint32_t = 0x11223344;
 constexpr uint64_t c_uint64_t = 0x5566778899AABBCC;
 constexpr float c_float = 0.5f;

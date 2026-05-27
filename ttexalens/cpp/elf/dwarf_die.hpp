@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -15,6 +16,57 @@
 #include "dwarf_string.hpp"
 
 namespace ttexalens::native_elf {
+
+// DIE tags - DW_TAG_*
+enum class NativeDwarfDieTag : Dwarf_Half {
+    array_type = DW_TAG_array_type,
+    atomic_type = DW_TAG_atomic_type,
+    base_type = DW_TAG_base_type,
+    call_site = DW_TAG_call_site,
+    class_type = DW_TAG_class_type,
+    coarray_type = DW_TAG_coarray_type,
+    compile_unit = DW_TAG_compile_unit,
+    const_type = DW_TAG_const_type,
+    dynamic_type = DW_TAG_dynamic_type,
+    enumeration_type = DW_TAG_enumeration_type,
+    enumerator = DW_TAG_enumerator,
+    formal_parameter = DW_TAG_formal_parameter,
+    GNU_call_site = DW_TAG_GNU_call_site,
+    GNU_formal_parameter_pack = DW_TAG_GNU_formal_parameter_pack,
+    GNU_template_parameter_pack = DW_TAG_GNU_template_parameter_pack,
+    immutable_type = DW_TAG_immutable_type,
+    imported_declaration = DW_TAG_imported_declaration,
+    imported_module = DW_TAG_imported_module,
+    inheritance = DW_TAG_inheritance,
+    inlined_subroutine = DW_TAG_inlined_subroutine,
+    interface_type = DW_TAG_interface_type,
+    label = DW_TAG_label,
+    lexical_block = DW_TAG_lexical_block,
+    member = DW_TAG_member,
+    namespace_ = DW_TAG_namespace,
+    packed_type = DW_TAG_packed_type,
+    pointer_type = DW_TAG_pointer_type,
+    ptr_to_member_type = DW_TAG_ptr_to_member_type,
+    reference_type = DW_TAG_reference_type,
+    restrict_type = DW_TAG_restrict_type,
+    rvalue_reference_type = DW_TAG_rvalue_reference_type,
+    set_type = DW_TAG_set_type,
+    shared_type = DW_TAG_shared_type,
+    string_type = DW_TAG_string_type,
+    structure_type = DW_TAG_structure_type,
+    subprogram = DW_TAG_subprogram,
+    subrange_type = DW_TAG_subrange_type,
+    subroutine_type = DW_TAG_subroutine_type,
+    template_type_parameter = DW_TAG_template_type_parameter,
+    template_value_parameter = DW_TAG_template_value_parameter,
+    thrown_type = DW_TAG_thrown_type,
+    typedef_ = DW_TAG_typedef,
+    union_type = DW_TAG_union_type,
+    unspecified_parameters = DW_TAG_unspecified_parameters,
+    unspecified_type = DW_TAG_unspecified_type,
+    variable = DW_TAG_variable,
+    volatile_type = DW_TAG_volatile_type,
+};
 
 class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
    public:
@@ -29,14 +81,25 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // empty view when the DIE has no name attribute.
     std::string_view get_name() const;
 
+    // Reads DW_AT_linkage_name off this DIE, if present. This is the
+    // (typically Itanium-ABI mangled) name the linker put in .symtab —
+    // distinct from get_name() for any C++ symbol that needs mangling.
+    // Returns an empty view when the attribute is absent.
+    std::string_view get_linkage_name() const;
+
+    // Fully-qualified path through enclosing scopes, joined with "::".
+    // Follows DW_AT_abstract_origin / DW_AT_specification for subprograms
+    // so a concrete subprogram instance returns the source-level name.
+    // Returns std::nullopt when the DIE has no resolvable name.
+    std::optional<std::string> get_path() const;
+
     // .debug_info offset of this DIE — stable id, used as the cache key.
     Dwarf_Off get_offset() const;
 
     // DWARF tag (DW_TAG_*). Always asks libdwarf — the call is just a
-    // field read. Compare against DW_TAG_* constants directly (e.g.
-    // die.get_tag() == DW_TAG_subprogram). The nanobind layer exposes it
-    // alongside the NativeDwarfDieTag namespace of named constants.
-    Dwarf_Half get_tag() const;
+    // field read. Compare against NativeDwarfDieTag enumerators directly
+    // (e.g. die.get_tag() == NativeDwarfDieTag::subprogram).
+    NativeDwarfDieTag get_tag() const;
 
     // Lazily walks every attribute on this DIE, decodes each into a
     // NativeDwarfAttribute, and caches the result. DIEs typically carry a
@@ -46,7 +109,18 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     const std::vector<NativeDwarfAttribute>& get_attributes() const;
 
     // Returns the cached attribute with the given DW_AT_* tag, or nullptr.
-    const NativeDwarfAttribute* get_attribute(Dwarf_Half attribute_tag) const;
+    const NativeDwarfAttribute* get_attribute(NativeDwarfAttributeTag attribute_tag) const;
+
+    // Convenience: looks up the attribute by tag and returns its value if the
+    // active variant alternative is T. nullptr when the attribute is absent
+    // or stored under a different form.
+    template <typename T>
+    const T* get_attribute_value(NativeDwarfAttributeTag attribute_tag) const {
+        if (const NativeDwarfAttribute* attr = get_attribute(attribute_tag)) {
+            return std::get_if<T>(&attr->get_value());
+        }
+        return nullptr;
+    }
 
     // Compile-time constant value for this DIE (e.g. constexpr globals,
     // enumerators). Walks DW_AT_const_value, then DW_AT_const_expr, and
@@ -77,6 +151,23 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // DIE and runs get_resolved_type on it. nullptr for any other tag.
     NativeDwarfDiePtr get_array_element_type() const;
 
+    // True iff this DIE is a base type with a signed integer encoding
+    // (DW_AT_encoding ∈ {DW_ATE_signed, DW_ATE_signed_char, DW_ATE_signed_fixed}).
+    bool is_signed_type() const;
+
+    // Size in bytes for this DIE's type. Returns std::nullopt when no size
+    // can be determined.
+    std::optional<uint64_t> get_size() const;
+
+    // TODO: member location should be extracted out!!!
+    // Address for variable / member DIEs. Walks DW_AT_data_member_location,
+    // then DW_AT_low_pc, then a DW_OP_addr-only DW_AT_location expression,
+    // then follows DW_AT_specification / DW_AT_abstract_origin once. Returns
+    // 0 for union members, falls back to DW_AT_const_value when present.
+    // (Skipped vs Python: full location expression evaluation, symbol table
+    // lookup, and the global find-DIE-that-specifies search.)
+    std::optional<uint64_t> get_address() const;
+
     // Walks the direct children of this DIE and returns the first whose
     // DW_AT_name matches `name`. nullptr on miss.
     NativeDwarfDiePtr find_child_by_name(std::string_view name) const;
@@ -84,10 +175,10 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // Resolves a DIE-valued attribute (e.g. DW_AT_abstract_origin,
     // DW_AT_specification) to the referenced DIE. nullptr when the attribute
     // is absent OR the reference can't be followed.
-    NativeDwarfDiePtr get_die_from_attribute(Dwarf_Half attribute_tag) const;
+    NativeDwarfDiePtr get_die_from_attribute(NativeDwarfAttributeTag attribute_tag) const;
 
     // True iff this DIE carries the given attribute.
-    bool has_attribute(Dwarf_Half attribute_tag) const;
+    bool has_attribute(NativeDwarfAttributeTag attribute_tag) const;
 
     // True iff DW_AT_declaration is present and set.
     bool is_declaration() const;
@@ -117,6 +208,10 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     static NativeDwarfDiePtr register_die(std::shared_ptr<NativeDwarfInfo::Impl> info, DwarfDieHandle handle);
     static NativeDwarfDiePtr get_or_create_die(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off offset);
     static NativeDwarfDiePtr find_parent(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off target_offset);
+    static const NativeElfSymbol* find_symbol(std::shared_ptr<NativeDwarfInfo::Impl> info, std::string_view name);
+
+    // Resolves this DIE to its .symtab entry. Returns nullptr on miss.
+    const NativeElfSymbol* find_symbol() const;
 
     friend class NativeDwarfInfo::Impl;
 

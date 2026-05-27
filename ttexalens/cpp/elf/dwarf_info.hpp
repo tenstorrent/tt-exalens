@@ -7,10 +7,10 @@
 #include <functional>
 #include <memory>
 #include <optional>
-#include <string>
 #include <string_view>
 
 #include "dwarf_string.hpp"
+#include "elf_file.hpp"  // for NativeElfFile::Impl (nested types can't be forward-declared)
 
 namespace ELFIO {
 class elfio;
@@ -38,7 +38,7 @@ class NativeDwarfInfo {
    public:
     class Impl;
 
-    NativeDwarfInfo(ELFIO::elfio& elf, uint64_t file_size);
+    NativeDwarfInfo(ELFIO::elfio& elf, uint64_t file_size, std::weak_ptr<NativeElfFile::Impl> elf_impl);
 
     ~NativeDwarfInfo();
     NativeDwarfInfo(const NativeDwarfInfo&) = delete;

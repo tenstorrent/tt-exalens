@@ -141,7 +141,8 @@ class ElfObjAccess {
 
 class NativeDwarfInfo::Impl : public std::enable_shared_from_this<NativeDwarfInfo::Impl> {
    public:
-    Impl(ELFIO::elfio& elf, uint64_t file_size) : obj_access(elf, file_size) {
+    Impl(ELFIO::elfio& elf, uint64_t file_size, std::weak_ptr<NativeElfFile::Impl> elf_impl)
+        : obj_access(elf, file_size), elf_impl(std::move(elf_impl)) {
         Dwarf_Error error = nullptr;
         int res = dwarf_object_init_b(obj_access.interface(),
                                       /*errhand=*/nullptr,
@@ -255,10 +256,17 @@ class NativeDwarfInfo::Impl : public std::enable_shared_from_this<NativeDwarfInf
     Dwarf_Fde* fdes = nullptr;
     Dwarf_Signed fde_count = 0;
     bool loaded_cfi = false;
+
+    // Cache for loaded symbols
+    bool loaded_symbols = false;
+    std::vector<NativeElfSymbol> symbols;
+    std::unordered_map<std::string_view, const NativeElfSymbol*> symbol_by_name;
+
+    std::weak_ptr<NativeElfFile::Impl> elf_impl;
 };
 
-NativeDwarfInfo::NativeDwarfInfo(ELFIO::elfio& elf, uint64_t file_size)
-    : impl(std::make_shared<Impl>(elf, file_size)) {}
+NativeDwarfInfo::NativeDwarfInfo(ELFIO::elfio& elf, uint64_t file_size, std::weak_ptr<NativeElfFile::Impl> elf_impl)
+    : impl(std::make_shared<Impl>(elf, file_size, std::move(elf_impl))) {}
 
 NativeDwarfInfo::~NativeDwarfInfo() = default;
 NativeDwarfInfo::NativeDwarfInfo(NativeDwarfInfo&&) noexcept = default;
@@ -417,17 +425,17 @@ NativeDwarfDiePtr NativeDwarfInfo::get_die_by_name(std::string_view name) const 
             continue;
         }
 
-        // Follow DW_AT_abstract_origin OR DW_AT_specification (mutually exclusive).
-        // If the attribute is present but the reference can't be resolved, give up
-        // entirely — matching the Python implementation's defensive behavior.
-        if (current->has_attribute(DW_AT_abstract_origin)) {
-            auto origin = current->get_die_from_attribute(DW_AT_abstract_origin);
+        // Follow NativeDwarfAttributeTag::abstract_origin OR NativeDwarfAttributeTag::specification (mutually
+        // exclusive). If the attribute is present but the reference can't be resolved, give up entirely — matching the
+        // Python implementation's defensive behavior.
+        if (current->has_attribute(NativeDwarfAttributeTag::abstract_origin)) {
+            auto origin = current->get_die_from_attribute(NativeDwarfAttributeTag::abstract_origin);
             if (!origin) {
                 return nullptr;
             }
             current = std::move(origin);
-        } else if (current->has_attribute(DW_AT_specification)) {
-            auto spec = current->get_die_from_attribute(DW_AT_specification);
+        } else if (current->has_attribute(NativeDwarfAttributeTag::specification)) {
+            auto spec = current->get_die_from_attribute(NativeDwarfAttributeTag::specification);
             if (!spec) {
                 return nullptr;
             }
@@ -535,6 +543,27 @@ NativeDwarfDiePtr NativeDwarfDie::find_parent(std::shared_ptr<NativeDwarfInfo::I
         return nullptr;
     }
     return nullptr;
+}
+
+const NativeElfSymbol* NativeDwarfDie::find_symbol(std::shared_ptr<NativeDwarfInfo::Impl> info, std::string_view name) {
+    if (!info->loaded_symbols) {
+        info->loaded_symbols = true;
+        if (auto elf_impl = info->elf_impl.lock()) {
+            info->symbols = NativeElfFile::impl_read_symbol_table_section(elf_impl, ".symtab");
+            info->symbol_by_name.reserve(info->symbols.size());
+            for (const NativeElfSymbol& sym : info->symbols) {
+                if (sym.name.empty()) {
+                    continue;
+                }
+
+                // NOTE: Currently we haven't encountered that duplicate entry is the problem
+                // as we are defaulting to find_symbol only for external defined variables.
+                info->symbol_by_name.emplace(std::string_view(sym.name), &sym);
+            }
+        }
+    }
+    auto it = info->symbol_by_name.find(name);
+    return it == info->symbol_by_name.end() ? nullptr : it->second;
 }
 
 }  // namespace ttexalens::native_elf

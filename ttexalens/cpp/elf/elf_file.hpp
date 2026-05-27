@@ -109,9 +109,15 @@ class NativeElfFile {
     const NativeDwarfInfo* get_dwarf_info() const;
 
    private:
-    explicit NativeElfFile(std::unique_ptr<Impl> impl);
+    explicit NativeElfFile(std::shared_ptr<Impl> impl);
 
-    std::unique_ptr<Impl> impl;
+    // Internal impl-interaction helpers because we don't have pointer to NativeElfFile, only to Impl.
+    static std::vector<NativeElfSymbol> impl_read_symbol_table_section(const std::shared_ptr<Impl>& impl,
+                                                                       std::string_view section_name);
+
+    friend class NativeDwarfDie;
+
+    std::shared_ptr<Impl> impl;
 };
 
 }  // namespace ttexalens::native_elf

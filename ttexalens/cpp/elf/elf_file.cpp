@@ -81,7 +81,7 @@ std::span<const std::byte> NativeElfSection::data() const {
     return {reinterpret_cast<const std::byte*>(p), sz};
 }
 
-class NativeElfFile::Impl {
+class NativeElfFile::Impl : public std::enable_shared_from_this<NativeElfFile::Impl> {
    public:
     Impl() = default;
     virtual ~Impl() = default;
@@ -144,7 +144,7 @@ class NativeElfFile::Impl {
     // libdwarf init error) leaves dwarf_info null.
     void try_open_dwarf() {
         try {
-            dwarf_info.emplace(elf, file_size);
+            dwarf_info.emplace(elf, file_size, weak_from_this());
         } catch (...) {
         }
     }
@@ -209,19 +209,24 @@ class BytesImpl : public NativeElfFile::Impl {
 
 }  // namespace
 
-// Out-of-line so the unique_ptr<Impl> deleter sees the complete type.
+// Out-of-line so the shared_ptr<Impl> deleter sees the complete type.
 NativeElfFile::~NativeElfFile() = default;
 NativeElfFile::NativeElfFile(NativeElfFile&&) noexcept = default;
 NativeElfFile& NativeElfFile::operator=(NativeElfFile&&) noexcept = default;
 
-NativeElfFile::NativeElfFile(std::unique_ptr<Impl> impl) : impl(std::move(impl)) {}
+NativeElfFile::NativeElfFile(std::shared_ptr<Impl> impl) : impl(std::move(impl)) {}
 
-NativeElfFile::NativeElfFile(const std::string& path) : NativeElfFile(std::make_unique<PathImpl>(path)) {}
+NativeElfFile::NativeElfFile(const std::string& path) : NativeElfFile(std::make_shared<PathImpl>(path)) {}
 NativeElfFile::NativeElfFile(const std::filesystem::path& path)
-    : NativeElfFile(std::make_unique<PathImpl>(path.string())) {}
+    : NativeElfFile(std::make_shared<PathImpl>(path.string())) {}
 
 NativeElfFile NativeElfFile::from_bytes(std::span<const std::byte> data) {
-    return NativeElfFile(std::make_unique<BytesImpl>(data));
+    return NativeElfFile(std::make_shared<BytesImpl>(data));
+}
+
+std::vector<NativeElfSymbol> NativeElfFile::impl_read_symbol_table_section(const std::shared_ptr<Impl>& impl,
+                                                                           std::string_view section_name) {
+    return impl->read_symbol_table_section(section_name);
 }
 
 size_t NativeElfFile::get_sections_count() const { return impl->sections.size(); }

@@ -11,116 +11,87 @@
 
 namespace ttexalens::native_elf {
 
-NativeDwarfDie::NativeDwarfDie(DwarfDieHandle die, std::weak_ptr<NativeDwarfInfo::Impl> info)
-    : die(std::move(die)), info(std::move(info)) {}
-
-std::string_view NativeDwarfDie::get_name() const {
-    if (!name) {
-        Dwarf_Debug dbg = die.get_state();
-        DwarfErrorHandle error(dbg);
-        NativeDwarfString s(dbg);
-        dwarf_diename(die, &s, &error);
-        name = std::move(s);
-    }
-    return *name;
-}
-
-Dwarf_Off NativeDwarfDie::get_offset() const {
-    Dwarf_Debug dbg = die.get_state();
-    DwarfErrorHandle error(dbg);
-    Dwarf_Off offset = 0;
-    dwarf_dieoffset(die, &offset, &error);
-    return offset;
-}
-
-Dwarf_Half NativeDwarfDie::get_tag() const {
-    Dwarf_Debug dbg = die.get_state();
-    DwarfErrorHandle error(dbg);
-    Dwarf_Half value = 0;
-    dwarf_tag(die, &value, &error);
-    return value;
-}
-
 namespace {
 
 // Decode a single libdwarf attribute into our variant. We dispatch on
 // DW_FORM_* (not DW_AT_*) because the form fully determines the storage —
-// the same tag (e.g. DW_AT_location) can be encoded with several forms
+// the same tag (e.g. NativeDwarfAttributeTag::location) can be encoded with several forms
 // across DWARF versions.
-NativeDwarfAttribute::Value decode_attribute_value(Dwarf_Debug dbg, Dwarf_Attribute attr, Dwarf_Half form) {
+NativeDwarfAttribute::Value decode_attribute_value(Dwarf_Debug dbg, Dwarf_Attribute attr,
+                                                   NativeDwarfAttributeForm form) {
     DwarfErrorHandle error(dbg);
     switch (form) {
-        case DW_FORM_addr:
-        case DW_FORM_addrx:
-        case DW_FORM_addrx1:
-        case DW_FORM_addrx2:
-        case DW_FORM_addrx3:
-        case DW_FORM_addrx4:
-        case DW_FORM_GNU_addr_index: {
+        case NativeDwarfAttributeForm::addr:
+        case NativeDwarfAttributeForm::addrx:
+        case NativeDwarfAttributeForm::addrx1:
+        case NativeDwarfAttributeForm::addrx2:
+        case NativeDwarfAttributeForm::addrx3:
+        case NativeDwarfAttributeForm::addrx4:
+        case NativeDwarfAttributeForm::GNU_addr_index: {
             Dwarf_Addr a = 0;
             if (dwarf_formaddr(attr, &a, &error) == DW_DLV_OK) {
                 return static_cast<uint64_t>(a);
             }
             return std::monostate{};
         }
-        case DW_FORM_flag:
-        case DW_FORM_flag_present: {
+        case NativeDwarfAttributeForm::flag:
+        case NativeDwarfAttributeForm::flag_present: {
             Dwarf_Bool b = 0;
             if (dwarf_formflag(attr, &b, &error) == DW_DLV_OK) {
                 return b != 0;
             }
             return std::monostate{};
         }
-        case DW_FORM_string:
-        case DW_FORM_strp:
-        case DW_FORM_strp_sup:
-        case DW_FORM_GNU_strp_alt:
-        case DW_FORM_line_strp:
-        case DW_FORM_strx:
-        case DW_FORM_strx1:
-        case DW_FORM_strx2:
-        case DW_FORM_strx3:
-        case DW_FORM_strx4:
-        case DW_FORM_GNU_str_index: {
+        case NativeDwarfAttributeForm::string:
+        case NativeDwarfAttributeForm::strp:
+        case NativeDwarfAttributeForm::strp_sup:
+        case NativeDwarfAttributeForm::GNU_strp_alt:
+        case NativeDwarfAttributeForm::line_strp:
+        case NativeDwarfAttributeForm::strx:
+        case NativeDwarfAttributeForm::strx1:
+        case NativeDwarfAttributeForm::strx2:
+        case NativeDwarfAttributeForm::strx3:
+        case NativeDwarfAttributeForm::strx4:
+        case NativeDwarfAttributeForm::GNU_str_index: {
             char* s = nullptr;
             if (dwarf_formstring(attr, &s, &error) == DW_DLV_OK && s != nullptr) {
                 return std::string(s);
             }
             return std::monostate{};
         }
-        case DW_FORM_sdata: {
+        case NativeDwarfAttributeForm::sdata: {
             Dwarf_Signed v = 0;
             if (dwarf_formsdata(attr, &v, &error) == DW_DLV_OK) {
                 return static_cast<int64_t>(v);
             }
             return std::monostate{};
         }
-        case DW_FORM_data1:
-        case DW_FORM_data2:
-        case DW_FORM_data4:
-        case DW_FORM_data8:
-        case DW_FORM_data16:
-        case DW_FORM_udata:
-        case DW_FORM_implicit_const:
-        case DW_FORM_sec_offset:
-        case DW_FORM_loclistx:
-        case DW_FORM_rnglistx: {
+        case NativeDwarfAttributeForm::data1:
+        case NativeDwarfAttributeForm::data2:
+        case NativeDwarfAttributeForm::data4:
+        case NativeDwarfAttributeForm::data8:
+        case NativeDwarfAttributeForm::data16:
+        case NativeDwarfAttributeForm::udata:
+        case NativeDwarfAttributeForm::implicit_const:
+        case NativeDwarfAttributeForm::sec_offset:
+        case NativeDwarfAttributeForm::loclistx:
+        case NativeDwarfAttributeForm::rnglistx: {
             Dwarf_Unsigned v = 0;
             if (dwarf_formudata(attr, &v, &error) == DW_DLV_OK) {
                 return static_cast<uint64_t>(v);
             }
             return std::monostate{};
         }
-        case DW_FORM_ref1:
-        case DW_FORM_ref2:
-        case DW_FORM_ref4:
-        case DW_FORM_ref8:
-        case DW_FORM_ref_udata:
-        case DW_FORM_ref_addr:
-        case DW_FORM_ref_sig8:
-        case DW_FORM_ref_sup4:
-        case DW_FORM_ref_sup8:
-        case DW_FORM_GNU_ref_alt: {
+        case NativeDwarfAttributeForm::ref1:
+        case NativeDwarfAttributeForm::ref2:
+        case NativeDwarfAttributeForm::ref4:
+        case NativeDwarfAttributeForm::ref8:
+        case NativeDwarfAttributeForm::ref_udata:
+        case NativeDwarfAttributeForm::ref_addr:
+        case NativeDwarfAttributeForm::ref_sig8:
+        case NativeDwarfAttributeForm::ref_sup4:
+        case NativeDwarfAttributeForm::ref_sup8:
+        case NativeDwarfAttributeForm::GNU_ref_alt: {
             // Always hand back a global .debug_info offset so callers can
             // feed it to get_or_create_die without knowing the encoding.
             Dwarf_Off off = 0;
@@ -129,11 +100,11 @@ NativeDwarfAttribute::Value decode_attribute_value(Dwarf_Debug dbg, Dwarf_Attrib
             }
             return std::monostate{};
         }
-        case DW_FORM_block:
-        case DW_FORM_block1:
-        case DW_FORM_block2:
-        case DW_FORM_block4:
-        case DW_FORM_exprloc: {
+        case NativeDwarfAttributeForm::block:
+        case NativeDwarfAttributeForm::block1:
+        case NativeDwarfAttributeForm::block2:
+        case NativeDwarfAttributeForm::block4:
+        case NativeDwarfAttributeForm::exprloc: {
             DwarfBlockHandle block(dbg);
             if (dwarf_formblock(attr, &block, &error) == DW_DLV_OK && block) {
                 Dwarf_Block* b = block.get();
@@ -147,47 +118,9 @@ NativeDwarfAttribute::Value decode_attribute_value(Dwarf_Debug dbg, Dwarf_Attrib
     }
 }
 
-}  // namespace
-
-const std::vector<NativeDwarfAttribute>& NativeDwarfDie::get_attributes() const {
-    if (attributes) {
-        return *attributes;
-    }
-    auto& vec = attributes.emplace();
-    Dwarf_Debug dbg = die.get_state();
-    DwarfErrorHandle error(dbg);
-    DwarfAttributeListHandle attrs(dbg);
-    if (dwarf_attrlist(die, &attrs, attrs.count_ptr(), &error) != DW_DLV_OK) {
-        return *attributes;
-    }
-    vec.reserve(static_cast<size_t>(attrs.size()));
-    for (Dwarf_Signed i = 0; i < attrs.size(); ++i) {
-        Dwarf_Attribute attr = attrs[i];
-        Dwarf_Half tag_value = 0;
-        Dwarf_Half form = 0;
-        if (dwarf_whatattr(attr, &tag_value, &error) == DW_DLV_OK && dwarf_whatform(attr, &form, &error) == DW_DLV_OK) {
-            vec.emplace_back(tag_value, form, decode_attribute_value(dbg, attr, form));
-        }
-    }
-    return *attributes;
-}
-
-const NativeDwarfAttribute* NativeDwarfDie::get_attribute(Dwarf_Half attribute_tag) const {
-    for (const auto& attr : get_attributes()) {
-        if (attr.get_tag() == attribute_tag) {
-            return &attr;
-        }
-    }
-    return nullptr;
-}
-
-bool NativeDwarfDie::has_attribute(Dwarf_Half attribute_tag) const { return get_attribute(attribute_tag) != nullptr; }
-
-namespace {
-
 // IEEE-754 reinterpret helpers. The raw constant value can arrive as either
-// a packed integer (DW_FORM_data4 / data8) or a block of little-endian bytes
-// (DW_FORM_block*). Both encode the same bit pattern; we just need to fish
+// a packed integer (NativeDwarfAttributeForm::data4 / data8) or a block of little-endian bytes
+// (NativeDwarfAttributeForm::block*). Both encode the same bit pattern; we just need to fish
 // out the right width.
 float bits_to_float(uint64_t bits) { return std::bit_cast<float>(static_cast<uint32_t>(bits)); }
 double bits_to_double(uint64_t bits) { return std::bit_cast<double>(bits); }
@@ -234,77 +167,236 @@ NativeDwarfDie::ConstantValue retype_constant(const NativeDwarfAttribute::Value&
     return passthrough_constant(raw);
 }
 
-}  // namespace
-
-NativeDwarfDie::ConstantValue NativeDwarfDie::get_constant_value() const {
-    const NativeDwarfAttribute* attr = get_attribute(DW_AT_const_value);
-    if (attr == nullptr) {
-        attr = get_attribute(DW_AT_const_expr);
-    }
-    if (attr == nullptr) {
-        if (auto origin = get_die_from_attribute(DW_AT_abstract_origin)) {
-            return origin->get_constant_value();
-        }
-        return std::monostate{};
-    }
-
-    if (auto type_die = get_resolved_type(); type_die && type_die->get_tag() == DW_TAG_base_type) {
-        return retype_constant(attr->get_value(), type_die->get_name());
-    }
-    return passthrough_constant(attr->get_value());
-}
-
-namespace {
-
-bool is_type_tag(Dwarf_Half tag) {
+bool is_type_tag(NativeDwarfDieTag tag) {
     switch (tag) {
-        case DW_TAG_typedef:
-        case DW_TAG_namespace:
-        case DW_TAG_array_type:
-        case DW_TAG_base_type:
-        case DW_TAG_class_type:
-        case DW_TAG_const_type:
-        case DW_TAG_enumeration_type:
-        case DW_TAG_pointer_type:
-        case DW_TAG_ptr_to_member_type:
-        case DW_TAG_reference_type:
-        case DW_TAG_rvalue_reference_type:
-        case DW_TAG_string_type:
-        case DW_TAG_structure_type:
-        case DW_TAG_subrange_type:
-        case DW_TAG_subroutine_type:
-        case DW_TAG_thrown_type:
-        case DW_TAG_union_type:
-        case DW_TAG_unspecified_type:
-        case DW_TAG_volatile_type:
-        case DW_TAG_packed_type:
-        case DW_TAG_restrict_type:
-        case DW_TAG_atomic_type:
-        case DW_TAG_immutable_type:
-        case DW_TAG_shared_type:
-        case DW_TAG_interface_type:
-        case DW_TAG_set_type:
-        case DW_TAG_coarray_type:
-        case DW_TAG_dynamic_type:
+        case NativeDwarfDieTag::typedef_:
+        case NativeDwarfDieTag::namespace_:
+        case NativeDwarfDieTag::array_type:
+        case NativeDwarfDieTag::base_type:
+        case NativeDwarfDieTag::class_type:
+        case NativeDwarfDieTag::const_type:
+        case NativeDwarfDieTag::enumeration_type:
+        case NativeDwarfDieTag::pointer_type:
+        case NativeDwarfDieTag::ptr_to_member_type:
+        case NativeDwarfDieTag::reference_type:
+        case NativeDwarfDieTag::rvalue_reference_type:
+        case NativeDwarfDieTag::string_type:
+        case NativeDwarfDieTag::structure_type:
+        case NativeDwarfDieTag::subrange_type:
+        case NativeDwarfDieTag::subroutine_type:
+        case NativeDwarfDieTag::thrown_type:
+        case NativeDwarfDieTag::union_type:
+        case NativeDwarfDieTag::unspecified_type:
+        case NativeDwarfDieTag::volatile_type:
+        case NativeDwarfDieTag::packed_type:
+        case NativeDwarfDieTag::restrict_type:
+        case NativeDwarfDieTag::atomic_type:
+        case NativeDwarfDieTag::immutable_type:
+        case NativeDwarfDieTag::shared_type:
+        case NativeDwarfDieTag::interface_type:
+        case NativeDwarfDieTag::set_type:
+        case NativeDwarfDieTag::coarray_type:
+        case NativeDwarfDieTag::dynamic_type:
             return true;
         default:
             return false;
     }
 }
 
-bool is_type_wrapper(Dwarf_Half tag) {
-    return tag == DW_TAG_typedef || tag == DW_TAG_const_type || tag == DW_TAG_volatile_type;
+bool is_type_wrapper(NativeDwarfDieTag tag) {
+    return tag == NativeDwarfDieTag::typedef_ || tag == NativeDwarfDieTag::const_type ||
+           tag == NativeDwarfDieTag::volatile_type;
 }
 
+// Pulls an integer attribute value out of the variant for the case where
+// we accept both signed and unsigned representations.
+std::optional<uint64_t> attr_as_uint(const NativeDwarfAttribute* attr) {
+    if (attr == nullptr) {
+        return std::nullopt;
+    }
+    if (const auto* u = std::get_if<uint64_t>(&attr->get_value())) {
+        return *u;
+    }
+    if (const auto* s = std::get_if<int64_t>(&attr->get_value())) {
+        return static_cast<uint64_t>(*s);
+    }
+    return std::nullopt;
+}
+
+// Inline parse for the common single-op DW_OP_addr location: the byte
+// stream is just `[0x03, addr_bytes...]`. Anything more elaborate (multi-op
+// expressions, location lists) goes through Phase 5's evaluator.
+std::optional<uint64_t> location_addr_only(const NativeDwarfDie& die) {
+    const NativeDwarfAttribute* loc_attr = die.get_attribute(NativeDwarfAttributeTag::location);
+    if (loc_attr == nullptr) {
+        return std::nullopt;
+    }
+    const auto* bytes = std::get_if<std::vector<uint8_t>>(&loc_attr->get_value());
+    if (bytes == nullptr || bytes->empty() || (*bytes)[0] != DW_OP_addr) {
+        return std::nullopt;
+    }
+    Dwarf_Debug dbg = die.get_state();
+    DwarfErrorHandle error(dbg);
+    Dwarf_Half addr_size = 0;
+    if (dwarf_get_die_address_size(die, &addr_size, &error) != DW_DLV_OK) {
+        return std::nullopt;
+    }
+    if (bytes->size() < static_cast<size_t>(1 + addr_size)) {
+        return std::nullopt;
+    }
+    uint64_t addr = 0;
+    std::memcpy(&addr, bytes->data() + 1, addr_size);
+    return addr;
+}
+
+// Returns true iff a tag should never have an address attached (types,
+// namespaces, enumerators).
+bool tag_is_address_less(NativeDwarfDieTag tag) { return is_type_tag(tag) || tag == NativeDwarfDieTag::enumerator; }
+
 }  // namespace
+
+NativeDwarfDie::NativeDwarfDie(DwarfDieHandle die, std::weak_ptr<NativeDwarfInfo::Impl> info)
+    : die(std::move(die)), info(std::move(info)) {}
+
+std::string_view NativeDwarfDie::get_name() const {
+    if (!name) {
+        Dwarf_Debug dbg = die.get_state();
+        DwarfErrorHandle error(dbg);
+        NativeDwarfString s(dbg);
+        dwarf_diename(die, &s, &error);
+        name = std::move(s);
+    }
+    return *name;
+}
+
+std::string_view NativeDwarfDie::get_linkage_name() const {
+    if (const auto* s = get_attribute_value<std::string>(NativeDwarfAttributeTag::linkage_name)) {
+        return *s;
+    }
+    return {};
+}
+
+const NativeElfSymbol* NativeDwarfDie::find_symbol() const {
+    auto info_ptr = info.lock();
+    if (!info_ptr) {
+        return nullptr;
+    }
+    if (std::string_view linkage = get_linkage_name(); !linkage.empty()) {
+        if (const NativeElfSymbol* sym = find_symbol(info_ptr, linkage)) {
+            return sym;
+        }
+    }
+    if (std::string_view die_name = get_name(); !die_name.empty()) {
+        if (const NativeElfSymbol* sym = find_symbol(std::move(info_ptr), die_name)) {
+            return sym;
+        }
+    }
+    return nullptr;
+}
+
+std::optional<std::string> NativeDwarfDie::get_path() const {
+    if (get_tag() == NativeDwarfDieTag::subprogram) {
+        if (auto origin = get_die_from_attribute(NativeDwarfAttributeTag::abstract_origin)) {
+            return origin->get_path();
+        }
+        if (auto spec = get_die_from_attribute(NativeDwarfAttributeTag::specification)) {
+            return spec->get_path();
+        }
+    }
+
+    std::string_view name = get_name();
+    auto parent = get_parent();
+    if (parent && parent->get_tag() != NativeDwarfDieTag::compile_unit) {
+        auto parent_path = parent->get_path();
+        if (parent_path) {
+            return *parent_path + "::" + std::string(name);
+        }
+    }
+    if (name.empty()) {
+        return std::nullopt;
+    }
+    return std::string(name);
+}
+
+Dwarf_Off NativeDwarfDie::get_offset() const {
+    Dwarf_Debug dbg = die.get_state();
+    DwarfErrorHandle error(dbg);
+    Dwarf_Off offset = 0;
+    dwarf_dieoffset(die, &offset, &error);
+    return offset;
+}
+
+NativeDwarfDieTag NativeDwarfDie::get_tag() const {
+    Dwarf_Debug dbg = die.get_state();
+    DwarfErrorHandle error(dbg);
+    Dwarf_Half value = 0;
+    dwarf_tag(die, &value, &error);
+    return static_cast<NativeDwarfDieTag>(value);
+}
+
+const std::vector<NativeDwarfAttribute>& NativeDwarfDie::get_attributes() const {
+    if (attributes) {
+        return *attributes;
+    }
+    auto& vec = attributes.emplace();
+    Dwarf_Debug dbg = die.get_state();
+    DwarfErrorHandle error(dbg);
+    DwarfAttributeListHandle attrs(dbg);
+    if (dwarf_attrlist(die, &attrs, attrs.count_ptr(), &error) != DW_DLV_OK) {
+        return *attributes;
+    }
+    vec.reserve(static_cast<size_t>(attrs.size()));
+    for (Dwarf_Signed i = 0; i < attrs.size(); ++i) {
+        Dwarf_Attribute attr = attrs[i];
+        Dwarf_Half tag_value = 0;
+        Dwarf_Half form = 0;
+        if (dwarf_whatattr(attr, &tag_value, &error) == DW_DLV_OK && dwarf_whatform(attr, &form, &error) == DW_DLV_OK) {
+            auto form_enum = static_cast<NativeDwarfAttributeForm>(form);
+            vec.emplace_back(static_cast<NativeDwarfAttributeTag>(tag_value), form_enum,
+                             decode_attribute_value(dbg, attr, form_enum));
+        }
+    }
+    return *attributes;
+}
+
+const NativeDwarfAttribute* NativeDwarfDie::get_attribute(NativeDwarfAttributeTag attribute_tag) const {
+    for (const auto& attr : get_attributes()) {
+        if (attr.get_tag() == attribute_tag) {
+            return &attr;
+        }
+    }
+    return nullptr;
+}
+
+bool NativeDwarfDie::has_attribute(NativeDwarfAttributeTag attribute_tag) const {
+    return get_attribute(attribute_tag) != nullptr;
+}
+
+NativeDwarfDie::ConstantValue NativeDwarfDie::get_constant_value() const {
+    const NativeDwarfAttribute* attr = get_attribute(NativeDwarfAttributeTag::const_value);
+    if (attr == nullptr) {
+        attr = get_attribute(NativeDwarfAttributeTag::const_expr);
+    }
+    if (attr == nullptr) {
+        if (auto origin = get_die_from_attribute(NativeDwarfAttributeTag::abstract_origin)) {
+            return origin->get_constant_value();
+        }
+        return std::monostate{};
+    }
+
+    if (auto type_die = get_resolved_type(); type_die && type_die->get_tag() == NativeDwarfDieTag::base_type) {
+        return retype_constant(attr->get_value(), type_die->get_name());
+    }
+    return passthrough_constant(attr->get_value());
+}
 
 NativeDwarfDiePtr NativeDwarfDie::get_resolved_type() const {
     auto current = std::const_pointer_cast<NativeDwarfDie>(shared_from_this());
     while (current) {
-        const Dwarf_Half tag = current->get_tag();
+        const NativeDwarfDieTag tag = current->get_tag();
 
         if (is_type_wrapper(tag)) {
-            auto next = current->get_die_from_attribute(DW_AT_type);
+            auto next = current->get_die_from_attribute(NativeDwarfAttributeTag::type);
             if (!next) {
                 break;
             }
@@ -315,9 +407,9 @@ NativeDwarfDiePtr NativeDwarfDie::get_resolved_type() const {
             return next;
         }
 
-        // Check DW_AT_type for non-type DIEs
-        if (!is_type_tag(tag) && current->has_attribute(DW_AT_type)) {
-            auto next = current->get_die_from_attribute(DW_AT_type);
+        // Check NativeDwarfAttributeTag::type for non-type DIEs
+        if (!is_type_tag(tag) && current->has_attribute(NativeDwarfAttributeTag::type)) {
+            auto next = current->get_die_from_attribute(NativeDwarfAttributeTag::type);
             if (!next) {
                 break;
             }
@@ -328,21 +420,21 @@ NativeDwarfDiePtr NativeDwarfDie::get_resolved_type() const {
             return next;
         }
 
-        // Check DW_AT_specification
-        if (auto spec = current->get_die_from_attribute(DW_AT_specification)) {
+        // Check NativeDwarfAttributeTag::specification
+        if (auto spec = current->get_die_from_attribute(NativeDwarfAttributeTag::specification)) {
             current = std::move(spec);
             continue;
         }
 
-        // Check DW_AT_abstract_origin
-        if (auto origin = current->get_die_from_attribute(DW_AT_abstract_origin)) {
+        // Check NativeDwarfAttributeTag::abstract_origin
+        if (auto origin = current->get_die_from_attribute(NativeDwarfAttributeTag::abstract_origin)) {
             current = std::move(origin);
             continue;
         }
 
-        // Check DW_AT_type for enumeration_type
-        if (tag == DW_TAG_enumeration_type) {
-            if (auto next = current->get_die_from_attribute(DW_AT_type)) {
+        // Check NativeDwarfAttributeTag::type for enumeration_type
+        if (tag == NativeDwarfDieTag::enumeration_type) {
+            if (auto next = current->get_die_from_attribute(NativeDwarfAttributeTag::type)) {
                 current = std::move(next);
                 continue;
             }
@@ -350,17 +442,17 @@ NativeDwarfDiePtr NativeDwarfDie::get_resolved_type() const {
 
         break;
     }
-    // Only meaningful stuck case is a wrapper that ran out of DW_AT_type;
+    // Only meaningful stuck case is a wrapper that ran out of NativeDwarfAttributeTag::type;
     // hand it back. Anything else means we couldn't reach a type at all.
     return is_type_wrapper(current->get_tag()) ? current : nullptr;
 }
 
 NativeDwarfDiePtr NativeDwarfDie::get_dereference_type() const {
-    const Dwarf_Half tag = get_tag();
-    if (tag != DW_TAG_pointer_type && tag != DW_TAG_reference_type) {
+    const NativeDwarfDieTag tag = get_tag();
+    if (tag != NativeDwarfDieTag::pointer_type && tag != NativeDwarfDieTag::reference_type) {
         return nullptr;
     }
-    auto pointee = get_die_from_attribute(DW_AT_type);
+    auto pointee = get_die_from_attribute(NativeDwarfAttributeTag::type);
     if (!pointee) {
         return nullptr;
     }
@@ -369,10 +461,10 @@ NativeDwarfDiePtr NativeDwarfDie::get_dereference_type() const {
 }
 
 NativeDwarfDiePtr NativeDwarfDie::get_array_element_type() const {
-    if (get_tag() != DW_TAG_array_type) {
+    if (get_tag() != NativeDwarfDieTag::array_type) {
         return nullptr;
     }
-    auto element = get_die_from_attribute(DW_AT_type);
+    auto element = get_die_from_attribute(NativeDwarfAttributeTag::type);
     if (!element) {
         return nullptr;
     }
@@ -381,15 +473,11 @@ NativeDwarfDiePtr NativeDwarfDie::get_array_element_type() const {
 }
 
 bool NativeDwarfDie::is_declaration() const {
-    const auto* attr = get_attribute(DW_AT_declaration);
-    if (attr == nullptr) {
-        return false;
-    }
-    const auto* flag = std::get_if<bool>(&attr->get_value());
+    const auto* flag = get_attribute_value<bool>(NativeDwarfAttributeTag::declaration);
     return flag != nullptr && *flag;
 }
 
-NativeDwarfDiePtr NativeDwarfDie::get_die_from_attribute(Dwarf_Half attribute_tag) const {
+NativeDwarfDiePtr NativeDwarfDie::get_die_from_attribute(NativeDwarfAttributeTag attribute_tag) const {
     auto info_ptr = info.lock();
     if (!info_ptr) {
         return nullptr;
@@ -397,7 +485,7 @@ NativeDwarfDiePtr NativeDwarfDie::get_die_from_attribute(Dwarf_Half attribute_ta
     Dwarf_Debug dbg = die.get_state();
     DwarfErrorHandle error(dbg);
     DwarfAttributeHandle attr(dbg);
-    if (dwarf_attr(die, attribute_tag, &attr, &error) != DW_DLV_OK) {
+    if (dwarf_attr(die, static_cast<Dwarf_Half>(attribute_tag), &attr, &error) != DW_DLV_OK) {
         return nullptr;
     }
     Dwarf_Off offset = 0;
@@ -473,7 +561,7 @@ const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& NativeDwarfDie::get_addres
     Dwarf_Debug dbg = die.get_state();
     DwarfErrorHandle error(dbg);
 
-    // 1. DW_AT_low_pc + DW_AT_high_pc → one absolute range.
+    // 1. NativeDwarfAttributeTag::low_pc + NativeDwarfAttributeTag::high_pc → one absolute range.
     Dwarf_Addr low_pc = 0;
     if (dwarf_lowpc(die, &low_pc, &error) == DW_DLV_OK) {
         Dwarf_Half hp_form = 0;
@@ -486,10 +574,10 @@ const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& NativeDwarfDie::get_addres
         }
     }
 
-    // 2. DW_AT_ranges (DWARF 5 .debug_rnglists). Use libdwarf's "cooked"
+    // 2. NativeDwarfAttributeTag::ranges (DWARF 5 .debug_rnglists). Use libdwarf's "cooked"
     //    addresses so base-address selection is applied for us.
     DwarfAttributeHandle attr(dbg);
-    if (dwarf_attr(die, DW_AT_ranges, &attr, &error) == DW_DLV_OK) {
+    if (dwarf_attr(die, static_cast<Dwarf_Half>(NativeDwarfAttributeTag::ranges), &attr, &error) == DW_DLV_OK) {
         Dwarf_Half version = 0;
         Dwarf_Half offset_size = 0;
         if (dwarf_get_version_of_die(die, &version, &offset_size) == DW_DLV_OK && version >= 5) {
@@ -497,7 +585,7 @@ const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& NativeDwarfDie::get_addres
             if (dwarf_whatform(attr, &form, &error) == DW_DLV_OK) {
                 Dwarf_Unsigned attr_value = 0;
                 bool have_value = false;
-                if (form == DW_FORM_rnglistx) {
+                if (static_cast<NativeDwarfAttributeForm>(form) == NativeDwarfAttributeForm::rnglistx) {
                     if (dwarf_formudata(attr, &attr_value, &error) == DW_DLV_OK) {
                         have_value = true;
                     }
@@ -558,6 +646,126 @@ NativeDwarfDiePtr NativeDwarfDie::find_child_by_name(std::string_view target) co
         }
     }
     return nullptr;
+}
+
+bool NativeDwarfDie::is_signed_type() const {
+    const auto* enc = get_attribute_value<uint64_t>(NativeDwarfAttributeTag::encoding);
+    if (enc == nullptr) {
+        return false;
+    }
+    return *enc == DW_ATE_signed || *enc == DW_ATE_signed_char || *enc == DW_ATE_signed_fixed;
+}
+
+std::optional<uint64_t> NativeDwarfDie::get_size() const {
+    if (const auto* u = get_attribute_value<uint64_t>(NativeDwarfAttributeTag::byte_size)) {
+        return *u;
+    }
+
+    const NativeDwarfDieTag tag = get_tag();
+
+    // Check for pointer or reference
+    if (tag == NativeDwarfDieTag::pointer_type || tag == NativeDwarfDieTag::reference_type ||
+        tag == NativeDwarfDieTag::rvalue_reference_type) {
+        Dwarf_Debug dbg = die.get_state();
+        DwarfErrorHandle error(dbg);
+        Dwarf_Half addr_size = 0;
+        if (dwarf_get_die_address_size(die, &addr_size, &error) == DW_DLV_OK) {
+            return addr_size;
+        }
+        return std::nullopt;
+    }
+
+    // Check for array
+    if (tag == NativeDwarfDieTag::array_type) {
+        uint64_t array_size = 1;
+        for (auto child = get_first_child(); child; child = child->get_next_sibling()) {
+            if (const auto* u = child->get_attribute_value<uint64_t>(NativeDwarfAttributeTag::upper_bound)) {
+                array_size *= (*u + 1);
+            }
+        }
+        if (auto elem = get_die_from_attribute(NativeDwarfAttributeTag::type)) {
+            if (auto elem_size = elem->get_size()) {
+                return array_size * *elem_size;
+            }
+        }
+    }
+
+    // Check if we can resolve a type and get its size.
+    if (auto type_die = get_die_from_attribute(NativeDwarfAttributeTag::type)) {
+        return type_die->get_size();
+    }
+
+    // Symbol-table fallback for DIEs whose size DWARF didn't record but
+    // .symtab did (typically symbol-anchored globals).
+    if (const NativeElfSymbol* sym = find_symbol()) {
+        return sym->size;
+    }
+    return std::nullopt;
+}
+
+// TODO: Verify if get_address() and get_address_recursed() work as expected with tests
+static std::optional<uint64_t> get_address_recursed(const NativeDwarfDie& die, bool allow_recursion) {
+    std::optional<uint64_t> addr;
+
+    if (const auto* a = die.get_attribute(NativeDwarfAttributeTag::data_member_location)) {
+        addr = attr_as_uint(a);
+    } else if (const auto* a = die.get_attribute(NativeDwarfAttributeTag::low_pc)) {
+        addr = attr_as_uint(a);
+    } else {
+        // Try a simple DW_OP_addr location.
+        addr = location_addr_only(die);
+
+        // Failing that, follow specification / abstract_origin if allowed.
+        if (!addr && allow_recursion) {
+            const auto* artificial_flag = die.get_attribute_value<bool>(NativeDwarfAttributeTag::artificial);
+            const bool artificial = artificial_flag != nullptr && *artificial_flag;
+            if (!artificial) {
+                NativeDwarfDiePtr other = die.get_die_from_attribute(NativeDwarfAttributeTag::specification);
+                if (!other) {
+                    other = die.get_die_from_attribute(NativeDwarfAttributeTag::abstract_origin);
+                }
+                // Python also runs find_DIE_that_specifies for the case
+                // where neither attribute is present; that requires a
+                // CU-wide scan and is deferred.
+                if (other) {
+                    addr = get_address_recursed(*other, /*allow_recursion=*/false);
+                }
+            }
+        }
+    }
+
+    if (!addr) {
+        const NativeDwarfDieTag tag = die.get_tag();
+        if (tag_is_address_less(tag)) {
+            return std::nullopt;
+        }
+        if (auto parent = die.get_parent()) {
+            if (parent->get_tag() == NativeDwarfDieTag::union_type) {
+                return uint64_t{0};
+            }
+        }
+        if (const auto* cv = die.get_attribute(NativeDwarfAttributeTag::const_value)) {
+            return attr_as_uint(cv);
+        }
+        // .symtab address fallback runs in the public wrapper below — keeps
+        // this free function from needing private access to NativeDwarfDie.
+    }
+    return addr;
+}
+
+std::optional<uint64_t> NativeDwarfDie::get_address() const {
+    if (auto addr = get_address_recursed(*this, true)) {
+        return addr;
+    }
+    // .symtab fallback — heavily load-bearing for tt-metal RISC-V firmware
+    // globals. Many DIEs (e.g. cb_interface, noc_index, __ldm_bss_start)
+    // are declared in headers but defined in the linker script or
+    // assembly; DWARF has the name + type but no NativeDwarfAttributeTag::location, so the
+    // linker-produced .symtab is the only place the address lives.
+    if (const NativeElfSymbol* sym = find_symbol()) {
+        return sym->value;
+    }
+    return std::nullopt;
 }
 
 }  // namespace ttexalens::native_elf
