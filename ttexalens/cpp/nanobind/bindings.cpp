@@ -136,7 +136,7 @@ NB_MODULE(_native_ttexalens, m) {
         .value("linkage_name", NativeDwarfAttributeTag::linkage_name)
         .value("location", NativeDwarfAttributeTag::location)
         .value("low_pc", NativeDwarfAttributeTag::low_pc)
-        .value("name", NativeDwarfAttributeTag::name)
+        .value("name_", NativeDwarfAttributeTag::name)
         .value("ranges", NativeDwarfAttributeTag::ranges)
         .value("specification", NativeDwarfAttributeTag::specification)
         .value("type", NativeDwarfAttributeTag::type)
