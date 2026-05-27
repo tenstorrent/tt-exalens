@@ -339,6 +339,8 @@ NB_MODULE(_native_ttexalens, m) {
         .def("get_die_from_attribute", &NativeDwarfDie::get_die_from_attribute, nb::arg("attribute_tag"),
              nb::rv_policy::reference_internal)
         .def("get_address_ranges", &NativeDwarfDie::get_address_ranges)
+        .def("get_decl_file_info", &NativeDwarfDie::get_decl_file_info)
+        .def("get_call_file_info", &NativeDwarfDie::get_call_file_info)
         .def("get_first_child", &NativeDwarfDie::get_first_child, nb::rv_policy::reference_internal)
         .def("get_next_sibling", &NativeDwarfDie::get_next_sibling, nb::rv_policy::reference_internal)
         .def("get_parent", &NativeDwarfDie::get_parent, nb::rv_policy::reference_internal)
@@ -364,5 +366,6 @@ NB_MODULE(_native_ttexalens, m) {
         .def("read_register", &NativeFrameDescription::read_register, nb::arg("register_index"), nb::arg("cfa"))
         .def("try_read_register", &NativeFrameDescription::try_read_register, nb::arg("register_index"),
              nb::arg("cfa").none())
-        .def("read_previous_cfa", &NativeFrameDescription::read_previous_cfa, nb::arg("current_cfa").none());
+        .def("read_previous_cfa", &NativeFrameDescription::read_previous_cfa,
+             nb::arg("current_cfa").none() = nb::none());
 }

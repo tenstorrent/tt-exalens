@@ -7,9 +7,9 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
 
-#include "dwarf_string.hpp"
 #include "elf_file.hpp"  // for NativeElfFile::Impl (nested types can't be forward-declared)
 
 namespace ELFIO {
@@ -29,7 +29,7 @@ class NativeFrameDescription;  // see dwarf_cfi.hpp
 // Source location for a particular program counter — returned by
 // NativeDwarfInfo::find_file_line_by_address.
 struct NativeDwarfFileLine {
-    NativeDwarfString file;
+    std::string file;
     uint32_t line;
     uint32_t column;
 };

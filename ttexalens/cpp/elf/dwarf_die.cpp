@@ -9,6 +9,8 @@
 #include <cstring>
 #include <utility>
 
+#include "dwarf_cu.hpp"
+
 namespace ttexalens::native_elf {
 
 namespace {
@@ -295,13 +297,12 @@ const NativeElfSymbol* NativeDwarfDie::find_symbol() const {
 }
 
 std::optional<std::string> NativeDwarfDie::get_path() const {
-    if (get_tag() == NativeDwarfDieTag::subprogram) {
-        if (auto origin = get_die_from_attribute(NativeDwarfAttributeTag::abstract_origin)) {
-            return origin->get_path();
-        }
-        if (auto spec = get_die_from_attribute(NativeDwarfAttributeTag::specification)) {
-            return spec->get_path();
-        }
+    // Follow DW_AT_abstract_origin / DW_AT_specification when present.
+    if (auto origin = get_die_from_attribute(NativeDwarfAttributeTag::abstract_origin)) {
+        return origin->get_path();
+    }
+    if (auto spec = get_die_from_attribute(NativeDwarfAttributeTag::specification)) {
+        return spec->get_path();
     }
 
     std::string_view name = get_name();
@@ -766,6 +767,54 @@ std::optional<uint64_t> NativeDwarfDie::get_address() const {
         return sym->value;
     }
     return std::nullopt;
+}
+
+std::optional<NativeDwarfFileLine> NativeDwarfDie::resolve_file_info(NativeDwarfAttributeTag file_tag,
+                                                                     NativeDwarfAttributeTag line_tag,
+                                                                     NativeDwarfAttributeTag column_tag) const {
+    const auto* file_attr = get_attribute_value<uint64_t>(file_tag);
+    if (file_attr == nullptr) {
+        return std::nullopt;
+    }
+    const uint64_t file_number = *file_attr;
+
+    auto info_ptr = info.lock();
+    if (!info_ptr) {
+        return std::nullopt;
+    }
+    NativeDwarfCompileUnit* cu = get_die_cu(std::move(info_ptr), get_offset());
+    if (cu == nullptr) {
+        return std::nullopt;
+    }
+
+    // DWARF 2/3/4 use 1-based file indices (0 means "no file"); DWARF 5 is direct.
+    const int64_t idx =
+        (cu->get_version() >= 5) ? static_cast<int64_t>(file_number) : static_cast<int64_t>(file_number) - 1;
+    const auto& srcfiles = cu->get_srcfiles();
+    if (idx < 0 || idx >= static_cast<int64_t>(srcfiles.size())) {
+        return std::nullopt;
+    }
+    std::string_view file_path = srcfiles[static_cast<size_t>(idx)];
+
+    uint32_t line = 0;
+    if (const auto* v = get_attribute_value<uint64_t>(line_tag)) {
+        line = static_cast<uint32_t>(*v);
+    }
+    uint32_t column = 0;
+    if (const auto* v = get_attribute_value<uint64_t>(column_tag)) {
+        column = static_cast<uint32_t>(*v);
+    }
+    return NativeDwarfFileLine{std::string(file_path), line, column};
+}
+
+std::optional<NativeDwarfFileLine> NativeDwarfDie::get_decl_file_info() const {
+    return resolve_file_info(NativeDwarfAttributeTag::decl_file, NativeDwarfAttributeTag::decl_line,
+                             NativeDwarfAttributeTag::decl_column);
+}
+
+std::optional<NativeDwarfFileLine> NativeDwarfDie::get_call_file_info() const {
+    return resolve_file_info(NativeDwarfAttributeTag::call_file, NativeDwarfAttributeTag::call_line,
+                             NativeDwarfAttributeTag::call_column);
 }
 
 }  // namespace ttexalens::native_elf

@@ -17,6 +17,8 @@
 
 namespace ttexalens::native_elf {
 
+class NativeDwarfCompileUnit;
+
 // DIE tags - DW_TAG_*
 enum class NativeDwarfDieTag : Dwarf_Half {
     array_type = DW_TAG_array_type,
@@ -191,6 +193,14 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // descent.
     const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& get_address_ranges() const;
 
+    // Source location associated with DW_AT_decl_* / DW_AT_call_* attributes,
+    // packaged as (file_path, line, column). Resolves DW_AT_*_file (an index
+    // into the CU's line-table file table) to a fully-qualified path via
+    // libdwarf's dwarf_srcfiles. Returns std::nullopt when the relevant
+    // attribute is absent or the file index can't be resolved.
+    std::optional<NativeDwarfFileLine> get_decl_file_info() const;
+    std::optional<NativeDwarfFileLine> get_call_file_info() const;
+
     // Walk this DIE's children:
     //   for (auto child = die->get_first_child(); child;
     //        child = child->get_next_sibling()) { ... }
@@ -209,9 +219,14 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     static NativeDwarfDiePtr get_or_create_die(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off offset);
     static NativeDwarfDiePtr find_parent(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off target_offset);
     static const NativeElfSymbol* find_symbol(std::shared_ptr<NativeDwarfInfo::Impl> info, std::string_view name);
+    static NativeDwarfCompileUnit* get_die_cu(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off target_offset);
 
     // Resolves this DIE to its .symtab entry. Returns nullptr on miss.
     const NativeElfSymbol* find_symbol() const;
+
+    std::optional<NativeDwarfFileLine> resolve_file_info(NativeDwarfAttributeTag file_tag,
+                                                         NativeDwarfAttributeTag line_tag,
+                                                         NativeDwarfAttributeTag column_tag) const;
 
     friend class NativeDwarfInfo::Impl;
 

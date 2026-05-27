@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include "dwarf_die.hpp"
 #include "dwarf_handle.hpp"
 
@@ -26,23 +29,15 @@ class NativeDwarfCompileUnit {
 
    private:
     friend class NativeDwarfInfo;
+    friend class NativeDwarfDie;
 
     NativeDwarfCompileUnit() = default;
 
-    // Lazy line context. First call invokes dwarf_srclines_b; later calls
-    // return the cached context. Test the returned wrapper with operator bool
-    // — empty means dwarf_srclines_b failed (loaded_line_context is set
-    // regardless so we don't retry on every call).
-    DwarfLineContextHandle& get_line_context() {
-        if (!loaded_line_context) {
-            loaded_line_context = true;
-            DwarfErrorHandle error(die->get_state());
-            Dwarf_Unsigned line_version = 0;
-            Dwarf_Small table_count = 0;
-            dwarf_srclines_b(*die, &line_version, &table_count, &line_context, &error);
-        }
-        return line_context;
-    }
+    // Lazy load line context if necessary.
+    DwarfLineContextHandle& get_line_context();
+
+    // Lazy load CU source-file table if necessary.
+    const std::vector<std::string>& get_srcfiles();
 
     NativeDwarfDiePtr die;
     Dwarf_Unsigned header_length = 0;
@@ -58,6 +53,9 @@ class NativeDwarfCompileUnit {
 
     DwarfLineContextHandle line_context;
     bool loaded_line_context = false;
+
+    std::vector<std::string> srcfiles;
+    bool loaded_srcfiles = false;
 };
 
 }  // namespace ttexalens::native_elf
