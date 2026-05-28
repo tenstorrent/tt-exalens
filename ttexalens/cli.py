@@ -360,6 +360,7 @@ def main():
         subprocess.run([gdb_client_path] + gdb_client_args)
         return
 
+    assert __doc__ is not None
     args = docopt(__doc__)
 
     if args["--version"]:

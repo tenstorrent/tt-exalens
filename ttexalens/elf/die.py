@@ -304,7 +304,7 @@ class ElfDie:
         return addr
 
     @cached_property
-    def value(self):
+    def value(self) -> Any:
         """
         Return the value of the DIE
         """

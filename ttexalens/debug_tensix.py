@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from collections.abc import Sequence
 from enum import Enum
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -264,7 +265,7 @@ class TensixDebug:
 
     def read_regfile(
         self, regfile: int | str | REGFILE, num_tiles: int | None = None, signed=True
-    ) -> list[int | float] | list[str]:
+    ) -> Sequence[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
 

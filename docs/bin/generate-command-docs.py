@@ -41,7 +41,7 @@ from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOp
 
 OPTIONS = tt_docopt.COMMON_OPTIONS
 for opt in OPTIONS:
-    opt.argument = opt.argument.replace("<", "\<").replace(">", "\>")
+    opt.argument = opt.argument.replace("<", r"\<").replace(">", r"\>")
 
 
 # We limit what each example can output to avoid spamming the user
@@ -119,6 +119,7 @@ class CmdParser:
     def parse_arguments(self, help: str) -> dict:
         result = {}
         lines = [line.strip() for line in help.split("\n")]
+        arg = ""
 
         for line in lines[1:]:
             # Arguments are separated from their descriptions by multiple spaces
@@ -151,7 +152,7 @@ class CmdParser:
 
         for opt in opt_strings:
             # Option strings are separated from their descriptions by multiple spaces
-            opt_parts = re.split("\s{2,}", opt)
+            opt_parts = re.split(r"\s{2,}", opt)
 
             # Separate the option name and its argument (if any)
             # Argument is separated by a space or an equal sign
@@ -163,7 +164,7 @@ class CmdParser:
             # Is there an argument?
             if len(opt_call) > 1:
                 # Bracket characters are interpreted as html tags, so we replace them
-                result[opt_call[0]]["arg"] = opt_call[1].replace("<", "\<").replace(">", "\>")
+                result[opt_call[0]]["arg"] = opt_call[1].replace("<", r"\<").replace(">", r"\>")
             result[opt_call[0]]["description"] = opt_parts[1]
 
         return result
@@ -244,7 +245,8 @@ class CmdPPrinter(SectionPPrinter):
             "Common options": self.print_arguments,
         }
 
-    def print_docs(self, cmd_data: dict) -> str:
+    def print_docs(self, docstring: dict) -> str:
+        cmd_data = docstring
         result = ""
         for sec in self.section_printers.keys():
             if sec in cmd_data["docs"]:
@@ -327,20 +329,21 @@ def parse_directory(root: str, parser: CmdParser = CmdParser(), interactive: boo
 
 
 if __name__ == "__main__":
+    assert __doc__ is not None
     args = docopt(__doc__)
     isfile = os.path.isfile(args["<input>"])
     isdir = os.path.isdir(args["<input>"])
 
-    if not isfile and not isdir:
-        ERROR("Invalid input. Please provide a valid file or directory.")
-        sys.exit(1)
-    elif isfile:
+    if isfile:
         parsed = parse_source_file(args["<input>"])
         if parsed is None:
             sys.exit(0)
         parser_result = [parsed]
     elif isdir:
         parser_result = parse_directory(args["<input>"], interactive=args["--interactive"])
+    else:
+        ERROR("Invalid input. Please provide a valid file or directory.")
+        sys.exit(1)
 
     output = ""
     cmd_printer = CmdPPrinter()

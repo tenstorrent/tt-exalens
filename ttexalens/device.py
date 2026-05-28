@@ -26,6 +26,9 @@ T = TypeVar("T")
 
 
 class TensixInstructions:
+    # These TT_OP_* declarations are stubs only — the real implementations are bound
+    # dynamically in __init__ by copying from a per-arch ops module via setattr.
+    # They exist so static type-checkers know the attribute names and return type.
     def __init__(self, ops):
         for func_name in dir(ops):
             func = getattr(ops, func_name)
@@ -34,36 +37,48 @@ class TensixInstructions:
                 setattr(self.__class__, func_name, static_method)
 
     @staticmethod
-    def TT_OP_SFPLOAD(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr):
-        pass
+    def TT_OP_SFPLOAD(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_STALLWAIT(stall_res, wait_res):
-        pass
+    def TT_OP_STALLWAIT(stall_res, wait_res) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_MOVDBGA2D(dest_32b_lo, src, addr_mode, instr_mod, dst):
-        pass
+    def TT_OP_MOVDBGA2D(dest_32b_lo, src, addr_mode, instr_mod, dst) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_SFPSTORE(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr):
-        pass
+    def TT_OP_SFPSTORE(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_SETRWC(clear_ab_vld, rwc_cr, rwc_d, rwc_b, rwc_a, BitMask):
-        pass
+    def TT_OP_SETRWC(clear_ab_vld, rwc_cr, rwc_d, rwc_b, rwc_a, BitMask) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_ZEROACC(clear_mode, AddrMode, dst):
-        pass
+    def TT_OP_ZEROACC(clear_mode, AddrMode, dst) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_SFPSHFT(Imm12, VC, VD, Mod1):
-        pass
+    def TT_OP_SFPSHFT(Imm12, VC, VD, Mod1) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_INCRWC(cr, DstInc, SrcBInc, SrcAInc):
-        pass
+    def TT_OP_INCRWC(cr, DstInc, SrcBInc, SrcAInc) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_SETDVALID(setvalid) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_CLEARDVALID(cleardvalid, reset) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_SHIFTXB(addr_mode, rot_shift, shift_row) -> int:
+        raise NotImplementedError
 
 
 #
@@ -163,6 +178,7 @@ class Device:
 
         noc_queue = self._noc_to_use  # reference, not a copy
         first_used = noc_queue[0]
+        selected_noc = first_used
 
         while True:
             try:

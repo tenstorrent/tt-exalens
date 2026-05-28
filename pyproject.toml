@@ -54,3 +54,11 @@ regex = "(?P<value>.*)"
 [tool.scikit-build.metadata.dependencies]
 provider = "pyproject_toml_parse_requirements"
 provider-path = "."
+
+[tool.pyright]
+include = ["."]
+exclude = ["build", "**/__pycache__", "**/.venv"]
+extraPaths = ["build/stubs"]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
+reportMissingModuleSource = "none"

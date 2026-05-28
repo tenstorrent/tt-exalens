@@ -137,7 +137,7 @@ class TTExaLensServer:
                         setter = Pyro5.api.expose(wrapper._create_umd_method_wrapper(None, fset=method.fset))  # type: ignore
                     if getattr(method, "fget", None):
                         getter = Pyro5.api.expose(wrapper._create_umd_method_wrapper(None, fget=method.fget))  # type: ignore
-                    new_property = property(getter, setter)
+                    new_property = property(getter, setter)  # pyright: ignore[reportArgumentType]
                     setattr(wrapper, method_name, new_property)
                     setattr(wrapper_type, method_name, new_property)
         return wrapper
@@ -227,7 +227,7 @@ Pyro5.api.register_class_to_dict(enum.Enum, umd_type_to_dict)
 for tt_umd_type in UMD_SERIALIZABLE_TYPES:
     Pyro5.api.register_class_to_dict(tt_umd_type, umd_type_to_dict)
     Pyro5.api.register_dict_to_class(f"{tt_umd_type.__module__}.{tt_umd_type.__name__}", umd_type_from_dict)
-Pyro5.configure.global_config.SERPENT_BYTES_REPR = True
+Pyro5.configure.global_config.SERPENT_BYTES_REPR = True  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def start_server(port: int, context: Context):

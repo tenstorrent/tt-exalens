@@ -1113,6 +1113,7 @@ class TestSafeAccess(unittest.TestCase):
         # Case 2: Next block is adjacent but not accessible or has incompatible permissions
         elif next_block_info is not None and next_block_info.memory_block.address.noc_address == block_end:
             next_noc_addr = next_block_info.memory_block.address.noc_address
+            assert next_noc_addr is not None
             next_is_accessible = next_block_info.is_accessible
             next_is_safe_to_read = next_block_info.is_safe_to_read(next_noc_addr, 4)
             next_is_safe_to_write = next_block_info.is_safe_to_write(next_noc_addr, 4)
