@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -12,12 +13,20 @@
 
 #include "dwarf_attribute.hpp"
 #include "dwarf_handle.hpp"
-#include "dwarf_info.hpp"  // for NativeDwarfInfo::Impl + NativeDwarfDiePtr
 #include "dwarf_string.hpp"
 
 namespace ttexalens::native_elf {
 
+namespace details {
+class NativeDwarfInfoImpl;
+}  // namespace details
+
+class NativeElfSymbol;
 class NativeDwarfCompileUnit;
+class NativeFrameInspection;
+
+class NativeDwarfDie;
+using NativeDwarfDiePtr = std::shared_ptr<NativeDwarfDie>;
 
 // DIE tags - DW_TAG_*
 enum class NativeDwarfDieTag : Dwarf_Half {
@@ -70,9 +79,17 @@ enum class NativeDwarfDieTag : Dwarf_Half {
     volatile_type = DW_TAG_volatile_type,
 };
 
+// Source location for a particular program counter — returned by
+// NativeDwarfInfo::find_file_line_by_address.
+struct NativeDwarfFileLine {
+    std::string file;
+    uint32_t line;
+    uint32_t column;
+};
+
 class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
    public:
-    NativeDwarfDie(DwarfDieHandle die, std::weak_ptr<NativeDwarfInfo::Impl> info);
+    NativeDwarfDie(DwarfDieHandle die, std::weak_ptr<details::NativeDwarfInfoImpl> info);
 
     operator Dwarf_Die() const { return die; }
     explicit operator bool() const { return static_cast<bool>(die); }
@@ -214,13 +231,6 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     NativeDwarfDiePtr get_parent() const;
 
    private:
-    // Cache-interaction helpers.
-    static NativeDwarfDiePtr register_die(std::shared_ptr<NativeDwarfInfo::Impl> info, DwarfDieHandle handle);
-    static NativeDwarfDiePtr get_or_create_die(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off offset);
-    static NativeDwarfDiePtr find_parent(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off target_offset);
-    static const NativeElfSymbol* find_symbol(std::shared_ptr<NativeDwarfInfo::Impl> info, std::string_view name);
-    static NativeDwarfCompileUnit* get_die_cu(std::shared_ptr<NativeDwarfInfo::Impl> info, Dwarf_Off target_offset);
-
     // Resolves this DIE to its .symtab entry. Returns nullptr on miss.
     const NativeElfSymbol* find_symbol() const;
 
@@ -228,10 +238,10 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
                                                          NativeDwarfAttributeTag line_tag,
                                                          NativeDwarfAttributeTag column_tag) const;
 
-    friend class NativeDwarfInfo::Impl;
+    friend class details::NativeDwarfInfoImpl;
 
     DwarfDieHandle die;
-    std::weak_ptr<NativeDwarfInfo::Impl> info;
+    std::weak_ptr<details::NativeDwarfInfoImpl> info;
 
     mutable std::optional<NativeDwarfString> name;
     mutable std::optional<std::vector<NativeDwarfAttribute>> attributes;

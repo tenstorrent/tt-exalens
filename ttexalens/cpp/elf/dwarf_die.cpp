@@ -10,6 +10,8 @@
 #include <utility>
 
 #include "dwarf_cu.hpp"
+#include "elf_file.hpp"
+#include "private/dwarf_info_impl.hpp"
 
 namespace ttexalens::native_elf {
 
@@ -257,7 +259,7 @@ bool tag_is_address_less(NativeDwarfDieTag tag) { return is_type_tag(tag) || tag
 
 }  // namespace
 
-NativeDwarfDie::NativeDwarfDie(DwarfDieHandle die, std::weak_ptr<NativeDwarfInfo::Impl> info)
+NativeDwarfDie::NativeDwarfDie(DwarfDieHandle die, std::weak_ptr<details::NativeDwarfInfoImpl> info)
     : die(std::move(die)), info(std::move(info)) {}
 
 std::string_view NativeDwarfDie::get_name() const {
@@ -284,12 +286,12 @@ const NativeElfSymbol* NativeDwarfDie::find_symbol() const {
         return nullptr;
     }
     if (std::string_view linkage = get_linkage_name(); !linkage.empty()) {
-        if (const NativeElfSymbol* sym = find_symbol(info_ptr, linkage)) {
+        if (const NativeElfSymbol* sym = info_ptr->find_symbol_by_name(linkage)) {
             return sym;
         }
     }
     if (std::string_view die_name = get_name(); !die_name.empty()) {
-        if (const NativeElfSymbol* sym = find_symbol(std::move(info_ptr), die_name)) {
+        if (const NativeElfSymbol* sym = info_ptr->find_symbol_by_name(die_name)) {
             return sym;
         }
     }
@@ -493,7 +495,7 @@ NativeDwarfDiePtr NativeDwarfDie::get_die_from_attribute(NativeDwarfAttributeTag
     if (dwarf_global_formref(attr, &offset, &error) != DW_DLV_OK) {
         return nullptr;
     }
-    return get_or_create_die(std::move(info_ptr), offset);
+    return info_ptr->get_or_create_die(offset);
 }
 
 NativeDwarfDiePtr NativeDwarfDie::get_first_child() const {
@@ -506,7 +508,7 @@ NativeDwarfDiePtr NativeDwarfDie::get_first_child() const {
         DwarfErrorHandle error(dbg);
         DwarfDieHandle handle(dbg);
         if (dwarf_child(die, &handle, &error) == DW_DLV_OK) {
-            result = register_die(std::move(info_ptr), std::move(handle));
+            result = info_ptr->register_die(std::move(handle));
             if (result) {
                 result->parent = std::const_pointer_cast<NativeDwarfDie>(shared_from_this());
             }
@@ -526,7 +528,7 @@ NativeDwarfDiePtr NativeDwarfDie::get_next_sibling() const {
         DwarfErrorHandle error(dbg);
         DwarfDieHandle handle(dbg);
         if (dwarf_siblingof_b(dbg, die, /*is_info=*/true, &handle, &error) == DW_DLV_OK) {
-            result = register_die(std::move(info_ptr), std::move(handle));
+            result = info_ptr->register_die(std::move(handle));
             if (result && parent) {
                 result->parent = *parent;
             }
@@ -542,7 +544,7 @@ NativeDwarfDiePtr NativeDwarfDie::get_parent() const {
     }
     NativeDwarfDiePtr result;
     if (auto info_ptr = info.lock()) {
-        result = find_parent(std::move(info_ptr), get_offset());
+        result = info_ptr->find_parent(get_offset());
     }
     // The descent in find_parent typically sets `parent` on us via the
     // get_first_child / get_next_sibling side effect — but if it didn't (e.g.
@@ -782,7 +784,7 @@ std::optional<NativeDwarfFileLine> NativeDwarfDie::resolve_file_info(NativeDwarf
     if (!info_ptr) {
         return std::nullopt;
     }
-    NativeDwarfCompileUnit* cu = get_die_cu(std::move(info_ptr), get_offset());
+    NativeDwarfCompileUnit* cu = info_ptr->get_die_cu(get_offset());
     if (cu == nullptr) {
         return std::nullopt;
     }

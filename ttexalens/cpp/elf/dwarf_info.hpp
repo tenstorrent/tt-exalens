@@ -4,41 +4,24 @@
 #pragma once
 
 #include <cstdint>
-#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
 
-#include "elf_file.hpp"  // for NativeElfFile::Impl (nested types can't be forward-declared)
-
-namespace ELFIO {
-class elfio;
-}  // namespace ELFIO
+#include "dwarf_die.hpp"
+#include "dwarf_frame.hpp"
 
 namespace ttexalens::native_elf {
 
-// Forward-declared so this header doesn't pull in dwarf_die.hpp. (DIE methods
-// need to reach NativeDwarfInfo::Impl, so dwarf_die.hpp includes this header
-// — including dwarf_die.hpp here would create a cycle.)
-class NativeDwarfDie;
-using NativeDwarfDiePtr = std::shared_ptr<NativeDwarfDie>;
-
-class NativeFrameDescription;  // see dwarf_cfi.hpp
-
-// Source location for a particular program counter — returned by
-// NativeDwarfInfo::find_file_line_by_address.
-struct NativeDwarfFileLine {
-    std::string file;
-    uint32_t line;
-    uint32_t column;
-};
+namespace details {
+class NativeElfFileImpl;
+class NativeDwarfInfoImpl;
+}  // namespace details
 
 class NativeDwarfInfo {
    public:
-    class Impl;
-
-    NativeDwarfInfo(ELFIO::elfio& elf, uint64_t file_size, std::weak_ptr<NativeElfFile::Impl> elf_impl);
+    NativeDwarfInfo(std::weak_ptr<details::NativeElfFileImpl> elf_impl);
 
     ~NativeDwarfInfo();
     NativeDwarfInfo(const NativeDwarfInfo&) = delete;
@@ -62,18 +45,16 @@ class NativeDwarfInfo {
     NativeDwarfDiePtr find_function_by_address(uint64_t address) const;
 
     // Locates the FDE covering `pc` in .debug_frame (falling back to
-    // .eh_frame) and returns a NativeFrameDescription bound to the given
-    // callbacks. Callbacks are invoked by NativeFrameDescription's methods
-    // (read_register / read_previous_cfa) to fetch live machine state:
-    //   read_gpr(reg_index) -> register value
-    //   read_memory(address) -> optional<word> (nullopt = access denied)
-    // Returns nullopt if no FDE covers `pc`.
-    std::optional<NativeFrameDescription> get_frame_description(
-        uint64_t pc, std::function<uint64_t(int)> read_gpr,
-        std::function<std::optional<uint64_t>(uint64_t)> read_memory) const;
+    // .eh_frame) and returns a NativeFrameDescription bound to `memory_access`.
+    // NativeFrameDescription's methods (read_register / read_previous_cfa)
+    // route GPR reads through `memory_access->read_register(...)` and stack
+    // memory reads through `memory_access->read(...)` to fetch live machine
+    // state. Returns nullopt if no FDE covers `pc`.
+    std::optional<NativeFrameDescription> get_frame_description(uint64_t pc,
+                                                                std::shared_ptr<MemoryAccess> memory_access) const;
 
    private:
-    std::shared_ptr<Impl> impl;
+    std::shared_ptr<details::NativeDwarfInfoImpl> impl;
 };
 
 }  // namespace ttexalens::native_elf

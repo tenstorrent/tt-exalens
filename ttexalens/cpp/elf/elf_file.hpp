@@ -12,6 +12,8 @@
 #include <string_view>
 #include <vector>
 
+#include "dwarf_info.hpp"
+
 // Forward declarations.
 namespace ELFIO {
 class section;
@@ -19,7 +21,9 @@ class section;
 
 namespace ttexalens::native_elf {
 
-class NativeDwarfInfo;
+namespace details {
+class NativeElfFileImpl;
+}  // namespace details
 
 class NativeElfSection {
    public:
@@ -74,8 +78,6 @@ struct NativeElfSymbol {
 
 class NativeElfFile {
    public:
-    class Impl;
-
     explicit NativeElfFile(const std::string& path);
     explicit NativeElfFile(const std::filesystem::path& path);
 
@@ -109,15 +111,11 @@ class NativeElfFile {
     const NativeDwarfInfo* get_dwarf_info() const;
 
    private:
-    explicit NativeElfFile(std::shared_ptr<Impl> impl);
-
-    // Internal impl-interaction helpers because we don't have pointer to NativeElfFile, only to Impl.
-    static std::vector<NativeElfSymbol> impl_read_symbol_table_section(const std::shared_ptr<Impl>& impl,
-                                                                       std::string_view section_name);
+    explicit NativeElfFile(std::shared_ptr<details::NativeElfFileImpl> impl);
 
     friend class NativeDwarfDie;
 
-    std::shared_ptr<Impl> impl;
+    std::shared_ptr<details::NativeElfFileImpl> impl;
 };
 
 }  // namespace ttexalens::native_elf

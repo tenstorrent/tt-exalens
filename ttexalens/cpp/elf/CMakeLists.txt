@@ -5,11 +5,13 @@
 # Python in the sibling `native_elf` subproject.
 
 add_library(ttexalens_elf STATIC
+    private/elf_file_impl.cpp
+    private/dwarf_info_impl.cpp
     elf_file.cpp
     dwarf_info.cpp
     dwarf_die.cpp
     dwarf_cu.cpp
-    dwarf_cfi.cpp
+    dwarf_frame.cpp
 )
 target_compile_features(ttexalens_elf PUBLIC cxx_std_20)
 target_include_directories(ttexalens_elf PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

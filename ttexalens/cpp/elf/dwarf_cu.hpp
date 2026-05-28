@@ -11,6 +11,10 @@
 
 namespace ttexalens::native_elf {
 
+namespace details {
+class NativeElfFileImpl;
+}  // namespace details
+
 class NativeDwarfInfo;
 
 class NativeDwarfCompileUnit {
@@ -30,6 +34,7 @@ class NativeDwarfCompileUnit {
    private:
     friend class NativeDwarfInfo;
     friend class NativeDwarfDie;
+    friend class details::NativeDwarfInfoImpl;
 
     NativeDwarfCompileUnit() = default;
 
