@@ -193,6 +193,7 @@ class QuasarFunctionalOverlayBlock:
             self.rocket6,
             self.rocket7,
         ]
+        risc_name = risc_name.lower()
         for core in rocket_infos:
             if core.risc_name == risc_name:
                 return QuasarRocketCoreDebug(core, self.register_store)
