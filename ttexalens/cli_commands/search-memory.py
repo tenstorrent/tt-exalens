@@ -170,17 +170,24 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             location_str = location.to_user_str()
 
             try:
-                all_matches = search_memory(
-                    location,
-                    pattern_bytes,
-                    risc_name=risc_name,
-                    start_addr=start_addr,
-                    end_addr=end_addr,
-                    device_id=device.id,
-                    context=context,
-                    chunk_size=read_size,
-                    safe_mode=safe_mode_arg,
-                )
+                all_matches: list = []
+                current_start = start_addr
+                while True:
+                    matches, next_addr = search_memory(
+                        location,
+                        pattern_bytes,
+                        risc_name=risc_name,
+                        start_addr=current_start,
+                        end_addr=end_addr,
+                        device_id=device.id,
+                        context=context,
+                        chunk_size=read_size,
+                        safe_mode=safe_mode_arg,
+                    )
+                    all_matches.extend(matches)
+                    if next_addr is None or (max_results is not None and len(all_matches) >= max_results):
+                        break
+                    current_start = next_addr
             except util.TTException as e:
                 util.ERROR(f"Device {device_id_str} | Location {location_str}: {e}")
                 continue

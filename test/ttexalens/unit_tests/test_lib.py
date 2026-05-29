@@ -1793,7 +1793,7 @@ class TestSearchMemory(unittest.TestCase):
         location = "0,0"
         addr = 0x100
         lib.write_words_to_device(location, addr, 0xDEADBEEF, context=self.context)
-        results = lib.search_memory(location, 0xDEADBEEF, start_addr=addr, end_addr=addr + 4, context=self.context)
+        results, _ = lib.search_memory(location, 0xDEADBEEF, start_addr=addr, end_addr=addr + 4, context=self.context)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0][0], addr)
         self.assertIsInstance(results[0][1], str)
@@ -1804,7 +1804,7 @@ class TestSearchMemory(unittest.TestCase):
         addr = 0x104
         pattern = b"\x11\x22\x33\x44"
         lib.write_to_device(location, addr, pattern, context=self.context)
-        results = lib.search_memory(location, pattern, start_addr=addr, end_addr=addr + 4, context=self.context)
+        results, _ = lib.search_memory(location, pattern, start_addr=addr, end_addr=addr + 4, context=self.context)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0][0], addr)
 
@@ -1813,7 +1813,7 @@ class TestSearchMemory(unittest.TestCase):
         addr = 0x108
         words = [0x11223344, 0x55667788]
         lib.write_words_to_device(location, addr, words, context=self.context)
-        results = lib.search_memory(location, words, start_addr=addr, end_addr=addr + 8, context=self.context)
+        results, _ = lib.search_memory(location, words, start_addr=addr, end_addr=addr + 8, context=self.context)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0][0], addr)
 
@@ -1821,7 +1821,7 @@ class TestSearchMemory(unittest.TestCase):
         location = "0,0"
         addr = 0x110
         lib.write_words_to_device(location, addr, 0x00000000, context=self.context)
-        results = lib.search_memory(location, 0xDEADBEEF, start_addr=addr, end_addr=addr + 4, context=self.context)
+        results, _ = lib.search_memory(location, 0xDEADBEEF, start_addr=addr, end_addr=addr + 4, context=self.context)
         self.assertEqual(results, [])
 
     def test_search_noc_multiple_results(self):
@@ -1829,7 +1829,7 @@ class TestSearchMemory(unittest.TestCase):
         addr1, addr2 = 0x120, 0x124
         lib.write_words_to_device(location, addr1, 0xCAFEBABE, context=self.context)
         lib.write_words_to_device(location, addr2, 0xCAFEBABE, context=self.context)
-        results = lib.search_memory(location, 0xCAFEBABE, start_addr=addr1, end_addr=addr2 + 4, context=self.context)
+        results, _ = lib.search_memory(location, 0xCAFEBABE, start_addr=addr1, end_addr=addr2 + 4, context=self.context)
         self.assertEqual(len(results), 2)
 
     def test_search_noc_start_addr(self):
@@ -1838,7 +1838,7 @@ class TestSearchMemory(unittest.TestCase):
         addr_inside = 0x138
         lib.write_words_to_device(location, addr_before, 0xBEEFBEEF, context=self.context)
         lib.write_words_to_device(location, addr_inside, 0xBEEFBEEF, context=self.context)
-        results = lib.search_memory(
+        results, _ = lib.search_memory(
             location, 0xBEEFBEEF, start_addr=addr_inside, end_addr=addr_inside + 4, context=self.context
         )
         for addr, _ in results:
@@ -1850,7 +1850,7 @@ class TestSearchMemory(unittest.TestCase):
         addr_beyond = 0x148
         lib.write_words_to_device(location, addr_inside, 0xFACEFACE, context=self.context)
         lib.write_words_to_device(location, addr_beyond, 0xFACEFACE, context=self.context)
-        results = lib.search_memory(
+        results, _ = lib.search_memory(
             location, 0xFACEFACE, start_addr=addr_inside, end_addr=addr_beyond, context=self.context
         )
         for addr, _ in results:
@@ -1883,7 +1883,7 @@ class TestSearchMemory(unittest.TestCase):
 
         with risc_debug.ensure_private_memory_access():
             lib.write_riscv_memory(loc, base_addr, 0xCAFEBABE, "brisc", context=self.context)
-            results = lib.search_memory(
+            results, _ = lib.search_memory(
                 loc, 0xCAFEBABE, risc_name="brisc", start_addr=base_addr, end_addr=base_addr + 4, context=self.context
             )
         self.assertEqual(len(results), 1)
@@ -1899,7 +1899,7 @@ class TestSearchMemory(unittest.TestCase):
 
         with risc_debug.ensure_private_memory_access():
             lib.write_riscv_memory(loc, base_addr, 0x00000000, "brisc", context=self.context)
-            results = lib.search_memory(
+            results, _ = lib.search_memory(
                 loc, 0xDEADBEEF, risc_name="brisc", start_addr=base_addr, end_addr=base_addr + 4, context=self.context
             )
         self.assertEqual(results, [])
@@ -1911,3 +1911,24 @@ class TestSearchMemory(unittest.TestCase):
     def test_search_riscv_invalid_start_addr(self):
         with self.assertRaises(util.TTException):
             lib.search_memory("0,0", 0xDEADBEEF, risc_name="brisc", start_addr=0xFFA00000, context=self.context)
+
+    def test_search_noc_continuation(self):
+        location = "0,0"
+        chunk_size = 16
+        addr1 = 0x150
+        addr2 = addr1 + chunk_size  # second occurrence is in the next chunk
+        lib.write_words_to_device(location, addr1, 0xCAFEBABE, context=self.context)
+        lib.write_words_to_device(location, addr2, 0xCAFEBABE, context=self.context)
+        end = addr2 + 4
+
+        matches1, next_addr = lib.search_memory(
+            location, 0xCAFEBABE, start_addr=addr1, end_addr=end, chunk_size=chunk_size, context=self.context
+        )
+        self.assertTrue(len(matches1) > 0)
+        self.assertIsNotNone(next_addr)
+
+        matches2, next_addr2 = lib.search_memory(
+            location, 0xCAFEBABE, start_addr=next_addr, end_addr=end, chunk_size=chunk_size, context=self.context
+        )
+        self.assertTrue(len(matches2) > 0)
+        self.assertIsNone(next_addr2)  # range exhausted after second chunk

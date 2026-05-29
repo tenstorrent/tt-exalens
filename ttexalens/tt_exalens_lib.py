@@ -327,9 +327,12 @@ def _search_chunk_range(
     read_fn: Callable[[int, int], bytes],
     block_name: str,
     chunk_size: int,
-) -> list[tuple[int, str]]:
-    """Search one contiguous block range. Returns all matches found."""
-    matches: list[tuple[int, str]] = []
+) -> tuple[list[tuple[int, str]], int | None]:
+    """Search chunks from chunk_start to range_end, stopping at the first chunk with matches.
+
+    Returns (matches, next_chunk_addr) where next_chunk_addr is the start of the chunk after
+    the matching one, or ([], None) if the range was fully read with no matches found.
+    """
     overlap = len(pattern_bytes) - 1
     prev_tail = b""
     chunk_addr = chunk_start
@@ -338,11 +341,43 @@ def _search_chunk_range(
         chunk_bytes = read_fn(chunk_addr, read_size)
         search_data = prev_tail + chunk_bytes
         base = chunk_addr - len(prev_tail)
-        for addr in _find_in_data(search_data, pattern_bytes, base):
-            matches.append((addr, block_name))
+        matches = [(addr, block_name) for addr in _find_in_data(search_data, pattern_bytes, base)]
+        next_chunk_addr = chunk_addr + len(chunk_bytes)
+        if matches:
+            return matches, next_chunk_addr
         prev_tail = search_data[-overlap:] if overlap > 0 else b""
-        chunk_addr += len(chunk_bytes)
-    return matches
+        chunk_addr = next_chunk_addr
+    return [], None
+
+
+def _resolve_next_addr(
+    next_chunk_addr: int,
+    end_addr: int | str | None,
+    block_range_end: int,
+    coordinate: OnChipCoordinate,
+    risc_name: str | None,
+    neo_id: int | None,
+) -> int | None:
+    """Return next_chunk_addr if it is a valid continuation address for the caller, else None."""
+    if next_chunk_addr < block_range_end:
+        # More chunks remain in the current block.
+        if isinstance(end_addr, int) and next_chunk_addr >= end_addr:
+            return None
+        return next_chunk_addr
+    # The matching chunk was the last in this block.
+    if end_addr is None:
+        return None  # single-block mode — nothing more to search
+    if isinstance(end_addr, int):
+        return next_chunk_addr if next_chunk_addr < end_addr else None
+    # end_addr == "all": check whether a contiguous block starts at next_chunk_addr.
+    if risc_name is not None:
+        memory_map = coordinate.noc_block.get_risc_debug(risc_name, neo_id).risc_info.memory_map
+        return next_chunk_addr if memory_map.find_by_private_address(next_chunk_addr) is not None else None
+    return (
+        next_chunk_addr
+        if coordinate.noc_block.noc_memory_map.find_by_noc_address(next_chunk_addr) is not None
+        else None
+    )
 
 
 def _iter_memory_blocks(
@@ -417,9 +452,10 @@ def search_memory(
     context: Context | None = None,
     chunk_size: int | None = None,
     safe_mode: bool | None = None,
-) -> list[tuple[int, str]]:
+) -> tuple[list[tuple[int, str]], int | None]:
     """
-    Searches memory blocks for a byte pattern.
+    Searches memory blocks for a byte pattern, reading one chunk at a time and stopping
+    at the first chunk that contains a match.
 
     When risc_name is None, searches NOC memory using the block's NOC memory map.
     When risc_name is provided, searches RISC-V private memory using the core's private memory map.
@@ -443,7 +479,10 @@ def search_memory(
         safe_mode (bool | None): If False, bypasses safety checks to allow searching restricted memory regions. If None, uses context default. Default: None.
 
     Returns:
-        list[tuple[int, str]]: List of (match_address, block_name) pairs.
+        tuple[list[tuple[int, str]], int | None]:
+            - First element: list of (match_address, block_name) pairs from the first matching chunk.
+            - Second element: address to pass as start_addr on the next call to continue searching,
+              or None if the search range is exhausted or no matches were found.
     """
     if chunk_size is None:
         chunk_size = 4 if risc_name is not None else 0x100000
@@ -454,14 +493,17 @@ def search_memory(
     coordinate = convert_coordinate(location, device_id, context)
     noc_id = check_noc_id(None, coordinate.context)
     use_4B_mode = check_4B_mode(None, coordinate.context)
-    all_matches: list[tuple[int, str]] = []
 
     for range_start, range_end, block_name, read_fn in _iter_memory_blocks(
         start_addr, end_addr, coordinate, risc_name, neo_id, noc_id, use_4B_mode, safe_mode
     ):
-        all_matches.extend(_search_chunk_range(range_start, range_end, pattern_bytes, read_fn, block_name, chunk_size))
+        matches, next_chunk_addr = _search_chunk_range(
+            range_start, range_end, pattern_bytes, read_fn, block_name, chunk_size
+        )
+        if matches:
+            return matches, _resolve_next_addr(next_chunk_addr, end_addr, range_end, coordinate, risc_name, neo_id)
 
-    return all_matches
+    return [], None
 
 
 @trace_api
