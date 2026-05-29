@@ -43,8 +43,7 @@ The following coordinate systems are available to represent a grid location on t
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from ttexalens.util import TTException
-from ttexalens.exceptions import CoordinateTranslationError, UnknownCoordinateSystemError
+from ttexalens.exceptions import CoordinateTranslationError, TTException, UnknownCoordinateSystemError
 
 if TYPE_CHECKING:
     from ttexalens.context import Context

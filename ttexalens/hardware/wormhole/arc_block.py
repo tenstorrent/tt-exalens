@@ -8,7 +8,7 @@ from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
-from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from ttexalens.register_store import (
     ArcCsmRegisterDescription,
     ArcResetRegisterDescription,
@@ -104,13 +104,15 @@ class WormholeArcBlock(ArcBlock):
         self.noc_regs = MemoryBlock(
             size=0x10000, address=DeviceAddress(private_address=0xFFFB20000, noc_address=0xFFFB20000)
         )
-        self.noc_memory_map.add_blocks(
-            [
+        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
+            WormholeArcBlock,
+            "noc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("arc_reset_regs", self.arc_reset_regs, safe_to_write=True),
                 MemoryMapBlockInfo("arc_csm", self.arc_csm, safe_to_write=True),
                 MemoryMapBlockInfo("arc_rom", self.arc_rom, safe_to_write=True),
                 MemoryMapBlockInfo("noc_regs", self.noc_regs),
-            ]
+            ],
         )
 
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:

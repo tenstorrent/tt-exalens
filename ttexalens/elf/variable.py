@@ -511,8 +511,11 @@ class ElfVariable:
     def __invert__(self):
         """Bitwise inversion operator."""
         value = self.read_value()
-        if isinstance(value, (int, bool)):
-            return ~value
+        if isinstance(value, int):
+            return ~int(value)
+        elif isinstance(value, bool):
+            return not value
+
         raise TypeError(f"bad operand type for unary ~: '{type(value).__name__}'")
 
     def __index__(self) -> int:
@@ -520,7 +523,7 @@ class ElfVariable:
         Allow ElfVariable to be used as an index in sequences (lists, tuples, etc.)
         This enables usage like: a[elf_var] instead of a[elf_var.value()]
         """
-        from ttexalens.hardware.risc_debug import RiscHaltError
+        from ttexalens.exceptions import RiscHaltError
 
         try:
             value = self.read_value()

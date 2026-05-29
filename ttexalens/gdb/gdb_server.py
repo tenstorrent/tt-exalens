@@ -5,7 +5,7 @@ from io import StringIO
 import threading
 import traceback
 from typing import Callable, IO
-from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
+from xml.sax.saxutils import escape as xml_escape
 
 from ttexalens.gdb.gdb_communication import (
     GDB_ASCII_COLON,

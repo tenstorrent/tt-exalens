@@ -203,6 +203,10 @@ def get_niu_register_store_initialization(base_address: DeviceAddress) -> Regist
     return RegisterStore.create_initialization(niu_register_map, get_niu_register_base_address_callable(base_address))
 
 
-default_niu_register_store_initialization = get_niu_register_store_initialization(
-    DeviceAddress(noc_address=0xFFFFFFFF_FF000000)
+default_niu_register_store_initialization_noc = get_niu_register_store_initialization(
+    DeviceAddress(noc_address=0xFFFFFFFF_FF000000, noc_id=0)
+)
+
+default_niu_register_store_initialization_smn = get_niu_register_store_initialization(
+    DeviceAddress(noc_address=0xFFFFFFFF_FF000000, noc_id=1)
 )

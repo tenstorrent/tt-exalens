@@ -13,6 +13,7 @@ from parameterized import parameterized, parameterized_class
 from test.ttexalens.unit_tests.test_base import get_core_location, get_parsed_elf_file, init_cached_test_context
 import ttexalens as lib
 from ttexalens import util
+from ttexalens.exceptions import TTException
 from ttexalens.elf.parsed import ParsedElfFile
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 
@@ -246,9 +247,9 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_inputs_read(self, location, address, device_id, word_count):
         """Test invalid inputs for read functions."""
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.read_words_from_device(location, address, device_id, word_count)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             # word_count can be used as num_bytes
             lib.read_from_device(location, address, device_id, word_count)
 
@@ -263,7 +264,7 @@ class TestReadWrite(unittest.TestCase):
         ]
     )
     def test_invalid_write_word(self, location, address, data, device_id):
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_words_to_device(location, address, data, device_id)
 
     @parameterized.expand(
@@ -279,7 +280,7 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_write(self, location, address, data, device_id):
         """Test invalid inputs for write function."""
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_to_device(location, address, data, device_id)
 
     def test_unaligned_read(self):
@@ -460,9 +461,9 @@ class TestReadWrite(unittest.TestCase):
         """Test invalid inputs for tensix register read and write functions."""
 
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
-            with self.assertRaises((util.TTException, ValueError)):
+            with self.assertRaises((TTException, ValueError)):
                 lib.read_register(location, register, device_id)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_register(location, register, value, device_id)
 
     @parameterized.expand(
@@ -616,9 +617,9 @@ class TestReadWrite(unittest.TestCase):
     def test_invalid_read_private_memory(self, location: str, address: int, value: int, risc_name="brisc", device_id=0):
         """Test invalid inputs for reading private memory."""
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
-            with self.assertRaises((util.TTException, ValueError)):
+            with self.assertRaises((TTException, ValueError)):
                 lib.read_riscv_memory(location, address, risc_name, None, device_id)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_riscv_memory(location, address, value, risc_name, None, device_id)
 
     @parameterized.expand(
@@ -1199,7 +1200,7 @@ class TestRunElf(unittest.TestCase):
     def test_run_elf_invalid(self, elf_file, location, risc_name, device_id):
         if elf_file is None:
             elf_file = self.get_elf_path("run_elf_test.debug", "brisc")
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.run_elf(elf_file, location, risc_name, None, device_id, context=self.context)
 
     @parameterized.expand(
@@ -1279,7 +1280,11 @@ class TestRunElf(unittest.TestCase):
 
         # Step 5b: Continue and check that the core reached 0xFFB12088. But first set the breakpoint at
         # function "decrement_mailbox"
-        decrement_mailbox_die = elf.subprograms["decrement_mailbox"]
+        decrement_mailbox_die = elf.find_die_by_name("decrement_mailbox")
+        assert decrement_mailbox_die is not None, "decrement_mailbox function not found in ELF."
+        assert decrement_mailbox_die.tag_is(
+            "subprogram"
+        ), f"decrement_mailbox DIE is not a subprogram, got {decrement_mailbox_die.tag}"
         decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
         decrement_mailbox_address = elf.symbols[decrement_mailbox_linkage_name].value
 
@@ -1526,8 +1531,9 @@ class TestCallStack(unittest.TestCase):
                 self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
 
     def set_recursion_count(self, elf: ParsedElfFile, count: int):
-        text_section = next((s for s in elf.sections if s.name == ".text"), None)
+        text_section = elf.sections.get(".text")
         assert text_section is not None
+        assert text_section.address is not None
 
         address = text_section.address + text_section.size
         self.l1_mem_access.write_word(address, count)
@@ -1723,7 +1729,7 @@ class TestCallStack(unittest.TestCase):
         """Test invalid inputs for callstack function."""
 
         # Check for invalid location
-        with self.assertRaises((util.TTException, ValueError, FileNotFoundError)):
+        with self.assertRaises((TTException, ValueError, FileNotFoundError)):
             lib.callstack(location, elf_paths, offsets, risc_name, None, max_depth, True, device_id, self.context)
 
 

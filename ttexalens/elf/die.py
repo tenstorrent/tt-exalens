@@ -61,12 +61,13 @@ class ElfDie:
     def get_child_by_name(self, child_name: str):
         child = self.children_by_name.get(child_name)
         if child == None:
-            for die in self.iter_children():
-                if die.name is None:
-                    continue
-                self.children_by_name[die.name] = die
-                if die.name == child_name:
-                    return die
+            with self.cu.dwarf.parsed_elf._lock:
+                for die in self.iter_children():
+                    if die.name is None:
+                        continue
+                    self.children_by_name[die.name] = die
+                    if die.name == child_name:
+                        return die
         return child
 
     @cached_property
@@ -125,14 +126,12 @@ class ElfDie:
         name = self.name
 
         if self.category == "subprogram" and "DW_AT_abstract_origin" in self.attributes:
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
-            die = self.cu.dwarf.get_die(dwarf_die)
+            die = self.get_DIE_from_attribute("DW_AT_abstract_origin")
             if die is not None:
                 return die.path  # type: ignore
 
         if self.category == "subprogram" and "DW_AT_specification" in self.attributes:
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
-            die = self.cu.dwarf.get_die(dwarf_die)
+            die = self.get_DIE_from_attribute("DW_AT_specification")
             if die is not None:
                 return die.path  # type: ignore
 
@@ -171,13 +170,11 @@ class ElfDie:
                     return type_die.resolved_type  # type: ignore
                 return type_die  # type: ignore
         elif "DW_AT_specification" in self.attributes:
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
-            die = self.cu.dwarf.get_die(dwarf_die)
+            die = self.get_DIE_from_attribute("DW_AT_specification")
             if die is not None:
                 return die.resolved_type  # type: ignore
         elif "DW_AT_abstract_origin" in self.attributes:
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_abstract_origin")
-            die = self.cu.dwarf.get_die(dwarf_die)
+            die = self.get_DIE_from_attribute("DW_AT_abstract_origin")
             if die is not None:
                 return die.resolved_type  # type: ignore
         elif self.tag_is("enumeration_type"):
@@ -195,9 +192,9 @@ class ElfDie:
         if self.tag == "DW_TAG_pointer_type" or self.tag == "DW_TAG_reference_type":
             if "DW_AT_type" not in self.attributes:
                 return None
-            dereference_Type = self.cu.find_DIE_at_local_offset(self.local_offset)
-            if dereference_Type is not None:
-                return dereference_Type.resolved_type
+            type_die = self.cu.find_DIE_at_local_offset(self.local_offset)
+            if type_die is not None:
+                return type_die.resolved_type
         return None
 
     @cached_property
@@ -262,7 +259,7 @@ class ElfDie:
             location_attribute = self.attributes.get("DW_AT_location")
             location_parser = self.cu.dwarf.location_parser
             if location_attribute:
-                location = location_parser.parse_from_attribute(location_attribute, self.cu.version, self.dwarf_die)
+                location = location_parser.parse_from_attribute(location_attribute, self)
                 if isinstance(location, LocationExpr):
                     parsed = self.cu.expression_parser.parse_expr(location.loc_expr)
                     _, addr = self._evaluate_location_expression(parsed, frame_inspection=None)
@@ -347,8 +344,7 @@ class ElfDie:
             else:
                 name = None
         elif "DW_AT_specification" in self.attributes:
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute("DW_AT_specification")
-            die = self.cu.dwarf.get_die(dwarf_die)
+            die = self.get_DIE_from_attribute("DW_AT_specification")
             if die is not None:
                 name = die.name
             else:
@@ -387,7 +383,8 @@ class ElfDie:
             ]
         elif "DW_AT_ranges" in self.attributes:
             assert self.cu.dwarf.range_lists is not None
-            ranges = self.cu.dwarf.range_lists.get_range_list_at_offset(self.attributes["DW_AT_ranges"].value)
+            with self.cu.dwarf.parsed_elf._lock:
+                ranges = self.cu.dwarf.range_lists.get_range_list_at_offset(self.attributes["DW_AT_ranges"].value)
             address_ranges = []
             base_address = None
             parent = self
@@ -456,13 +453,16 @@ class ElfDie:
         """
         Iterate over all children of this DIE
         """
-        for child in self.dwarf_die.iter_children():
-            yield self.cu.get_die(child)
+        with self.cu.dwarf.parsed_elf._lock:
+            for child in self.dwarf_die.iter_children():
+                yield self.cu.get_die(child)
 
     def get_DIE_from_attribute(self, attribute_name: str):
         if attribute_name in self.attributes:
-            dwarf_die = self.dwarf_die.get_DIE_from_attribute(attribute_name)
-            return self.cu.dwarf.get_die(dwarf_die)
+            with self.cu.dwarf.parsed_elf._lock:
+                dwarf_die = self.dwarf_die.get_DIE_from_attribute(attribute_name)
+                if dwarf_die is not None:
+                    return self.cu.dwarf.get_die(dwarf_die)
         return None
 
     @cached_property
@@ -470,9 +470,10 @@ class ElfDie:
         """
         A parent of a variable is the struct it is defined in. It is a type.
         """
-        parent = self.dwarf_die.get_parent()
-        if parent:
-            return self.cu.get_die(parent)
+        with self.cu.dwarf.parsed_elf._lock:
+            parent = self.dwarf_die.get_parent()
+            if parent is not None:
+                return self.cu.get_die(parent)
         return None
 
     @cached_property
@@ -517,7 +518,7 @@ class ElfDie:
         if "DW_AT_location" in self.attributes:
             location_attribute = self.attributes["DW_AT_location"]
             location_parser = self.cu.dwarf.location_parser
-            location = location_parser.parse_from_attribute(location_attribute, self.cu.version, self.dwarf_die)
+            location = location_parser.parse_from_attribute(location_attribute, self)
             return location
         return None
 
@@ -569,7 +570,7 @@ class ElfDie:
                 except Exception:
                     util.DEBUG(f"Unexpected exception demangling linkage name:\n{traceback.format_exc()}")
             elif attr_name == "DW_AT_location":
-                value = self.cu.dwarf.location_parser.parse_from_attribute(attr, self.cu.version, self.dwarf_die)
+                value = self.cu.dwarf.location_parser.parse_from_attribute(attr, self)
             elif attr_name == "DW_AT_low_pc":
                 value = attr.value
             elif attr_name == "DW_AT_name":
@@ -580,7 +581,8 @@ class ElfDie:
                     value = None
             elif attr_name == "DW_AT_ranges":
                 assert self.cu.dwarf.range_lists is not None
-                value = self.cu.dwarf.range_lists.get_range_list_at_offset(attr.value)
+                with self.cu.dwarf.parsed_elf._lock:
+                    value = self.cu.dwarf.range_lists.get_range_list_at_offset(attr.value)
             elif attr_name == "DW_AT_specification":
                 value = self.get_DIE_from_attribute(attr_name)
                 if value is None:
@@ -744,9 +746,7 @@ class ElfDie:
                     # We couldn't find the function DIE
                     return False, None
                 frame_base_attribute = function_die.attributes["DW_AT_frame_base"]
-                frame_base_location = location_parser.parse_from_attribute(
-                    frame_base_attribute, self.cu.version, self.dwarf_die
-                )
+                frame_base_location = location_parser.parse_from_attribute(frame_base_attribute, self)
                 if isinstance(frame_base_location, LocationExpr):
                     parsed_frame_base_expression = self.cu.expression_parser.parse_expr(frame_base_location.loc_expr)
                     _, frame_base = function_die._evaluate_location_expression(
@@ -1245,10 +1245,12 @@ class ElfDie:
                     refaddr = self.cu.dwarf_cu.cu_offset + offset
                 else:
                     refaddr = op.args[0]
-                die = self.cu.get_die(self.cu.dwarf_cu.get_DIE_from_refaddr(refaddr))
+                with self.cu.dwarf.parsed_elf._lock:
+                    with self.cu.dwarf.parsed_elf._lock:
+                        die = self.cu.get_die(self.cu.dwarf_cu.get_DIE_from_refaddr(refaddr))
                 if "DW_AT_location" not in die.attributes:
                     return False, None
-                location = location_parser.parse_from_attribute(die.attributes["DW_AT_location"], self.cu.version, die)
+                location = location_parser.parse_from_attribute(die.attributes["DW_AT_location"], die)
                 # TODO: Start executing location expression in current context (current stack, etc.)
                 return False, None
             elif op.op_name.startswith("DW_OP_lit"):

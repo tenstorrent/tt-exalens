@@ -9,7 +9,7 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
@@ -232,8 +232,10 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
         raise ValueError(f"RISC debug for {risc_name} is not supported in Wormhole functional worker block.")
 
     def _update_memory_maps(self):
-        self.noc_memory_map.add_blocks(
-            [
+        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
+            WormholeFunctionalWorkerBlock,
+            "noc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
@@ -241,11 +243,13 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
                 MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
-            ]
+            ],
         )
 
-        self.brisc.memory_map.add_blocks(
-            [
+        self.brisc.memory_map = MemoryMap.get_memory_map_from_cache(
+            WormholeFunctionalWorkerBlock,
+            "brisc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.brisc.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
                 MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
@@ -310,11 +314,13 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
                 ),
-            ]
+            ],
         )
 
-        self.trisc0.memory_map.add_blocks(
-            [
+        self.trisc0.memory_map = MemoryMap.get_memory_map_from_cache(
+            WormholeFunctionalWorkerBlock,
+            "trisc0_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc0.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
                 MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
@@ -367,11 +373,13 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
                 ),
-            ]
+            ],
         )
 
-        self.trisc1.memory_map.add_blocks(
-            [
+        self.trisc1.memory_map = MemoryMap.get_memory_map_from_cache(
+            WormholeFunctionalWorkerBlock,
+            "trisc1_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc1.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
                 MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
@@ -424,11 +432,13 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
                 ),
-            ]
+            ],
         )
 
-        self.trisc2.memory_map.add_blocks(
-            [
+        self.trisc2.memory_map = MemoryMap.get_memory_map_from_cache(
+            WormholeFunctionalWorkerBlock,
+            "trisc2_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
                 MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
@@ -481,11 +491,13 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     "config_regs",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
                 ),
-            ]
+            ],
         )
 
-        self.ncrisc.memory_map.add_blocks(
-            [
+        self.ncrisc.memory_map = MemoryMap.get_memory_map_from_cache(
+            WormholeFunctionalWorkerBlock,
+            "ncrisc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.ncrisc.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
                 MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
@@ -495,5 +507,5 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
                 MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
                 MemoryMapBlockInfo("code_private_memory", self.ncrisc.code_private_memory),  # type: ignore[arg-type]
-            ]
+            ],
         )

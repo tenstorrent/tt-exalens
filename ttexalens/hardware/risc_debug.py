@@ -8,7 +8,6 @@ from dataclasses import dataclass, field
 from typing import Any, Generator
 from ttexalens import util
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.exceptions import RiscHaltError
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.elf import ParsedElfFile, ParsedElfFileWithOffset, ElfVariable, ElfDie, FrameInspection
 from ttexalens.hardware.risc_info import RiscInfo

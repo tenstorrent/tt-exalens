@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 from dataclasses import dataclass
+import threading
 from typing import Callable
 from ttexalens.hardware.memory_block import MemoryBlock
 from intervaltree import Interval, IntervalTree
@@ -36,6 +37,9 @@ class MemoryMapBlockInfo:
 
 class MemoryMap:
     """Catalog of memory blocks with address or name based lookup."""
+
+    __cache_of_memory_maps: dict[tuple[type, str], MemoryMap] = {}
+    __cache_lock: threading.Lock = threading.Lock()
 
     def __init__(self):
         self._noc_addresses = IntervalTree()
@@ -125,3 +129,15 @@ class MemoryMap:
                 if next is None or interval.begin < next.begin:
                     next = interval
         return next.data if next is not None else None
+
+    @staticmethod
+    def get_memory_map_from_cache(
+        type_to_cache: type, cache_key: str, block_list_lambda: Callable[[], list[MemoryMapBlockInfo]]
+    ) -> MemoryMap:
+        with MemoryMap.__cache_lock:
+            memory_map = MemoryMap.__cache_of_memory_maps.get((type_to_cache, cache_key))
+            if memory_map is None:
+                memory_map = MemoryMap()
+                memory_map.add_blocks(block_list_lambda())
+                MemoryMap.__cache_of_memory_maps[(type_to_cache, cache_key)] = memory_map
+            return memory_map

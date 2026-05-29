@@ -60,9 +60,10 @@ except ModuleNotFoundError as e:
 from ttexalens import init_ttexalens, init_ttexalens_remote
 from ttexalens.server import start_server
 from ttexalens import util as util
+from ttexalens.exceptions import TTException
 from ttexalens.context import Context
 from ttexalens.uistate import UIState
-from ttexalens.command_parser import tt_docopt, CommandMetadata, find_command, CommandParsingException
+from ttexalens.command_parser import tt_docopt, CommandMetadata, CommandParsingException
 from ttexalens.gdb.gdb_client import get_gdb_client_path
 
 
@@ -272,7 +273,7 @@ def main_loop(args, context: Context):
                         if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
                             cmd_raw = navigation_suggestions[cmd_int]["cmd"]
                         else:
-                            raise util.TTException(f"Invalid speed dial number: {cmd_int}")
+                            raise TTException(f"Invalid speed dial number: {cmd_int}")
 
                     cmd = cmd_raw.split()
                     if len(cmd) > 0:

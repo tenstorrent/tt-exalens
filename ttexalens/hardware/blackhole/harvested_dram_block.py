@@ -7,7 +7,7 @@ from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_store_initialization
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from ttexalens.register_store import RegisterStore
 
 
@@ -30,9 +30,11 @@ class BlackholeHarvestedDramBlock(BlackholeNocBlock):
             size=0x10000,
             address=DeviceAddress(noc_address=0x100FFB30000),
         )
-        self.noc_memory_map.add_blocks(
-            [
+        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
+            BlackholeHarvestedDramBlock,
+            "noc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs.just_noc_address()),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs.just_noc_address()),
-            ]
+            ],
         )

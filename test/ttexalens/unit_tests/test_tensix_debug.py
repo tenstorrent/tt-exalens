@@ -12,7 +12,7 @@ from ttexalens.context import Context
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.debug_tensix import TensixDebug, TILE_SIZE, TensixDataFormat, REGFILE
 from ttexalens.device import TensixInstructions
-from ttexalens.util import TTException
+from ttexalens.exceptions import TTException
 
 
 @parameterized_class(

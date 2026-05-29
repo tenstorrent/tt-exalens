@@ -37,7 +37,6 @@ Notes:
 """
 
 import ast
-import importlib
 import os, sys
 import re
 
@@ -488,7 +487,6 @@ def parse_directory(path: os.PathLike, parser: FileParser, interactive: bool = F
             parser (FileParser): Parser object to use for parsing the files.
             interactive (bool, optional): If True, the user will be prompted before parsing each file.
     """
-    from collections import OrderedDict
 
     exported_items = None
 

@@ -46,6 +46,7 @@ from ttexalens.device import Device
 from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
+from ttexalens.exceptions import TTException
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 from ttexalens.tt_exalens_lib import search_memory
 

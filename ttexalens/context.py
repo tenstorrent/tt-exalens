@@ -10,8 +10,8 @@ from sortedcontainers import SortedSet
 import tt_umd
 
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.exceptions import TTException
 from ttexalens import util as util
-from ttexalens.firmware import ELF
 
 
 if TYPE_CHECKING:
@@ -97,16 +97,12 @@ class Context:
     def device_by_unique_id(self) -> dict[int, Device]:
         return {device.unique_id: device for device in self.devices.values()}
 
-    @cached_property
-    def elf(self):
-        return ELF(self.file_api, {}, None)
-
     def find_device_by_id(self, device_id: int) -> Device:
         device = self.devices.get(device_id, None)
         if not device:
             device = self.device_by_unique_id.get(device_id, None)
         if not device:
-            raise util.TTException(f"Invalid device_id {device_id}.")
+            raise TTException(f"Invalid device_id {device_id}.")
         return device
 
     def get_risc_elf_path(self, risc_location: RiscLocation) -> str | None:

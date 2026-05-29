@@ -6,7 +6,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 
 
 class BlackholeL2cpuBlock(BlackholeNocBlock):
@@ -14,8 +14,10 @@ class BlackholeL2cpuBlock(BlackholeNocBlock):
         super().__init__(location, block_type="l2cpu")
 
         self.noc_regs = MemoryBlock(size=0x10000, address=DeviceAddress(noc_address=0xFFFFFFFF_FF000000))
-        self.noc_memory_map.add_blocks(
-            [
+        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
+            BlackholeL2cpuBlock,
+            "noc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("noc_regs", self.noc_regs),
-            ]
+            ],
         )

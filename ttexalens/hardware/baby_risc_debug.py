@@ -11,6 +11,7 @@ from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.device import Device
+from ttexalens.exceptions import RiscHaltError
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import (
@@ -18,7 +19,6 @@ from ttexalens.hardware.risc_debug import (
     RiscLocation,
     RiscDebugStatus,
     RiscDebugWatchpointState,
-    RiscHaltError,
 )
 from ttexalens.register_store import RegisterDescription, RegisterStore
 from ttexalens.hardware.noc_block import NocBlock

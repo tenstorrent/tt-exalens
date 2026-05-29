@@ -7,7 +7,7 @@ from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_store_initialization
 from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
-from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from ttexalens.register_store import RegisterStore
 
 
@@ -29,8 +29,10 @@ class WormholePcieBlock(WormholeNocBlock):
         self.noc_regs = MemoryBlock(
             size=0x10000, address=DeviceAddress(private_address=0xFFFB20000, noc_address=0xFFFB20000)
         )
-        self.noc_memory_map.add_blocks(
-            [
+        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
+            WormholePcieBlock,
+            "noc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("noc_regs", self.noc_regs),
-            ]
+            ],
         )
