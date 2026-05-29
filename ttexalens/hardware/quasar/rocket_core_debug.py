@@ -7,6 +7,7 @@ from typing import Any, Generator
 import time
 
 from ttexalens import util
+from ttexalens.exceptions import RiscHaltError
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
 from ttexalens.register_store import RegisterStore
@@ -88,6 +89,8 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             hartsel = self.baby_risc_info.risc_id << 16
             self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | HALTREQ)
             self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
+            if not self.is_halted():
+                raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
 
     def cont(self) -> None:
         with self.ensure_debug_module_out_of_reset():
