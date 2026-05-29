@@ -7,7 +7,6 @@ from typing import Any, Generator
 import time
 
 from ttexalens import util
-from ttexalens.exceptions import RiscHaltError
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
 from ttexalens.register_store import RegisterStore
@@ -113,16 +112,10 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
                 self.cont()
 
     def get_pc(self) -> int:
-        with self.ensure_debug_module_out_of_reset():
-            with self.ensure_halted():
-                hartsel = self.baby_risc_info.risc_id << 16
-                self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
-                self.register_store.write_register("TT_DEBUG_MODULE_APB_COMMAND", CMD_READ_DPC)
-                while self.register_store.read_register("TT_DEBUG_MODULE_APB_ABSTRACTCS") & ABSTRACTS_BUSY:
-                    pass
-                lo = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA0")
-                hi = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA1")
-                return (hi << 32) | lo
+        assert (
+            self.register_store.read_register("TT_CLUSTER_CTRL_WB_PC_CTRL") == 1
+        ), "WB PC control has to be enabled to read PC"
+        return self.register_store.read_register(f"TT_CLUSTER_CTRL_WB_PC_REG_C{self.baby_risc_info.risc_id}")
 
     def set_code_start_address(self, address: int | None) -> None:
         self.baby_risc_info.set_code_start_address(self.register_store, address if address is not None else 0)
