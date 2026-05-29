@@ -7,6 +7,7 @@ from typing import Any, Generator
 import time
 
 from ttexalens import util
+from ttexalens.exceptions import RiscHaltError
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
 from ttexalens.register_store import RegisterStore
