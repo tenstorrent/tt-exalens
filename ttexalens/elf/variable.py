@@ -241,6 +241,21 @@ class ElfVariable:
         # Write the value to memory
         self.__mem_access.write(self.__address, value_bytes)
 
+    def __bool__(self) -> bool:
+        """
+        Return the boolean value of the variable.
+        """
+        # For arrays, check if any element is non-zero/True
+        if self.__type_die.tag_is("array_type"):
+            return len(self) > 0
+
+        # For base types, check if the value is non-zero/True
+        try:
+            return bool(self.read_value())
+        except TypeError:
+            raise TypeMismatchError("bool", self.__type_die.name)
+        # Let memory access and other errors propagate
+
     def __eq__(self, other) -> bool:
         """
         Compare the ElfVariable's value with another value.
