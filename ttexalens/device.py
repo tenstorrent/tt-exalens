@@ -484,8 +484,8 @@ class Device:
     @cached_property
     def active_eth_block_locations(self) -> list[OnChipCoordinate]:
         active_channels: list[int] = []
-        for src_chip, channels in self._context.cluster_descriptor.get_ethernet_connections().items():
-            for src_chan, dest in channels.items():
+        for _, channels in self._context.cluster_descriptor.get_ethernet_connections().items():
+            for _, dest in channels.items():
                 dest_chip, dest_chan = dest
                 if dest_chip == self.id:
                     active_channels.append(dest_chan)

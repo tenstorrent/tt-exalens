@@ -440,7 +440,7 @@ class TestDebugSymbols(unittest.TestCase):
         ]
     )
     def test_elf_variable_error_handling(
-        self, expected_error: type[Exception], mem_access_factory: Callable[["TestDebugSymbols"], MemoryAccess]
+        self, expected_error: type[BaseException], mem_access_factory: Callable[["TestDebugSymbols"], MemoryAccess]
     ):
         mem_access = mem_access_factory(self)
         g_global_struct = self.parsed_elf.get_global("g_global_struct", mem_access)

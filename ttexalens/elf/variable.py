@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 import struct
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, SupportsIndex
 
 from ttexalens.exceptions import (
     DataLossError,
@@ -95,7 +95,7 @@ class ElfVariable:
                     return data_member_location + address, member
         return None, None
 
-    def __getitem__(self, key: str | int) -> "ElfVariable":
+    def __getitem__(self, key: str | SupportsIndex) -> "ElfVariable":
         # Handle string keys for struct/union member access
         if isinstance(key, str):
             return self.get_member(key)
@@ -511,10 +511,11 @@ class ElfVariable:
     def __invert__(self):
         """Bitwise inversion operator."""
         value = self.read_value()
+        # bool is a subclass of int; check bool first so we get logical-not, not bitwise.
+        if isinstance(value, bool):
+            return not value
         if isinstance(value, int):
             return ~int(value)
-        elif isinstance(value, bool):
-            return not value
 
         raise TypeError(f"bad operand type for unary ~: '{type(value).__name__}'")
 
@@ -527,13 +528,13 @@ class ElfVariable:
 
         try:
             value = self.read_value()
+            # bool is a subclass of int; check bool first so we explicitly coerce True/False to 1/0.
+            if isinstance(value, bool):
+                return int(value)  # Convert bool to int (True -> 1, False -> 0)
             if isinstance(value, int):
                 return value
-            elif isinstance(value, bool):
-                return int(value)  # Convert bool to int (True -> 1, False -> 0)
-            elif isinstance(value, float):
-                if value.is_integer():
-                    return int(value)
+            if value.is_integer():
+                return int(value)
         except (TimeoutDeviceRegisterError, RiscHaltError, RestrictedMemoryAccessError):
             raise
         except Exception:

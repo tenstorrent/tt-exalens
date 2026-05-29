@@ -147,7 +147,7 @@ def get_noc_status_registers(
     noc_registers: dict[str, list[tuple[str, int, int]]] = {group_name: [] for group_name in register_groups.keys()}
     for group_name, registers in register_groups.items():
         for register_desc, reg_name in registers.items():
-            name, address, value = read_register_with_address(register_store, reg_name)
+            _, address, value = read_register_with_address(register_store, reg_name)
             noc_registers[group_name].append((register_desc, address, value))
     return noc_registers
 

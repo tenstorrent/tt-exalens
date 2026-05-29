@@ -178,7 +178,7 @@ class OnChipCoordinate:
         """
         try:
             output_tuple = self.to(output_type)
-        except CoordinateTranslationError as e:
+        except CoordinateTranslationError:
             return "N/A"
 
         if output_type == "logical":

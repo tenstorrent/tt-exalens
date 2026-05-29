@@ -54,10 +54,6 @@ class TestMulticore(unittest.TestCase):
             - Writes counter to mailbox
             - Jumps back to increment
         """
-        # Constants
-        MAILBOX_READ_ADDR = 0xFFEC1000
-        MAILBOX_WRITE_ADDR = 0xFFEC0000
-
         # Configure cores
         self.trisc0.set_branch_prediction(False)
 

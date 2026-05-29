@@ -171,8 +171,6 @@ class tt_docopt:
         """
         if not option_names:
             return ""
-        if type(option_names) == str:
-            option_names = [option_names]
 
         options_string = ""
         for opt_name in option_names:

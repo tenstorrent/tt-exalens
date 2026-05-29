@@ -29,9 +29,7 @@ class FrameDescription:
             self.current_fde_entry = entry
 
     def try_read_register(self, register_index: int, cfa: int | None) -> int | None:
-        if self.current_fde_entry is not None and register_index in self.current_fde_entry:
-            register_rule = self.current_fde_entry[register_index]
-            # TODO #761: Figure out how to handle all types of rules (CFARule, RegisterRule)
+        # TODO #761: Figure out how to handle all types of rules (CFARule, RegisterRule)
         return None
 
     def read_register(self, register_index: int, cfa: int) -> int | None:

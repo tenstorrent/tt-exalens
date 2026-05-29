@@ -275,14 +275,11 @@ class DebugBusSignalStore:
         int
             A 32-bit value in direct read mode. The value is masked with `signal.mask` if set.
         """
-        signal_desc = None
         if isinstance(signal, str):
             signal_desc = self.get_signal_description(signal)
-        elif isinstance(signal, DebugBusSignalDescription):
+        else:
             self._validate_signal_parameters(signal)
             signal_desc = signal
-        else:
-            raise ValueError(f"Invalid signal type: {type(signal)}")
 
         # Read 32-bit data
         data = self._read_signal_data(signal_desc)

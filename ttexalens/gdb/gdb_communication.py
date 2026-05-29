@@ -58,7 +58,7 @@ class ClientSocket:
             return True
         return False
 
-    def peek(self, packet_size=1):
+    def peek(self, packet_size: int | None = None):
         assert self.socket is not None
         if packet_size is None:
             packet_size = self.packet_size

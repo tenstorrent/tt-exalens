@@ -62,3 +62,9 @@ extraPaths = ["build/stubs"]
 pythonVersion = "3.10"
 typeCheckingMode = "standard"
 reportMissingModuleSource = "none"
+# High-signal rules from strict mode (most of strict's diagnostics are
+# annotation-coverage noise; these four catch real dead-code / logic bugs).
+reportUnnecessaryComparison = "error"
+reportUnnecessaryIsInstance = "error"
+reportMatchNotExhaustive = "error"
+reportUnusedVariable = "error"

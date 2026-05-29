@@ -284,7 +284,7 @@ def parse_source_file(input_file: str, parser: CmdParser = CmdParser()) -> dict 
     cmd_metadata = get_module_metadata(input_file)
     cmd_doc = cmd_metadata.description if cmd_metadata.description else ""
 
-    if cmd_metadata.type is not None and cmd_metadata.type == "dev":
+    if cmd_metadata.type == "dev":
         WARNING(f"Skipping {input_file} as it is a dev command")
         return None
     if cmd_metadata.context is not None and "limited" not in cmd_metadata.context:

@@ -655,7 +655,7 @@ def generate_unique_filename(filename):
 
 
 # Exports filelist to a zip file
-def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME, prefix_to_remove=None):
+def export_to_zip(filelist, out_file: str | None = None, prefix_to_remove=None):
     if out_file is None:
         out_file = DEFAULT_EXPORT_FILENAME
 

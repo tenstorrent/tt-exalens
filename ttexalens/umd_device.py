@@ -450,7 +450,9 @@ class UmdDevice:
     def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
         """Returns currently active Ethernet core in logical coordinates"""
         remote_communication = self.__device.get_remote_communication()
-        if remote_communication is None:
+        if (
+            remote_communication is None
+        ):  # pyright: ignore[reportUnnecessaryComparison]  # tt_umd stub claims non-Optional but runtime may return None
             return None
         translated_coord = remote_communication.get_remote_transfer_ethernet_core()
         local_device = remote_communication.get_local_device()
