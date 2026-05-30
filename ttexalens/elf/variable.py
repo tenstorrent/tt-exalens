@@ -154,7 +154,7 @@ class ElfVariable:
         """
         return [self[i] for i in range(len(self))]
 
-    def as_value_list(self) -> list[int | float | bool]:
+    def as_value_list(self) -> list[int | float | bool | str]:
         """
         Return the array elements as a list of values
         """
@@ -172,7 +172,43 @@ class ElfVariable:
         address = int.from_bytes(address_bytes, byteorder="little")
         return ElfVariable(self.__type_die.dereference_type, address, self.__mem_access)
 
-    def read_value(self) -> int | float | bool:
+    @property
+    def __is_string(self) -> bool:
+        """
+        Whether this variable is a C-style string: a pointer to char or an array of char.
+
+        Only plain `char` qualifies (so `unsigned char`/`signed char` arrays - e.g. byte buffers -
+        keep being read as numbers, not strings).
+        """
+        if self.__type_die.tag_is("array_type"):
+            element = self.__type_die.array_element_type
+        elif self.__type_die.tag_is("pointer_type"):
+            element = self.__type_die.dereference_type
+        else:
+            return False
+        return element is not None and element.tag_is("base_type") and element.name == "char"
+
+    def __read_string(self) -> str:
+        """Read the null-terminated string this variable points to or contains."""
+        if self.__type_die.tag_is("array_type"):
+            address = self.__address
+            limit = self.__type_die.size if self.__type_die.size is not None else 0
+        else:  # pointer
+            address = self.dereference().get_address()
+            limit = 1024 * 1024  # Arbitrary max length to prevent infinite loops on non-null-terminated data
+        data = bytearray()
+        for offset in range(limit):
+            byte = self.__mem_access.read(address + offset, 1)
+            if len(byte) == 0 or byte[0] == 0:
+                break
+            data.append(byte[0])
+        return data.decode("utf-8", errors="replace")
+
+    def read_value(self) -> int | float | bool | str:
+        # A C-style string (char* or char[]) is read as its (null-terminated) text.
+        if self.__is_string:
+            return self.__read_string()
+
         # Check that type_die is a basic type
         type = self.__type_die
         if not type.tag_is("base_type") and not type.tag_is("pointer_type") and not type.tag_is("enumeration_type"):
@@ -198,7 +234,29 @@ class ElfVariable:
         else:
             return int.from_bytes(value_bytes, byteorder="little", signed=type.is_signed_type)
 
-    def write_value(self, value: int | float | bool, check_data_loss: bool = True) -> None:
+    def __write_string(self, value: int | float | bool | str, check_data_loss: bool = True) -> None:
+        """Write a null-terminated string into a char array (or char buffer a pointer points to).
+
+        The existing buffer is never reallocated, so writing a string that does not fit (including
+        its null terminator) into a fixed-size char array raises DataLossError.
+        """
+        if not isinstance(value, str):
+            raise TypeMismatchError("write_value", "string")
+        encoded = value.encode("utf-8") + b"\x00"
+        if self.__type_die.tag_is("array_type"):
+            address = self.__address
+            capacity = self.__type_die.size
+            if check_data_loss and capacity is not None and len(encoded) > capacity:
+                raise DataLossError(value, "string")
+        else:  # pointer - the pointed-to buffer size is unknown, so write as-is
+            address = self.dereference().get_address()
+        self.__mem_access.write(address, encoded)
+
+    def write_value(self, value: int | float | bool | str, check_data_loss: bool = True) -> None:
+        # A C-style string (char* or char[]) is written as its (null-terminated) text.
+        if self.__is_string:
+            return self.__write_string(value, check_data_loss)
+
         # Check that type_die is a basic type
         type = self.__type_die
         if not type.tag_is("base_type") and not type.tag_is("enumeration_type"):
@@ -262,6 +320,14 @@ class ElfVariable:
         For base types, compares the actual value.
         For arrays, compares element-by-element with the other sequence.
         """
+        # A C-style string compares by its text value (a char array would otherwise be compared
+        # element-by-element below).
+        if self.__is_string:
+            try:
+                return bool(self.read_value() == other)
+            except TypeError:
+                return False
+
         # For arrays, compare element-by-element
         if self.__type_die.tag_is("array_type"):
             if hasattr(other, "__len__") and hasattr(other, "__getitem__"):
@@ -510,18 +576,25 @@ class ElfVariable:
             pass
         return NotImplemented
 
+    def __read_numeric_value(self) -> int | float | bool:
+        """read_value, requiring a numeric result (arithmetic is not supported on strings)."""
+        value = self.read_value()
+        if isinstance(value, str):
+            raise TypeError(f"unsupported operand type for arithmetic on '{self.__type_die.name}'")
+        return value
+
     # Unary operators
     def __neg__(self):
         """Unary negation operator."""
-        return -self.read_value()
+        return -self.__read_numeric_value()
 
     def __pos__(self):
         """Unary positive operator."""
-        return +self.read_value()
+        return +self.__read_numeric_value()
 
     def __abs__(self):
         """Absolute value operator."""
-        return abs(self.read_value())
+        return abs(self.__read_numeric_value())
 
     def __invert__(self):
         """Bitwise inversion operator."""
@@ -548,7 +621,7 @@ class ElfVariable:
                 return int(value)  # Convert bool to int (True -> 1, False -> 0)
             if isinstance(value, int):
                 return value
-            if value.is_integer():
+            if isinstance(value, float) and value.is_integer():
                 return int(value)
         except (TimeoutDeviceRegisterError, RiscHaltError, RestrictedMemoryAccessError):
             raise

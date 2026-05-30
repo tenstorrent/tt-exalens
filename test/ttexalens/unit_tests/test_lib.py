@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import unittest
 import os
+import struct
 
 import itertools
 from functools import wraps
@@ -23,7 +24,7 @@ from ttexalens.device import Device, UnsafeAccessException
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.memory_access import MemoryAccess
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
-from ttexalens.hardware.risc_debug import CallstackEntry, RiscDebug
+from ttexalens.hardware.risc_debug import CallstackEntry, CallstackEntryVariable, RiscDebug
 
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.elf_loader import ElfLoader
@@ -1477,6 +1478,10 @@ class TestCallStack(unittest.TestCase):
         cls.gdb_server = GdbServer(cls.context, server)
         cls.gdb_server.start()
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.gdb_server.stop()
+
     def setUp(self):
         try:
             self.location = get_core_location(self.location_desc, self.device)
@@ -1696,6 +1701,194 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[3].template_parameters[1].name, "ClassT1")
         self.assertEqual(callstack[3].template_parameters[1].value, 4)
         self.assertEqual(callstack[4].function_name, "main")
+
+    # Argument and local variable values used by every value-test scenario in callstack.cc. Each
+    # entry is (chained_function, single_frame_type, struct_format, argument, local).
+    VALUE_TEST_TYPES = [
+        ("value_test_bool", "bool", "<?", True, False),
+        ("value_test_uint8", "unsigned char", "<B", 200, 17),
+        ("value_test_int8", "signed char", "<b", -100, 50),
+        ("value_test_uint16", "short unsigned int", "<H", 60000, 1234),
+        ("value_test_int16", "short int", "<h", -30000, 5678),
+        ("value_test_uint32", "long unsigned int", "<I", 4000000000, 12345678),
+        ("value_test_int32", "long int", "<i", -2000000000, 87654321),
+        ("value_test_uint64", "long long unsigned int", "<Q", 18000000000000000000, 1234567890123),
+        ("value_test_int64", "long long int", "<q", -9000000000000000000, 9876543210),
+        ("value_test_float", "float", "<f", 3.5, -1.25),
+        ("value_test_double", "double", "<d", 2.5, -7.75),
+        (
+            "value_test_charptr",
+            "char const*",
+            "g_test_string",
+            "Tenstorrent callstack string",
+            "Tenstorrent callstack string",
+        ),
+    ]
+
+    def get_mailbox_value_address(self, elf: ParsedElfFile) -> int:
+        """Address of the g_MAILBOX_value buffer in callstack.cc."""
+        text_section = elf.sections.get(".text")
+        assert text_section is not None
+        assert text_section.address is not None
+
+        firmware_end: int = text_section.address + text_section.size
+        return (firmware_end + 4 + 16) & ~15
+
+    def get_symbol_address(self, elf: ParsedElfFile, name: str) -> int:
+        symbol = elf.symbols.get(name)
+        assert symbol is not None and symbol.value is not None, f"Symbol {name} not found in ELF"
+        return int(symbol.value)
+
+    def pack_value_test_value(self, elf: ParsedElfFile, struct_format: str, value):
+        # If struct_format doesn't start with "<", it's not a raw value but a symbol name whose address we want to get and pack as a uint32_t.
+        if struct_format.startswith("<"):
+            return struct.pack(struct_format, value)
+        return struct.pack("<I", self.get_symbol_address(elf, struct_format))
+
+    def assert_value_equals(self, actual, expected):
+        if isinstance(expected, float):
+            self.assertAlmostEqual(actual, expected, places=6)
+        else:
+            self.assertEqual(actual, expected)
+
+    def assert_variable(
+        self, variable: CallstackEntryVariable, expected_name: str, expected_value, require_value: bool, message: str
+    ):
+        self.assertEqual(variable.name, expected_name, message)
+        if variable.value is None:
+            self.assertFalse(require_value, f"Could not read {message}")
+        else:
+            self.assert_value_equals(variable.value.read_value(), expected_value)
+
+    def assert_string_pointer(self, variable: CallstackEntryVariable, expected_name: str, address: int, message: str):
+        self.assertEqual(variable.name, expected_name, message)
+        value = variable.value
+        assert value is not None, f"Could not read {message}"
+        self.assertEqual(value.dereference().get_address(), address, message)
+
+    def check_chained_value_test(
+        self, elf_name: str, mailbox: int, namespace: str, require_arguments: bool, wrapper: str | None = None
+    ):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, mailbox)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        # The callstack is: halt, the value-test chain (one frame per type), an optional wrapper
+        # frame, then main.
+        self.assertEqual(len(callstack), len(self.VALUE_TEST_TYPES) + 2 + (1 if wrapper else 0))
+        self.assertEqual(callstack[0].function_name, "halt")
+        self.assertEqual(callstack[-1].function_name, "main")
+        if wrapper is not None:
+            # As with the chain leaf, the optimized debug info may drop the namespace prefix.
+            self.assertIn(callstack[len(self.VALUE_TEST_TYPES) + 1].function_name, (wrapper, wrapper.split("::")[-1]))
+
+        for index, (function, _, _, expected_arg, expected_local) in enumerate(self.VALUE_TEST_TYPES):
+            entry = callstack[index + 1]
+            function_name = f"{namespace}::{function}"
+            # On the optimized build a constant-propagated clone of a leaf function can lose its
+            # namespace qualification in the debug info, so accept the bare name there too.
+            self.assertIn(entry.function_name, (function_name, function), f"Unexpected frame: {entry.function_name}")
+
+            # Every value-test function has exactly one argument and one local variable.
+            self.assertEqual(len(entry.arguments), 1, f"Unexpected arguments for {function_name}")
+            self.assertEqual(len(entry.locals), 1, f"Unexpected locals for {function_name}")
+            self.assert_variable(
+                entry.arguments[0], "arg", expected_arg, require_arguments, f"argument of {function_name}"
+            )
+            self.assert_variable(entry.locals[0], "local", expected_local, True, f"local of {function_name}")
+
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_argument_and_local_values(self, elf_name: str):
+        require_arguments = "release" not in elf_name
+        # 0xFFFFFFFD selects the value_test chain (separate frames, one per type) in callstack.cc.
+        self.check_chained_value_test(elf_name, 0xFFFFFFFD, "value_test", require_arguments)
+
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_inlined_argument_and_local_values(self, elf_name: str):
+        # 0xFFFFFFFC selects the inline_value_test chain (inlined virtual frames) in callstack.cc.
+        self.check_chained_value_test(elf_name, 0xFFFFFFFC, "inline_value_test", True, wrapper="inline_value_test::run")
+
+    @parameterized.expand(itertools.product(CALLSTACK_ELFS, range(len(VALUE_TEST_TYPES))))
+    def test_callstack_single_frame_argument_and_local_values(self, elf_name: str, type_index: int):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        _, type_name, struct_format, expected_arg, expected_local = self.VALUE_TEST_TYPES[type_index]
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+
+        # Select the single-frame dispatch for this type, then provide the argument (offset 0)
+        # and local (offset 8) values through the host-written g_MAILBOX_value buffer.
+        # 0xFFFFFE00 | type_index invokes single_frame_value_test::dispatch for that type.
+        self.set_recursion_count(parsed_elf, 0xFFFFFE00 | type_index)
+        mailbox_value_address = self.get_mailbox_value_address(parsed_elf)
+        self.l1_mem_access.write(
+            mailbox_value_address, self.pack_value_test_value(parsed_elf, struct_format, expected_arg)
+        )
+        self.l1_mem_access.write(
+            mailbox_value_address + 8, self.pack_value_test_value(parsed_elf, struct_format, expected_local)
+        )
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        # The callstack is: value_test<T> (top frame), dispatch, main.
+        top = callstack[0]
+        self.assertEqual(top.function_name, f"single_frame_value_test::value_test<{type_name}>")
+        self.assertEqual(len(top.arguments), 1)
+        self.assertEqual(len(top.locals), 1)
+        if struct_format.startswith("<"):
+            self.assert_variable(top.arguments[0], "arg", expected_arg, True, f"argument of {top.function_name}")
+            self.assert_variable(top.locals[0], "local", expected_local, True, f"local of {top.function_name}")
+        else:
+            # A const char* transferred through a register: verify it points at the test string.
+            address = self.get_symbol_address(parsed_elf, struct_format)
+            self.assert_string_pointer(top.arguments[0], "arg", address, f"argument of {top.function_name}")
+            self.assert_string_pointer(top.locals[0], "local", address, f"local of {top.function_name}")
+
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_callee_saved_register_values(self, elf_name: str):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        mailbox_value_address = self.get_mailbox_value_address(parsed_elf)
+        for index, (_, _, struct_format, value, _) in enumerate(self.VALUE_TEST_TYPES):
+            self.l1_mem_access.write(
+                mailbox_value_address + index * 8, self.pack_value_test_value(parsed_elf, struct_format, value)
+            )
+        # 0xFFFFFFFB selects the callee_saved_test chain (value per type in a callee-saved register).
+        self.set_recursion_count(parsed_elf, 0xFFFFFFFB)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        # The callstack is: halt, the callee_saved_test chain (one frame per type), then main.
+        self.assertEqual(len(callstack), len(self.VALUE_TEST_TYPES) + 2)
+        self.assertEqual(callstack[0].function_name, "halt")
+        self.assertEqual(callstack[-1].function_name, "main")
+        for index, (function, _, struct_format, value, _) in enumerate(self.VALUE_TEST_TYPES):
+            frame = callstack[index + 1]
+            function_name = f"callee_saved_test::{function}"
+            # As elsewhere, the optimized build can drop the namespace of a leaf function.
+            self.assertIn(frame.function_name, (function_name, function), f"Unexpected frame: {frame.function_name}")
+            self.assertEqual(len(frame.locals), 1, f"Unexpected locals for {function_name}")
+            if struct_format.startswith("<"):
+                self.assert_variable(frame.locals[0], "reg_value", value, True, f"reg_value of {function_name}")
+            else:
+                # A const char* held in a callee-saved register: verify it points at the test string.
+                address = self.get_symbol_address(parsed_elf, struct_format)
+                self.assert_string_pointer(frame.locals[0], "reg_value", address, f"reg_value of {function_name}")
 
     @parameterized.expand(
         [

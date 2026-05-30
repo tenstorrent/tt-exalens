@@ -713,12 +713,90 @@ class ElfDie:
                 try:
                     value = int(value)
                     size = variable_type.size if variable_type.size is not None else 4
-                    memory = value.to_bytes(size, byteorder="little")
+                    # # The value may be wider than the variable (e.g. a sign-extended sub-word
+                    # # value read from a 32-bit register), so keep only its low `size` bytes;
+                    # # ElfVariable then re-applies the variable's own signedness.
+                    memory = (value & ((1 << (size * 8)) - 1)).to_bytes(size, byteorder="little")
                 except Exception:
                     return None
 
             # We explicitly set address to 0 to indicate that this is not an addressable variable
             return ElfVariable(variable_type, 0, FixedMemoryAccess(memory))
+
+    def _evaluate_location_expression_piece(
+        self, ops: list[DWARFExprOp], size: int, frame_inspection: FrameInspection | None
+    ) -> bytes | None:
+        """Evaluate a single piece of a composite location and return its `size` bytes."""
+        # An empty piece (no operations) means this part of the object is not available.
+        if len(ops) == 0 or size <= 0:
+            return None
+
+        is_address, value = self._evaluate_location_expression(ops, frame_inspection)
+        if value is None:
+            return None
+
+        if is_address:
+            # The piece is `size` bytes read from the computed memory address.
+            if frame_inspection is None:
+                return None
+            try:
+                return bytes(frame_inspection.mem_access.read(int(value), size))
+            except Exception:
+                util.DEBUG(f"Failed to read {size} bytes for location piece:\n{traceback.format_exc()}")
+                return None
+
+        # Otherwise the piece is `size` bytes of the computed value (register contents, an
+        # implicit value, or any other value left on the stack).
+        if isinstance(value, bytes):
+            data = value[:size]
+            return data + bytes(size - len(data)) if len(data) < size else data
+        try:
+            int_value = int(value)
+        except (TypeError, ValueError):
+            return None
+        return (int_value & ((1 << (size * 8)) - 1)).to_bytes(size, byteorder="little")
+
+    def _evaluate_composite_location_expression(
+        self, parsed_expression: list[DWARFExprOp], frame_inspection: FrameInspection | None
+    ) -> tuple[bool, Any | None]:
+        # A composite location description describes an object or value which may be
+        # contained in part of a register or stored in more than one location. Each piece is
+        # described by a composition operation, which does not compute a value nor store
+        # any result on the DWARF stack. There may be one or more composition
+        # operations in a single composite location description. A series of such operations
+        # describes the parts of a value in memory address order.
+        # Each composition operation is immediately preceded by a simple location
+        # description which describes the location where part of the resultant value is contained.
+        composed = bytearray()
+        current_ops: list[DWARFExprOp] = []
+        for op in parsed_expression:
+            if op.op_name == "DW_OP_piece":
+                if len(op.args) != 1 or not isinstance(op.args[0], int):
+                    return False, None
+                piece = self._evaluate_location_expression_piece(current_ops, op.args[0], frame_inspection)
+                if piece is None:
+                    return False, None
+                composed += piece
+                current_ops = []
+            elif op.op_name == "DW_OP_bit_piece":
+                if len(op.args) != 2 or not isinstance(op.args[0], int) or not isinstance(op.args[1], int):
+                    return False, None
+                bit_size = op.args[0]
+                bit_offset = op.args[1]
+                if bit_size % 8 != 0:
+                    return False, None  # Bit-granular pieces are not supported
+                byte_size = bit_size // 8
+                piece = self._evaluate_location_expression_piece(current_ops, byte_size, frame_inspection)
+                if piece is None:
+                    return False, None
+                # Extract the relevant bytes for the bit piece, then shift and mask to get the correct bits.
+                int_piece = int.from_bytes(piece, byteorder="little")
+                int_piece = (int_piece >> bit_offset) & ((1 << bit_size) - 1)
+                composed += int_piece.to_bytes(byte_size, byteorder="little")
+                current_ops = []
+            else:
+                current_ops.append(op)
+        return False, bytes(composed)
 
     def _evaluate_location_expression(
         self, parsed_expression: list[DWARFExprOp], frame_inspection: FrameInspection | None = None
@@ -728,13 +806,17 @@ class ElfDie:
 
         util.DEBUG(f"   {parsed_expression}")
 
+        # Check if it is a composite location expression, which describes a value stored in multiple pieces.
+        if any(op.op_name == "DW_OP_piece" or op.op_name == "DW_OP_bit_piece" for op in parsed_expression):
+            return self._evaluate_composite_location_expression(parsed_expression, frame_inspection)
+
         location_parser = self.cu.dwarf.location_parser
         is_address = False
         value = None
         stack = []
         for op in parsed_expression:
             if op.op_name == "DW_OP_fbreg":
-                # We need to get attribute frabe_base from the current function
+                # We need to get attribute frame_base from the current function
                 function_die = self.parent
                 while (
                     function_die is not None
@@ -984,7 +1066,7 @@ class ElfDie:
             elif op.op_name == "DW_OP_neg":
                 if len(stack) > 0:
                     value = stack.pop()
-                if value is None:
+                if value is None or isinstance(value, str):
                     return False, None
                 try:
                     value = -value
@@ -1260,13 +1342,11 @@ class ElfDie:
                 # TODO: Implement missing expression operations
                 # DW_OP_bra=0x28, # Hard to implement without full control flow support
                 # DW_OP_skip=0x2f, # Hard to implement without full control flow support
-                # DW_OP_piece=0x93,
                 # DW_OP_deref_size=0x94,
                 # DW_OP_xderef_size=0x95,
                 # DW_OP_nop=0x96,
                 # DW_OP_push_object_address=0x97,
                 # DW_OP_form_tls_address=0x9b,
-                # DW_OP_bit_piece=0x9d,
                 # DW_OP_implicit_value=0x9e,
                 # DW_OP_implicit_pointer=0xa0,
                 # DW_OP_addrx=0xa1,

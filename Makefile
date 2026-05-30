@@ -15,6 +15,10 @@ build:
 			-DCMAKE_POLICY_VERSION_MINIMUM=3.5; \
 	fi
 	@ninja -C $(BUILD_DIR)
+	@echo "Running mypy"
+	python3 -m mypy
+	@echo "Running basedpyright"
+	python3 -m basedpyright
 
 dump_elfs:
 	DUMP_ELFS=ON $(MAKE) build

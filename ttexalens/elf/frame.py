@@ -14,6 +14,13 @@ if TYPE_CHECKING:
     from ttexalens.elf.dwarf import ElfDwarf
 
 
+# https://github.com/riscv-non-isa/riscv-elf-psabi-doc/blob/master/riscv-cc.adoc
+# RISC-V calling convention defines 12 callee-saved integer registers: s0/fp (x8), s1 (x9) and s2-s11 (x18-x27).
+# If register wasn't mentioned in the call frame rules, it is preserved unchanged,
+# so we can look for it further out or read it live.
+RISCV_CALLEE_SAVED_REGISTERS = frozenset({8, 9} | set(range(18, 28)))
+
+
 class FrameDescription:
     def __init__(self, pc: int, fde: FDE, risc_debug: RiscDebug):
         self.pc = pc
@@ -28,9 +35,31 @@ class FrameDescription:
                 break
             self.current_fde_entry = entry
 
-    def try_read_register(self, register_index: int, cfa: int | None) -> int | None:
-        # TODO #761: Figure out how to handle all types of rules (CFARule, RegisterRule)
-        return None
+    def recover_register(self, register_index: int, cfa: int) -> tuple[bool, int | None]:
+        """Describe how this frame restores the given register for its caller.
+
+        First element of the returned tuple is boolean status: is value lost?
+        Second element is the value if it is saved by this frame, or None if it is preserved unchanged or lost.
+
+        Returns one of:
+          (False, value)   - the frame spilled the register to the stack, here is its value;
+          (True, None)     - the register is no longer recoverable through this frame;
+          (False, None)    - the frame leaves the register unchanged (it is preserved), so the
+                             caller's value must be looked for further out (or read live).
+        """
+        if self.current_fde_entry is None or register_index not in self.current_fde_entry:
+            # Not mentioned by this frame's call-frame rules: preserved unchanged.
+            return False, None
+        rule = self.current_fde_entry[register_index]
+        if rule.type == "OFFSET":
+            try:
+                return False, self.mem_access.read_word(cfa + rule.arg)
+            except RestrictedMemoryAccessError:
+                return True, None
+        if rule.type == "SAME_VALUE":
+            return False, None
+        # UNDEFINED / REGISTER / EXPRESSION / ... - cannot recover the value safely.
+        return True, None
 
     def read_register(self, register_index: int, cfa: int) -> int | None:
         if self.current_fde_entry is not None and register_index in self.current_fde_entry:
@@ -77,13 +106,13 @@ class FrameInspection:
         self,
         risc_debug: RiscDebug,
         loaded_offset: int,
-        frame_description: FrameDescription | None = None,
-        cfa: int | None = None,
+        cfa: int | None,
+        inner_frames: list[tuple[FrameDescription, int]],
     ):
         self.risc_debug = risc_debug
         self.loaded_offset = loaded_offset
-        self.frame_description = frame_description
         self.cfa = cfa
+        self.inner_frames = inner_frames
         self.mem_access = MemoryAccess.create(risc_debug)
 
     @cached_property
@@ -93,12 +122,28 @@ class FrameInspection:
         return value
 
     def read_register(self, register_index: int) -> int | None:
-        # If it is top frame, we can read all registers from RiscDebug
-        if self.frame_description is None:
+        # If there are no inner frames, we are at the top of the call stack
+        # and all registers are live in the core, so read directly.
+        if not self.inner_frames:
             return self.risc_debug.read_gpr(register_index)
 
-        # If it is not top frame, we need to read registers from frame description
-        return self.frame_description.try_read_register(register_index, self.cfa)
+        # Look for the register value in the inner frames.
+        for frame_description, cfa in self.inner_frames:
+            lost, value = frame_description.recover_register(register_index, cfa)
+            if lost:
+                # Stop the search, the register is unrecoverable.
+                return None
+            elif not lost and value is not None:
+                # The register is saved by this inner frame, return its value.
+                return value
+            else:
+                # It could be preserved by this inner frame, keep looking further out.
+                continue
+
+        # Register wasn't preseved on any inner frame, so it is live in the core. Read it directly.
+        if register_index in RISCV_CALLEE_SAVED_REGISTERS:
+            return self.risc_debug.read_gpr(register_index)
+        return None
 
 
 class FrameInfoProvider:
