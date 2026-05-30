@@ -1113,6 +1113,7 @@ class TestSafeAccess(unittest.TestCase):
         # Case 2: Next block is adjacent but not accessible or has incompatible permissions
         elif next_block_info is not None and next_block_info.memory_block.address.noc_address == block_end:
             next_noc_addr = next_block_info.memory_block.address.noc_address
+            assert next_noc_addr is not None
             next_is_accessible = next_block_info.is_accessible
             next_is_safe_to_read = next_block_info.is_safe_to_read(next_noc_addr, 4)
             next_is_safe_to_write = next_block_info.is_safe_to_write(next_noc_addr, 4)
@@ -1228,7 +1229,6 @@ class TestRunElf(unittest.TestCase):
         assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug, got {type(risc_debug)}"
         rdbg: BabyRiscDebug = risc_debug
         assert rdbg.debug_hardware is not None, "Debug hardware is not available."
-        rloader = ElfLoader(rdbg)
 
         elf = lib.parse_elf(elf_path)
         mem_access = MemoryAccess.create(risc_debug)
@@ -1436,9 +1436,6 @@ class TestARC(unittest.TestCase):
         if self.device.is_blackhole():
             self.skipTest("Loading ARC firmware is not supported on blackhole")
 
-        wait_time = 0.1
-        TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024
-
         for device_id in self.context.device_ids:
             device = self.context.devices[device_id]
             arc = device.arc_block
@@ -1491,9 +1488,9 @@ class TestCallStack(unittest.TestCase):
         try:
             self.risc_debug = noc_block.get_risc_debug(self.risc_name)
             self.risc_name = self.risc_debug.risc_location.risc_name
-        except ValueError as e:
+        except ValueError:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
-        except NotImplementedError as e:
+        except NotImplementedError:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
         self.loader = ElfLoader(self.risc_debug)
@@ -1551,7 +1548,7 @@ class TestCallStack(unittest.TestCase):
         self.loader.run_elf(parsed_elf)
 
         mem_access = MemoryAccess.create(self.risc_debug)
-        x = parsed_elf.get_global("g_MAILBOX", mem_access)
+        parsed_elf.get_global("g_MAILBOX", mem_access)
 
         callstack: list[CallstackEntry] = lib.callstack(
             self.location, parsed_elf, None, self.risc_name, None, 100, True

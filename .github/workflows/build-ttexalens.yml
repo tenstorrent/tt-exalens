@@ -44,6 +44,9 @@ jobs:
       - name: Run mypy
         run: |
           make mypy
+      - name: Run pyright
+        run: |
+          make pyright
       - name: Build test kernels
         run: |
           make

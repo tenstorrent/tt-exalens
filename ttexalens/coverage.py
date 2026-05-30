@@ -37,8 +37,6 @@ def dump_coverage(
 
     # Find coverage header in device memory.
     coverage_header = elf.get_global("coverage_header", MemoryAccess.create_l1(location))
-    if coverage_header is None:
-        raise TTException("coverage_header not found")
     coverage_header = coverage_header.dereference()
     if coverage_header.get_address() != coverage_start:
         raise TTException("coverage_header address does not match __coverage_start")

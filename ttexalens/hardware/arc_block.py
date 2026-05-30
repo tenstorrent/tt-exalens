@@ -247,7 +247,7 @@ class ArcBlock(NocBlock):
         with open(file_name) as f:
             first_chunk = True
 
-            for offset, data in read_contiguous_hex_chunks(f):
+            for _, data in read_contiguous_hex_chunks(f):
                 if first_chunk:  # Load reset vector
                     word = int.from_bytes(data[0:4], "little")
                     arc_register_store.write_register("ARC_ROM_DATA", word)

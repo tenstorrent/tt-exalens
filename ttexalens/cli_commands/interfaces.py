@@ -15,7 +15,7 @@ Examples:
 
 
 from ttexalens.context import Context
-from ttexalens.command_parser import CommandMetadata, tt_docopt
+from ttexalens.command_parser import CommandMetadata
 from ttexalens.uistate import UIState
 
 command_metadata = CommandMetadata(
@@ -27,18 +27,16 @@ command_metadata = CommandMetadata(
 
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
-    args = tt_docopt(command_metadata, cmd_text).args
-
     for device_id in context.device_ids:
         device = context.devices[device_id]
-        unique_id_str = f"0x{device.unique_id:x}" if device.unique_id is not None else "{}"
+        unique_id_str = f"0x{device.unique_id:x}"
         print(f"NOC Device {device_id}: {unique_id_str}")
 
     for device_id in context.device_ids:
         # mmio chips
         device = context.devices[device_id]
         if device.is_local:
-            unique_id_str = f"0x{device.unique_id:x}" if device.unique_id is not None else "{}"
+            unique_id_str = f"0x{device.unique_id:x}"
             if device._has_jtag:
                 print(f"JTAG Device {device_id}: {unique_id_str}")
             else:

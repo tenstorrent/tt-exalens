@@ -86,6 +86,7 @@ class ElfDwarf:
 
         # We save the current best candidate here.
         best_die = None
+        best_range: tuple[int, int, bool] | None = None
 
         # Try to find the CU that contains this address.
         for cu in self.iter_CUs():
@@ -108,7 +109,7 @@ class ElfDwarf:
                                     break
 
                     # Update our best solution based on the heuristic
-                    if best_die is None:
+                    if best_range is None:
                         # This is our first solution
                         best_die = result_die
                         best_range = result_range
