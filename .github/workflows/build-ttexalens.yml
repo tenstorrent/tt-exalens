@@ -41,15 +41,15 @@ jobs:
       - name: Run pre-commit
         run: |
           pre-commit run --all-files --show-diff-on-failure
+      - name: Build native code and test kernels
+        run: |
+          make
       - name: Run mypy
         run: |
           make mypy
       - name: Run pyright
         run: |
           make pyright
-      - name: Build test kernels
-        run: |
-          make
       - name: Build wheel
         run: |
           make wheel

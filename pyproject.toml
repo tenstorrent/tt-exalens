@@ -76,9 +76,10 @@ test-command = "python -c \"import ttexalens; from ttexalens._native_ttexalens i
 # `riscv-tt-elf-gdb` from SFPI links against GLIBC_2.34 / GLIBCXX_3.4.30.
 # A lower baseline would fail auditwheel on that binary. The chosen baseline
 # matches what tt-exalens already requires in practice (Ubuntu 22.04+,
-# RHEL 9+, Debian 12+).
-manylinux-x86_64-image = "manylinux_2_34"
-manylinux-aarch64-image = "manylinux_2_34"
+# RHEL 9+, Debian 12+). Full image URL is required for cibuildwheel < 3.0,
+# which didn't recognise `manylinux_2_34` as a shortcut.
+manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34_x86_64"
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64"
 # AlmaLinux 9 ships with gcc 11.5; xz is needed by FetchContent for the
 # .txz SFPI archive.
 before-all = "yum install -y xz"
