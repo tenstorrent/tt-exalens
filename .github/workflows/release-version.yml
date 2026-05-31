@@ -29,12 +29,18 @@ jobs:
     steps:
       - name: "Download wheel artifacts"
         uses: actions/download-artifact@v4
+        with:
+          # Every artifact produced by build-wheels.yml is named wheel-*.
+          # Merge them into one directory for the publish step.
+          pattern: wheel-*
+          path: dist
+          merge-multiple: true
 
       - name: Publish package distributions to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-          packages-dir: ttexalens_wheel
+          packages-dir: dist
 
   pypi-publish:
     name: Upload release to PyPI
@@ -50,9 +56,13 @@ jobs:
     steps:
       - name: "Download wheel artifacts"
         uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-*
+          path: dist
+          merge-multiple: true
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          packages-dir: ttexalens_wheel
+          packages-dir: dist
           verbose: true

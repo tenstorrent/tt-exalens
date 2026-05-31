@@ -1,0 +1,43 @@
+name: "Build manylinux wheels"
+
+# Produces PyPI-publishable wheels for every supported Python (3.10-3.13)
+# across x86_64 and aarch64, using cibuildwheel inside the manylinux_2_34
+# container. The host runner is just an orchestrator — the actual compile
+# happens inside the container, so the host's distro version doesn't matter
+# beyond having Docker.
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+jobs:
+  build-wheel:
+    name: "Wheel | ${{ matrix.os.label }} cp3${{ matrix.python-minor }}"
+    strategy:
+      # Don't kill the whole matrix when one cell fails (e.g. aarch64 today
+      # may fail until the UMD aarch64 PR lands).
+      fail-fast: false
+      matrix:
+        os:
+          - { label: "x86_64",  runner: "ubuntu-latest",     cibw-archs: "x86_64"  }
+          - { label: "aarch64", runner: "ubuntu-24.04-arm",  cibw-archs: "aarch64" }
+        python-minor: [ "10", "11", "12", "13" ]
+    runs-on: ${{ matrix.os.runner }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build wheel via cibuildwheel
+        uses: pypa/cibuildwheel@v2.21
+        env:
+          CIBW_BUILD: "cp3${{ matrix.python-minor }}-manylinux_${{ matrix.os.cibw-archs }}"
+          CIBW_ARCHS: ${{ matrix.os.cibw-archs }}
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.os.label }}-cp3${{ matrix.python-minor }}
+          path: ./wheelhouse/*.whl
+          if-no-files-found: error

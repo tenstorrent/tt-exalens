@@ -61,6 +61,28 @@ regex = "(?P<value>.*)"
 provider = "pyproject_toml_parse_requirements"
 provider-path = "."
 
+[tool.cibuildwheel]
+# Match pyproject.toml's classifier list (Python 3.10-3.13).
+build = "cp310-* cp311-* cp312-* cp313-*"
+# Skip alternative implementations and musl-based distros.
+skip = ["pp*", "*-musllinux_*"]
+build-frontend = "pip"
+# Smoke-test that the produced wheel imports cleanly. The full test suite
+# needs Tenstorrent hardware, so we only check the import path here.
+test-command = "python -c \"import ttexalens; from ttexalens._native_ttexalens import NativeElfFile; print('import OK')\""
+
+[tool.cibuildwheel.linux]
+# manylinux_2_34 (AlmaLinux 9, glibc 2.34) — chosen because the vendored
+# `riscv-tt-elf-gdb` from SFPI links against GLIBC_2.34 / GLIBCXX_3.4.30.
+# A lower baseline would fail auditwheel on that binary. The chosen baseline
+# matches what tt-exalens already requires in practice (Ubuntu 22.04+,
+# RHEL 9+, Debian 12+).
+manylinux-x86_64-image = "manylinux_2_34"
+manylinux-aarch64-image = "manylinux_2_34"
+# AlmaLinux 9 ships with gcc 11.5; xz is needed by FetchContent for the
+# .txz SFPI archive.
+before-all = "yum install -y xz"
+
 [tool.pyright]
 include = ["."]
 exclude = ["build", "build_debug", "build_release", "build_riscv", "build_wheel", "**/__pycache__", "**/.venv"]

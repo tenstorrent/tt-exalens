@@ -17,3 +17,6 @@ jobs:
     with:
       ubuntu-version: ${{ matrix.ubuntu-version }}
     secrets: inherit
+
+  build-wheels:
+    uses: ./.github/workflows/build-wheels.yml
