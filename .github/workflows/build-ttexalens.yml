@@ -55,9 +55,10 @@ jobs:
           make wheel
       - name: Trim SFPI toolchain from build artifacts (keep GDB only)
         run: |
-          # The SFPI tree under build_riscv/sfpi/ is hundreds of MB. Tests
-          # only need the GDB binary (see ttexalens/gdb/gdb_client.py which
-          # falls back to build_riscv/sfpi/compiler/bin/riscv-tt-elf-gdb).
+          # GDB is a standalone binary — tests need only it from the SFPI
+          # tree (see ttexalens/gdb/gdb_client.py). Drop everything else
+          # under build_riscv/sfpi/ and the tarball; kernel ELFs at
+          # build_riscv/{wormhole,blackhole}/ are untouched.
           SFPI_DIR=build_riscv/sfpi
           GDB_REL=compiler/bin/riscv-tt-elf-gdb
           if [ -f "$SFPI_DIR/$GDB_REL" ]; then
@@ -68,25 +69,20 @@ jobs:
           fi
           rm -f build_riscv/sfpi_*.txz
 
-      - name: Resolve symlinks for upload
+      - name: Make build symlinks relative for upload
         run: |
           # CMake creates `build -> build_debug` and `build_debug/riscv-src ->
-          # build_riscv` with absolute paths. Those symlinks don't survive an
-          # artifact upload/download cycle (tar stores the symlink literal,
-          # the absolute target doesn't exist on the test runner). Replace
-          # them with copies so tests can resolve `build/riscv-src/<arch>/
-          # *.elf` from the downloaded artifact directly.
+          # build_riscv` with absolute paths. Absolute targets don't exist on
+          # the test runner. Rewrite as relative symlinks so they survive
+          # the artifact roundtrip; we also upload `build_debug/` and
+          # `build_riscv/` alongside `build/` so the symlinks resolve.
           if [ -L build ]; then
-            target=$(readlink build)
             rm build
-            mkdir build
-            cp -aL "$target"/. build/
+            ln -s build_debug build
           fi
-          if [ -L build/riscv-src ]; then
-            target=$(readlink build/riscv-src)
-            rm build/riscv-src
-            mkdir build/riscv-src
-            cp -aL "$target"/. build/riscv-src/
+          if [ -L build_debug/riscv-src ]; then
+            rm build_debug/riscv-src
+            ln -s ../build_riscv build_debug/riscv-src
           fi
       - name: Upload libraries as artifacts
         uses: pyTooling/upload-artifact@v4
@@ -94,5 +90,7 @@ jobs:
           name: ttexalens-build-${{ inputs.os }}
           path: |
             build
+            build_debug
+            build_riscv
             ttexalens/_native_ttexalens*.so
             ttexalens/_native_ttexalens/__init__.pyi
