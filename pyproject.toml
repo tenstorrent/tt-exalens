@@ -87,7 +87,7 @@ before-all = "yum install -y xz"
 # runs, then put it back. GDB needs GLIBCXX_3.4.30 (libstdc++ from gcc-12+)
 # which is above manylinux_2_34's baseline, so auditwheel would reject the
 # wheel otherwise. See .github/scripts/repair-wheel.sh for details.
-repair-wheel-command = "bash {project}/.github/scripts/repair-wheel.sh {wheel} {dest_dir}"
+repair-wheel-command = "bash /project/.github/scripts/repair-wheel.sh {wheel} {dest_dir}"
 
 [tool.pyright]
 include = ["."]

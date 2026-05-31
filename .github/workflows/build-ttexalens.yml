@@ -67,6 +67,27 @@ jobs:
             mv /tmp/riscv-tt-elf-gdb "$SFPI_DIR/$GDB_REL"
           fi
           rm -f build_riscv/sfpi_*.txz
+
+      - name: Resolve symlinks for upload
+        run: |
+          # CMake creates `build -> build_debug` and `build_debug/riscv-src ->
+          # build_riscv` with absolute paths. Those symlinks don't survive an
+          # artifact upload/download cycle (tar stores the symlink literal,
+          # the absolute target doesn't exist on the test runner). Replace
+          # them with copies so tests can resolve `build/riscv-src/<arch>/
+          # *.elf` from the downloaded artifact directly.
+          if [ -L build ]; then
+            target=$(readlink build)
+            rm build
+            mkdir build
+            cp -aL "$target"/. build/
+          fi
+          if [ -L build/riscv-src ]; then
+            target=$(readlink build/riscv-src)
+            rm build/riscv-src
+            mkdir build/riscv-src
+            cp -aL "$target"/. build/riscv-src/
+          fi
       - name: Upload libraries as artifacts
         uses: pyTooling/upload-artifact@v4
         with:
