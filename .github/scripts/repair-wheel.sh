@@ -28,6 +28,11 @@ trap 'rm -rf "$WORK"' EXIT
 # Path of the GDB binary relative to the unpacked wheel root.
 GDB_REL="ttexalens/sfpi/compiler/bin/riscv-tt-elf-gdb"
 
+# Pre-create every output dir we hand to `python -m wheel pack` / `auditwheel
+# repair`. The wheel CLI doesn't create -d targets implicitly and fails with
+# FileNotFoundError if the path is absent.
+mkdir -p "$WORK/unpacked" "$WORK/stripped" "$WORK/repaired" "$WORK/final" "$DEST_DIR"
+
 # 1. Unpack original wheel.
 python -m wheel unpack -d "$WORK/unpacked" "$WHEEL"
 PKG_DIR=$(find "$WORK/unpacked" -mindepth 1 -maxdepth 1 -type d)
@@ -43,7 +48,6 @@ fi
 python -m wheel pack -d "$WORK/stripped" "$PKG_DIR"
 STRIPPED_WHEEL=$(ls "$WORK/stripped"/*.whl)
 
-mkdir -p "$WORK/repaired"
 auditwheel repair -w "$WORK/repaired" "$STRIPPED_WHEEL"
 REPAIRED_WHEEL=$(ls "$WORK/repaired"/*.whl)
 
@@ -57,6 +61,5 @@ if [ -f "$WORK/gdb_stash/$GDB_REL" ]; then
     echo "Restored $GDB_REL into the repaired wheel."
 fi
 
-mkdir -p "$DEST_DIR"
 python -m wheel pack -d "$DEST_DIR" "$FINAL_DIR"
 echo "Final wheel: $(ls "$DEST_DIR"/*.whl)"
