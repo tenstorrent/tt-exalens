@@ -10,13 +10,14 @@ extern uint32_t* __firmware_end;
 volatile uint32_t* g_MAILBOX = (volatile uint32_t*)&__firmware_end;
 static volatile uint32_t g_MAILBOX_anchor __attribute__((used)) = (uint32_t)(uintptr_t)&g_MAILBOX;
 
-volatile uint8_t* g_MAILBOX_value = (volatile uint8_t*)(((uintptr_t)&__firmware_end + 4 + 16) & ~(uintptr_t)15);
-static volatile uint32_t g_MAILBOX_value_anchor __attribute__((used)) = (uint32_t)(uintptr_t)&g_MAILBOX_value;
+static volatile uint8_t* mailbox_value_buffer() {
+    return (volatile uint8_t*)(((uintptr_t)&__firmware_end + 4 + 16) & ~(uintptr_t)15);
+}
 
-// Reads a value of type T from the host-written g_MAILBOX_value buffer at the given byte offset.
+// Reads a value of type T from the host-written value buffer at the given byte offset.
 template <typename T>
 static T host_value(unsigned offset) {
-    return *reinterpret_cast<volatile T*>(g_MAILBOX_value + offset);
+    return *reinterpret_cast<volatile T*>(mailbox_value_buffer() + offset);
 }
 
 // A real string that the const char* value tests point at, so a test can read and verify its

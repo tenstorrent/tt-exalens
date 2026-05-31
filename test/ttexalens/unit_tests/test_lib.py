@@ -1726,7 +1726,7 @@ class TestCallStack(unittest.TestCase):
     ]
 
     def get_mailbox_value_address(self, elf: ParsedElfFile) -> int:
-        """Address of the g_MAILBOX_value buffer in callstack.cc."""
+        """Address of the host-written value buffer in callstack.cc (see mailbox_value_buffer())."""
         text_section = elf.sections.get(".text")
         assert text_section is not None
         assert text_section.address is not None
@@ -1825,7 +1825,7 @@ class TestCallStack(unittest.TestCase):
         parsed_elf = get_parsed_elf_file(elf_path)
 
         # Select the single-frame dispatch for this type, then provide the argument (offset 0)
-        # and local (offset 8) values through the host-written g_MAILBOX_value buffer.
+        # and local (offset 8) values through the host-written value buffer.
         # 0xFFFFFE00 | type_index invokes single_frame_value_test::dispatch for that type.
         self.set_recursion_count(parsed_elf, 0xFFFFFE00 | type_index)
         mailbox_value_address = self.get_mailbox_value_address(parsed_elf)
