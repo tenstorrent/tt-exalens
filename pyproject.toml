@@ -83,6 +83,10 @@ manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64"
 # AlmaLinux 9 ships with gcc 11.5; xz is needed by FetchContent for the
 # .txz SFPI archive.
 before-all = "yum install -y xz"
+# `wheel` is needed by our custom repair-wheel script (python -m wheel
+# pack/unpack); the target Python in the manylinux image doesn't have it
+# preinstalled.
+before-build = "pip install wheel"
 # Custom repair: pull SFPI's GDB binary out of the wheel before auditwheel
 # runs, then put it back. GDB needs GLIBCXX_3.4.30 (libstdc++ from gcc-12+)
 # which is above manylinux_2_34's baseline, so auditwheel would reject the
