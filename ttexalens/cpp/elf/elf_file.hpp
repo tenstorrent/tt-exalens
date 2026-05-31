@@ -70,6 +70,7 @@ enum class NativeElfSymbolBinding : uint8_t {
 
 struct NativeElfSymbol {
     std::string name;
+    std::string demangled_name;
     uint64_t value;
     uint64_t size;
     NativeElfSymbolType type;

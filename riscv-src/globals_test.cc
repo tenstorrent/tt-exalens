@@ -31,10 +31,25 @@ _ZN21ttexalens_symtab_test23g_symtab_var_by_linkageE: .word 0x55667788
 .popsection
 )");
 
+// File-static variables examples.
+[[gnu::used]] static volatile uint32_t g_symtab_var_file_static = 0x99AABBCC;
+namespace ttexalens_symtab_test {
+[[gnu::used]] static volatile uint32_t g_symtab_var_ns_file_static = 0xDDEEFF00;
+}
+namespace ttexalens_symtab_test {
+[[gnu::used]] volatile uint32_t* touch_local_static([[maybe_unused]] volatile int const* unused) {
+    static volatile uint32_t g_symtab_local_static = 0xCAFE1234;
+    return &g_symtab_local_static;
+}
+}  // namespace ttexalens_symtab_test
+
 // These anchors for linking are never actually read by the test.
 [[gnu::used]] static volatile uintptr_t g_symtab_test_anchors[] = {
     reinterpret_cast<uintptr_t>(&g_symtab_var_by_name),
     reinterpret_cast<uintptr_t>(&ttexalens_symtab_test::g_symtab_var_by_linkage),
+    reinterpret_cast<uintptr_t>(&g_symtab_var_file_static),
+    reinterpret_cast<uintptr_t>(&ttexalens_symtab_test::g_symtab_var_ns_file_static),
+    reinterpret_cast<uintptr_t>(ttexalens_symtab_test::touch_local_static(nullptr)),
 };
 
 // Tests for constants.

@@ -67,6 +67,7 @@ class NativeFrameInspection {
     std::optional<uint64_t> read_memory(uint64_t address, uint8_t register_size) const;
     std::optional<uint64_t> get_cfa() const { return cfa; }
     uint64_t get_pc() const { return pc; }
+    const std::shared_ptr<MemoryAccess>& get_memory_access() const { return memory_access; }
 
    private:
     std::shared_ptr<MemoryAccess> memory_access;

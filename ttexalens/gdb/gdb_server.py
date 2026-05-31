@@ -377,7 +377,8 @@ class GdbServer(threading.Thread):
             else:
                 # Read memory bytes
                 try:
-                    buffer = self.current_process.mem_access.read(address, length)
+                    buffer = bytearray(length)
+                    self.current_process.mem_access.read(address, buffer)
                     writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
                 except RestrictedMemoryAccessError as e:
                     util.ERROR(str(e), file=self.error_stream)
@@ -944,7 +945,8 @@ class GdbServer(threading.Thread):
             else:
                 # Read memory bytes
                 try:
-                    buffer = self.current_process.mem_access.read(address, length)
+                    buffer = bytearray(length)
+                    self.current_process.mem_access.read(address, buffer)
                     writer.append(b"b")
                     writer.append(buffer)  # Reply with data should start with 'b'
                 except RestrictedMemoryAccessError as e:

@@ -13,7 +13,7 @@ from ttexalens.pack_unpack_regfile import (
     pack_data_direct_access,
     TensixDataFormat,
 )
-from ttexalens.memory_access import MemoryAccess
+from ttexalens.memory_access import create_memory_access
 
 
 def validate_thread_id(thread_id: int) -> None:
@@ -64,7 +64,7 @@ class TensixDebug:
 
         # Using TRISC0 debug hardware to read/write memory
         # Use restricted_access=False because the Tensix dest is outside L1/data_private, but we still need to read/write it via TRISC0 debug hardware.
-        self.mem_access = MemoryAccess.create(
+        self.mem_access = create_memory_access(
             self.noc_block.get_risc_debug(risc_name="trisc0"), restricted_access=False
         )
 
@@ -179,7 +179,8 @@ class TensixDebug:
         if size_bytes > dest_size:
             raise TTException(f"Size {size_bytes} bytes is out of bounds for destination memory block.")
 
-        bytes_data = self.mem_access.read(base_address, size_bytes)
+        bytes_data = bytearray(size_bytes)
+        self.mem_access.read(base_address, bytes_data)
         data.extend(int.from_bytes(bytes_data[i : i + 4], byteorder="little") for i in range(0, size_bytes, 4))
 
         return data

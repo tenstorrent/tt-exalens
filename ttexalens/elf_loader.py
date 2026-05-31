@@ -7,7 +7,7 @@ from ttexalens.exceptions import TTException
 from ttexalens.elf.parsed import ParsedElfFile
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.memory_access import MemoryAccess
+from ttexalens.memory_access import create_l1_memory_access, create_memory_access
 
 
 class ElfLoader:
@@ -19,9 +19,9 @@ class ElfLoader:
         self.risc_debug = risc_debug
         self.location = risc_debug.risc_location.location
         self.context = self.location.context
-        self.mem_access = MemoryAccess.create(risc_debug)
+        self.mem_access = create_memory_access(risc_debug)
         self.l1_block = self.location.noc_block.noc_memory_map.find_by_name("l1")
-        self.l1_mem_access = MemoryAccess.create_l1(self.location)
+        self.l1_mem_access = create_l1_memory_access(self.location)
 
     SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".gcov_info"]
 
@@ -70,7 +70,9 @@ class ElfLoader:
         """
         Reads a block of data from a given address through the debug interface.
         """
-        return self.mem_access.read(address, byte_count)
+        buffer = bytearray(byte_count)
+        self.mem_access.read(address, buffer)
+        return bytes(buffer)
 
     @staticmethod
     def __inside_private_memory(memory_block: MemoryBlock | None, address: int) -> bool:
@@ -82,7 +84,7 @@ class ElfLoader:
             memory_block.address.private_address <= address < memory_block.address.private_address + memory_block.size
         )
 
-    def write_block(self, private_address: int, data: bytes):
+    def write_block(self, private_address: int, data: memoryview | bytes | bytearray):
         """
         Writes a block of bytes to a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
         the debug interface to write them.
@@ -124,7 +126,9 @@ class ElfLoader:
             # Use debug interface
             return self.read_block_through_debug(private_address, byte_count)
         elif self.l1_block is not None and self.l1_block.memory_block.contains_private_address(private_address):
-            return self.l1_mem_access.read(private_address, byte_count)
+            buffer = bytearray(byte_count)
+            self.l1_mem_access.read(private_address, buffer)
+            return bytes(buffer)
         else:
             return self.location.noc_read(private_address, byte_count)
 

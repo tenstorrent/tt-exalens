@@ -370,14 +370,14 @@ class GdbMessageWriter:
             self.data.append(char)
             self.checksum += char
 
-    def append(self, data: bytes):
+    def append(self, data: bytes | bytearray | memoryview):
         length = len(data)
         position = 0
         while position < length:
             self.append_char(data[position])
             position += 1
 
-    def append_unescaped(self, data: bytes):
+    def append_unescaped(self, data: bytes | bytearray | memoryview):
         self.data.extend(data)
         self.checksum += sum(data)
 

@@ -227,4 +227,74 @@ std::optional<NativeFrameDescription> NativeDwarfInfo::get_frame_description(
     return NativeFrameDescription(impl, fde, pc, std::move(memory_access));
 }
 
+const NativeElfSymbol* NativeDwarfInfo::find_symbol_by_name(std::string_view name) const {
+    return impl->find_symbol_by_name(name);
+}
+
+std::optional<uint64_t> NativeDwarfInfo::get_enum_value(std::string_view name) const {
+    auto die = get_die_by_name(name);
+    if (!die) {
+        return std::nullopt;
+    }
+    return std::visit(
+        [](const auto& v) -> std::optional<uint64_t> {
+            using T = std::decay_t<decltype(v)>;
+            if constexpr (std::is_same_v<T, std::monostate>) {
+                return std::nullopt;
+            } else {
+                return static_cast<uint64_t>(v);
+            }
+        },
+        die->get_constant_value());
+}
+
+NativeDwarfDie::ConstantValue NativeDwarfInfo::get_constant(std::string_view name) const {
+    auto die = get_die_by_name(name);
+    if (!die) {
+        throw SymbolNotFoundException(std::string(name));
+    }
+    auto type_die = die->get_resolved_type();
+    if (!type_die || type_die->get_tag() != NativeDwarfDieTag::base_type) {
+        throw TypeMismatchException("get_constant", type_die ? type_die->get_path() : std::string("<unknown>"));
+    }
+    auto value = die->get_constant_value();
+    if (std::holds_alternative<std::monostate>(value)) {
+        throw TypeMismatchException("get_constant", "<not-constant>");
+    }
+    return value;
+}
+
+NativeElfVariable NativeDwarfInfo::get_global(std::string_view name,
+                                              std::shared_ptr<MemoryAccess> memory_access) const {
+    auto die = get_die_by_name(name);
+    if (!die) {
+        throw SymbolNotFoundException(std::string(name));
+    }
+    auto address = die->get_address();
+    if (!address) {
+        throw SymbolNotFoundException(std::string(name));
+    }
+    auto resolved_type = die->get_resolved_type();
+
+    // Hard-coded-pointer pattern: `T* const g = (T*)0xADDR;` — the DIE's
+    // resolved type is pointer_type AND it carries a constant value. Treat
+    // the constant as the target address and return a variable of the
+    // pointee type.
+    if (resolved_type && resolved_type->get_tag() == NativeDwarfDieTag::pointer_type) {
+        auto cv = die->get_constant_value();
+        if (!std::holds_alternative<std::monostate>(cv)) {
+            auto pointee = resolved_type->get_dereference_type();
+            if (pointee) {
+                return NativeElfVariable(std::move(pointee), *address, std::move(memory_access));
+            }
+        }
+    }
+    return NativeElfVariable(std::move(resolved_type), *address, std::move(memory_access));
+}
+
+NativeElfVariable NativeDwarfInfo::read_global(std::string_view name,
+                                               std::shared_ptr<MemoryAccess> memory_access) const {
+    return get_global(name, std::move(memory_access)).read();
+}
+
 }  // namespace ttexalens::native_elf

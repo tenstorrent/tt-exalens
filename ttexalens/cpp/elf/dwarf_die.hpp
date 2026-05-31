@@ -14,6 +14,7 @@
 #include "dwarf_attribute.hpp"
 #include "dwarf_handle.hpp"
 #include "dwarf_string.hpp"
+#include "variable.hpp"
 
 namespace ttexalens::native_elf {
 
@@ -30,32 +31,75 @@ using NativeDwarfDiePtr = std::shared_ptr<NativeDwarfDie>;
 
 // DIE tags - DW_TAG_*
 enum class NativeDwarfDieTag : Dwarf_Half {
+    access_declaration = DW_TAG_access_declaration,
+    ALTIUM_circ_type = DW_TAG_ALTIUM_circ_type,
+    ALTIUM_mwa_circ_type = DW_TAG_ALTIUM_mwa_circ_type,
+    ALTIUM_rev_carry_type = DW_TAG_ALTIUM_rev_carry_type,
+    ALTIUM_rom = DW_TAG_ALTIUM_rom,
     array_type = DW_TAG_array_type,
     atomic_type = DW_TAG_atomic_type,
     base_type = DW_TAG_base_type,
+    BORLAND_Delphi_dynamic_array = DW_TAG_BORLAND_Delphi_dynamic_array,
+    BORLAND_Delphi_set = DW_TAG_BORLAND_Delphi_set,
+    BORLAND_Delphi_string = DW_TAG_BORLAND_Delphi_string,
+    BORLAND_Delphi_variant = DW_TAG_BORLAND_Delphi_variant,
+    BORLAND_property = DW_TAG_BORLAND_property,
     call_site = DW_TAG_call_site,
+    call_site_parameter = DW_TAG_call_site_parameter,
+    catch_block = DW_TAG_catch_block,
+    class_template = DW_TAG_class_template,
     class_type = DW_TAG_class_type,
     coarray_type = DW_TAG_coarray_type,
+    common_block = DW_TAG_common_block,
+    common_inclusion = DW_TAG_common_inclusion,
     compile_unit = DW_TAG_compile_unit,
+    condition = DW_TAG_condition,
     const_type = DW_TAG_const_type,
+    constant = DW_TAG_constant,
+    dwarf_procedure = DW_TAG_dwarf_procedure,
     dynamic_type = DW_TAG_dynamic_type,
+    entry_point = DW_TAG_entry_point,
     enumeration_type = DW_TAG_enumeration_type,
     enumerator = DW_TAG_enumerator,
+    file_type = DW_TAG_file_type,
     formal_parameter = DW_TAG_formal_parameter,
+    format_label = DW_TAG_format_label,
+    friend_ = DW_TAG_friend,
+    function_template = DW_TAG_function_template,
+    generic_subrange = DW_TAG_generic_subrange,
+    ghs_namespace = DW_TAG_ghs_namespace,
+    ghs_template_templ_param = DW_TAG_ghs_template_templ_param,
+    ghs_using_declaration = DW_TAG_ghs_using_declaration,
+    ghs_using_namespace = DW_TAG_ghs_using_namespace,
+    GNU_BINCL = DW_TAG_GNU_BINCL,
     GNU_call_site = DW_TAG_GNU_call_site,
+    GNU_call_site_parameter = DW_TAG_GNU_call_site_parameter,
+    GNU_EINCL = DW_TAG_GNU_EINCL,
     GNU_formal_parameter_pack = DW_TAG_GNU_formal_parameter_pack,
     GNU_template_parameter_pack = DW_TAG_GNU_template_parameter_pack,
+    GNU_template_template_parameter = DW_TAG_GNU_template_template_parameter,
+    HP_array_descriptor = DW_TAG_HP_array_descriptor,
     immutable_type = DW_TAG_immutable_type,
     imported_declaration = DW_TAG_imported_declaration,
     imported_module = DW_TAG_imported_module,
+    imported_unit = DW_TAG_imported_unit,
     inheritance = DW_TAG_inheritance,
     inlined_subroutine = DW_TAG_inlined_subroutine,
     interface_type = DW_TAG_interface_type,
     label = DW_TAG_label,
     lexical_block = DW_TAG_lexical_block,
+    LLVM_annotation = DW_TAG_LLVM_annotation,
     member = DW_TAG_member,
+    MIPS_loop = DW_TAG_MIPS_loop,
+    module = DW_TAG_module,
+    mutable_type = DW_TAG_mutable_type,
+    namelist = DW_TAG_namelist,
+    namelist_item = DW_TAG_namelist_item,
     namespace_ = DW_TAG_namespace,
     packed_type = DW_TAG_packed_type,
+    partial_unit = DW_TAG_partial_unit,
+    PGI_interface_block = DW_TAG_PGI_interface_block,
+    PGI_kanji_type = DW_TAG_PGI_kanji_type,
     pointer_type = DW_TAG_pointer_type,
     ptr_to_member_type = DW_TAG_ptr_to_member_type,
     reference_type = DW_TAG_reference_type,
@@ -63,20 +107,50 @@ enum class NativeDwarfDieTag : Dwarf_Half {
     rvalue_reference_type = DW_TAG_rvalue_reference_type,
     set_type = DW_TAG_set_type,
     shared_type = DW_TAG_shared_type,
+    skeleton_unit = DW_TAG_skeleton_unit,
     string_type = DW_TAG_string_type,
     structure_type = DW_TAG_structure_type,
     subprogram = DW_TAG_subprogram,
     subrange_type = DW_TAG_subrange_type,
     subroutine_type = DW_TAG_subroutine_type,
+    SUN_class_template = DW_TAG_SUN_class_template,
+    SUN_codeflags = DW_TAG_SUN_codeflags,
+    SUN_dtor = DW_TAG_SUN_dtor,
+    SUN_dtor_info = DW_TAG_SUN_dtor_info,
+    SUN_f90_interface = DW_TAG_SUN_f90_interface,
+    SUN_fortran_vax_structure = DW_TAG_SUN_fortran_vax_structure,
+    SUN_function_template = DW_TAG_SUN_function_template,
+    SUN_hi = DW_TAG_SUN_hi,
+    SUN_indirect_inheritance = DW_TAG_SUN_indirect_inheritance,
+    SUN_memop_info = DW_TAG_SUN_memop_info,
+    SUN_omp_child_func = DW_TAG_SUN_omp_child_func,
+    SUN_rtti_descriptor = DW_TAG_SUN_rtti_descriptor,
+    SUN_struct_template = DW_TAG_SUN_struct_template,
+    SUN_union_template = DW_TAG_SUN_union_template,
+    template_alias = DW_TAG_template_alias,
     template_type_parameter = DW_TAG_template_type_parameter,
     template_value_parameter = DW_TAG_template_value_parameter,
     thrown_type = DW_TAG_thrown_type,
+    TI_assign_register = DW_TAG_TI_assign_register,
+    TI_far_type = DW_TAG_TI_far_type,
+    TI_ioport_type = DW_TAG_TI_ioport_type,
+    TI_near_type = DW_TAG_TI_near_type,
+    TI_onchip_type = DW_TAG_TI_onchip_type,
+    TI_restrict_type = DW_TAG_TI_restrict_type,
+    try_block = DW_TAG_try_block,
+    type_unit = DW_TAG_type_unit,
     typedef_ = DW_TAG_typedef,
     union_type = DW_TAG_union_type,
     unspecified_parameters = DW_TAG_unspecified_parameters,
     unspecified_type = DW_TAG_unspecified_type,
+    upc_relaxed_type = DW_TAG_upc_relaxed_type,
+    upc_shared_type = DW_TAG_upc_shared_type,
+    upc_strict_type = DW_TAG_upc_strict_type,
     variable = DW_TAG_variable,
+    variant = DW_TAG_variant,
+    variant_part = DW_TAG_variant_part,
     volatile_type = DW_TAG_volatile_type,
+    with_stmt = DW_TAG_with_stmt,
 };
 
 // Source location for a particular program counter — returned by
@@ -106,11 +180,17 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // Returns an empty view when the attribute is absent.
     std::string_view get_linkage_name() const;
 
+    // Tries to create human-friendly names for this DIE.
+    std::string get_readable_name() const;
+
     // Fully-qualified path through enclosing scopes, joined with "::".
     // Follows DW_AT_abstract_origin / DW_AT_specification for subprograms
     // so a concrete subprogram instance returns the source-level name.
-    // Returns std::nullopt when the DIE has no resolvable name.
-    std::optional<std::string> get_path() const;
+    std::string get_path() const;
+
+    // Like get_path(), but appends `(t1, t2, ...)` after every subprogram
+    // segment so the result matches the form `__cxa_demangle` emits.
+    std::string get_search_path() const;
 
     // .debug_info offset of this DIE — stable id, used as the cache key.
     Dwarf_Off get_offset() const;
@@ -218,6 +298,12 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     std::optional<NativeDwarfFileLine> get_decl_file_info() const;
     std::optional<NativeDwarfFileLine> get_call_file_info() const;
 
+    // Reads this DIE's value from the given frame, if it's a variable or
+    // member with a resolvable location. Returns std::nullopt if the DIE
+    // has no location, the location is unsupported or can't be evaluated,
+    // or the resolved type is unusably incomplete.
+    std::optional<NativeElfVariable> read_value(const NativeFrameInspection* frame) const;
+
     // Walk this DIE's children:
     //   for (auto child = die->get_first_child(); child;
     //        child = child->get_next_sibling()) { ... }
@@ -229,6 +315,13 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // Returns this DIE's parent in the .debug_info tree, or nullptr for a CU
     // root (or if the DIE somehow isn't reachable from any CU).
     NativeDwarfDiePtr get_parent() const;
+
+    // Collects every DW_TAG_template_value_parameter that applies to this
+    // DIE: the DIE's own template params plus the enclosing scope's
+    // (nested templates like `Class<3>::method<-1>` need both). Follows
+    // DW_AT_specification / DW_AT_abstract_origin one hop first because
+    // instance / inlined DIEs don't carry their template params directly.
+    std::vector<NativeDwarfDiePtr> get_template_value_parameters() const;
 
    private:
     // Resolves this DIE to its .symtab entry. Returns nullptr on miss.

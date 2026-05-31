@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device
-from ttexalens.elf import ParsedElfFile
+from ttexalens.elf import ParsedElfFile, read_elf
+from ttexalens.server import FileAccessApi
 
 
 # Global cache for simulator context to ensure only one simulator process
@@ -100,9 +101,6 @@ def get_parsed_elf_file(elf_path: str) -> ParsedElfFile:
     """Get a cached ParsedElfFile or parse and cache it if not already done."""
     global _cached_parsed_elf_files
     if elf_path not in _cached_parsed_elf_files:
-        from elftools.elf.elffile import ELFFile
-
-        elf = ELFFile.load_from_path(elf_path)
-        parsed_elf = ParsedElfFile(elf, elf_path)
+        parsed_elf = read_elf(FileAccessApi(), elf_path)
         _cached_parsed_elf_files[elf_path] = parsed_elf
     return _cached_parsed_elf_files[elf_path]

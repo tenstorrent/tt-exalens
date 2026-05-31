@@ -3,6 +3,10 @@
 
 #include "elf_file_impl.hpp"
 
+#include <cxxabi.h>
+
+#include <cstdlib>
+
 namespace ttexalens::native_elf::details {
 
 std::vector<NativeElfSymbol> NativeElfFileImpl::read_symbol_table_section(std::string_view section_name) {
@@ -25,8 +29,20 @@ std::vector<NativeElfSymbol> NativeElfFileImpl::read_symbol_table_section(std::s
         if (!accessor.get_symbol(i, name, value, size, bind, type, section_index, other)) {
             continue;
         }
+
+        // Demangle the symbol name if possible.
+        std::string demangled;
+        if (!name.empty()) {
+            int status = 0;
+            char* d = abi::__cxa_demangle(name.c_str(), nullptr, nullptr, &status);
+            if (status == 0 && d != nullptr) {
+                demangled = d;
+            }
+            std::free(d);
+        }
         result.push_back(NativeElfSymbol{
             std::move(name),
+            std::move(demangled),
             static_cast<uint64_t>(value),
             static_cast<uint64_t>(size),
             static_cast<NativeElfSymbolType>(type),

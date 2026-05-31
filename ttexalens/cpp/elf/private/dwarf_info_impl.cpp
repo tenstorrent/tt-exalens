@@ -3,6 +3,8 @@
 
 #include "dwarf_info_impl.hpp"
 
+#include <cstdlib>
+#include <cstring>
 #include <elfio/elfio.hpp>
 
 #include "elf_file_impl.hpp"
@@ -328,25 +330,42 @@ NativeDwarfDiePtr NativeDwarfInfoImpl::find_parent(Dwarf_Off target_offset) {
     return nullptr;
 }
 
-const NativeElfSymbol* NativeDwarfInfoImpl::find_symbol_by_name(std::string_view name) {
-    if (!loaded_symbols) {
-        loaded_symbols = true;
-        if (auto elf_impl_locked = elf_impl.lock()) {
-            symbols = elf_impl_locked->read_symbol_table_section(".symtab");
-            symbol_by_name.reserve(symbols.size());
-            for (const NativeElfSymbol& sym : symbols) {
-                if (sym.name.empty()) {
-                    continue;
-                }
-
-                // NOTE: Currently we haven't encountered that duplicate entry is the problem
-                // as we are defaulting to find_symbol only for external defined variables.
-                symbol_by_name.emplace(std::string_view(sym.name), &sym);
-            }
+void NativeDwarfInfoImpl::load_symbols_table() {
+    if (loaded_symbols) {
+        return;
+    }
+    loaded_symbols = true;
+    auto elf_impl_locked = elf_impl.lock();
+    if (!elf_impl_locked) {
+        return;
+    }
+    symbols = elf_impl_locked->read_symbol_table_section(".symtab");
+    symbol_by_name.reserve(symbols.size());
+    symbol_by_demangled_name.reserve(symbols.size());
+    for (const NativeElfSymbol& sym : symbols) {
+        if (sym.name.empty()) {
+            continue;
+        }
+        // NOTE: Currently we haven't encountered that duplicate entry is the
+        // problem as we default to find_symbol only for external defined
+        // variables. First-wins for both indexes.
+        symbol_by_name.emplace(std::string_view(sym.name), &sym);
+        if (!sym.demangled_name.empty()) {
+            symbol_by_demangled_name.emplace(std::string_view(sym.demangled_name), &sym);
         }
     }
+}
+
+const NativeElfSymbol* NativeDwarfInfoImpl::find_symbol_by_name(std::string_view name) {
+    load_symbols_table();
     auto it = symbol_by_name.find(name);
     return it == symbol_by_name.end() ? nullptr : it->second;
+}
+
+const NativeElfSymbol* NativeDwarfInfoImpl::find_symbol_by_demangled_name(std::string_view demangled) {
+    load_symbols_table();
+    auto it = symbol_by_demangled_name.find(demangled);
+    return it == symbol_by_demangled_name.end() ? nullptr : it->second;
 }
 
 }  // namespace ttexalens::native_elf::details

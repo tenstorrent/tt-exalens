@@ -5,7 +5,7 @@
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import TTException
 from ttexalens.elf import ParsedElfFile
-from ttexalens.memory_access import MemoryAccess
+from ttexalens.memory_access import create_l1_memory_access
 
 """
 Extract the coverage data from the device into a .gcda file.
@@ -28,15 +28,15 @@ def dump_coverage(
 ) -> None:
 
     # Find coverage region in ELF.
-    coverage_start = elf.symbols["__coverage_start"].value
+    coverage_start = elf.find_symbol_by_name("__coverage_start").value
     if not coverage_start:
         raise TTException("__coverage_start not found")
-    coverage_end = elf.symbols["__coverage_end"].value
+    coverage_end = elf.find_symbol_by_name("__coverage_end").value
     if not coverage_end:
         raise TTException("__coverage_end not found")
 
     # Find coverage header in device memory.
-    coverage_header = elf.get_global("coverage_header", MemoryAccess.create_l1(location))
+    coverage_header = elf.get_global("coverage_header", create_l1_memory_access(location))
     if coverage_header is None:
         raise TTException("coverage_header not found")
     coverage_header = coverage_header.dereference()
@@ -49,7 +49,7 @@ def dump_coverage(
         raise TTException("COVERAGE_MAGIC_NUMBER not found in ELF")
 
     header_size = coverage_header.get_size()
-    length = coverage_header.bytes_written
+    length = int(coverage_header.bytes_written)
 
     # 0xDEADBEEF will be written in place of length if overflow occurred.
     if length == 0xDEADBEEF:

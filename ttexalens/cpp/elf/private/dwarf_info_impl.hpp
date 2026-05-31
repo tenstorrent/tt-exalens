@@ -67,12 +67,14 @@ class NativeDwarfInfoImpl : public std::enable_shared_from_this<NativeDwarfInfoI
     NativeDwarfDiePtr find_parent(Dwarf_Off target_offset);
     NativeDwarfCompileUnit* get_die_cu(Dwarf_Off target_offset);
     const NativeElfSymbol* find_symbol_by_name(std::string_view name);
+    const NativeElfSymbol* find_symbol_by_demangled_name(std::string_view demangled);
 
    private:
     friend class ttexalens::native_elf::NativeDwarfInfo;
     friend class ttexalens::native_elf::NativeFrameDescription;
 
     void load_compile_units();
+    void load_symbols_table();
 
     ElfObjAccess obj_access;
     Dwarf_Debug dbg = nullptr;
@@ -97,6 +99,7 @@ class NativeDwarfInfoImpl : public std::enable_shared_from_this<NativeDwarfInfoI
     bool loaded_symbols = false;
     std::vector<NativeElfSymbol> symbols;
     std::unordered_map<std::string_view, const NativeElfSymbol*> symbol_by_name;
+    std::unordered_map<std::string_view, const NativeElfSymbol*> symbol_by_demangled_name;
 
     std::weak_ptr<NativeElfFileImpl> elf_impl;
 };

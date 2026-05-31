@@ -9,6 +9,7 @@ from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.gdb.gdb_communication import ServerSocket
 from ttexalens.gdb.gdb_server import GdbServer
+from ttexalens.elf import DwarfFileLine
 from ttexalens.hardware.risc_debug import CallstackEntry
 from ttexalens.tt_exalens_lib import check_context
 
@@ -82,8 +83,10 @@ def get_callstack_entry(line: str) -> CallstackEntry:
     if match:
         entry.pc = int(match.groupdict()["pc"], 16) if match.groupdict()["pc"] is not None else None
         entry.function_name = match.groupdict()["function_name"]
-        entry.file = match.groupdict()["file_path"]
-        entry.line = int(match.groupdict()["line"]) if match.groupdict()["line"] is not None else None
+        file_path = match.groupdict()["file_path"]
+        line_no = int(match.groupdict()["line"]) if match.groupdict()["line"] is not None else None
+        if file_path is not None and line_no is not None:
+            entry.file_info = DwarfFileLine(file_path, line_no, 0)
     elif "Backtrace stopped: frame did not save the PC" in line:
         return get_callstack_entry(line.replace("Backtrace stopped: frame did not save the PC", "").strip())
 

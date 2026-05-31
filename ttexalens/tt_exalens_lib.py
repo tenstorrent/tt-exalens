@@ -18,7 +18,7 @@ from ttexalens.elf import read_elf, ParsedElfFile
 from ttexalens.hardware.risc_debug import CallstackEntry
 from ttexalens.exceptions import TTException
 from ttexalens.util import Verbosity, TRACE
-from ttexalens.memory_access import MemoryAccess
+from ttexalens.memory_access import NO_MEMORY_ACCESS, create_memory_access
 
 # Parameter name to formatter function mapping for trace_api decorator
 _TRACE_FORMATTERS = {
@@ -627,7 +627,7 @@ def top_callstack(
         raise TTException("Number of offsets must match the number of elf files")
 
     elfs_loaded = RiscDebug._read_elfs(elfs, offsets)
-    elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs_loaded, pc, None)
+    elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs_loaded, pc, NO_MEMORY_ACCESS)
     if frame_description is None or elf is None:
         return []
     return RiscDebug.get_frame_callstack(elf, pc)[0]
@@ -768,7 +768,9 @@ def read_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    return MemoryAccess.create(risc_debug, safe_mode=safe_mode).read_word(addr)
+    buffer = bytearray(4)
+    create_memory_access(risc_debug, safe_mode=safe_mode).read(addr, buffer)
+    return int.from_bytes(buffer, byteorder="little")
 
 
 @trace_api
@@ -816,7 +818,7 @@ def write_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    MemoryAccess.create(risc_debug, safe_mode=safe_mode).write_word(addr, value)
+    create_memory_access(risc_debug, safe_mode=safe_mode).write(addr, value.to_bytes(4, byteorder="little"))
 
 
 @dataclass

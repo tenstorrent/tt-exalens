@@ -3,76 +3,43 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from __future__ import annotations
-from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens._native_ttexalens import MemoryAccess, NoMemoryAccess
 from ttexalens.exceptions import ReadOnlyMemoryError, RestrictedMemoryAccessError
+from ttexalens.hardware.memory_block import MemoryBlock
 
 if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.hardware.risc_debug import RiscDebug
 
 
-class MemoryAccess(ABC):
-    """
-    Abstract interface for reading and writing data from a target address space.
-    """
+def create_memory_access(
+    risc_debug: RiscDebug,
+    ensure_halted_access: bool = True,
+    restricted_access: bool = True,
+    safe_mode: bool | None = None,
+) -> MemoryAccess:
+    return RiscDebugMemoryAccess(
+        risc_debug,
+        ensure_halted_access=ensure_halted_access,
+        restricted_access=restricted_access,
+        safe_mode=safe_mode,
+    )
 
-    @abstractmethod
-    def read(self, private_address: int, size_bytes: int) -> bytes:
-        """
-        Read 'size_bytes' bytes from 'private_address' and return them as bytes.
-        'private_address' is the address as seen from the core's private address space, which may be translated to a NOC address by the implementation.
-        """
-        pass
 
-    def read_word(self, private_address: int) -> int:
-        """
-        Read a word from 'private_address' and return it as an integer.
-        'private_address' is the address as seen from the core's private address space, which may be translated to a NOC address by the implementation.
-        """
-        data_bytes = self.read(private_address, 4)
-        return int.from_bytes(data_bytes, byteorder="little")
+def create_l1_memory_access(location: OnChipCoordinate) -> MemoryAccess:
+    return L1MemoryAccess(location)
 
-    @abstractmethod
-    def write(self, private_address: int, data: bytes) -> None:
-        """
-        Write 'data' bytes to 'private_address'.
-        'private_address' is the address as seen from the core's private address space, which may be translated to a NOC address by the implementation.
-        """
-        pass
 
-    def write_word(self, private_address: int, value: int) -> None:
-        """
-        Write a word to 'private_address'.
-        'private_address' is the address as seen from the core's private address space, which may be translated to a NOC address by the implementation.
-        """
-        data_bytes = value.to_bytes(4, byteorder="little")
-        self.write(private_address, data_bytes)
-
-    @staticmethod
-    def create(
-        risc_debug: RiscDebug,
-        ensure_halted_access: bool = True,
-        restricted_access: bool = True,
-        safe_mode: bool | None = None,
-    ) -> "MemoryAccess":
-        return RiscDebugMemoryAccess(
-            risc_debug,
-            ensure_halted_access=ensure_halted_access,
-            restricted_access=restricted_access,
-            safe_mode=safe_mode,
-        )
-
-    @staticmethod
-    def create_l1(location: OnChipCoordinate) -> "MemoryAccess":
-        return L1MemoryAccess(location)
+# Singleton MemoryAccess that raises on every operation. Use this whenever a
+# MemoryAccess is required but no live target is available.
+NO_MEMORY_ACCESS: MemoryAccess = NoMemoryAccess.instance()
 
 
 class L1MemoryAccess(MemoryAccess):
     """
-    MemoryAccess implementation that talks directly to on‑chip memory at a given
+    MemoryAccess implementation that talks directly to on-chip memory at a given
     OnChipCoordinate via tt_exalens_lib.{read,write}_from_device.
 
     This is used when we know an address is L1 and we want to access
@@ -80,6 +47,7 @@ class L1MemoryAccess(MemoryAccess):
     """
 
     def __init__(self, location: OnChipCoordinate):
+        super().__init__()
         from ttexalens.exceptions import MemoryLayoutError
 
         self._location = location
@@ -98,49 +66,63 @@ class L1MemoryAccess(MemoryAccess):
         offset = private_address - self.l1_block.address.private_address
         return self.l1_block.address.noc_address + offset
 
-    def read(self, private_address: int, size_bytes: int) -> bytes:
-        self._validate_access(private_address, size_bytes)
-        noc_address = self._tranlate_to_noc_address(private_address)
-        return self._location.noc_read(noc_address, size_bytes)
+    def read(self, address: int, buffer: memoryview | bytearray) -> None:
+        self._validate_access(address, len(buffer))
+        noc_address = self._tranlate_to_noc_address(address)
+        buffer[:] = self._location.noc_read(noc_address, len(buffer))
 
-    def write(self, private_address: int, data: bytes) -> None:
-        self._validate_access(private_address, len(data))
-        noc_address = self._tranlate_to_noc_address(private_address)
-        self._location.noc_write(noc_address, data)
+    def write(self, address: int, data: bytes | bytearray | memoryview) -> None:
+        self._validate_access(address, len(data))
+        noc_address = self._tranlate_to_noc_address(address)
+        self._location.noc_write(noc_address, bytes(data))
 
-    def _validate_access(self, private_address: int, size_bytes: int) -> None:
+    def read_register(self, register_index: int) -> int:
+        raise NotImplementedError("L1MemoryAccess does not support register access")
+
+    def write_register(self, register_index: int, value: int) -> None:
+        raise NotImplementedError("L1MemoryAccess does not support register access")
+
+    def _validate_access(self, address: int, size_bytes: int) -> None:
         base_address = self.l1_block.address.private_address
         assert base_address is not None, "L1 memory block has no private address"
-        if private_address < base_address or private_address + size_bytes > base_address + self.l1_block.size:
+        if address < base_address or address + size_bytes > base_address + self.l1_block.size:
             raise RestrictedMemoryAccessError(
-                access_start=private_address, access_end=private_address + size_bytes - 1, location=self._location
+                access_start=address, access_end=address + size_bytes - 1, location=self._location
             )
 
 
 class FixedMemoryAccess(MemoryAccess):
     """
-    Read‑only MemoryAccess backed by an in‑memory byte buffer.
+    Read-only MemoryAccess backed by an in-memory byte buffer.
 
     Used when DWARF evaluation has already produced the bytes for a value
-    (e.g. a temporary, non‑addressable expression result), so further reads
+    (e.g. a temporary, non-addressable expression result), so further reads
     should come from that snapshot rather than device memory. Writes are
     forbidden and will raise.
     """
 
     def __init__(self, data: bytes):
+        super().__init__()
         self._data = data
 
-    def read(self, private_address: int, size_bytes: int) -> bytes:
-        return self._data[private_address : private_address + size_bytes]
+    def read(self, address: int, buffer: memoryview | bytearray) -> None:
+        size = len(buffer)
+        buffer[:] = self._data[address : address + size]
 
-    def write(self, private_address: int, data: bytes) -> None:
-        raise ReadOnlyMemoryError(private_address, len(data))
+    def write(self, address: int, data: bytes | bytearray | memoryview) -> None:
+        raise ReadOnlyMemoryError(address, len(data))
+
+    def read_register(self, register_index: int) -> int:
+        raise NotImplementedError("FixedMemoryAccess does not support register access")
+
+    def write_register(self, register_index: int, value: int) -> None:
+        raise NotImplementedError("FixedMemoryAccess does not support register access")
 
 
 class RiscDebugMemoryAccess(MemoryAccess):
     """
     MemoryAccess implementation that uses a RiscDebug instance to read/write
-    a core’s private address space (L1 + data private memory by default).
+    a core's private address space (L1 + data private memory by default).
 
     It can optionally:
       * ensure the core is halted while accessing memory, and
@@ -158,30 +140,39 @@ class RiscDebugMemoryAccess(MemoryAccess):
         restricted_access: bool = True,
         safe_mode: bool | None = None,
     ):
+        super().__init__()
         self._risc_debug = risc_debug
         self._ensure_halted_access = ensure_halted_access  # will ensure the RISC will be halted for memory access
         self._restricted_access = restricted_access  # restrict access to only L1 and Data Private Memory
         self._safe_mode = safe_mode  # additional safety checks to prevent access to known unsafe memory regions
 
-    def read(self, private_address: int, size_bytes: int) -> bytes:
-        self._validate_access(private_address, size_bytes)
+    def read(self, address: int, buffer: memoryview | bytearray) -> None:
+        size_bytes = len(buffer)
+        self._validate_access(address, size_bytes)
 
         if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
-                return self._risc_debug.read_memory_bytes(private_address, size_bytes, safe_mode=self._safe_mode)
+                buffer[:] = self._risc_debug.read_memory_bytes(address, size_bytes, safe_mode=self._safe_mode)
         else:
-            return self._risc_debug.read_memory_bytes(private_address, size_bytes, safe_mode=self._safe_mode)
+            buffer[:] = self._risc_debug.read_memory_bytes(address, size_bytes, safe_mode=self._safe_mode)
 
-    def write(self, private_address: int, data: bytes) -> None:
-        self._validate_access(private_address, len(data))
+    def write(self, address: int, data: bytes | bytearray | memoryview) -> None:
+        raw = bytes(data)
+        self._validate_access(address, len(raw))
 
         if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
-                self._risc_debug.write_memory_bytes(private_address, data, safe_mode=self._safe_mode)
+                self._risc_debug.write_memory_bytes(address, raw, safe_mode=self._safe_mode)
         else:
-            self._risc_debug.write_memory_bytes(private_address, data, safe_mode=self._safe_mode)
+            self._risc_debug.write_memory_bytes(address, raw, safe_mode=self._safe_mode)
 
-    def _validate_access(self, private_address: int, size_bytes: int) -> None:
+    def read_register(self, register_index: int) -> int:
+        return self._risc_debug.read_gpr(register_index)
+
+    def write_register(self, register_index: int, value: int) -> None:
+        self._risc_debug.write_gpr(register_index, value)
+
+    def _validate_access(self, address: int, size_bytes: int) -> None:
         if self._restricted_access:
             l1: MemoryBlock = self._risc_debug.get_l1()
             assert l1.address.private_address is not None, "L1 memory block has no private address"
@@ -192,41 +183,17 @@ class RiscDebugMemoryAccess(MemoryAccess):
                     data_private_memory.address.private_address is not None
                 ), "Data Private Memory block has no private address"
 
-            address_end = private_address + size_bytes - 1
-            inside_l1: bool = l1.contains_private_address(private_address) and l1.contains_private_address(address_end)
+            address_end = address + size_bytes - 1
+            inside_l1: bool = l1.contains_private_address(address) and l1.contains_private_address(address_end)
             inside_data_private_memory: bool = (
                 data_private_memory is not None
-                and data_private_memory.contains_private_address(private_address)
+                and data_private_memory.contains_private_address(address)
                 and data_private_memory.contains_private_address(address_end)
             )
 
             if not inside_l1 and not inside_data_private_memory:
                 raise RestrictedMemoryAccessError(
-                    access_start=private_address,
+                    access_start=address,
                     access_end=address_end,
                     location=self._risc_debug.risc_location.location,
                 )
-
-
-class CachedReadMemoryAccess(MemoryAccess):
-    """
-    MemoryAccess implementation that serves reads from a cached byte range when
-    possible, and otherwise falls back to an underlying MemoryAccess.
-    """
-
-    def __init__(self, cached_address: int, cached_data: bytes, base_mem_access: MemoryAccess):
-        self._base_mem_access = base_mem_access
-        self._cached_address = cached_address
-        self._cached_data = cached_data
-
-    def read(self, private_address: int, size_bytes: int) -> bytes:
-        if private_address >= self._cached_address and private_address + size_bytes <= self._cached_address + len(
-            self._cached_data
-        ):
-            offset = private_address - self._cached_address
-            return self._cached_data[offset : offset + size_bytes]
-        else:
-            return self._base_mem_access.read(private_address, size_bytes)
-
-    def write(self, private_address: int, data: bytes) -> None:
-        self._base_mem_access.write(private_address, data)
