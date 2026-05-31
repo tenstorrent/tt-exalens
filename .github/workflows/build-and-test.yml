@@ -97,6 +97,14 @@ jobs:
       # So we can get all the makefile output we want
       VERBOSE: 5
       LOGGER_LEVEL: INFO
+      # Heap-corruption tripwires for the native C++ extension. MALLOC_CHECK_=3
+      # makes glibc abort the moment it detects a bad free / double-free
+      # (close to the corruption site rather than at the next allocation).
+      # PYTHONMALLOC=malloc routes Python's allocator straight to glibc so
+      # pymalloc's per-arena bookkeeping doesn't mask the bug. Cheap to keep
+      # on long-term — gives us early signals if a new native bug regresses.
+      MALLOC_CHECK_: "3"
+      PYTHONMALLOC: "malloc"
     runs-on: ${{ matrix.runner-info.runs-on }}
     container:
       image: ${{ needs.build-image.outputs.docker-image }}
