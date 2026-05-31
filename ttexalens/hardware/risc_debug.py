@@ -444,9 +444,12 @@ class RiscDebug:
             # Returning inlined functions (virtual frames)
 
             # Skipping lexical blocks since we do not print them
-            while function_die.tag == DwarfDieTag.lexical_block and function_die.get_parent() is not None:
+            while function_die.tag == DwarfDieTag.lexical_block:
+                parent = function_die.get_parent()
+                if parent is None:
+                    break
                 extract_variables(function_die, arguments, locals, template_parameters)
-                function_die = function_die.get_parent()
+                function_die = parent
 
             extract_variables(function_die, arguments, locals, template_parameters)
             callstack.append(
@@ -469,9 +472,12 @@ class RiscDebug:
                 assert parent is not None
                 function_die = parent
                 # Skipping lexical blocks since we do not print them
-                while function_die.tag == DwarfDieTag.lexical_block and function_die.get_parent() is not None:
+                while function_die.tag == DwarfDieTag.lexical_block:
+                    inner_parent = function_die.get_parent()
+                    if inner_parent is None:
+                        break
                     extract_variables(function_die, arguments, locals, template_parameters)
-                    function_die = function_die.get_parent()
+                    function_die = inner_parent
 
                 extract_variables(function_die, arguments, locals, template_parameters)
                 callstack.append(

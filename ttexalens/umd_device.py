@@ -42,7 +42,7 @@ class UmdDevice:
         self._unique_id = unique_id
         self._active_eth_coords_on_mmio_chip = active_eth_coords_on_mmio_chip  # in translated coords
         self._is_simulation = is_simulation
-        self.__device_coords = UmdDevice.initialize_device_coords_cache(self._soc_descriptor)
+        self.__device_coords = UmdDevice.initialize_device_coords_cache(self._soc_descriptor, self._arch)
 
         # TODO: Until UMD implements timeout exception, we measure time here
         self.__write_timeout_lock = threading.Lock()
@@ -61,24 +61,32 @@ class UmdDevice:
             self.__configure_working_active_eth()
 
     @staticmethod
-    def initialize_device_coords_cache(soc_descriptor: tt_umd.SocDescriptor) -> list[list[tt_umd.CoreCoord | None]]:
+    def initialize_device_coords_cache(
+        soc_descriptor: tt_umd.SocDescriptor, arch: tt_umd.ARCH
+    ) -> list[list[list[tt_umd.CoreCoord | None]]]:
         all_cores = soc_descriptor.get_all_cores(
             coord_system=tt_umd.CoordSystem.NOC0
         ) + soc_descriptor.get_all_harvested_cores(coord_system=tt_umd.CoordSystem.NOC0)
+        from ttexalens.umd_api import UmdApi
+
         max_x = max(core.x for core in all_cores) + 1
         max_y = max(core.y for core in all_cores) + 1
         result = []
-        for x in range(max_x):
-            row: list[tt_umd.CoreCoord | None] = []
-            for y in range(max_y):
-                try:
-                    coords = soc_descriptor.translate_chip_coord_to_translated_coord(
-                        soc_descriptor.get_coord_at(tt_umd.tt_xy_pair(x, y), tt_umd.CoordSystem.NOC0)
-                    )
-                    row.append(coords)
-                except Exception:
-                    row.append(None)
-            result.append(row)
+        for noc_id in range(2):
+            UmdApi.select_noc_id(noc_id, arch)
+            noc_result: list[list[tt_umd.CoreCoord | None]] = []
+            for x in range(max_x):
+                row: list[tt_umd.CoreCoord | None] = []
+                for y in range(max_y):
+                    try:
+                        coords = soc_descriptor.translate_chip_coord_to_translated_coord(
+                            soc_descriptor.get_coord_at(tt_umd.tt_xy_pair(x, y), tt_umd.CoordSystem.NOC0)
+                        )
+                        row.append(coords)
+                    except Exception:
+                        row.append(None)
+                noc_result.append(row)
+            result.append(noc_result)
         return result
 
     @property
@@ -131,8 +139,8 @@ class UmdDevice:
                 continue
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
-    def __convert_noc0_to_device_coords(self, noc0_x: int, noc0_y: int):
-        return self.__device_coords[noc0_x][noc0_y]
+    def __convert_noc0_to_device_coords(self, noc_id: int, noc0_x: int, noc0_y: int):
+        return self.__device_coords[noc_id][noc0_x][noc0_y]
 
     READ_TIMEOUT = float(os.environ.get("TT_EXALENS_READ_TIMEOUT_MS", 2)) / 1_000  # seconds
     WRITE_TIMEOUT = float(os.environ.get("TT_EXALENS_WRITE_TIMEOUT_MS", 2)) / 1_000  # seconds
@@ -232,9 +240,9 @@ class UmdDevice:
         return bytes(data)
 
     def __read_from_device_reg_unaligned(
-        self, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool, dma_threshold: int
+        self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool, dma_threshold: int
     ) -> bytes:
-        coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        coord = self.__convert_noc0_to_device_coords(noc_id, noc0_x, noc0_y)
         assert coord is not None, f"Invalid NoC0 coordinates: ({noc0_x}, {noc0_y})"
         try:
             return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode, dma_threshold)
@@ -291,9 +299,9 @@ class UmdDevice:
             self.__write_to_device_reg(coord, address, temp, dma_threshold)
 
     def __write_to_device_reg_unaligned(
-        self, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
+        self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
     ):
-        coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        coord = self.__convert_noc0_to_device_coords(noc_id, noc0_x, noc0_y)
         assert coord is not None, f"Invalid NoC0 coordinates: ({noc0_x}, {noc0_y})"
         try:
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
@@ -321,7 +329,9 @@ class UmdDevice:
         try:
             """Reads data from address"""
             self.__select_noc_id(noc_id)
-            return self.__read_from_device_reg_unaligned(noc0_x, noc0_y, address, size, use_4B_mode, dma_threshold)
+            return self.__read_from_device_reg_unaligned(
+                noc_id, noc0_x, noc0_y, address, size, use_4B_mode, dma_threshold
+            )
         except tt_umd.SigbusError:
             util.DEBUG("Reset detected during noc_read, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
@@ -333,7 +343,7 @@ class UmdDevice:
         try:
             """Writes data to address"""
             self.__select_noc_id(noc_id)
-            self.__write_to_device_reg_unaligned(noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
+            self.__write_to_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
         except tt_umd.SigbusError:
             util.DEBUG("Reset detected during noc_write, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
@@ -450,7 +460,9 @@ class UmdDevice:
     def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
         """Returns currently active Ethernet core in logical coordinates"""
         remote_communication = self.__device.get_remote_communication()
-        if remote_communication is None:
+        if (
+            remote_communication is None
+        ):  # pyright: ignore[reportUnnecessaryComparison]  # tt_umd stub claims non-Optional but runtime may return None
             return None
         translated_coord = remote_communication.get_remote_transfer_ethernet_core()
         local_device = remote_communication.get_local_device()

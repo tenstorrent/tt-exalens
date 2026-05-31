@@ -237,7 +237,9 @@ class TestDebugSymbols(unittest.TestCase):
         assert variable_die is not None
         address = variable_die.get_address()
         assert address is not None
-        g_global_struct = ElfVariable(variable_die.get_resolved_type(), address, TestDebugSymbols.mem_access)
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         self.verify_global_struct_low_level(g_global_struct)
 
     def test_elf_variable(self):
@@ -245,7 +247,9 @@ class TestDebugSymbols(unittest.TestCase):
         assert variable_die is not None
         address = variable_die.get_address()
         assert address is not None
-        g_global_struct = ElfVariable(variable_die.get_resolved_type(), address, TestDebugSymbols.mem_access)
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct)
 
     def test_read_elf_variable(self):
@@ -253,7 +257,9 @@ class TestDebugSymbols(unittest.TestCase):
         assert variable_die is not None
         address = variable_die.get_address()
         assert address is not None
-        g_global_struct = ElfVariable(variable_die.get_resolved_type(), address, TestDebugSymbols.mem_access)
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct.read())
 
     def test_elf_global_variable(self):
@@ -357,7 +363,9 @@ class TestDebugSymbols(unittest.TestCase):
         assert variable_die is not None
         address = variable_die.get_address()
         assert address is not None
-        g_global_struct = ElfVariable(variable_die.get_resolved_type(), address, TestDebugSymbols.mem_access)
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         c_values = [var.read_value() for var in g_global_struct.c]
         self.assertEqual(list(range(16)), c_values)
         d_x_values = [var.x.read_value() for var in g_global_struct.d]
@@ -372,7 +380,9 @@ class TestDebugSymbols(unittest.TestCase):
         assert variable_die is not None
         address = variable_die.get_address()
         assert address is not None
-        g_global_struct = ElfVariable(variable_die.get_resolved_type(), address, TestDebugSymbols.mem_access)
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         c_values = [var.read_value() for var in g_global_struct.c.as_list()]
         self.assertEqual(list(range(16)), c_values)
         d_x_values = [var.x.read_value() for var in g_global_struct.d.as_list()]
@@ -387,7 +397,9 @@ class TestDebugSymbols(unittest.TestCase):
         assert variable_die is not None
         address = variable_die.get_address()
         assert address is not None
-        g_global_struct = ElfVariable(variable_die.get_resolved_type(), address, TestDebugSymbols.mem_access)
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         c_values = g_global_struct.c.as_value_list()
         self.assertEqual(list(range(16)), c_values)
         d_x_values = [var.x.read_value() for var in g_global_struct.d.as_list()]
@@ -541,7 +553,7 @@ class TestDebugSymbols(unittest.TestCase):
         ]
     )
     def test_elf_variable_error_handling(
-        self, expected_error: type[Exception], mem_access_factory: Callable[["TestDebugSymbols"], MemoryAccess]
+        self, expected_error: type[BaseException], mem_access_factory: Callable[["TestDebugSymbols"], MemoryAccess]
     ):
         mem_access = mem_access_factory(self)
         g_global_struct = self.parsed_elf.get_global("g_global_struct", mem_access)

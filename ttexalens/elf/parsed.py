@@ -8,6 +8,7 @@ from ttexalens._native_ttexalens import (
     NativeDwarfDie as DwarfDie,
     NativeDwarfInfo as DwarfInfo,
     NativeElfFile as ElfFile,
+    NativeElfSection,
     NativeElfVariable as ElfVariable,
     NativeFrameDescription as FrameDescription,
 )
@@ -37,9 +38,14 @@ class ParsedElfFile:
         return text_sh.address
 
     @cached_property
-    def sections(self):
+    def sections(self) -> dict[str, NativeElfSection]:
         count = self._native_elf.get_sections_count()
-        return {self._native_elf.get_section(i).name: self._native_elf.get_section(i) for i in range(count)}
+        result: dict[str, NativeElfSection] = {}
+        for i in range(count):
+            section = self._native_elf.get_section(i)
+            if section is not None:
+                result[section.name] = section
+        return result
 
     def get_section_by_name(self, name: str):
         return self._native_elf.get_section_by_name(name)

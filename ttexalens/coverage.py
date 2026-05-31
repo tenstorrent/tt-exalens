@@ -28,25 +28,25 @@ def dump_coverage(
 ) -> None:
 
     # Find coverage region in ELF.
-    coverage_start = elf.find_symbol_by_name("__coverage_start").value
-    if not coverage_start:
+    start_sym = elf.find_symbol_by_name("__coverage_start")
+    if start_sym is None or not start_sym.value:
         raise TTException("__coverage_start not found")
-    coverage_end = elf.find_symbol_by_name("__coverage_end").value
-    if not coverage_end:
+    coverage_start = start_sym.value
+    end_sym = elf.find_symbol_by_name("__coverage_end")
+    if end_sym is None or not end_sym.value:
         raise TTException("__coverage_end not found")
+    coverage_end = end_sym.value
 
     # Find coverage header in device memory.
     coverage_header = elf.get_global("coverage_header", create_l1_memory_access(location))
-    if coverage_header is None:
-        raise TTException("coverage_header not found")
     coverage_header = coverage_header.dereference()
     if coverage_header.get_address() != coverage_start:
         raise TTException("coverage_header address does not match __coverage_start")
 
     # Check magic number.
     magic_number = elf.get_constant("COVERAGE_MAGIC_NUMBER")
-    if magic_number is None or coverage_header.magic_number != magic_number:
-        raise TTException("COVERAGE_MAGIC_NUMBER not found in ELF")
+    if coverage_header.magic_number != magic_number:
+        raise TTException("COVERAGE_MAGIC_NUMBER does not match in ELF")
 
     header_size = coverage_header.get_size()
     length = int(coverage_header.bytes_written)

@@ -106,6 +106,7 @@ class TTExaLensTestRunner:
 
     def readline(self, timeoutSeconds: float = 60):
         assert self.process is not None
+        assert self.process.stdout is not None and self.process.stderr is not None
         # Fast path for program that ended
         rlist, _, _ = select.select([self.process.stdout, self.process.stderr], [], [], 0)
         if len(rlist) == 0:
@@ -116,7 +117,7 @@ class TTExaLensTestRunner:
                 if not self.is_running:
                     return None
                 raise Exception(f"Hit timeout ({timeoutSeconds}s) while waiting for output from TTExaLens")
-        line = rlist[0].readline()  # type: ignore
+        line = rlist[0].readline()
         if line.endswith("\n"):
             line = line[:-1]
         elif not line:

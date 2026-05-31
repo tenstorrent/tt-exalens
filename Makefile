@@ -48,6 +48,11 @@ mypy:
 	@echo "Running mypy"
 	python3 -m mypy
 
+.PHONY: pyright
+pyright:
+	@echo "Running basedpyright"
+	python3 -m basedpyright
+
 .PHONY: wheel
 wheel:
 	pip wheel --no-deps --no-cache-dir . --wheel-dir build_wheel

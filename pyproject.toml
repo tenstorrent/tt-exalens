@@ -60,3 +60,17 @@ regex = "(?P<value>.*)"
 [tool.scikit-build.metadata.dependencies]
 provider = "pyproject_toml_parse_requirements"
 provider-path = "."
+
+[tool.pyright]
+include = ["."]
+exclude = ["build", "build_debug", "build_release", "build_riscv", "build_wheel", "**/__pycache__", "**/.venv"]
+extraPaths = ["build/stubs"]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
+reportMissingModuleSource = "none"
+# High-signal rules from strict mode (most of strict's diagnostics are
+# annotation-coverage noise; these four catch real dead-code / logic bugs).
+reportUnnecessaryComparison = "error"
+reportUnnecessaryIsInstance = "error"
+reportMatchNotExhaustive = "error"
+reportUnusedVariable = "error"

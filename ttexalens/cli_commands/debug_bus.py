@@ -154,7 +154,7 @@ def parse_command_arguments(args):
     for item in signals:
         if isinstance(item, str):
             result.append(item)
-        elif isinstance(item, list):
+        else:
             try:
                 signal_description = DebugBusSignalDescription(item[1], item[0], item[2], item[3])
                 result.append(signal_description)

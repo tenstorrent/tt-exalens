@@ -105,7 +105,7 @@ class ElfLoader:
         elif self.l1_block is not None and self.l1_block.memory_block.contains_private_address(private_address):
             self.l1_mem_access.write(private_address, data)
         else:
-            self.location.noc_write(private_address, data)
+            self.location.noc_write(private_address, bytes(data))
 
     def read_block(self, private_address: int, byte_count: int) -> bytes:
         """
@@ -135,7 +135,7 @@ class ElfLoader:
     def remap_address(self, address: int, loader_data: int | None, loader_code: int | None):
         data_private_memory = self.risc_debug.get_data_private_memory()
         if ElfLoader.__inside_private_memory(data_private_memory, address):
-            if loader_data is not None and isinstance(loader_data, int):
+            if loader_data is not None:
                 assert data_private_memory is not None
                 assert data_private_memory.address is not None
                 assert data_private_memory.address.private_address is not None
@@ -143,7 +143,7 @@ class ElfLoader:
             return address
         code_private_memory = self.risc_debug.get_code_private_memory()
         if ElfLoader.__inside_private_memory(code_private_memory, address):
-            if loader_code is not None and isinstance(loader_code, int):
+            if loader_code is not None:
                 assert code_private_memory is not None
                 assert code_private_memory.address is not None
                 assert code_private_memory.address.private_address is not None
@@ -177,7 +177,7 @@ class ElfLoader:
 
             # Load section into memory
             for section in elf.sections.values():
-                if section.address is not None and section.name in self.SECTIONS_TO_LOAD and section.data:
+                if section.name in self.SECTIONS_TO_LOAD and section.data:
                     if section.address % 4 != 0:
                         raise ValueError(
                             f"{elf_path}: section {section.name} (0x{section.address:08x}) is not 32-bit aligned"
@@ -195,7 +195,7 @@ class ElfLoader:
                     # Check that what we have written is correct
                     if verify_write:
                         read_data = self.read_block(address, len(section.data))
-                        if read_data != section.data:
+                        if read_data != bytes(section.data):
                             util.ERROR(f"Error writing section {section.name} to address 0x{address:08x}.")
                             continue
                         else:

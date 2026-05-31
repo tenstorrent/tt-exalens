@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from collections.abc import Sequence
 from enum import Enum
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -237,13 +238,13 @@ class TensixDebug:
                 self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
                 self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
                 self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
-            elif regfile == REGFILE.SRCB:
-                self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
-                self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+            # elif regfile == REGFILE.SRCB:
+            #     self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
+            #     self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+            #     self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+            #     self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+            #     self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
+            #     self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
 
             base_cmd = row_addr + (regfile_id << 16)
             for i in range(8):
@@ -265,7 +266,7 @@ class TensixDebug:
 
     def read_regfile(
         self, regfile: int | str | REGFILE, num_tiles: int | None = None, signed=True
-    ) -> list[int | float] | list[str]:
+    ) -> Sequence[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
 
@@ -316,7 +317,7 @@ class TensixDebug:
         except ValueError as e:
             # If the data format is unsupported, return the raw data.
             WARN(e)
-            raw_data: list[str] = [hex(datum) for datum in data if isinstance(datum, int)]
+            raw_data: list[str] = [hex(datum) for datum in data]
             return raw_data
 
     def write_regfile_data(self, regfile: REGFILE, data: list[int], df: TensixDataFormat) -> None:

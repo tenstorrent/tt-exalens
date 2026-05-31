@@ -42,7 +42,7 @@ The following coordinate systems are available to represent a grid location on t
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from ttexalens.exceptions import CoordinateTranslationError, TTException, UnknownCoordinateSystemError
 
 if TYPE_CHECKING:
@@ -125,7 +125,7 @@ class OnChipCoordinate:
         return self.device.get_block(self)
 
     # This returns a tuple with the coordinates in the specified coordinate system.
-    def to(self, output_type):
+    def to(self, output_type) -> Any:
         """
         Returns a tuple with the coordinates in the specified coordinate system.
 
@@ -178,7 +178,7 @@ class OnChipCoordinate:
         """
         try:
             output_tuple = self.to(output_type)
-        except CoordinateTranslationError as e:
+        except CoordinateTranslationError:
             return "N/A"
 
         if output_type == "logical":

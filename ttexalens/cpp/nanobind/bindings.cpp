@@ -856,9 +856,11 @@ NB_MODULE(_native_ttexalens, m) {
             },
             nb::arg("data"), nb::sig("def from_bytes(data: bytes | bytearray | memoryview) -> NativeElfFile"))
         .def("get_sections_count", &NativeElfFile::get_sections_count)
-        .def("get_section", &NativeElfFile::get_section, nb::arg("index"), nb::rv_policy::reference_internal)
+        .def("get_section", &NativeElfFile::get_section, nb::arg("index"), nb::rv_policy::reference_internal,
+             nb::sig("def get_section(self, index: int) -> NativeElfSection | None"))
         .def("get_section_by_name", &NativeElfFile::get_section_by_name, nb::arg("name"),
-             nb::rv_policy::reference_internal)
+             nb::rv_policy::reference_internal,
+             nb::sig("def get_section_by_name(self, name: str) -> NativeElfSection | None"))
         .def("read_symbol_table_section", &NativeElfFile::read_symbol_table_section, nb::arg("section_name"),
              nb::call_guard<nb::gil_scoped_release>())
         .def("has_dwarf_info", &NativeElfFile::has_dwarf_info, nb::arg("strict") = false)
@@ -898,7 +900,8 @@ NB_MODULE(_native_ttexalens, m) {
         .def_prop_ro("is_signed_type", &NativeDwarfDie::is_signed_type)
         .def_prop_ro("is_declaration", &NativeDwarfDie::is_declaration)
         .def("get_attribute", &NativeDwarfDie::get_attribute, nb::arg("attribute_tag"),
-             nb::rv_policy::reference_internal)
+             nb::rv_policy::reference_internal,
+             nb::sig("def get_attribute(self, attribute_tag: NativeDwarfAttributeTag) -> NativeDwarfAttribute | None"))
         .def("has_attribute", &NativeDwarfDie::has_attribute, nb::arg("attribute_tag"))
         .def("get_path", &NativeDwarfDie::get_path)
         .def("get_search_path", &NativeDwarfDie::get_search_path)
@@ -919,20 +922,29 @@ NB_MODULE(_native_ttexalens, m) {
                     d.get_constant_value());
             },
             nb::sig("def get_constant_value(self) -> bool | int | float | None"))
-        .def("get_resolved_type", &NativeDwarfDie::get_resolved_type, nb::rv_policy::reference_internal)
-        .def("get_dereference_type", &NativeDwarfDie::get_dereference_type, nb::rv_policy::reference_internal)
-        .def("get_array_element_type", &NativeDwarfDie::get_array_element_type, nb::rv_policy::reference_internal)
+        .def("get_resolved_type", &NativeDwarfDie::get_resolved_type, nb::rv_policy::reference_internal,
+             nb::sig("def get_resolved_type(self) -> NativeDwarfDie | None"))
+        .def("get_dereference_type", &NativeDwarfDie::get_dereference_type, nb::rv_policy::reference_internal,
+             nb::sig("def get_dereference_type(self) -> NativeDwarfDie | None"))
+        .def("get_array_element_type", &NativeDwarfDie::get_array_element_type, nb::rv_policy::reference_internal,
+             nb::sig("def get_array_element_type(self) -> NativeDwarfDie | None"))
         .def("find_child_by_name", &NativeDwarfDie::find_child_by_name, nb::arg("name"),
-             nb::rv_policy::reference_internal)
+             nb::rv_policy::reference_internal,
+             nb::sig("def find_child_by_name(self, name: str) -> NativeDwarfDie | None"))
         .def("get_die_from_attribute", &NativeDwarfDie::get_die_from_attribute, nb::arg("attribute_tag"),
-             nb::rv_policy::reference_internal)
+             nb::rv_policy::reference_internal,
+             nb::sig(
+                 "def get_die_from_attribute(self, attribute_tag: NativeDwarfAttributeTag) -> NativeDwarfDie | None"))
         .def("get_address_ranges", &NativeDwarfDie::get_address_ranges)
         .def("get_decl_file_info", &NativeDwarfDie::get_decl_file_info)
         .def("get_call_file_info", &NativeDwarfDie::get_call_file_info)
         .def("read_value", &NativeDwarfDie::read_value, nb::arg("frame").none())
-        .def("get_first_child", &NativeDwarfDie::get_first_child, nb::rv_policy::reference_internal)
-        .def("get_next_sibling", &NativeDwarfDie::get_next_sibling, nb::rv_policy::reference_internal)
-        .def("get_parent", &NativeDwarfDie::get_parent, nb::rv_policy::reference_internal)
+        .def("get_first_child", &NativeDwarfDie::get_first_child, nb::rv_policy::reference_internal,
+             nb::sig("def get_first_child(self) -> NativeDwarfDie | None"))
+        .def("get_next_sibling", &NativeDwarfDie::get_next_sibling, nb::rv_policy::reference_internal,
+             nb::sig("def get_next_sibling(self) -> NativeDwarfDie | None"))
+        .def("get_parent", &NativeDwarfDie::get_parent, nb::rv_policy::reference_internal,
+             nb::sig("def get_parent(self) -> NativeDwarfDie | None"))
         .def("get_template_value_parameters", &NativeDwarfDie::get_template_value_parameters)
         .def(
             "iter_children",
@@ -945,12 +957,15 @@ NB_MODULE(_native_ttexalens, m) {
 
     nb::class_<NativeDwarfInfo>(m, "NativeDwarfInfo")
         .def("find_file_line_by_address", &NativeDwarfInfo::find_file_line_by_address, nb::arg("address"))
-        .def("get_die_by_name", &NativeDwarfInfo::get_die_by_name, nb::arg("name"), nb::rv_policy::reference_internal)
+        .def("get_die_by_name", &NativeDwarfInfo::get_die_by_name, nb::arg("name"), nb::rv_policy::reference_internal,
+             nb::sig("def get_die_by_name(self, name: str) -> NativeDwarfDie | None"))
         .def("find_function_by_address", &NativeDwarfInfo::find_function_by_address, nb::arg("address"),
-             nb::rv_policy::reference_internal)
+             nb::rv_policy::reference_internal,
+             nb::sig("def find_function_by_address(self, address: int) -> NativeDwarfDie | None"))
         .def("get_frame_description", &NativeDwarfInfo::get_frame_description, nb::arg("pc"), nb::arg("memory_access"))
         .def("find_symbol_by_name", &NativeDwarfInfo::find_symbol_by_name, nb::arg("name"),
-             nb::rv_policy::reference_internal)
+             nb::rv_policy::reference_internal,
+             nb::sig("def find_symbol_by_name(self, name: str) -> NativeElfSymbol | None"))
         .def("get_enum_value", &NativeDwarfInfo::get_enum_value, nb::arg("name"))
         // Like NativeDwarfDie::get_constant_value, the variant alternatives
         // map to bool / int / float; monostate is unreachable here because
