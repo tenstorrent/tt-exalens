@@ -53,13 +53,20 @@ jobs:
       - name: Build wheel
         run: |
           make wheel
-      - name: Remove SFPI from build artifacts
+      - name: Trim SFPI toolchain from build artifacts (keep GDB only)
         run: |
-          mv build/sfpi build/sfpi_backup
-          mkdir -p build/sfpi/compiler/bin/
-          cp build/sfpi_backup/compiler/bin/riscv-tt-elf-gdb build/sfpi/compiler/bin/riscv-tt-elf-gdb
-          rm -rf build/sfpi_backup
-          rm -f build/sfpi_*
+          # The SFPI tree under build_riscv/sfpi/ is hundreds of MB. Tests
+          # only need the GDB binary (see ttexalens/gdb/gdb_client.py which
+          # falls back to build_riscv/sfpi/compiler/bin/riscv-tt-elf-gdb).
+          SFPI_DIR=build_riscv/sfpi
+          GDB_REL=compiler/bin/riscv-tt-elf-gdb
+          if [ -f "$SFPI_DIR/$GDB_REL" ]; then
+            mv "$SFPI_DIR/$GDB_REL" /tmp/riscv-tt-elf-gdb
+            rm -rf "$SFPI_DIR"
+            mkdir -p "$SFPI_DIR/$(dirname "$GDB_REL")"
+            mv /tmp/riscv-tt-elf-gdb "$SFPI_DIR/$GDB_REL"
+          fi
+          rm -f build_riscv/sfpi_*.txz
       - name: Upload libraries as artifacts
         uses: pyTooling/upload-artifact@v4
         with:
