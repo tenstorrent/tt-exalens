@@ -1103,6 +1103,10 @@ NB_MODULE(_native_ttexalens, m) {
             "__eq__",
             [](const NativeElfVariable& self, nb::handle other) -> nb::object {
                 if (self.get_type_die()->get_tag() == NativeDwarfDieTag::array_type) {
+                    if (nb::isinstance<nb::str>(other)) {
+                        return try_binop(self, other,
+                                         [](nb::object a, nb::handle b) -> nb::object { return nb::cast(a.equal(b)); });
+                    }
                     if (!PyObject_HasAttrString(other.ptr(), "__len__") ||
                         !PyObject_HasAttrString(other.ptr(), "__getitem__")) {
                         return nb::cast(false);

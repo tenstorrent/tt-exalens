@@ -78,7 +78,7 @@ class DataLossException : public std::runtime_error {
 class NativeElfVariable {
    public:
     // Variant returned by read_value / accepted by write_value.
-    using Value = std::variant<bool, int64_t, uint64_t, float, double>;
+    using Value = std::variant<bool, int64_t, uint64_t, float, double, std::string>;
 
     NativeElfVariable(NativeDwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access);
     ~NativeElfVariable();

@@ -125,12 +125,17 @@ double value_as_double(const NativeElfVariable::Value& v) {
             using T = std::decay_t<decltype(x)>;
             if constexpr (std::is_same_v<T, bool>) {
                 return x ? 1.0 : 0.0;
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                throw std::runtime_error("Cannot convert string value to double");
             } else {
                 return static_cast<double>(x);
             }
         },
         v);
 }
+
+// Upper bound on bytes scanned when materialising a C string.
+constexpr size_t kMaxCStringLength = 64 * 1024;
 
 }  // namespace
 
@@ -273,6 +278,35 @@ std::vector<std::byte> NativeElfVariable::read_bytes() const {
 NativeElfVariable::Value NativeElfVariable::read_value() const {
     auto type = type_die;
     const auto tag = type->get_tag();
+
+    // C strings: char[] and char* are returned as Python str.
+    if (type->is_string_type()) {
+        if (tag == NativeDwarfDieTag::array_type) {
+            const uint64_t array_len = get_length();
+            const size_t cap = static_cast<size_t>(std::min<uint64_t>(array_len, kMaxCStringLength));
+            std::vector<std::byte> bytes(cap);
+            memory_access->read(address, bytes);
+            size_t end = 0;
+            while (end < cap && bytes[end] != std::byte{0}) {
+                ++end;
+            }
+            return std::string(reinterpret_cast<const char*>(bytes.data()), end);
+        }
+        // char* — follow the pointer, then read NUL-terminated bytes from it.
+        uint64_t pointee = dereference().get_address();
+        std::string out;
+        out.reserve(64);
+        while (out.size() < kMaxCStringLength) {
+            std::byte byte{0};
+            memory_access->read(pointee + out.size(), std::span<std::byte>(&byte, 1));
+            if (byte == std::byte{0}) {
+                break;
+            }
+            out.push_back(static_cast<char>(byte));
+        }
+        return out;
+    }
+
     if (tag != NativeDwarfDieTag::base_type && tag != NativeDwarfDieTag::pointer_type &&
         tag != NativeDwarfDieTag::enumeration_type) {
         throw TypeMismatchException("read_value", type->get_path());
@@ -319,6 +353,23 @@ NativeElfVariable::Value NativeElfVariable::read_value() const {
 void NativeElfVariable::write_value(Value value, bool check_data_loss) {
     auto type = type_die;
     const auto tag = type->get_tag();
+
+    // C string write: only `char[]` is accepted (char* would have to allocate,
+    // which we don't model). The supplied string + NUL must fit the array.
+    // Bytes past the terminator are left untouched.
+    if (auto* str = std::get_if<std::string>(&value)) {
+        if (tag != NativeDwarfDieTag::array_type || !type->is_string_type()) {
+            throw TypeMismatchException("write_value", type->get_path());
+        }
+        const uint64_t array_len = get_length();
+        if (str->size() + 1 > array_len) {
+            throw DataLossException("\"" + *str + "\"", type->get_path());
+        }
+        memory_access->write(
+            address, std::span<const std::byte>(reinterpret_cast<const std::byte*>(str->c_str()), str->size() + 1));
+        return;
+    }
+
     if (tag != NativeDwarfDieTag::base_type && tag != NativeDwarfDieTag::enumeration_type) {
         throw TypeMismatchException("write_value", type->get_path());
     }
@@ -368,6 +419,8 @@ void NativeElfVariable::write_value(Value value, bool check_data_loss) {
                         return static_cast<int64_t>(rt) == x && static_cast<double>(static_cast<int64_t>(rt)) == rt;
                     } else if constexpr (std::is_same_v<T, uint64_t>) {
                         return static_cast<uint64_t>(rt) == x && static_cast<double>(static_cast<uint64_t>(rt)) == rt;
+                    } else if constexpr (std::is_same_v<T, std::string>) {
+                        return false;
                     } else {
                         return rt == static_cast<double>(x);
                     }
@@ -383,6 +436,8 @@ void NativeElfVariable::write_value(Value value, bool check_data_loss) {
                 using T = std::decay_t<decltype(x)>;
                 if constexpr (std::is_same_v<T, bool>) {
                     return x;
+                } else if constexpr (std::is_same_v<T, std::string>) {
+                    return false;
                 } else {
                     return x != T{0};
                 }
@@ -458,6 +513,8 @@ std::string NativeElfVariable::value_to_string(const Value& v) {
             using T = std::decay_t<decltype(x)>;
             if constexpr (std::is_same_v<T, bool>) {
                 return x ? "true" : "false";
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                return x;
             } else {
                 return std::to_string(x);
             }

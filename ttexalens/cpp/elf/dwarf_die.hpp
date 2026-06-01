@@ -255,6 +255,16 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // (DW_AT_encoding ∈ {DW_ATE_signed, DW_ATE_signed_char, DW_ATE_signed_fixed}).
     bool is_signed_type() const;
 
+    // True iff this DIE is a base type with a character encoding
+    // (DW_AT_encoding ∈ {DW_ATE_signed_char, DW_ATE_unsigned_char}). Used to
+    // distinguish C strings (char[] / char*) from byte arrays.
+    bool is_char_type() const;
+
+    // True iff this DIE represents a C string: either an array of a char-
+    // encoded base type, or a pointer to one. Used to decide whether
+    // read_value() returns a Python str.
+    bool is_string_type() const;
+
     // Size in bytes for this DIE's type. Returns std::nullopt when no size
     // can be determined.
     std::optional<uint64_t> get_size() const;

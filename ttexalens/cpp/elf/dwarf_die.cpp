@@ -805,6 +805,27 @@ bool NativeDwarfDie::is_signed_type() const {
     return *enc == DW_ATE_signed || *enc == DW_ATE_signed_char || *enc == DW_ATE_signed_fixed;
 }
 
+bool NativeDwarfDie::is_char_type() const {
+    const auto* enc = get_attribute_value<uint64_t>(NativeDwarfAttributeTag::encoding);
+    if (enc == nullptr) {
+        return false;
+    }
+    return *enc == DW_ATE_signed_char || *enc == DW_ATE_unsigned_char;
+}
+
+bool NativeDwarfDie::is_string_type() const {
+    const auto t = get_tag();
+    if (t == NativeDwarfDieTag::array_type) {
+        auto elem = get_array_element_type();
+        return elem && elem->is_char_type();
+    }
+    if (t == NativeDwarfDieTag::pointer_type) {
+        auto pointee = get_dereference_type();
+        return pointee && pointee->is_char_type();
+    }
+    return false;
+}
+
 std::optional<uint64_t> NativeDwarfDie::get_size() const {
     if (const auto* u = get_attribute_value<uint64_t>(NativeDwarfAttributeTag::byte_size)) {
         return *u;
