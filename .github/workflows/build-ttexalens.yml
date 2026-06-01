@@ -90,5 +90,6 @@ jobs:
           path: |
             build
             build_riscv
+            build_wheel
             ttexalens/_native_ttexalens*.so
             ttexalens/_native_ttexalens/__init__.pyi

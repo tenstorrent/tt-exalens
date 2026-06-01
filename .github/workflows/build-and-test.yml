@@ -177,8 +177,10 @@ jobs:
           python3 -X faulthandler -m unittest discover -v -t . -s test/app -p *test*.py
 
       - name: Install wheel
+        # `make wheel` puts the produced wheel at build_wheel/*.whl
+        # (scikit-build-core via the Makefile target).
         run: |
-          pip install build/ttexalens_wheel/*.whl
+          pip install build_wheel/*.whl
       - name: Run tests
         run: |
           # Change to the wheel tests directory so that we are certain we don't import dev files
