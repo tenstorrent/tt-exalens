@@ -292,21 +292,6 @@ def write_to_device(
     coordinate.noc_write(addr, data, noc_id, use_4B_mode, safe_mode=safe_mode)
 
 
-def _find_in_data(data: bytes, pattern: bytes, base_addr: int, max_results: int | None = None) -> list[int]:
-    """Return absolute addresses of pattern occurrences in data, up to max_results (None = unlimited)."""
-    matches = []
-    start = 0
-    while True:
-        idx = data.find(pattern, start)
-        if idx == -1:
-            break
-        matches.append(base_addr + idx)
-        if max_results is not None and len(matches) >= max_results:
-            break
-        start = idx + 1
-    return matches
-
-
 def _encode_pattern(pattern: int | list[int] | bytes) -> bytes:
     if isinstance(pattern, bytes):
         pattern_bytes = pattern
@@ -340,7 +325,11 @@ def _search_chunk_range(
         chunk_bytes = read_fn(chunk_addr, read_size)
         search_data = prev_tail + chunk_bytes
         base = chunk_addr - len(prev_tail)
-        matches = [(addr, block_name) for addr in _find_in_data(search_data, pattern_bytes, base)]
+        matches: list[tuple[int, str]] = []
+        pos = 0
+        while (idx := search_data.find(pattern_bytes, pos)) != -1:
+            matches.append((base + idx, block_name))
+            pos = idx + 1
         next_chunk_addr = chunk_addr + len(chunk_bytes)
         if matches:
             return matches, next_chunk_addr

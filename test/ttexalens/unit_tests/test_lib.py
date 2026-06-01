@@ -32,7 +32,7 @@ from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
 from ttexalens.gdb.gdb_client import get_gdb_callstack
 from ttexalens.gdb.gdb_communication import ServerSocket
 from ttexalens.gdb.gdb_server import GdbServer
-from ttexalens.tt_exalens_lib import _encode_pattern, _find_in_data
+from ttexalens.tt_exalens_lib import _encode_pattern
 
 
 def invalid_argument_decorator(func):
@@ -1731,7 +1731,7 @@ class TestCallStack(unittest.TestCase):
 
 
 class TestSearchHelpers(unittest.TestCase):
-    """Tests for _encode_pattern and _find_in_data — no device required."""
+    """Tests for _encode_pattern — no device required."""
 
     # --- _encode_pattern ---
 
@@ -1755,29 +1755,6 @@ class TestSearchHelpers(unittest.TestCase):
     def test_encode_empty_list_raises(self):
         with self.assertRaises(TTException):
             _encode_pattern([])
-
-    # --- _find_in_data ---
-
-    def test_find_not_found(self):
-        self.assertEqual(_find_in_data(b"\x01\x02\x03\x04", b"\xFF", base_addr=0x100), [])
-
-    def test_find_single(self):
-        data = b"\x00\x00\xBE\xEF\x00"
-        self.assertEqual(_find_in_data(data, b"\xBE\xEF", base_addr=0x200), [0x202])
-
-    def test_find_multiple(self):
-        data = b"\xAA\xBB\xAA\xBB\xAA\xBB"
-        results = _find_in_data(data, b"\xAA\xBB", base_addr=0)
-        self.assertEqual(results, [0, 2, 4])
-
-    def test_find_max_results(self):
-        data = b"\xAA\xBB\xAA\xBB\xAA\xBB"
-        results = _find_in_data(data, b"\xAA\xBB", base_addr=0, max_results=1)
-        self.assertEqual(results, [0])
-
-    def test_find_at_boundary(self):
-        data = b"\xAA" + b"\x00" * 4 + b"\xAA"
-        self.assertEqual(_find_in_data(data, b"\xAA", base_addr=0x10), [0x10, 0x15])
 
 
 class TestSearchMemory(unittest.TestCase):
