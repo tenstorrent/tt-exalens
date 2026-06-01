@@ -140,6 +140,8 @@ struct GlobalStruct : public BaseStruct, public BaseStruct2 {
     uint32_t* invalid_memory_ptr;
     InnerStruct* wrong_type_ptr;
     int64_t signed_int_field;
+    char string_buffer[32];
+    const char* string_pointer;
 };
 
 GlobalStruct g_global_struct;
@@ -187,6 +189,13 @@ void update_struct(GlobalStruct* gs) {
     gs->invalid_memory_ptr = reinterpret_cast<uint32_t*>(0xFFFF0000);
     gs->wrong_type_ptr = reinterpret_cast<InnerStruct*>(&gs->uint_array[0]);
     gs->signed_int_field = -123456789;
+    const char* string_source = "Hello, struct!";
+    int string_index = 0;
+    for (; string_source[string_index] != 0; string_index++) {
+        gs->string_buffer[string_index] = string_source[string_index];
+    }
+    gs->string_buffer[string_index] = 0;
+    gs->string_pointer = "pointer to string";
 }
 
 int main() {
