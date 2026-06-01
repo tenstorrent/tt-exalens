@@ -1749,11 +1749,11 @@ class TestSearchHelpers(unittest.TestCase):
         self.assertEqual(_encode_pattern(b"\x01\x02\x03"), b"\x01\x02\x03")
 
     def test_encode_empty_bytes_raises(self):
-        with self.assertRaises(util.TTException):
+        with self.assertRaises(TTException):
             _encode_pattern(b"")
 
     def test_encode_empty_list_raises(self):
-        with self.assertRaises(util.TTException):
+        with self.assertRaises(TTException):
             _encode_pattern([])
 
     # --- _find_in_data ---
@@ -1860,19 +1860,19 @@ class TestSearchMemory(unittest.TestCase):
             self.assertLess(addr, addr_beyond)
 
     def test_search_noc_invalid_chunk_size(self):
-        with self.assertRaises(util.TTException):
+        with self.assertRaises(TTException):
             lib.search_memory("0,0", 0xDEADBEEF, chunk_size=0, context=self.context)
 
     def test_search_noc_empty_bytes(self):
-        with self.assertRaises(util.TTException):
+        with self.assertRaises(TTException):
             lib.search_memory("0,0", b"", context=self.context)
 
     def test_search_noc_empty_list(self):
-        with self.assertRaises(util.TTException):
+        with self.assertRaises(TTException):
             lib.search_memory("0,0", [], context=self.context)
 
     def test_search_noc_invalid_start_addr(self):
-        with self.assertRaises(util.TTException):
+        with self.assertRaises(TTException):
             lib.search_memory("0,0", 0xDEADBEEF, start_addr=0xDEAD0000, context=self.context)
 
     # --- RISC-V private memory (risc_name="brisc") ---
@@ -1908,11 +1908,11 @@ class TestSearchMemory(unittest.TestCase):
         self.assertEqual(results, [])
 
     def test_search_riscv_invalid_risc_name(self):
-        with self.assertRaises((util.TTException, ValueError, AttributeError)):
+        with self.assertRaises((TTException, ValueError, AttributeError)):
             lib.search_memory("0,0", 0xDEADBEEF, risc_name="invalid_risc", context=self.context)
 
     def test_search_riscv_invalid_start_addr(self):
-        with self.assertRaises(util.TTException):
+        with self.assertRaises(TTException):
             lib.search_memory("0,0", 0xDEADBEEF, risc_name="brisc", start_addr=0xFFA00000, context=self.context)
 
     def test_search_noc_continuation(self):

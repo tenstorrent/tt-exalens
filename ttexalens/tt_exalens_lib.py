@@ -411,10 +411,14 @@ def _iter_memory_blocks(
             block_start_private = block_info.memory_block.address.private_address
             block_end = block_start_private + block_info.memory_block.size
             range_end = block_end if effective_end is None else min(block_end, effective_end)
+            read_fn: Callable[[int, int], bytes]
             if block_info.memory_block.address.noc_address is not None:
                 noc_offset = block_info.memory_block.address.noc_address - block_start_private
-                read_fn = lambda addr, size, _off=noc_offset: coordinate.noc_read(
-                    addr + _off, size, noc_id, use_4B_mode, safe_mode=safe_mode
+                read_fn = cast(
+                    Callable[[int, int], bytes],
+                    lambda addr, size, _off=noc_offset: coordinate.noc_read(
+                        addr + _off, size, noc_id, use_4B_mode, safe_mode=safe_mode
+                    ),
                 )
             else:
                 read_fn = lambda addr, size: risc_debug.read_memory_bytes(addr, size, safe_mode=safe_mode)

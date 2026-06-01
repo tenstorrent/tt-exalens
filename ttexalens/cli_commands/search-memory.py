@@ -48,6 +48,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 from ttexalens.tt_exalens_lib import search_memory
+from ttexalens.exceptions import TTException
 
 command_metadata = CommandMetadata(
     short_name="search",
@@ -188,7 +189,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     if next_addr is None or (max_results is not None and len(all_matches) >= max_results):
                         break
                     current_start = next_addr
-            except util.TTException as e:
+            except TTException as e:
                 util.ERROR(f"Device {device_id_str} | Location {location_str}: {e}")
                 continue
 
