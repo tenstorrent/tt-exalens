@@ -57,19 +57,27 @@ command_metadata = CommandMetadata(
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
 )
 
+_DEFAULT_READ_SIZE = 0x100000  # 1MB default for NOC reads
+_DEFAULT_READ_SIZE_RISC = 4  # 4 bytes default for RISC debug hardware reads
+
 
 def _auto_pattern_width(values: list[int]) -> int:
     """Return minimum power-of-2 byte count needed to represent the largest element in values."""
 
     def _min_bytes(v: int) -> int:
         n = max(1, math.ceil(v.bit_length() / 8))
+        # Round up to the next power of 2
         return 1 << (n - 1).bit_length()
 
     return max(_min_bytes(v) for v in values)
 
 
 def _build_pattern_bytes(values: list[int], width: int) -> bytes:
-    """Convert pattern values to little-endian bytes with uniform width."""
+    """Convert pattern values to a byte string using little-endian encoding with a uniform width.
+
+    Negative values are masked to the given width (two's-complement), so -1 at width 4
+    produces the same bytes as 0xFFFFFFFF.
+    """
     mask = (1 << (width * 8)) - 1
     result = b""
     for v in values:
@@ -130,7 +138,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     risc_name: str | None = args["-r"]
 
     # --- Parse --read-size ---
-    read_size: int | None = None
     if args["--read-size"]:
         try:
             read_size = int(args["--read-size"], 0)
@@ -139,6 +146,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         except ValueError:
             util.ERROR(f"Invalid --read-size value: {args['--read-size']!r}. Must be a positive integer.")
             return
+    else:
+        read_size = _DEFAULT_READ_SIZE_RISC if risc_name else _DEFAULT_READ_SIZE
 
     # --- Parse --max-results ---
     max_results_arg: str = args["--max-results"] if args["--max-results"] else "1"
