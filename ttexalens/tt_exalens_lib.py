@@ -464,7 +464,8 @@ def search_memory(
         )
         if matches:
             assert next_chunk_addr is not None
-            return matches, next_chunk_addr if next_chunk_addr < range_end or end_addr is not None else None
+            limit = end_addr if isinstance(end_addr, int) else range_end
+            return matches, next_chunk_addr if isinstance(end_addr, str) or next_chunk_addr < limit else None
 
     return [], None
 
