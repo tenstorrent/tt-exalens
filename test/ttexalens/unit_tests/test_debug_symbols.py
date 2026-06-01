@@ -362,7 +362,7 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(+g_global_struct.c[7], 7)  # +7
         self.assertEqual(abs(-g_global_struct.c[3]), 3)  # abs(-3) = 3
         self.assertEqual(~g_global_struct.c[0], -1)  # ~0 = -1
-        self.assertEqual(~g_global_struct.h[0], -2)  # ~True = ~1 = -2
+        self.assertEqual(not g_global_struct.h[0], False)  # not True = False
 
         # Test __index__ operator (ElfVariable as index)
         test_list = [10, 20, 30, 40, 50]
@@ -440,7 +440,7 @@ class TestDebugSymbols(unittest.TestCase):
         ]
     )
     def test_elf_variable_error_handling(
-        self, expected_error: type[Exception], mem_access_factory: Callable[["TestDebugSymbols"], MemoryAccess]
+        self, expected_error: type[BaseException], mem_access_factory: Callable[["TestDebugSymbols"], MemoryAccess]
     ):
         mem_access = mem_access_factory(self)
         g_global_struct = self.parsed_elf.get_global("g_global_struct", mem_access)

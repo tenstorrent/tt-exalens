@@ -701,12 +701,10 @@ def read_arc_telemetry_entry(
         telemetry_tag_id = arc.get_telemetry_tag_id(telemetry_tag)
         if telemetry_tag_id is None:
             raise TTException(f"Telemetry tag {telemetry_tag} does not exist.")
-    elif isinstance(telemetry_tag, int):
+    else:
         if not arc.has_telemetry_tag_id(telemetry_tag):
             raise TTException(f"Telemetry tag ID {telemetry_tag} does not exist.")
         telemetry_tag_id = telemetry_tag
-    else:
-        raise TTException(f"Invalid telemetry_tag type. Must be an int or str, but got {type(telemetry_tag)}")
 
     return device.read_arc_telemetry_entry(noc_id, telemetry_tag_id)
 
@@ -832,7 +830,7 @@ def top_callstack(
         elfs = [parse_elf(elfs, context)]
     elif isinstance(elfs, ParsedElfFile):
         elfs = [elfs]
-    elif isinstance(elfs, list):
+    else:
         elfs = [parse_elf(elf, context) if isinstance(elf, str) else elf for elf in elfs]
 
     offsets = offsets if offsets is not None else [None for _ in range(len(elfs))]
@@ -887,7 +885,7 @@ def callstack(
         elfs = [parse_elf(elfs, context)]
     elif isinstance(elfs, ParsedElfFile):
         elfs = [elfs]
-    elif isinstance(elfs, list):
+    else:
         elfs = [parse_elf(elf, context) if isinstance(elf, str) else elf for elf in elfs]
 
     offsets = offsets if offsets is not None else [None for _ in range(len(elfs))]

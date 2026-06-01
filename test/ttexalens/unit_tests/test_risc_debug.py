@@ -419,7 +419,7 @@ class TestDebugging(unittest.TestCase):
 
         # Since simulator is slow, we need to wait a bit by reading something
         if self.device.is_quasar():
-            for i in range(50):
+            for _ in range(50):
                 if self.core_sim.read_data(addr) == 0x87654000:
                     break
 
@@ -497,7 +497,7 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
         self.assertPcEquals(16)
         # Since we are on endless loop, we should never go past 16
-        for i in range(10):
+        for _ in range(10):
             # Step and verify that pc is 16 and value has changed
             self.core_sim.step()
             self.assertPcEquals(16)
@@ -563,7 +563,7 @@ class TestDebugging(unittest.TestCase):
                 iteration = iteration + 1
                 if iteration > 1000:
                     break
-            except RiscHaltError as e:
+            except RiscHaltError:
                 # print pc
                 self.core_sim.set_reset(True)
                 return
@@ -611,7 +611,7 @@ class TestDebugging(unittest.TestCase):
         self.assertGreaterEqual(previous_value, 0x87654000)
 
         # Loop halt and continue
-        for i in range(10):
+        for _ in range(10):
             # Halt
             self.core_sim.halt()
 
@@ -828,7 +828,7 @@ class TestDebugging(unittest.TestCase):
 
         # Since simulator is slow, we need to wait a bit by reading something
         if self.device.is_quasar():
-            for i in range(50):
+            for _ in range(50):
                 self.core_sim.read_data(0)
 
         # Value should not be changed and should stay the same since core is in halt
@@ -854,7 +854,7 @@ class TestDebugging(unittest.TestCase):
 
         # Since simulator is slow, we need to wait a bit by reading something
         if self.device.is_quasar():
-            for i in range(200):
+            for _ in range(200):
                 if self.core_sim.read_data(noc_addr) == 0x87654000:
                     break
 
@@ -1096,6 +1096,8 @@ class TestDebugging(unittest.TestCase):
                     self.assertTrue(state.is_memory, f"Watchpoint {watchpoint_index} should be memory watchpoint.")
                     self.assertFalse(state.is_read, f"Watchpoint {watchpoint_index} should not watch for reads.")
                     self.assertTrue(state.is_write, f"Watchpoint {watchpoint_index} should watch for writes.")
+                case _:
+                    self.fail(f"Unknown watchpoint_type: {watchpoint_type}")
 
         addresses_to_set = [12, 32, 0x1234, 0x8654, 0x87654321, 0x12345678, 0, 0xFFFFFFFF]
         watchpoint_types = ["pc", "pc", "access", "access", "read", "read", "write", "write"]
@@ -1342,7 +1344,7 @@ class TestDebugging(unittest.TestCase):
 
         # Since simulator is slow, we need to wait a bit by reading something
         if self.device.is_quasar():
-            for i in range(20):
+            for _ in range(20):
                 self.core_sim.read_data(0)
 
         # We should pass for loop very fast and should be halted here already
@@ -1414,7 +1416,7 @@ class TestDebugging(unittest.TestCase):
 
         # Since simulator is slow, we need to wait a bit by reading something
         if self.device.is_quasar():
-            for i in range(20):
+            for _ in range(20):
                 self.core_sim.read_data(0)
 
         # We should pass for loop very fast and should be halted here already

@@ -131,7 +131,7 @@ class ElfLoader:
     def remap_address(self, address: int, loader_data: int | None, loader_code: int | None):
         data_private_memory = self.risc_debug.get_data_private_memory()
         if ElfLoader.__inside_private_memory(data_private_memory, address):
-            if loader_data is not None and isinstance(loader_data, int):
+            if loader_data is not None:
                 assert data_private_memory is not None
                 assert data_private_memory.address is not None
                 assert data_private_memory.address.private_address is not None
@@ -139,7 +139,7 @@ class ElfLoader:
             return address
         code_private_memory = self.risc_debug.get_code_private_memory()
         if ElfLoader.__inside_private_memory(code_private_memory, address):
-            if loader_code is not None and isinstance(loader_code, int):
+            if loader_code is not None:
                 assert code_private_memory is not None
                 assert code_private_memory.address is not None
                 assert code_private_memory.address.private_address is not None

@@ -84,7 +84,7 @@ class TestCoverage(unittest.TestCase):
         noc_block = self.location._device.get_block(self.location)
         try:
             self.risc_debug = noc_block.get_risc_debug(self.risc_name)
-        except ValueError as e:
+        except ValueError:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
         self.loader = ElfLoader(self.risc_debug)

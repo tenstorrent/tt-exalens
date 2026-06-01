@@ -304,7 +304,7 @@ class ElfDie:
         return addr
 
     @cached_property
-    def value(self):
+    def value(self) -> Any:
         """
         Return the value of the DIE
         """
@@ -630,7 +630,7 @@ class ElfDie:
 
         # Get the type of the variable
         variable_type = self.resolved_type
-        if variable_type is None or variable_type is self:
+        if variable_type is self:
             util.DEBUG("    Could not resolve type for variable")
             # We failed to resolve type
             return None
@@ -963,7 +963,7 @@ class ElfDie:
                 if len(stack) < 2:
                     return False, None
                 address = stack.pop()
-                address_space_id = stack.pop()  # TODO: Does our architecture support multiple address spaces?
+                stack.pop()  # TODO: Does our architecture support multiple address spaces? Currently discard the address-space id.
                 if frame_inspection is None:
                     return False, None
                 value = frame_inspection.mem_access.read_word(address)  # Default to 4 bytes as generic type
@@ -1250,8 +1250,8 @@ class ElfDie:
                         die = self.cu.get_die(self.cu.dwarf_cu.get_DIE_from_refaddr(refaddr))
                 if "DW_AT_location" not in die.attributes:
                     return False, None
-                location = location_parser.parse_from_attribute(die.attributes["DW_AT_location"], die)
-                # TODO: Start executing location expression in current context (current stack, etc.)
+                # TODO: parse_from_attribute and execute the location expression in current context (current stack, etc.).
+                # location_parser.parse_from_attribute(die.attributes["DW_AT_location"], die)
                 return False, None
             elif op.op_name.startswith("DW_OP_lit"):
                 literal_value = int(op.op_name[len("DW_OP_lit") :])
