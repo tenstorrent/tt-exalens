@@ -262,6 +262,20 @@ bool tag_is_address_less(NativeDwarfDieTag tag) { return is_type_tag(tag) || tag
 NativeDwarfDie::NativeDwarfDie(DwarfDieHandle die, std::weak_ptr<details::NativeDwarfInfoImpl> info)
     : die(std::move(die)), info(std::move(info)) {}
 
+NativeDwarfDie::~NativeDwarfDie() {
+    // If the parent NativeDwarfInfoImpl was already destroyed,
+    // dwarf_object_finish has invalidated the Dwarf_Debug. Calling
+    // dwarf_dealloc on any libdwarf-owned handle in that state would
+    // corrupt the heap. Detach every cached handle so their destructors
+    // skip cleanup.
+    if (info.expired()) {
+        (void)die.release();
+        if (name) {
+            name->release();
+        }
+    }
+}
+
 std::string_view NativeDwarfDie::get_name() const {
     if (!name) {
         Dwarf_Debug dbg = die.get_state();

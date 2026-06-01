@@ -962,7 +962,11 @@ NB_MODULE(_native_ttexalens, m) {
         .def("find_function_by_address", &NativeDwarfInfo::find_function_by_address, nb::arg("address"),
              nb::rv_policy::reference_internal,
              nb::sig("def find_function_by_address(self, address: int) -> NativeDwarfDie | None"))
-        .def("get_frame_description", &NativeDwarfInfo::get_frame_description, nb::arg("pc"), nb::arg("memory_access"))
+        // keep_alive<0, 1>: the returned NativeFrameDescription holds a raw
+        // Dwarf_Fde owned by self (NativeDwarfInfo). Tie its Python-side
+        // lifetime to self so callers can't accidentally outlive the parent.
+        .def("get_frame_description", &NativeDwarfInfo::get_frame_description, nb::arg("pc"), nb::arg("memory_access"),
+             nb::rv_policy::reference_internal)
         .def("find_symbol_by_name", &NativeDwarfInfo::find_symbol_by_name, nb::arg("name"),
              nb::rv_policy::reference_internal,
              nb::sig("def find_symbol_by_name(self, name: str) -> NativeElfSymbol | None"))
@@ -985,8 +989,18 @@ NB_MODULE(_native_ttexalens, m) {
                     self.get_constant(name));
             },
             nb::arg("name"), nb::sig("def get_constant(self, name: str) -> bool | int | float"))
-        .def("get_global", &NativeDwarfInfo::get_global, nb::arg("name"), nb::arg("memory_access"))
-        .def("read_global", &NativeDwarfInfo::read_global, nb::arg("name"), nb::arg("memory_access"));
+        // keep_alive<0, 1>: the returned NativeElfVariable holds shared_ptr
+        // to a NativeDwarfDie owned by self's NativeDwarfInfoImpl. Without
+        // this annotation, Python could release self while the variable is
+        // still in use — the C++ shared_ptr would keep the DIE alive but
+        // the parent Dwarf_Debug would already be finished, leaking ref-
+        // counts and ultimately corrupting the heap. The native side has a
+        // defensive destructor that detaches handles when the parent impl
+        // is expired, but this keeps the lifetime contract intact too.
+        .def("get_global", &NativeDwarfInfo::get_global, nb::arg("name"), nb::arg("memory_access"),
+             nb::rv_policy::reference_internal)
+        .def("read_global", &NativeDwarfInfo::read_global, nb::arg("name"), nb::arg("memory_access"),
+             nb::rv_policy::reference_internal);
 
     nb::class_<NativeFrameDescription>(m, "NativeFrameDescription")
         .def_prop_ro("pc", &NativeFrameDescription::get_pc)

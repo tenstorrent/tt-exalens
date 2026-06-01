@@ -57,6 +57,26 @@ pyright:
 wheel:
 	pip wheel --no-deps --no-cache-dir . --wheel-dir build_wheel
 
+# AddressSanitizer build. Rebuilds the native `_native_ttexalens` extension
+# with -fsanitize=address; run tests with:
+#   LD_PRELOAD=$$(gcc -print-file-name=libasan.so) \
+#   ASAN_OPTIONS=detect_leaks=0:halt_on_error=1:abort_on_error=1 \
+#   python3 -X faulthandler -m unittest <selector>
+# Forces a fresh configure into build_asan/ so the regular dev tree (build,
+# build_debug) is unaffected.
+.PHONY: asan
+asan:
+	@cmake -B build_asan -G Ninja \
+		-DCMAKE_BUILD_TYPE=Debug \
+		-DCMAKE_C_FLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
+		-DCMAKE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer -g" \
+		-DCMAKE_LINKER_FLAGS="-fsanitize=address" \
+		-DCMAKE_SHARED_LINKER_FLAGS="-fsanitize=address" \
+		-DCMAKE_POLICY_VERSION_MINIMUM=3.5
+	@LD_PRELOAD=$$(gcc -print-file-name=libasan.so) \
+		ASAN_OPTIONS=detect_leaks=0 \
+		ninja -C build_asan
+
 TTEXALENS_HOME ?= $(shell git rev-parse --show-toplevel)
 
 include docs/module.mk

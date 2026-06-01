@@ -57,6 +57,14 @@ class DwarfHandleBase {
         }
     }
 
+    // Like std::unique_ptr::release — relinquish ownership without invoking
+    // do_cleanup.
+    T release() noexcept {
+        T tmp = value;
+        value = nullptr;
+        return tmp;
+    }
+
     T* operator&() {
         reset();
         return &value;

@@ -164,6 +164,7 @@ struct NativeDwarfFileLine {
 class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
    public:
     NativeDwarfDie(DwarfDieHandle die, std::weak_ptr<details::NativeDwarfInfoImpl> info);
+    ~NativeDwarfDie();
 
     operator Dwarf_Die() const { return die; }
     explicit operator bool() const { return static_cast<bool>(die); }

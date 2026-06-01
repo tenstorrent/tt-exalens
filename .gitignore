@@ -9,6 +9,7 @@ core
 
 .cpmcache
 /build
+/build_asan
 /build_debug
 /build_release
 /build_riscv

@@ -49,6 +49,13 @@ class NativeDwarfString {
 
     bool empty() const { return get().empty(); }
 
+    // Like std::unique_ptr::release — relinquish ownership without invoking
+    // dwarf_dealloc.
+    void release() noexcept {
+        (void)handle.release();
+        view = {};
+    }
+
    private:
     void sync_view() const {
         const char* p = handle.get();
