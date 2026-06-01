@@ -1740,7 +1740,7 @@ class TestCallStack(unittest.TestCase):
         return (firmware_end + 4 + 16) & ~15
 
     def get_symbol_address(self, elf: ParsedElfFile, name: str) -> int:
-        symbol = elf.symbols.get(name)
+        symbol = elf.find_symbol_by_name(name)
         assert symbol is not None and symbol.value is not None, f"Symbol {name} not found in ELF"
         return int(symbol.value)
 
