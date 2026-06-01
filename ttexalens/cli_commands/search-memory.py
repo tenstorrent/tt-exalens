@@ -35,7 +35,7 @@ Examples:
   search 0x1234 0x5678 --width 2                 # Search for two 2-byte LE values (0x34 0x12 0x78 0x56)
   search 0xDEADBEEF --read-size 64               # Search using 64-byte reads
   search 0xAB --unsafe                           # Search with safety checks bypassed
-  search 0xBEEF -r brisc                         # Search brisc private memory
+  search 0xBEEF -r brisc                         # Search brisc private memory (4-byte reads by default)
   search 0xBEEF -r brisc --read-size 256         # Search brisc private memory with 256-byte reads
 """
 
