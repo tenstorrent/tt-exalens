@@ -81,13 +81,27 @@ SECTIONS
      __ldm_data_start = .;
      *(.rodata .rodata.* .gnu.linkonce.r.*)
      *(.rodata1)
+    /*
+     * Align before each array boundary symbol. These arrays hold 4-byte function pointers that
+     * tmu-crt0 walks with a `start; while (s != end) { call *s; s += 4; }` loop. Because everything
+     * lives in one .ldm_data output section (instead of dedicated .init_array/etc. sections that
+     * carry their own alignment), the *_start symbols are captured at the bare location counter.
+     * If preceding .rodata (e.g. the gcov filename string in coverage builds) ends off a 4-byte
+     * boundary, the linker still places the pointer data 4-aligned, leaving *_start a few bytes
+     * below the real data: the crt0 loop then reads misaligned garbage and `s` steps right past
+     * `end` without ever equalling it, looping forever into garbage. ALIGN(4) keeps each *_start
+     * consistent with the aligned pointer data so start + 4*N == end exactly.
+     */
+    . = ALIGN(4);
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array))
     PROVIDE_HIDDEN (__preinit_array_end = .);
+    . = ALIGN(4);
     PROVIDE_HIDDEN (__init_array_start = .);
     KEEP (*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
     KEEP (*(.init_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .ctors))
     PROVIDE_HIDDEN (__init_array_end = .);
+    . = ALIGN(4);
     PROVIDE_HIDDEN (__fini_array_start = .);
     KEEP (*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))
     KEEP (*(.fini_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .dtors))

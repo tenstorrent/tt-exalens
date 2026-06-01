@@ -9,7 +9,7 @@ from typing import Any, Generator
 from ttexalens import util
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.elf import ParsedElfFile, ParsedElfFileWithOffset, ElfVariable, ElfDie, FrameInspection
+from ttexalens.elf import ParsedElfFile, ParsedElfFileWithOffset, ElfVariable, ElfDie, FrameDescription, FrameInspection
 from ttexalens.hardware.risc_info import RiscInfo
 
 
@@ -514,9 +514,10 @@ class RiscDebug:
                 util.WARN("We don't have information on frame and we don't know how to proceed.")
                 return []
 
-            frame_inspection = FrameInspection(self, elf.loaded_offset)
             frame_pointer = frame_description.read_previous_cfa()
+            inner_frames: list[tuple[FrameDescription, int]] = []
             while len(callstack) < limit:
+                frame_inspection = FrameInspection(self, elf.loaded_offset, frame_pointer, inner_frames)
                 callstack, function_die = RiscDebug.get_frame_callstack(
                     elf, pc, frame_pointer, callstack, top_frame=len(callstack) == 0, frame_inspection=frame_inspection
                 )
@@ -540,7 +541,9 @@ class RiscDebug:
                 if return_address is None:
                     break
                 pc = return_address
-                frame_inspection = FrameInspection(self, elf.loaded_offset, frame_description, cfa)
+
+                # Add current frame to the list
+                inner_frames = [(frame_description, cfa)] + inner_frames
 
                 # Get the caller's frame description BEFORE computing the caller's CFA,
                 # because the CFA offset comes from the caller's FDE, not the current one.
