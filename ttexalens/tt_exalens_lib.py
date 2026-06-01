@@ -349,36 +349,6 @@ def _search_chunk_range(
     return [], None
 
 
-def _resolve_next_addr(
-    next_chunk_addr: int,
-    end_addr: int | str | None,
-    block_range_end: int,
-    coordinate: OnChipCoordinate,
-    risc_name: str | None,
-    neo_id: int | None,
-) -> int | None:
-    """Return next_chunk_addr if it is a valid continuation address for the caller, else None."""
-    if next_chunk_addr < block_range_end:
-        # More chunks remain in the current block.
-        if isinstance(end_addr, int) and next_chunk_addr >= end_addr:
-            return None
-        return next_chunk_addr
-    # The matching chunk was the last in this block.
-    if end_addr is None:
-        return None  # single-block mode — nothing more to search
-    if isinstance(end_addr, int):
-        return next_chunk_addr if next_chunk_addr < end_addr else None
-    # end_addr == "all": check whether a contiguous block starts at next_chunk_addr.
-    if risc_name is not None:
-        memory_map = coordinate.noc_block.get_risc_debug(risc_name, neo_id).risc_info.memory_map
-        return next_chunk_addr if memory_map.find_by_private_address(next_chunk_addr) is not None else None
-    return (
-        next_chunk_addr
-        if coordinate.noc_block.noc_memory_map.find_by_noc_address(next_chunk_addr) is not None
-        else None
-    )
-
-
 def _iter_memory_blocks(
     start_addr: int,
     end_addr: int | str | None,
@@ -398,7 +368,7 @@ def _iter_memory_blocks(
     if risc_name is not None:
         risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
         memory_map = risc_debug.risc_info.memory_map
-        if memory_map.find_by_private_address(start_addr) is None:
+        if end_addr is None and memory_map.find_by_private_address(start_addr) is None:
             raise TTException(f"start_addr {hex(start_addr)} is not within any known RISC-V private memory block.")
         while effective_end is None or current < effective_end:
             block_info = memory_map.find_by_private_address(current)
@@ -426,7 +396,7 @@ def _iter_memory_blocks(
             current = block_end
     else:
         memory_map = coordinate.noc_block.noc_memory_map
-        if memory_map.find_by_noc_address(start_addr) is None:
+        if end_addr is None and memory_map.find_by_noc_address(start_addr) is None:
             raise TTException(f"start_addr {hex(start_addr)} is not within any known NOC memory block.")
         while effective_end is None or current < effective_end:
             block_info = memory_map.find_by_noc_address(current)
@@ -505,7 +475,7 @@ def search_memory(
         )
         if matches:
             assert next_chunk_addr is not None
-            return matches, _resolve_next_addr(next_chunk_addr, end_addr, range_end, coordinate, risc_name, neo_id)
+            return matches, next_chunk_addr if next_chunk_addr < range_end or end_addr is not None else None
 
     return [], None
 
