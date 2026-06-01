@@ -312,10 +312,8 @@ def _encode_pattern(pattern: int | list[int] | bytes) -> bytes:
         pattern_bytes = pattern
     elif isinstance(pattern, int):
         pattern_bytes = pattern.to_bytes(4, "little")
-    elif isinstance(pattern, list):
-        pattern_bytes = b"".join(v.to_bytes(4, "little") for v in pattern)
     else:
-        raise TTException(f"pattern must be int, list[int], or bytes, got {type(pattern).__name__}")
+        pattern_bytes = b"".join(v.to_bytes(4, "little") for v in pattern)
     if not pattern_bytes:
         raise TTException("pattern must be non-empty.")
     return pattern_bytes
