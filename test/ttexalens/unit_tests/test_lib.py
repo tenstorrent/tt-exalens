@@ -1932,6 +1932,7 @@ class TestSearchMemory(unittest.TestCase):
         )
         self.assertTrue(len(matches1) > 0)
         self.assertIsNotNone(next_addr)
+        assert next_addr is not None
 
         matches2, next_addr2 = lib.search_memory(
             location, 0xCAFEBABE, start_addr=next_addr, end_addr=end, chunk_size=chunk_size, context=self.context

@@ -395,7 +395,7 @@ def _iter_memory_blocks(
 
     end_addr=None stops after the first block; end_addr="all" walks all contiguous blocks.
     """
-    effective_end: int | None = None if end_addr == "all" else end_addr
+    effective_end: int | None = None if isinstance(end_addr, str) else end_addr
     current = start_addr
     if risc_name is not None:
         risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
@@ -502,6 +502,7 @@ def search_memory(
             range_start, range_end, pattern_bytes, read_fn, block_name, chunk_size
         )
         if matches:
+            assert next_chunk_addr is not None
             return matches, _resolve_next_addr(next_chunk_addr, end_addr, range_end, coordinate, risc_name, neo_id)
 
     return [], None
