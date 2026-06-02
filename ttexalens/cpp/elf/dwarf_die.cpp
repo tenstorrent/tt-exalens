@@ -879,7 +879,6 @@ std::optional<uint64_t> DwarfDie::get_size() const {
     return std::nullopt;
 }
 
-// TODO: Verify if get_address() and get_address_recursed() work as expected with tests
 static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool allow_recursion) {
     std::optional<uint64_t> addr;
 
