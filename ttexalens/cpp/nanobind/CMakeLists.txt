@@ -8,6 +8,13 @@ nanobind_add_module(
     STABLE_ABI
     NB_STATIC
     bindings.cpp
+    bind_dwarf_attribute.cpp
+    bind_dwarf_die.cpp
+    bind_dwarf_frame.cpp
+    bind_dwarf_info.cpp
+    bind_elf_file.cpp
+    bind_memory_access.cpp
+    bind_variable.cpp
 )
 
 target_link_libraries(_native_ttexalens PRIVATE ttexalens_elf libdwarf::dwarf-static)
