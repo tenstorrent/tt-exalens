@@ -146,14 +146,16 @@ void bind_elf_file(nb::module_& m) {
             },
             nb::rv_policy::reference_internal)
         .def("get_frame_description", &ElfFile::get_frame_description, nb::arg("pc"), nb::arg("memory_access"),
-             nb::call_guard<nb::gil_scoped_release>())
+             nb::call_guard<nb::gil_scoped_release>(), nb::rv_policy::reference_internal)
         .def("find_symbol_by_name", &ElfFile::find_symbol_by_name, nb::arg("name"), nb::rv_policy::reference_internal,
              nb::sig("def find_symbol_by_name(self, name: str) -> ElfSymbol | None"))
-        .def("find_die_by_name", &ElfFile::find_die_by_name, nb::arg("name"))
+        .def("find_die_by_name", &ElfFile::find_die_by_name, nb::arg("name"), nb::rv_policy::reference_internal)
         .def("get_enum_value", &ElfFile::get_enum_value, nb::arg("name"))
         .def("get_constant", &ElfFile::get_constant, nb::arg("name"))
-        .def("get_global", &ElfFile::get_global, nb::arg("name"), nb::arg("memory_access"), nb::keep_alive<0, 1>())
-        .def("read_global", &ElfFile::read_global, nb::arg("name"), nb::arg("memory_access"), nb::keep_alive<0, 1>());
+        .def("get_global", &ElfFile::get_global, nb::arg("name"), nb::arg("memory_access"),
+             nb::rv_policy::reference_internal)
+        .def("read_global", &ElfFile::read_global, nb::arg("name"), nb::arg("memory_access"),
+             nb::rv_policy::reference_internal);
 }
 
 }  // namespace ttexalens::native_elf::bindings

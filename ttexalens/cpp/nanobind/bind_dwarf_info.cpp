@@ -25,7 +25,7 @@ void bind_dwarf_info(nb::module_& m) {
         .def("find_function_by_address", &DwarfInfo::find_function_by_address, nb::arg("address"),
              nb::rv_policy::reference_internal,
              nb::sig("def find_function_by_address(self, address: int) -> DwarfDie | None"))
-        // keep_alive<0, 1>: the returned FrameDescription holds a raw
+        // nb::rv_policy::reference_internal: the returned FrameDescription holds a raw
         // Dwarf_Fde owned by self (DwarfInfo). Tie its Python-side
         // lifetime to self so callers can't accidentally outlive the parent.
         .def("get_frame_description", &DwarfInfo::get_frame_description, nb::arg("pc"), nb::arg("memory_access"),
@@ -51,7 +51,7 @@ void bind_dwarf_info(nb::module_& m) {
                     self.get_constant(name));
             },
             nb::arg("name"), nb::sig("def get_constant(self, name: str) -> bool | int | float"))
-        // keep_alive<0, 1>: the returned ElfVariable holds shared_ptr
+        // nb::rv_policy::reference_internal: the returned ElfVariable holds shared_ptr
         // to a DwarfDie owned by self's DwarfInfoImpl. Without
         // this annotation, Python could release self while the variable is
         // still in use — the C++ shared_ptr would keep the DIE alive but
