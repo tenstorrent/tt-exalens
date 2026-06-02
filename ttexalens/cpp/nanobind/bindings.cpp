@@ -1057,8 +1057,7 @@ NB_MODULE(_native_ttexalens, m) {
         .def("read_register", &NativeFrameDescription::read_register, nb::arg("register_index"), nb::arg("cfa"))
         .def("try_read_register", &NativeFrameDescription::try_read_register, nb::arg("register_index"),
              nb::arg("cfa").none())
-        .def("read_previous_cfa", &NativeFrameDescription::read_previous_cfa,
-             nb::arg("current_cfa").none() = nb::none());
+        .def("compute_cfa", &NativeFrameDescription::compute_cfa, nb::arg("inner_cfa").none() = nb::none());
 
     // Per-frame context for NativeDwarfDie::read_value. Construct with the
     // active MemoryAccess, the inspected frame's FDE/CFA/PC, and the chain

@@ -52,7 +52,13 @@ class NativeFrameDescription {
 
     std::optional<uint64_t> read_register(uint16_t register_index, uint64_t cfa) const;
     std::optional<uint64_t> try_read_register(uint16_t register_index, std::optional<uint64_t> cfa) const;
-    std::optional<uint64_t> read_previous_cfa(std::optional<uint64_t> current_cfa) const;
+
+    // Computes this FDE's CFA at its PC. For the top frame (`inner_cfa`
+    // nullopt) reads the CFA-source register live; for any outer frame
+    // passes the inner frame's CFA so the CFI rule chain can be followed
+    // through any save/restore of the CFA-source register. Returns this
+    // FDE's frame CFA, not the inner frame's.
+    std::optional<uint64_t> compute_cfa(std::optional<uint64_t> inner_cfa = std::nullopt) const;
 
     // Resolves the CFI rule for `register_index` at this frame's PC into one
     // of the four `RegisterRule` shapes. `cfa` must be the inspected frame's

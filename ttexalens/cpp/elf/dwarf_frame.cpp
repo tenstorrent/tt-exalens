@@ -132,7 +132,7 @@ uint16_t NativeFrameDescription::get_pointer_size() const {
     return info_ptr ? info_ptr->pointer_size : uint16_t{0};
 }
 
-std::optional<uint64_t> NativeFrameDescription::read_previous_cfa(std::optional<uint64_t> current_cfa) const {
+std::optional<uint64_t> NativeFrameDescription::compute_cfa(std::optional<uint64_t> inner_cfa) const {
     auto info_ptr = info.lock();
     if (!info_ptr) {
         return std::nullopt;
@@ -150,7 +150,7 @@ std::optional<uint64_t> NativeFrameDescription::read_previous_cfa(std::optional<
     const int64_t cfa_offset = cfa_rule.offset;
 
     // Top frame: register holds its live value.
-    if (!current_cfa.has_value()) {
+    if (!inner_cfa.has_value()) {
         return memory_access->read_register(cfa_register) + cfa_offset;
     }
 
@@ -159,10 +159,10 @@ std::optional<uint64_t> NativeFrameDescription::read_previous_cfa(std::optional<
     const bool has_saved_rule =
         reg_rule.status == DW_DLV_OK && reg_rule.value_type == DW_EXPR_OFFSET && reg_rule.offset_relevant != 0;
     if (!has_saved_rule) {
-        return *current_cfa + static_cast<uint64_t>(cfa_offset);
+        return *inner_cfa + static_cast<uint64_t>(cfa_offset);
     }
 
-    uint64_t address = *current_cfa + static_cast<uint64_t>(reg_rule.offset);
+    uint64_t address = *inner_cfa + static_cast<uint64_t>(reg_rule.offset);
     auto saved = memory_access->try_read_word(address, info_ptr->pointer_size);
 
     if (!saved.has_value()) {

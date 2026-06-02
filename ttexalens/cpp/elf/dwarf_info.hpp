@@ -47,10 +47,7 @@ class NativeDwarfInfo {
 
     // Locates the FDE covering `pc` in .debug_frame (falling back to
     // .eh_frame) and returns a NativeFrameDescription bound to `memory_access`.
-    // NativeFrameDescription's methods (read_register / read_previous_cfa)
-    // route GPR reads through `memory_access->read_register(...)` and stack
-    // memory reads through `memory_access->read(...)` to fetch live machine
-    // state. Returns nullopt if no FDE covers `pc`.
+    // Returns nullopt if no FDE covers `pc`.
     std::optional<NativeFrameDescription> get_frame_description(uint64_t pc,
                                                                 std::shared_ptr<MemoryAccess> memory_access) const;
 
