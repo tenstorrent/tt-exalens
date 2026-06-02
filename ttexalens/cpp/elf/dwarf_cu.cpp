@@ -5,7 +5,7 @@
 
 namespace ttexalens::native_elf {
 
-DwarfLineContextHandle& NativeDwarfCompileUnit::get_line_context() {
+DwarfLineContextHandle& DwarfCompileUnit::get_line_context() {
     if (!loaded_line_context) {
         loaded_line_context = true;
         DwarfErrorHandle error(die->get_state());
@@ -16,7 +16,7 @@ DwarfLineContextHandle& NativeDwarfCompileUnit::get_line_context() {
     return line_context;
 }
 
-const std::vector<std::string>& NativeDwarfCompileUnit::get_srcfiles() {
+const std::vector<std::string>& DwarfCompileUnit::get_srcfiles() {
     if (!loaded_srcfiles) {
         loaded_srcfiles = true;
         Dwarf_Debug dbg = die->get_state();

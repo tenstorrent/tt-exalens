@@ -13,17 +13,17 @@
 
 namespace ttexalens::native_elf::details {
 
-class NativeElfFileImpl : public std::enable_shared_from_this<NativeElfFileImpl> {
+class ElfFileImpl : public std::enable_shared_from_this<ElfFileImpl> {
    public:
-    NativeElfFileImpl() = default;
-    virtual ~NativeElfFileImpl() = default;
-    NativeElfFileImpl(const NativeElfFileImpl&) = delete;
-    NativeElfFileImpl& operator=(const NativeElfFileImpl&) = delete;
+    ElfFileImpl() = default;
+    virtual ~ElfFileImpl() = default;
+    ElfFileImpl(const ElfFileImpl&) = delete;
+    ElfFileImpl& operator=(const ElfFileImpl&) = delete;
 
-    std::vector<NativeElfSection> sections;
+    std::vector<ElfSection> sections;
 
-    std::vector<NativeElfSymbol> read_symbol_table_section(std::string_view section_name);
-    NativeDwarfInfo* get_dwarf_info();
+    std::vector<ElfSymbol> read_symbol_table_section(std::string_view section_name);
+    DwarfInfo* get_dwarf_info();
 
    protected:
     void populate_sections();
@@ -33,7 +33,7 @@ class NativeElfFileImpl : public std::enable_shared_from_this<NativeElfFileImpl>
     // Set by the derived constructor — file size on disk (PathImpl) or buffer
     // size (BytesImpl). Used by ElfObjAccess for libdwarf's filesize callback.
     uint64_t file_size = 0;
-    std::optional<NativeDwarfInfo> dwarf_info;
+    std::optional<DwarfInfo> dwarf_info;
     bool loaded_dwarf_info = false;
 
     friend class ElfObjAccess;
@@ -41,7 +41,7 @@ class NativeElfFileImpl : public std::enable_shared_from_this<NativeElfFileImpl>
 
 // ELF loaded from a filesystem path. Owns the ifstream so ELFIO can read
 // lazily through it (file_stream declared before elf -> destroyed after).
-class PathImpl : public NativeElfFileImpl {
+class PathImpl : public ElfFileImpl {
    public:
     explicit PathImpl(const std::filesystem::path& path);
 
@@ -67,7 +67,7 @@ class SpanStreamBuf : public std::streambuf {
 // destruction stream goes first (just an istream object), then buf (a
 // streambuf viewing buffer), then buffer (frees the bytes). ELFIO's internal
 // `pstream` becomes dangling at that point but is never dereferenced again.
-class BytesImpl : public NativeElfFileImpl {
+class BytesImpl : public ElfFileImpl {
    public:
     explicit BytesImpl(std::span<const std::byte> data);
 

@@ -12,14 +12,14 @@
 namespace ttexalens::native_elf {
 
 namespace details {
-class NativeElfFileImpl;
+class ElfFileImpl;
 }  // namespace details
 
-class NativeDwarfInfo;
+class DwarfInfo;
 
-class NativeDwarfCompileUnit {
+class DwarfCompileUnit {
    public:
-    NativeDwarfDiePtr get_die() const { return die; }
+    DwarfDiePtr get_die() const { return die; }
     Dwarf_Unsigned get_header_length() const { return header_length; }
     Dwarf_Half get_version() const { return version; }
     Dwarf_Unsigned get_abbrev_offset() const { return abbrev_offset; }
@@ -32,11 +32,11 @@ class NativeDwarfCompileUnit {
     Dwarf_Half get_header_cu_type() const { return header_cu_type; }
 
    private:
-    friend class NativeDwarfInfo;
-    friend class NativeDwarfDie;
-    friend class details::NativeDwarfInfoImpl;
+    friend class DwarfInfo;
+    friend class DwarfDie;
+    friend class details::DwarfInfoImpl;
 
-    NativeDwarfCompileUnit() = default;
+    DwarfCompileUnit() = default;
 
     // Lazy load line context if necessary.
     DwarfLineContextHandle& get_line_context();
@@ -44,7 +44,7 @@ class NativeDwarfCompileUnit {
     // Lazy load CU source-file table if necessary.
     const std::vector<std::string>& get_srcfiles();
 
-    NativeDwarfDiePtr die;
+    DwarfDiePtr die;
     Dwarf_Unsigned header_length = 0;
     Dwarf_Half version = 0;
     Dwarf_Unsigned abbrev_offset = 0;

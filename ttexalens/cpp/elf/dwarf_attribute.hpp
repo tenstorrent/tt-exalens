@@ -15,7 +15,7 @@
 namespace ttexalens::native_elf {
 
 // Attribute tags - DW_AT_*
-enum class NativeDwarfAttributeTag : Dwarf_Half {
+enum class DwarfAttributeTag : Dwarf_Half {
     abstract_origin = DW_AT_abstract_origin,
     accessibility = DW_AT_accessibility,
     addr_base = DW_AT_addr_base,
@@ -353,7 +353,7 @@ enum class NativeDwarfAttributeTag : Dwarf_Half {
 };
 
 // Attribute forms - DW_FORM_*
-enum class NativeDwarfAttributeForm : Dwarf_Half {
+enum class DwarfAttributeForm : Dwarf_Half {
     addr = DW_FORM_addr,
     addrx = DW_FORM_addrx,
     addrx1 = DW_FORM_addrx1,
@@ -418,20 +418,20 @@ enum class NativeDwarfAttributeForm : Dwarf_Half {
 //   int64_t                 DW_FORM_sdata
 //   std::string             every string form (string, strp, strx, ...)
 //   std::vector<uint8_t>    DW_FORM_block*, DW_FORM_exprloc
-class NativeDwarfAttribute {
+class DwarfAttribute {
    public:
     using Value = std::variant<std::monostate, bool, uint64_t, int64_t, std::string, std::vector<uint8_t>>;
 
-    NativeDwarfAttribute(NativeDwarfAttributeTag tag, NativeDwarfAttributeForm form, Value value)
+    DwarfAttribute(DwarfAttributeTag tag, DwarfAttributeForm form, Value value)
         : tag(tag), form(form), value(std::move(value)) {}
 
-    NativeDwarfAttributeTag get_tag() const { return tag; }
-    NativeDwarfAttributeForm get_form() const { return form; }
+    DwarfAttributeTag get_tag() const { return tag; }
+    DwarfAttributeForm get_form() const { return form; }
     const Value& get_value() const { return value; }
 
    private:
-    NativeDwarfAttributeTag tag;
-    NativeDwarfAttributeForm form;
+    DwarfAttributeTag tag;
+    DwarfAttributeForm form;
     Value value;
 };
 

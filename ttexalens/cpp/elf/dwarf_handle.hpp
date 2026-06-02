@@ -75,7 +75,7 @@ class DwarfHandleBase {
     explicit operator bool() const { return value != nullptr; }
 
     // The blob libdwarf needs to release this resource — typically the
-    // owning Dwarf_Debug. Exposed so wrapper classes (NativeDwarfDie etc.)
+    // owning Dwarf_Debug. Exposed so wrapper classes (DwarfDie etc.)
     // can reuse it for further libdwarf calls instead of storing it twice.
     const State& get_state() const { return state; }
 

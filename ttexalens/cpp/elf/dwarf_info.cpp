@@ -23,14 +23,14 @@
 
 namespace ttexalens::native_elf {
 
-NativeDwarfInfo::NativeDwarfInfo(std::weak_ptr<details::NativeElfFileImpl> elf_impl)
-    : impl(std::make_shared<details::NativeDwarfInfoImpl>(std::move(elf_impl))) {}
+DwarfInfo::DwarfInfo(std::weak_ptr<details::ElfFileImpl> elf_impl)
+    : impl(std::make_shared<details::DwarfInfoImpl>(std::move(elf_impl))) {}
 
-NativeDwarfInfo::~NativeDwarfInfo() = default;
-NativeDwarfInfo::NativeDwarfInfo(NativeDwarfInfo&&) noexcept = default;
-NativeDwarfInfo& NativeDwarfInfo::operator=(NativeDwarfInfo&&) noexcept = default;
+DwarfInfo::~DwarfInfo() = default;
+DwarfInfo::DwarfInfo(DwarfInfo&&) noexcept = default;
+DwarfInfo& DwarfInfo::operator=(DwarfInfo&&) noexcept = default;
 
-std::optional<NativeDwarfFileLine> NativeDwarfInfo::find_file_line_by_address(uint64_t address) const {
+std::optional<DwarfFileLine> DwarfInfo::find_file_line_by_address(uint64_t address) const {
     Dwarf_Debug dbg = impl->dbg;
     const Dwarf_Addr target = static_cast<Dwarf_Addr>(address);
 
@@ -93,19 +93,19 @@ std::optional<NativeDwarfFileLine> NativeDwarfInfo::find_file_line_by_address(ui
         Dwarf_Line match = lines[match_idx];
         Dwarf_Unsigned ln = 0;
         Dwarf_Unsigned col = 0;
-        NativeDwarfString src(dbg);
+        DwarfString src(dbg);
         dwarf_lineno(match, &ln, &error);
         dwarf_lineoff_b(match, &col, &error);
         dwarf_linesrc(match, &src, &error);
-        return NativeDwarfFileLine{std::string(src.get()), static_cast<uint32_t>(ln), static_cast<uint32_t>(col)};
+        return DwarfFileLine{std::string(src.get()), static_cast<uint32_t>(ln), static_cast<uint32_t>(col)};
     }
 
     return std::nullopt;
 }
 
-NativeDwarfDiePtr NativeDwarfInfo::find_function_by_address(uint64_t address) const {
+DwarfDiePtr DwarfInfo::find_function_by_address(uint64_t address) const {
     const Dwarf_Addr target = static_cast<Dwarf_Addr>(address);
-    NativeDwarfDiePtr best;
+    DwarfDiePtr best;
     Dwarf_Addr best_width = 0;
 
     auto range_contains = [target](const std::pair<Dwarf_Addr, Dwarf_Addr>& r) {
@@ -113,12 +113,12 @@ NativeDwarfDiePtr NativeDwarfInfo::find_function_by_address(uint64_t address) co
     };
 
     for (auto& cu : impl->get_cus()) {
-        NativeDwarfDiePtr match;
+        DwarfDiePtr match;
         std::pair<Dwarf_Addr, Dwarf_Addr> match_range{0, 0};
         bool found = true;
         while (found) {
             found = false;
-            const NativeDwarfDie& current = match ? *match : *cu.get_die();
+            const DwarfDie& current = match ? *match : *cu.get_die();
             for (auto child = current.get_first_child(); child; child = child->get_next_sibling()) {
                 bool child_matches = false;
                 for (auto& r : child->get_address_ranges()) {
@@ -149,7 +149,7 @@ NativeDwarfDiePtr NativeDwarfInfo::find_function_by_address(uint64_t address) co
     return best;
 }
 
-NativeDwarfDiePtr NativeDwarfInfo::get_die_by_name(std::string_view name) const {
+DwarfDiePtr DwarfInfo::get_die_by_name(std::string_view name) const {
     // Split "Foo::Bar::baz" into ["Foo", "Bar", "baz"]. An empty input yields
     // one empty part and ends up finding nothing.
     std::vector<std::string_view> parts;
@@ -164,7 +164,7 @@ NativeDwarfDiePtr NativeDwarfInfo::get_die_by_name(std::string_view name) const 
         start = pos + 2;
     }
 
-    NativeDwarfDiePtr declaration_die;  // fallback if all matches are declarations
+    DwarfDiePtr declaration_die;  // fallback if all matches are declarations
 
     for (auto& cu : impl->get_cus()) {
         // First part is matched against the CU's root DIE; subsequent parts
@@ -183,17 +183,17 @@ NativeDwarfDiePtr NativeDwarfInfo::get_die_by_name(std::string_view name) const 
             continue;
         }
 
-        // Follow NativeDwarfAttributeTag::abstract_origin OR NativeDwarfAttributeTag::specification (mutually
+        // Follow DwarfAttributeTag::abstract_origin OR DwarfAttributeTag::specification (mutually
         // exclusive). If the attribute is present but the reference can't be resolved, give up entirely — matching the
         // Python implementation's defensive behavior.
-        if (current->has_attribute(NativeDwarfAttributeTag::abstract_origin)) {
-            auto origin = current->get_die_from_attribute(NativeDwarfAttributeTag::abstract_origin);
+        if (current->has_attribute(DwarfAttributeTag::abstract_origin)) {
+            auto origin = current->get_die_from_attribute(DwarfAttributeTag::abstract_origin);
             if (!origin) {
                 return nullptr;
             }
             current = std::move(origin);
-        } else if (current->has_attribute(NativeDwarfAttributeTag::specification)) {
-            auto spec = current->get_die_from_attribute(NativeDwarfAttributeTag::specification);
+        } else if (current->has_attribute(DwarfAttributeTag::specification)) {
+            auto spec = current->get_die_from_attribute(DwarfAttributeTag::specification);
             if (!spec) {
                 return nullptr;
             }
@@ -211,8 +211,8 @@ NativeDwarfDiePtr NativeDwarfInfo::get_die_by_name(std::string_view name) const 
     return declaration_die;
 }
 
-std::optional<NativeFrameDescription> NativeDwarfInfo::get_frame_description(
-    uint64_t pc, std::shared_ptr<MemoryAccess> memory_access) const {
+std::optional<FrameDescription> DwarfInfo::get_frame_description(uint64_t pc,
+                                                                 std::shared_ptr<MemoryAccess> memory_access) const {
     auto [fdes, fde_count] = impl->get_fdes();
     if (fdes == nullptr || fde_count == 0) {
         return std::nullopt;
@@ -224,14 +224,12 @@ std::optional<NativeFrameDescription> NativeDwarfInfo::get_frame_description(
     if (dwarf_get_fde_at_pc(fdes, static_cast<Dwarf_Addr>(pc), &fde, &lopc, &hipc, &error) != DW_DLV_OK) {
         return std::nullopt;
     }
-    return NativeFrameDescription(impl, fde, pc, std::move(memory_access));
+    return FrameDescription(impl, fde, pc, std::move(memory_access));
 }
 
-const NativeElfSymbol* NativeDwarfInfo::find_symbol_by_name(std::string_view name) const {
-    return impl->find_symbol_by_name(name);
-}
+const ElfSymbol* DwarfInfo::find_symbol_by_name(std::string_view name) const { return impl->find_symbol_by_name(name); }
 
-std::optional<uint64_t> NativeDwarfInfo::get_enum_value(std::string_view name) const {
+std::optional<uint64_t> DwarfInfo::get_enum_value(std::string_view name) const {
     auto die = get_die_by_name(name);
     if (!die) {
         return std::nullopt;
@@ -248,13 +246,13 @@ std::optional<uint64_t> NativeDwarfInfo::get_enum_value(std::string_view name) c
         die->get_constant_value());
 }
 
-NativeDwarfDie::ConstantValue NativeDwarfInfo::get_constant(std::string_view name) const {
+DwarfDie::ConstantValue DwarfInfo::get_constant(std::string_view name) const {
     auto die = get_die_by_name(name);
     if (!die) {
         throw SymbolNotFoundException(std::string(name));
     }
     auto type_die = die->get_resolved_type();
-    if (!type_die || type_die->get_tag() != NativeDwarfDieTag::base_type) {
+    if (!type_die || type_die->get_tag() != DwarfDieTag::base_type) {
         throw TypeMismatchException("get_constant", type_die ? type_die->get_path() : std::string("<unknown>"));
     }
     auto value = die->get_constant_value();
@@ -264,8 +262,7 @@ NativeDwarfDie::ConstantValue NativeDwarfInfo::get_constant(std::string_view nam
     return value;
 }
 
-NativeElfVariable NativeDwarfInfo::get_global(std::string_view name,
-                                              std::shared_ptr<MemoryAccess> memory_access) const {
+ElfVariable DwarfInfo::get_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const {
     auto die = get_die_by_name(name);
     if (!die) {
         throw SymbolNotFoundException(std::string(name));
@@ -280,20 +277,19 @@ NativeElfVariable NativeDwarfInfo::get_global(std::string_view name,
     // resolved type is pointer_type AND it carries a constant value. Treat
     // the constant as the target address and return a variable of the
     // pointee type.
-    if (resolved_type && resolved_type->get_tag() == NativeDwarfDieTag::pointer_type) {
+    if (resolved_type && resolved_type->get_tag() == DwarfDieTag::pointer_type) {
         auto cv = die->get_constant_value();
         if (!std::holds_alternative<std::monostate>(cv)) {
             auto pointee = resolved_type->get_dereference_type();
             if (pointee) {
-                return NativeElfVariable(std::move(pointee), *address, std::move(memory_access));
+                return ElfVariable(std::move(pointee), *address, std::move(memory_access));
             }
         }
     }
-    return NativeElfVariable(std::move(resolved_type), *address, std::move(memory_access));
+    return ElfVariable(std::move(resolved_type), *address, std::move(memory_access));
 }
 
-NativeElfVariable NativeDwarfInfo::read_global(std::string_view name,
-                                               std::shared_ptr<MemoryAccess> memory_access) const {
+ElfVariable DwarfInfo::read_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const {
     return get_global(name, std::move(memory_access)).read();
 }
 

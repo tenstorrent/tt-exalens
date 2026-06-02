@@ -15,7 +15,7 @@
 namespace ttexalens::native_elf {
 
 namespace details {
-class NativeDwarfInfoImpl;
+class DwarfInfoImpl;
 }  // namespace details
 
 class MemoryAccess;
@@ -41,10 +41,10 @@ struct RegisterRule {
 // Even though we use uint64_t for register values and addresses, this class is
 // architecture-agnostic — the caller can choose to only read 32 bits in a
 // 32-bit architecture.
-class NativeFrameDescription {
+class FrameDescription {
    public:
-    NativeFrameDescription(std::weak_ptr<details::NativeDwarfInfoImpl> info, Dwarf_Fde fde, uint64_t pc,
-                           std::shared_ptr<MemoryAccess> memory_access);
+    FrameDescription(std::weak_ptr<details::DwarfInfoImpl> info, Dwarf_Fde fde, uint64_t pc,
+                     std::shared_ptr<MemoryAccess> memory_access);
 
     uint64_t get_pc() const { return pc; }
     uint16_t get_pointer_size() const;
@@ -66,7 +66,7 @@ class NativeFrameDescription {
 
    private:
     // Guard for fde validity
-    std::weak_ptr<details::NativeDwarfInfoImpl> info;
+    std::weak_ptr<details::DwarfInfoImpl> info;
     Dwarf_Fde fde;
     uint64_t pc;
     std::shared_ptr<MemoryAccess> memory_access;
@@ -76,9 +76,9 @@ class NativeFrameDescription {
 // when we walked through it. `fde` is the FDE whose address range covers
 // `pc`; `cfa` is the Canonical Frame Address at that PC computed via
 // `fde.compute_cfa(...)`. Used both for the inspected frame and for each
-// frame in the inner chain that NativeFrameInspection carries.
-struct NativeFrameSnapshot {
-    NativeFrameDescription fde;
+// frame in the inner chain that FrameInspection carries.
+struct FrameSnapshot {
+    FrameDescription fde;
     uint64_t cfa = 0;
     uint64_t pc = 0;
 };
@@ -100,15 +100,14 @@ struct NativeFrameSnapshot {
 // (cfa, pc) plumbing uniform with inner_frames.
 //
 // Memory loads always route through MemoryAccess regardless of frame depth.
-class NativeFrameInspection {
+class FrameInspection {
    public:
     // The inspected snapshot defaults to nullopt for the "no frame
     // context" case (e.g. reading globals outside a callstack walk).
     // Runtime-location DIEs need a real snapshot and will fail to
     // evaluate otherwise.
-    NativeFrameInspection(std::shared_ptr<MemoryAccess> memory_access,
-                          std::optional<NativeFrameSnapshot> inspected = std::nullopt,
-                          std::vector<NativeFrameSnapshot> inner_frames = {});
+    FrameInspection(std::shared_ptr<MemoryAccess> memory_access, std::optional<FrameSnapshot> inspected = std::nullopt,
+                    std::vector<FrameSnapshot> inner_frames = {});
 
     std::optional<uint64_t> read_register(int register_index) const;
     std::optional<uint64_t> read_memory(uint64_t address, uint8_t register_size) const;
@@ -120,8 +119,8 @@ class NativeFrameInspection {
 
    private:
     std::shared_ptr<MemoryAccess> memory_access;
-    std::optional<NativeFrameSnapshot> inspected;
-    std::vector<NativeFrameSnapshot> inner_frames;
+    std::optional<FrameSnapshot> inspected;
+    std::vector<FrameSnapshot> inner_frames;
 };
 
 }  // namespace ttexalens::native_elf

@@ -9,8 +9,8 @@
 
 namespace ttexalens::native_elf::details {
 
-std::vector<NativeElfSymbol> NativeElfFileImpl::read_symbol_table_section(std::string_view section_name) {
-    std::vector<NativeElfSymbol> result;
+std::vector<ElfSymbol> ElfFileImpl::read_symbol_table_section(std::string_view section_name) {
+    std::vector<ElfSymbol> result;
     ELFIO::section* sym_sec = elf.sections[section_name];
     if (sym_sec == nullptr) {
         return result;
@@ -40,19 +40,19 @@ std::vector<NativeElfSymbol> NativeElfFileImpl::read_symbol_table_section(std::s
             }
             std::free(d);
         }
-        result.push_back(NativeElfSymbol{
+        result.push_back(ElfSymbol{
             std::move(name),
             std::move(demangled),
             static_cast<uint64_t>(value),
             static_cast<uint64_t>(size),
-            static_cast<NativeElfSymbolType>(type),
-            static_cast<NativeElfSymbolBinding>(bind),
+            static_cast<ElfSymbolType>(type),
+            static_cast<ElfSymbolBinding>(bind),
         });
     }
     return result;
 }
 
-NativeDwarfInfo* NativeElfFileImpl::get_dwarf_info() {
+DwarfInfo* ElfFileImpl::get_dwarf_info() {
     if (!loaded_dwarf_info) {
         try_open_dwarf();
         loaded_dwarf_info = true;
@@ -61,7 +61,7 @@ NativeDwarfInfo* NativeElfFileImpl::get_dwarf_info() {
     return dwarf_info ? &*dwarf_info : nullptr;
 }
 
-void NativeElfFileImpl::populate_sections() {
+void ElfFileImpl::populate_sections() {
     const size_t n = elf.sections.size();
     sections.reserve(n);
     for (size_t i = 0; i < n; ++i) {
@@ -72,7 +72,7 @@ void NativeElfFileImpl::populate_sections() {
 // Identical for path- and bytes-backed sources: both just need elf and
 // file_size (which the derived ctor sets). Any failure (no DWARF info,
 // libdwarf init error) leaves dwarf_info null.
-void NativeElfFileImpl::try_open_dwarf() {
+void ElfFileImpl::try_open_dwarf() {
     try {
         dwarf_info.emplace(weak_from_this());
     } catch (...) {

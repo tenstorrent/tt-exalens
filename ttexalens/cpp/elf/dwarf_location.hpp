@@ -10,9 +10,9 @@
 
 namespace ttexalens::native_elf {
 
-class NativeDwarfDie;
-using NativeDwarfDiePtr = std::shared_ptr<NativeDwarfDie>;
-class NativeFrameInspection;
+class DwarfDie;
+using DwarfDiePtr = std::shared_ptr<DwarfDie>;
+class FrameInspection;
 
 // Result of evaluating a DWARF location expression. Either:
 //   * is_address == true  — `value` is the memory address holding the
@@ -33,7 +33,7 @@ struct LocationResult {
 // DW_AT_location attribute against `frame`. Returns nullopt when the
 // location can't be resolved (unsupported form, missing frame info,
 // memory read failure, etc.). Constant-only variables (no location) are
-// handled by NativeDwarfDie::read_value before this is called.
-std::optional<LocationResult> evaluate_die_location(const NativeDwarfDie& die, const NativeFrameInspection* frame);
+// handled by DwarfDie::read_value before this is called.
+std::optional<LocationResult> evaluate_die_location(const DwarfDie& die, const FrameInspection* frame);
 
 }  // namespace ttexalens::native_elf

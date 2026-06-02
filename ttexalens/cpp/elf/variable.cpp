@@ -17,10 +17,10 @@ namespace {
 // Walks the unnamed struct/union members of `type_die` looking for a child
 // named `member_name`. Returns {offset_into_type_die, member_die} on hit or
 // {nullopt, nullptr} on miss. Mirrors ElfVariable._resolve_unnamed_struct_union_member.
-std::pair<std::optional<uint64_t>, NativeDwarfDiePtr> resolve_unnamed_struct_union_member(
-    const NativeDwarfDie& type_die, std::string_view name) {
+std::pair<std::optional<uint64_t>, DwarfDiePtr> resolve_unnamed_struct_union_member(const DwarfDie& type_die,
+                                                                                    std::string_view name) {
     for (auto child = type_die.get_first_child(); child; child = child->get_next_sibling()) {
-        if (!child->get_name().empty() || child->get_tag() != NativeDwarfDieTag::member) {
+        if (!child->get_name().empty() || child->get_tag() != DwarfDieTag::member) {
             continue;
         }
         auto struct_union_type = child->get_resolved_type();
@@ -44,11 +44,10 @@ std::pair<std::optional<uint64_t>, NativeDwarfDiePtr> resolve_unnamed_struct_uni
 
 // Recursively walks DW_TAG_inheritance children of `type_die`. Mirrors
 // ElfVariable._resolve_inheritance_member.
-std::pair<std::optional<uint64_t>, NativeDwarfDiePtr> resolve_inheritance_member(const NativeDwarfDie& type_die,
-                                                                                 std::string_view name,
-                                                                                 uint64_t offset = 0) {
+std::pair<std::optional<uint64_t>, DwarfDiePtr> resolve_inheritance_member(const DwarfDie& type_die,
+                                                                           std::string_view name, uint64_t offset = 0) {
     for (auto child = type_die.get_first_child(); child; child = child->get_next_sibling()) {
-        if (child->get_tag() != NativeDwarfDieTag::inheritance) {
+        if (child->get_tag() != DwarfDieTag::inheritance) {
             continue;
         }
         auto child_address = child->get_address();
@@ -77,8 +76,8 @@ std::pair<std::optional<uint64_t>, NativeDwarfDiePtr> resolve_inheritance_member
 
 // Peels typedef/const/volatile wrappers off an enum so we can ask the
 // underlying base type for size/signedness during read/write_value.
-NativeDwarfDiePtr resolve_enum_base(NativeDwarfDiePtr type_die) {
-    while (type_die && type_die->get_tag() == NativeDwarfDieTag::enumeration_type) {
+DwarfDiePtr resolve_enum_base(DwarfDiePtr type_die) {
+    while (type_die && type_die->get_tag() == DwarfDieTag::enumeration_type) {
         auto resolved = type_die->get_resolved_type();
         if (!resolved || resolved.get() == type_die.get()) {
             break;
@@ -119,7 +118,7 @@ void store_uint_le(std::vector<std::byte>& out, uint64_t value, size_t size) {
 }
 
 // Returns the variant's value as double for data-loss round-trip checks.
-double value_as_double(const NativeElfVariable::Value& v) {
+double value_as_double(const ElfVariable::Value& v) {
     return std::visit(
         [](auto&& x) -> double {
             using T = std::decay_t<decltype(x)>;
@@ -139,17 +138,16 @@ constexpr size_t kMaxCStringLength = 64 * 1024;
 
 }  // namespace
 
-NativeElfVariable::NativeElfVariable(NativeDwarfDiePtr type_die, uint64_t address,
-                                     std::shared_ptr<MemoryAccess> memory_access)
+ElfVariable::ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access)
     : type_die(std::move(type_die)), address(address), memory_access(std::move(memory_access)) {}
 
-NativeElfVariable::~NativeElfVariable() = default;
-NativeElfVariable::NativeElfVariable(const NativeElfVariable&) = default;
-NativeElfVariable::NativeElfVariable(NativeElfVariable&&) noexcept = default;
-NativeElfVariable& NativeElfVariable::operator=(const NativeElfVariable&) = default;
-NativeElfVariable& NativeElfVariable::operator=(NativeElfVariable&&) noexcept = default;
+ElfVariable::~ElfVariable() = default;
+ElfVariable::ElfVariable(const ElfVariable&) = default;
+ElfVariable::ElfVariable(ElfVariable&&) noexcept = default;
+ElfVariable& ElfVariable::operator=(const ElfVariable&) = default;
+ElfVariable& ElfVariable::operator=(ElfVariable&&) noexcept = default;
 
-uint64_t NativeElfVariable::get_size() const {
+uint64_t ElfVariable::get_size() const {
     auto size = type_die->get_size();
     if (!size.has_value()) {
         throw TypeMismatchException("get_size", type_die->get_path());
@@ -157,13 +155,13 @@ uint64_t NativeElfVariable::get_size() const {
     return *size;
 }
 
-NativeElfVariable NativeElfVariable::get_member(std::string_view member_name) const {
-    if (type_die->get_tag() == NativeDwarfDieTag::pointer_type) {
+ElfVariable ElfVariable::get_member(std::string_view member_name) const {
+    if (type_die->get_tag() == DwarfDieTag::pointer_type) {
         return dereference().get_member(member_name);
     }
 
     uint64_t offset = 0;
-    NativeDwarfDiePtr child_die = type_die->find_child_by_name(member_name);
+    DwarfDiePtr child_die = type_die->find_child_by_name(member_name);
     if (!child_die) {
         auto [resolved_offset, resolved_child] = resolve_unnamed_struct_union_member(*type_die, member_name);
         if (resolved_child && resolved_offset.has_value()) {
@@ -192,11 +190,11 @@ NativeElfVariable NativeElfVariable::get_member(std::string_view member_name) co
         throw SymbolNotFoundException(std::move(path));
     }
     auto resolved_type = child_die->get_resolved_type();
-    return NativeElfVariable(std::move(resolved_type), address + *child_address + offset, memory_access);
+    return ElfVariable(std::move(resolved_type), address + *child_address + offset, memory_access);
 }
 
-NativeElfVariable NativeElfVariable::dereference() const {
-    if (type_die->get_tag() != NativeDwarfDieTag::pointer_type) {
+ElfVariable ElfVariable::dereference() const {
+    if (type_die->get_tag() != DwarfDieTag::pointer_type) {
         throw TypeMismatchException("dereference", type_die->get_path());
     }
     auto ptr_size = type_die->get_size();
@@ -210,18 +208,18 @@ NativeElfVariable NativeElfVariable::dereference() const {
     std::vector<std::byte> bytes(*ptr_size);
     memory_access->read(address, bytes);
     uint64_t pointee = load_uint_le(bytes, *ptr_size);
-    return NativeElfVariable(std::move(deref_type), pointee, memory_access);
+    return ElfVariable(std::move(deref_type), pointee, memory_access);
 }
 
-NativeElfVariable NativeElfVariable::get_index(int64_t i) const {
+ElfVariable ElfVariable::get_index(int64_t i) const {
     const auto tag = type_die->get_tag();
-    if (tag != NativeDwarfDieTag::array_type && tag != NativeDwarfDieTag::pointer_type) {
+    if (tag != DwarfDieTag::array_type && tag != DwarfDieTag::pointer_type) {
         throw TypeMismatchException("index", type_die->get_path());
     }
 
-    NativeDwarfDiePtr element_type;
+    DwarfDiePtr element_type;
     uint64_t base_address = address;
-    if (tag == NativeDwarfDieTag::pointer_type) {
+    if (tag == DwarfDieTag::pointer_type) {
         element_type = type_die->get_dereference_type();
         base_address = dereference().get_address();
     } else {
@@ -235,15 +233,15 @@ NativeElfVariable NativeElfVariable::get_index(int64_t i) const {
         throw TypeMismatchException("index", type_die->get_path());
     }
     uint64_t new_address = base_address + static_cast<uint64_t>(i) * *elem_size;
-    return NativeElfVariable(std::move(element_type), new_address, memory_access);
+    return ElfVariable(std::move(element_type), new_address, memory_access);
 }
 
-uint64_t NativeElfVariable::get_length() const {
-    if (type_die->get_tag() != NativeDwarfDieTag::array_type) {
+uint64_t ElfVariable::get_length() const {
+    if (type_die->get_tag() != DwarfDieTag::array_type) {
         throw TypeMismatchException("len", type_die->get_path());
     }
     for (auto child = type_die->get_first_child(); child; child = child->get_next_sibling()) {
-        auto upper_bound = child->get_attribute(NativeDwarfAttributeTag::upper_bound);
+        auto upper_bound = child->get_attribute(DwarfAttributeTag::upper_bound);
         if (upper_bound == nullptr) {
             continue;
         }
@@ -258,7 +256,7 @@ uint64_t NativeElfVariable::get_length() const {
     throw InvalidArrayAccessException(0, std::nullopt);
 }
 
-void NativeElfVariable::read_bytes(std::span<std::byte> buffer) const {
+void ElfVariable::read_bytes(std::span<std::byte> buffer) const {
     auto size = get_size();
     if (buffer.size() < size) {
         throw std::invalid_argument("Buffer too small for variable size");
@@ -269,19 +267,19 @@ void NativeElfVariable::read_bytes(std::span<std::byte> buffer) const {
     memory_access->read(address, buffer);
 }
 
-std::vector<std::byte> NativeElfVariable::read_bytes() const {
+std::vector<std::byte> ElfVariable::read_bytes() const {
     std::vector<std::byte> bytes(get_size());
     read_bytes(bytes);
     return bytes;
 }
 
-NativeElfVariable::Value NativeElfVariable::read_value() const {
+ElfVariable::Value ElfVariable::read_value() const {
     auto type = type_die;
     const auto tag = type->get_tag();
 
     // C strings: char[] and char* are returned as Python str.
     if (type->is_string_type()) {
-        if (tag == NativeDwarfDieTag::array_type) {
+        if (tag == DwarfDieTag::array_type) {
             const uint64_t array_len = get_length();
             const size_t cap = static_cast<size_t>(std::min<uint64_t>(array_len, kMaxCStringLength));
             std::vector<std::byte> bytes(cap);
@@ -307,11 +305,10 @@ NativeElfVariable::Value NativeElfVariable::read_value() const {
         return out;
     }
 
-    if (tag != NativeDwarfDieTag::base_type && tag != NativeDwarfDieTag::pointer_type &&
-        tag != NativeDwarfDieTag::enumeration_type) {
+    if (tag != DwarfDieTag::base_type && tag != DwarfDieTag::pointer_type && tag != DwarfDieTag::enumeration_type) {
         throw TypeMismatchException("read_value", type->get_path());
     }
-    if (tag == NativeDwarfDieTag::enumeration_type) {
+    if (tag == DwarfDieTag::enumeration_type) {
         type = resolve_enum_base(type);
     }
 
@@ -324,7 +321,7 @@ NativeElfVariable::Value NativeElfVariable::read_value() const {
     std::vector<std::byte> bytes(type_size);
     memory_access->read(address, bytes);
 
-    if (type->get_tag() == NativeDwarfDieTag::pointer_type) {
+    if (type->get_tag() == DwarfDieTag::pointer_type) {
         // Match Python: pointer.read_value() returns the dereferenced address.
         return static_cast<uint64_t>(load_uint_le(bytes, type_size));
     }
@@ -350,7 +347,7 @@ NativeElfVariable::Value NativeElfVariable::read_value() const {
     return raw;
 }
 
-void NativeElfVariable::write_value(Value value, bool check_data_loss) {
+void ElfVariable::write_value(Value value, bool check_data_loss) {
     auto type = type_die;
     const auto tag = type->get_tag();
 
@@ -358,7 +355,7 @@ void NativeElfVariable::write_value(Value value, bool check_data_loss) {
     // which we don't model). The supplied string + NUL must fit the array.
     // Bytes past the terminator are left untouched.
     if (auto* str = std::get_if<std::string>(&value)) {
-        if (tag != NativeDwarfDieTag::array_type || !type->is_string_type()) {
+        if (tag != DwarfDieTag::array_type || !type->is_string_type()) {
             throw TypeMismatchException("write_value", type->get_path());
         }
         const uint64_t array_len = get_length();
@@ -370,10 +367,10 @@ void NativeElfVariable::write_value(Value value, bool check_data_loss) {
         return;
     }
 
-    if (tag != NativeDwarfDieTag::base_type && tag != NativeDwarfDieTag::enumeration_type) {
+    if (tag != DwarfDieTag::base_type && tag != DwarfDieTag::enumeration_type) {
         throw TypeMismatchException("write_value", type->get_path());
     }
-    if (tag == NativeDwarfDieTag::enumeration_type) {
+    if (tag == DwarfDieTag::enumeration_type) {
         type = resolve_enum_base(type);
     }
 
@@ -498,16 +495,16 @@ void NativeElfVariable::write_value(Value value, bool check_data_loss) {
                          std::span<const std::byte>(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size()));
 }
 
-NativeElfVariable NativeElfVariable::read() const {
-    if (type_die->get_tag() == NativeDwarfDieTag::pointer_type) {
+ElfVariable ElfVariable::read() const {
+    if (type_die->get_tag() == DwarfDieTag::pointer_type) {
         return dereference().read();
     }
     auto data = read_bytes();
     auto cached = std::make_shared<CachedReadMemoryAccess>(address, std::move(data), memory_access);
-    return NativeElfVariable(type_die, address, std::move(cached));
+    return ElfVariable(type_die, address, std::move(cached));
 }
 
-std::string NativeElfVariable::value_to_string(const Value& v) {
+std::string ElfVariable::value_to_string(const Value& v) {
     return std::visit(
         [](auto&& x) -> std::string {
             using T = std::decay_t<decltype(x)>;

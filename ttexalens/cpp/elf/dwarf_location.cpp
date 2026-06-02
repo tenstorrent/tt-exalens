@@ -26,8 +26,8 @@ struct CompileUnitDims {
     Dwarf_Half offset_size = 4;
 };
 
-std::optional<CompileUnitDims> cu_dims_for(const NativeDwarfDie& die) {
-    const NativeDwarfCompileUnit* cu = die.get_cu();
+std::optional<CompileUnitDims> cu_dims_for(const DwarfDie& die) {
+    const DwarfCompileUnit* cu = die.get_cu();
     if (cu == nullptr) {
         return std::nullopt;
     }
@@ -47,16 +47,16 @@ struct Op {
     Dwarf_Unsigned c = 0;
 };
 
-// Maps NativeDwarfAttributeTag to libdwarf's raw DW_AT_* number. Reusing the
-// integer values directly — NativeDwarfAttributeTag is a typed copy of
+// Maps DwarfAttributeTag to libdwarf's raw DW_AT_* number. Reusing the
+// integer values directly — DwarfAttributeTag is a typed copy of
 // libdwarf's DW_AT_* with matching numeric values.
-Dwarf_Half raw_attr(NativeDwarfAttributeTag tag) { return static_cast<Dwarf_Half>(tag); }
+Dwarf_Half raw_attr(DwarfAttributeTag tag) { return static_cast<Dwarf_Half>(tag); }
 
 // Re-queries `attr_tag` from the live DIE, parses it as a location attribute
 // (handling both plain exprloc and location lists), and returns the opcode
 // list whose live range covers `pc`. Returns nullopt when the attribute is
 // absent, can't be parsed, or has no entry covering `pc`.
-std::optional<std::vector<Op>> parse_die_attribute_location(const NativeDwarfDie& die, NativeDwarfAttributeTag attr_tag,
+std::optional<std::vector<Op>> parse_die_attribute_location(const DwarfDie& die, DwarfAttributeTag attr_tag,
                                                             uint64_t pc) {
     Dwarf_Debug dbg = die.get_state();
     DwarfErrorHandle error(dbg);
@@ -116,19 +116,18 @@ std::optional<std::vector<Op>> parse_die_attribute_location(const NativeDwarfDie
 // inlined declaration. We also peek through DW_AT_abstract_origin, since
 // concrete subprogram instances frequently delegate the attribute to the
 // out-of-line definition.
-NativeDwarfDiePtr find_enclosing_function(const NativeDwarfDie& die) {
-    auto has_frame_base = [](const NativeDwarfDie& d) {
-        if (d.has_attribute(NativeDwarfAttributeTag::frame_base)) return true;
-        if (auto origin = d.get_die_from_attribute(NativeDwarfAttributeTag::abstract_origin)) {
-            if (origin->has_attribute(NativeDwarfAttributeTag::frame_base)) return true;
+DwarfDiePtr find_enclosing_function(const DwarfDie& die) {
+    auto has_frame_base = [](const DwarfDie& d) {
+        if (d.has_attribute(DwarfAttributeTag::frame_base)) return true;
+        if (auto origin = d.get_die_from_attribute(DwarfAttributeTag::abstract_origin)) {
+            if (origin->has_attribute(DwarfAttributeTag::frame_base)) return true;
         }
         return false;
     };
-    NativeDwarfDiePtr current = die.get_parent();
+    DwarfDiePtr current = die.get_parent();
     while (current) {
         const auto tag = current->get_tag();
-        if ((tag == NativeDwarfDieTag::subprogram || tag == NativeDwarfDieTag::inlined_subroutine) &&
-            has_frame_base(*current)) {
+        if ((tag == DwarfDieTag::subprogram || tag == DwarfDieTag::inlined_subroutine) && has_frame_base(*current)) {
             return current;
         }
         current = current->get_parent();
@@ -138,7 +137,7 @@ NativeDwarfDiePtr find_enclosing_function(const NativeDwarfDie& die) {
 
 class Evaluator {
    public:
-    Evaluator(const NativeDwarfDie& die, const NativeFrameInspection* frame, Dwarf_Debug dbg, CompileUnitDims dims)
+    Evaluator(const DwarfDie& die, const FrameInspection* frame, Dwarf_Debug dbg, CompileUnitDims dims)
         : die(die), frame(frame), dbg(dbg), dims(dims) {}
 
     std::optional<LocationResult> run(const std::vector<Op>& ops) {
@@ -480,17 +479,17 @@ class Evaluator {
         if (!func) return std::nullopt;
         // Concrete subprogram instances often delegate the frame_base via
         // DW_AT_abstract_origin to their out-of-line definition.
-        NativeDwarfDiePtr fb_die = func;
-        if (!fb_die->has_attribute(NativeDwarfAttributeTag::frame_base)) {
-            if (auto origin = fb_die->get_die_from_attribute(NativeDwarfAttributeTag::abstract_origin)) {
-                if (origin->has_attribute(NativeDwarfAttributeTag::frame_base)) {
+        DwarfDiePtr fb_die = func;
+        if (!fb_die->has_attribute(DwarfAttributeTag::frame_base)) {
+            if (auto origin = fb_die->get_die_from_attribute(DwarfAttributeTag::abstract_origin)) {
+                if (origin->has_attribute(DwarfAttributeTag::frame_base)) {
                     fb_die = origin;
                 }
             }
         }
-        if (!fb_die->has_attribute(NativeDwarfAttributeTag::frame_base)) return std::nullopt;
+        if (!fb_die->has_attribute(DwarfAttributeTag::frame_base)) return std::nullopt;
         const uint64_t pc = (frame != nullptr) ? frame->get_pc() : 0;
-        auto fb_ops = parse_die_attribute_location(*fb_die, NativeDwarfAttributeTag::frame_base, pc);
+        auto fb_ops = parse_die_attribute_location(*fb_die, DwarfAttributeTag::frame_base, pc);
         if (!fb_ops.has_value()) return std::nullopt;
         // Frame-base sub-evaluation runs against the same frame context, but
         // anchored at `fb_die` for any nested fbreg (rare; safe to share).
@@ -502,8 +501,8 @@ class Evaluator {
         return *sub_result->value;
     }
 
-    const NativeDwarfDie& die;
-    const NativeFrameInspection* frame;
+    const DwarfDie& die;
+    const FrameInspection* frame;
     Dwarf_Debug dbg;
     CompileUnitDims dims;
     std::vector<uint64_t> stack;
@@ -511,8 +510,8 @@ class Evaluator {
 
 }  // namespace
 
-std::optional<LocationResult> evaluate_die_location(const NativeDwarfDie& die, const NativeFrameInspection* frame) {
-    if (!die.has_attribute(NativeDwarfAttributeTag::location)) {
+std::optional<LocationResult> evaluate_die_location(const DwarfDie& die, const FrameInspection* frame) {
+    if (!die.has_attribute(DwarfAttributeTag::location)) {
         return std::nullopt;
     }
     auto dims = cu_dims_for(die);
@@ -522,7 +521,7 @@ std::optional<LocationResult> evaluate_die_location(const NativeDwarfDie& die, c
     // Pick the locdesc whose live PC range applies (plain expressions match
     // unconditionally; location lists require a frame PC).
     const uint64_t pc = (frame != nullptr) ? frame->get_pc() : 0;
-    auto ops = parse_die_attribute_location(die, NativeDwarfAttributeTag::location, pc);
+    auto ops = parse_die_attribute_location(die, DwarfAttributeTag::location, pc);
     if (!ops.has_value()) {
         std::fprintf(stderr, "[loc] %s @0x%lx: parse failed\n", std::string(die.get_name()).c_str(), (unsigned long)pc);
         return std::nullopt;

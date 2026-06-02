@@ -11,8 +11,8 @@
 
 namespace ttexalens::native_elf {
 
-NativeFrameDescription::NativeFrameDescription(std::weak_ptr<details::NativeDwarfInfoImpl> info, Dwarf_Fde fde,
-                                               uint64_t pc, std::shared_ptr<MemoryAccess> memory_access)
+FrameDescription::FrameDescription(std::weak_ptr<details::DwarfInfoImpl> info, Dwarf_Fde fde, uint64_t pc,
+                                   std::shared_ptr<MemoryAccess> memory_access)
     : info(std::move(info)), fde(fde), pc(pc), memory_access(std::move(memory_access)) {}
 
 namespace {
@@ -49,7 +49,7 @@ bool is_real_register(Dwarf_Unsigned reg) {
 
 }  // namespace
 
-std::optional<uint64_t> NativeFrameDescription::read_register(uint16_t register_index, uint64_t cfa) const {
+std::optional<uint64_t> FrameDescription::read_register(uint16_t register_index, uint64_t cfa) const {
     auto info_ptr = info.lock();
     if (!info_ptr) {
         return std::nullopt;
@@ -63,8 +63,8 @@ std::optional<uint64_t> NativeFrameDescription::read_register(uint16_t register_
     return memory_access->read_register(register_index);
 }
 
-std::optional<uint64_t> NativeFrameDescription::try_read_register(uint16_t register_index,
-                                                                  std::optional<uint64_t> cfa) const {
+std::optional<uint64_t> FrameDescription::try_read_register(uint16_t register_index,
+                                                            std::optional<uint64_t> cfa) const {
     if (!cfa.has_value()) {
         return std::nullopt;
     }
@@ -95,7 +95,7 @@ bool is_callee_saved_register(uint16_t reg) {
     return false;
 }
 
-RegisterRule NativeFrameDescription::classify_register_rule(uint16_t register_index, uint64_t cfa) const {
+RegisterRule FrameDescription::classify_register_rule(uint16_t register_index, uint64_t cfa) const {
     auto info_ptr = info.lock();
     if (!info_ptr) {
         return {RegisterRuleKind::Unknown, 0};
@@ -127,12 +127,12 @@ RegisterRule NativeFrameDescription::classify_register_rule(uint16_t register_in
     return {RegisterRuleKind::Unknown, 0};
 }
 
-uint16_t NativeFrameDescription::get_pointer_size() const {
+uint16_t FrameDescription::get_pointer_size() const {
     auto info_ptr = info.lock();
     return info_ptr ? info_ptr->pointer_size : uint16_t{0};
 }
 
-std::optional<uint64_t> NativeFrameDescription::compute_cfa(std::optional<uint64_t> inner_cfa) const {
+std::optional<uint64_t> FrameDescription::compute_cfa(std::optional<uint64_t> inner_cfa) const {
     auto info_ptr = info.lock();
     if (!info_ptr) {
         return std::nullopt;
@@ -171,12 +171,11 @@ std::optional<uint64_t> NativeFrameDescription::compute_cfa(std::optional<uint64
     return *saved + static_cast<uint64_t>(cfa_offset);
 }
 
-NativeFrameInspection::NativeFrameInspection(std::shared_ptr<MemoryAccess> memory_access,
-                                             std::optional<NativeFrameSnapshot> inspected,
-                                             std::vector<NativeFrameSnapshot> inner_frames)
+FrameInspection::FrameInspection(std::shared_ptr<MemoryAccess> memory_access, std::optional<FrameSnapshot> inspected,
+                                 std::vector<FrameSnapshot> inner_frames)
     : memory_access(std::move(memory_access)), inspected(std::move(inspected)), inner_frames(std::move(inner_frames)) {}
 
-std::optional<uint64_t> NativeFrameInspection::read_register(int register_index) const {
+std::optional<uint64_t> FrameInspection::read_register(int register_index) const {
     const uint16_t reg = static_cast<uint16_t>(register_index);
 
     // The inspected frame's own CFI rule for X describes where its CALLER
@@ -207,7 +206,7 @@ std::optional<uint64_t> NativeFrameInspection::read_register(int register_index)
     return memory_access->read_register(static_cast<uint64_t>(register_index));
 }
 
-std::optional<uint64_t> NativeFrameInspection::read_memory(uint64_t address, uint8_t register_size) const {
+std::optional<uint64_t> FrameInspection::read_memory(uint64_t address, uint8_t register_size) const {
     return memory_access->try_read_word(address, register_size);
 }
 

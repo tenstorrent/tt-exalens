@@ -69,7 +69,7 @@ skip = ["pp*", "*-musllinux_*"]
 build-frontend = "pip"
 # Smoke-test that the produced wheel imports cleanly. The full test suite
 # needs Tenstorrent hardware, so we only check the import path here.
-test-command = "python -c \"import ttexalens; from ttexalens._native_ttexalens import NativeElfFile; print('import OK')\""
+test-command = "python -c \"import ttexalens; from ttexalens._native_ttexalens import ElfFile; print('import OK')\""
 
 [tool.cibuildwheel.linux]
 # manylinux_2_34 (AlmaLinux 9, glibc 2.34) — chosen because the vendored

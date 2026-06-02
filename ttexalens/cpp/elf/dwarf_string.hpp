@@ -11,16 +11,14 @@
 
 namespace ttexalens::native_elf {
 
-class NativeDwarfString {
+class DwarfString {
    public:
-    explicit NativeDwarfString(Dwarf_Debug dbg) : handle(dbg) {}
+    explicit DwarfString(Dwarf_Debug dbg) : handle(dbg) {}
 
-    explicit NativeDwarfString(DwarfStringHandle handle) : handle(std::move(handle)) { sync_view(); }
+    explicit DwarfString(DwarfStringHandle handle) : handle(std::move(handle)) { sync_view(); }
 
-    NativeDwarfString(NativeDwarfString&& other) noexcept : handle(std::move(other.handle)), view(other.view) {
-        other.view = {};
-    }
-    NativeDwarfString& operator=(NativeDwarfString&& other) noexcept {
+    DwarfString(DwarfString&& other) noexcept : handle(std::move(other.handle)), view(other.view) { other.view = {}; }
+    DwarfString& operator=(DwarfString&& other) noexcept {
         if (this != std::addressof(other)) {
             handle = std::move(other.handle);
             view = other.view;
@@ -28,8 +26,8 @@ class NativeDwarfString {
         }
         return *this;
     }
-    NativeDwarfString(const NativeDwarfString&) = delete;
-    NativeDwarfString& operator=(const NativeDwarfString&) = delete;
+    DwarfString(const DwarfString&) = delete;
+    DwarfString& operator=(const DwarfString&) = delete;
 
     // Out-parameter access for libdwarf calls. handle.operator&() resets the
     // C-string slot; we mirror that here by clearing the cached view so the

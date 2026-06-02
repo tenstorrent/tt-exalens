@@ -45,7 +45,7 @@ class MemoryAccess {
 // Serves reads from a snapshot byte range when the requested address falls
 // inside [cached_address, cached_address + cached_data.size()); otherwise
 // delegates to `base`. Writes and register access always pass through to
-// `base`. Used by NativeElfVariable::read() to freeze a variable's bytes so
+// `base`. Used by ElfVariable::read() to freeze a variable's bytes so
 // later member/dereference walks don't re-hit live memory.
 class CachedReadMemoryAccess : public MemoryAccess {
    public:

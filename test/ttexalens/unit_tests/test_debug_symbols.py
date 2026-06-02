@@ -290,7 +290,7 @@ class TestDebugSymbols(unittest.TestCase):
 
     def test_symtab_fallback_address(self):
         """Variables declared `extern` (no DW_AT_location on the DIE) need
-        the .symtab fallback in NativeDwarfDie::get_address. Anchored by
+        the .symtab fallback in DwarfDie::get_address. Anchored by
         the top-level asm() in globals_test.cc:
           (1) `g_symtab_var_by_name` — bare name matches .symtab directly.
           (2) `ttexalens_symtab_test::g_symtab_var_by_linkage` — needs

@@ -19,8 +19,8 @@
 namespace ttexalens::native_elf {
 
 // Forward declarations
-class NativeDwarfDie;
-using NativeDwarfDiePtr = std::shared_ptr<NativeDwarfDie>;
+class DwarfDie;
+using DwarfDiePtr = std::shared_ptr<DwarfDie>;
 
 class SymbolNotFoundException : public std::runtime_error {
    public:
@@ -75,19 +75,19 @@ class DataLossException : public std::runtime_error {
 };
 
 // In-memory view of a variable located by DWARF.
-class NativeElfVariable {
+class ElfVariable {
    public:
     // Variant returned by read_value / accepted by write_value.
     using Value = std::variant<bool, int64_t, uint64_t, float, double, std::string>;
 
-    NativeElfVariable(NativeDwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access);
-    ~NativeElfVariable();
-    NativeElfVariable(const NativeElfVariable&);
-    NativeElfVariable(NativeElfVariable&&) noexcept;
-    NativeElfVariable& operator=(const NativeElfVariable&);
-    NativeElfVariable& operator=(NativeElfVariable&&) noexcept;
+    ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access);
+    ~ElfVariable();
+    ElfVariable(const ElfVariable&);
+    ElfVariable(ElfVariable&&) noexcept;
+    ElfVariable& operator=(const ElfVariable&);
+    ElfVariable& operator=(ElfVariable&&) noexcept;
 
-    const NativeDwarfDiePtr& get_type_die() const { return type_die; }
+    const DwarfDiePtr& get_type_die() const { return type_die; }
     uint64_t get_address() const { return address; }
     const std::shared_ptr<MemoryAccess>& get_memory_access() const { return memory_access; }
 
@@ -96,14 +96,14 @@ class NativeElfVariable {
     uint64_t get_size() const;
 
     // Walks struct/union/inheritance members to find `member_name`.
-    NativeElfVariable get_member(std::string_view member_name) const;
+    ElfVariable get_member(std::string_view member_name) const;
 
     // Dereferences a pointer variable. Reads the pointer bytes from live
-    // memory and returns a NativeElfVariable for the pointee.
-    NativeElfVariable dereference() const;
+    // memory and returns a ElfVariable for the pointee.
+    ElfVariable dereference() const;
 
     // Indexes into an array or pointer variable.
-    NativeElfVariable get_index(int64_t i) const;
+    ElfVariable get_index(int64_t i) const;
 
     // Number of elements in the first array dimension.
     uint64_t get_length() const;
@@ -121,17 +121,17 @@ class NativeElfVariable {
     // when the round-trip changes the value (e.g. assigning 1.5 to int).
     void write_value(Value value, bool check_data_loss = true);
 
-    // Snapshots the variable's bytes and returns a new NativeElfVariable
+    // Snapshots the variable's bytes and returns a new ElfVariable
     // backed by a CachedReadMemoryAccess. Subsequent member / dereference /
     // index walks served from the cache instead of re-hitting live memory.
     // For pointer variables, dereferences first and then snapshots.
-    NativeElfVariable read() const;
+    ElfVariable read() const;
 
     // Convert read Value to string.
     static std::string value_to_string(const Value& v);
 
    private:
-    NativeDwarfDiePtr type_die;
+    DwarfDiePtr type_die;
     uint64_t address;
     std::shared_ptr<MemoryAccess> memory_access;
 };

@@ -19,18 +19,18 @@
 namespace ttexalens::native_elf {
 
 namespace details {
-class NativeDwarfInfoImpl;
+class DwarfInfoImpl;
 }  // namespace details
 
-class NativeElfSymbol;
-class NativeDwarfCompileUnit;
-class NativeFrameInspection;
+class ElfSymbol;
+class DwarfCompileUnit;
+class FrameInspection;
 
-class NativeDwarfDie;
-using NativeDwarfDiePtr = std::shared_ptr<NativeDwarfDie>;
+class DwarfDie;
+using DwarfDiePtr = std::shared_ptr<DwarfDie>;
 
 // DIE tags - DW_TAG_*
-enum class NativeDwarfDieTag : Dwarf_Half {
+enum class DwarfDieTag : Dwarf_Half {
     access_declaration = DW_TAG_access_declaration,
     ALTIUM_circ_type = DW_TAG_ALTIUM_circ_type,
     ALTIUM_mwa_circ_type = DW_TAG_ALTIUM_mwa_circ_type,
@@ -154,26 +154,26 @@ enum class NativeDwarfDieTag : Dwarf_Half {
 };
 
 // Source location for a particular program counter — returned by
-// NativeDwarfInfo::find_file_line_by_address.
-struct NativeDwarfFileLine {
+// DwarfInfo::find_file_line_by_address.
+struct DwarfFileLine {
     std::string file;
     uint32_t line;
     uint32_t column;
 };
 
-class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
+class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
    public:
-    NativeDwarfDie(DwarfDieHandle die, std::weak_ptr<details::NativeDwarfInfoImpl> info);
-    ~NativeDwarfDie();
+    DwarfDie(DwarfDieHandle die, std::weak_ptr<details::DwarfInfoImpl> info);
+    ~DwarfDie();
 
     operator Dwarf_Die() const { return die; }
     explicit operator bool() const { return static_cast<bool>(die); }
     Dwarf_Debug get_state() const { return die.get_state(); }
 
     // Returns the compile unit that owns this DIE, or nullptr if the
-    // owning NativeDwarfInfo has been destroyed. The pointer is valid only
+    // owning DwarfInfo has been destroyed. The pointer is valid only
     // while the owning ElfFile is alive — do not store it.
-    const NativeDwarfCompileUnit* get_cu() const;
+    const DwarfCompileUnit* get_cu() const;
 
     // Lazily reads DW_AT_name off this DIE. First call invokes dwarf_diename
     // and caches the result; later calls return the cached view. Returns an
@@ -202,26 +202,26 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     Dwarf_Off get_offset() const;
 
     // DWARF tag (DW_TAG_*). Always asks libdwarf — the call is just a
-    // field read. Compare against NativeDwarfDieTag enumerators directly
-    // (e.g. die.get_tag() == NativeDwarfDieTag::subprogram).
-    NativeDwarfDieTag get_tag() const;
+    // field read. Compare against DwarfDieTag enumerators directly
+    // (e.g. die.get_tag() == DwarfDieTag::subprogram).
+    DwarfDieTag get_tag() const;
 
     // Lazily walks every attribute on this DIE, decodes each into a
-    // NativeDwarfAttribute, and caches the result. DIEs typically carry a
+    // DwarfAttribute, and caches the result. DIEs typically carry a
     // handful of attributes, so a flat vector + linear scan beats a hash
-    // map. Reference is stable for the lifetime of this NativeDwarfDie.
+    // map. Reference is stable for the lifetime of this DwarfDie.
     // Pair with get_attribute() for tag-keyed lookup.
-    const std::vector<NativeDwarfAttribute>& get_attributes() const;
+    const std::vector<DwarfAttribute>& get_attributes() const;
 
     // Returns the cached attribute with the given DW_AT_* tag, or nullptr.
-    const NativeDwarfAttribute* get_attribute(NativeDwarfAttributeTag attribute_tag) const;
+    const DwarfAttribute* get_attribute(DwarfAttributeTag attribute_tag) const;
 
     // Convenience: looks up the attribute by tag and returns its value if the
     // active variant alternative is T. nullptr when the attribute is absent
     // or stored under a different form.
     template <typename T>
-    const T* get_attribute_value(NativeDwarfAttributeTag attribute_tag) const {
-        if (const NativeDwarfAttribute* attr = get_attribute(attribute_tag)) {
+    const T* get_attribute_value(DwarfAttributeTag attribute_tag) const {
+        if (const DwarfAttribute* attr = get_attribute(attribute_tag)) {
             return std::get_if<T>(&attr->get_value());
         }
         return nullptr;
@@ -244,17 +244,17 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // type and then peels. Also follows DW_AT_specification /
     // DW_AT_abstract_origin when present. Returns the original DIE if
     // nothing more specific is reachable.
-    NativeDwarfDiePtr get_resolved_type() const;
+    DwarfDiePtr get_resolved_type() const;
 
     // If this DIE is DW_TAG_pointer_type or DW_TAG_reference_type, follows
     // DW_AT_type and runs get_resolved_type on the result so callers see
     // the ultimate pointee type (not an intervening typedef). nullptr for
     // any other tag or when DW_AT_type is absent.
-    NativeDwarfDiePtr get_dereference_type() const;
+    DwarfDiePtr get_dereference_type() const;
 
     // If this DIE is DW_TAG_array_type, follows DW_AT_type to the element
     // DIE and runs get_resolved_type on it. nullptr for any other tag.
-    NativeDwarfDiePtr get_array_element_type() const;
+    DwarfDiePtr get_array_element_type() const;
 
     // True iff this DIE is a base type with a signed integer encoding
     // (DW_AT_encoding ∈ {DW_ATE_signed, DW_ATE_signed_char, DW_ATE_signed_fixed}).
@@ -285,15 +285,15 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
 
     // Walks the direct children of this DIE and returns the first whose
     // DW_AT_name matches `name`. nullptr on miss.
-    NativeDwarfDiePtr find_child_by_name(std::string_view name) const;
+    DwarfDiePtr find_child_by_name(std::string_view name) const;
 
     // Resolves a DIE-valued attribute (e.g. DW_AT_abstract_origin,
     // DW_AT_specification) to the referenced DIE. nullptr when the attribute
     // is absent OR the reference can't be followed.
-    NativeDwarfDiePtr get_die_from_attribute(NativeDwarfAttributeTag attribute_tag) const;
+    DwarfDiePtr get_die_from_attribute(DwarfAttributeTag attribute_tag) const;
 
     // True iff this DIE carries the given attribute.
-    bool has_attribute(NativeDwarfAttributeTag attribute_tag) const;
+    bool has_attribute(DwarfAttributeTag attribute_tag) const;
 
     // True iff DW_AT_declaration is present and set.
     bool is_declaration() const;
@@ -311,53 +311,52 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // into the CU's line-table file table) to a fully-qualified path via
     // libdwarf's dwarf_srcfiles. Returns std::nullopt when the relevant
     // attribute is absent or the file index can't be resolved.
-    std::optional<NativeDwarfFileLine> get_decl_file_info() const;
-    std::optional<NativeDwarfFileLine> get_call_file_info() const;
+    std::optional<DwarfFileLine> get_decl_file_info() const;
+    std::optional<DwarfFileLine> get_call_file_info() const;
 
     // Reads this DIE's value from the given frame, if it's a variable or
     // member with a resolvable location. Returns std::nullopt if the DIE
     // has no location, the location is unsupported or can't be evaluated,
     // or the resolved type is unusably incomplete.
-    std::optional<NativeElfVariable> read_value(const NativeFrameInspection& frame) const;
+    std::optional<ElfVariable> read_value(const FrameInspection& frame) const;
 
     // Walk this DIE's children:
     //   for (auto child = die->get_first_child(); child;
     //        child = child->get_next_sibling()) { ... }
     // Both calls are cached after the first invocation (including the "no
     // child / no sibling" outcome), so repeat traversals are free.
-    NativeDwarfDiePtr get_first_child() const;
-    NativeDwarfDiePtr get_next_sibling() const;
+    DwarfDiePtr get_first_child() const;
+    DwarfDiePtr get_next_sibling() const;
 
     // Returns this DIE's parent in the .debug_info tree, or nullptr for a CU
     // root (or if the DIE somehow isn't reachable from any CU).
-    NativeDwarfDiePtr get_parent() const;
+    DwarfDiePtr get_parent() const;
 
     // Collects every DW_TAG_template_value_parameter that applies to this
     // DIE: the DIE's own template params plus the enclosing scope's
     // (nested templates like `Class<3>::method<-1>` need both). Follows
     // DW_AT_specification / DW_AT_abstract_origin one hop first because
     // instance / inlined DIEs don't carry their template params directly.
-    std::vector<NativeDwarfDiePtr> get_template_value_parameters() const;
+    std::vector<DwarfDiePtr> get_template_value_parameters() const;
 
    private:
     // Resolves this DIE to its .symtab entry. Returns nullptr on miss.
-    const NativeElfSymbol* find_symbol() const;
+    const ElfSymbol* find_symbol() const;
 
-    std::optional<NativeDwarfFileLine> resolve_file_info(NativeDwarfAttributeTag file_tag,
-                                                         NativeDwarfAttributeTag line_tag,
-                                                         NativeDwarfAttributeTag column_tag) const;
+    std::optional<DwarfFileLine> resolve_file_info(DwarfAttributeTag file_tag, DwarfAttributeTag line_tag,
+                                                   DwarfAttributeTag column_tag) const;
 
-    friend class details::NativeDwarfInfoImpl;
+    friend class details::DwarfInfoImpl;
 
     DwarfDieHandle die;
-    std::weak_ptr<details::NativeDwarfInfoImpl> info;
+    std::weak_ptr<details::DwarfInfoImpl> info;
 
-    mutable std::optional<NativeDwarfString> name;
-    mutable std::optional<std::vector<NativeDwarfAttribute>> attributes;
-    mutable std::optional<NativeDwarfDiePtr> first_child;
-    mutable std::optional<NativeDwarfDiePtr> next_sibling;
+    mutable std::optional<DwarfString> name;
+    mutable std::optional<std::vector<DwarfAttribute>> attributes;
+    mutable std::optional<DwarfDiePtr> first_child;
+    mutable std::optional<DwarfDiePtr> next_sibling;
     mutable std::optional<std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>> address_ranges;
-    mutable std::optional<std::weak_ptr<NativeDwarfDie>> parent;
+    mutable std::optional<std::weak_ptr<DwarfDie>> parent;
 };
 
 }  // namespace ttexalens::native_elf
