@@ -35,7 +35,8 @@ constexpr char flip_case() {
 }
 
 int main(void) {
-    uint32_t* ptr = (uint32_t*)0x64000;
+    // L1 scratch address, kept below the 256 KiB Ethernet L1 so this program also runs on Ethernet cores.
+    uint32_t* ptr = (uint32_t*)0x20000;
     if (*ptr - 0xDEADBEEF) {
         ptr[1] = 0xDEADC0DE;
         ptr[2] = factorial<0>::value;

@@ -36,6 +36,10 @@ class TestTensixDebug(unittest.TestCase):
         cls.ops = cls.context.devices[0].instructions
 
     def setUp(self):
+        if self.context.devices[0].is_simulation:
+            # Every test here exercises either the Tensix DEST regfile (read_write_regfile) or debug-bus
+            # signals (register_window_counters); neither is modeled on the simulator yet.
+            self.skipTest("Tensix DEST regfile access and debug-bus signal reads are not modeled on the simulator")
         self.location = OnChipCoordinate.create(self.location_str, device=self.context.devices[0])
         self.tensix_debug = TensixDebug(self.location)
         assert self.location.noc_block.debug_bus is not None

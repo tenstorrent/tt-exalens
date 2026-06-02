@@ -114,24 +114,30 @@ class TestReadWrite(unittest.TestCase):
 
     def test_write_read_data_integrity(self):
         location = "0,0"
+        # brisc idles in a loop at L1 offset 0; write into a scratch region clear of it. (On HW/RTL the i-cache
+        # absorbs an overwrite of the running loop, but ttsim fetches each instruction straight from L1.)
+        base_address = 0x100
         num_of_words = 256  # 1024 bytes
         pattern_words = 50  # 200 bytes
         offset = 16
         data = [0x12345678] * num_of_words  # Initial pattern to write
-        lib.write_words_to_device(location, 0, data)
-        self.assertEqual(lib.read_words_from_device(location, 0, word_count=num_of_words), data)
+        lib.write_words_to_device(location, base_address, data)
+        self.assertEqual(lib.read_words_from_device(location, base_address, word_count=num_of_words), data)
         lib.write_words_to_device(
-            location, offset, [0xDEADBEEF] * pattern_words
+            location, base_address + offset, [0xDEADBEEF] * pattern_words
         )  # Overwrite part of the initial pattern
         data[offset // 4 : offset // 4 + pattern_words] = [0xDEADBEEF] * pattern_words
-        self.assertEqual(lib.read_words_from_device(location, 0, word_count=num_of_words), data)
+        self.assertEqual(lib.read_words_from_device(location, base_address, word_count=num_of_words), data)
 
     def test_write_read_bytes_over_dma(self):
         """Test write bytes -- read bytes."""
         location_str = "1,0"
         location = OnChipCoordinate.create(location_str, self.context.devices[0])
         data = b"test_me!" * 16  # 128 bytes
-        for address in range(0, 128, 1):
+        # brisc idles in a loop at L1 offset 0; use a scratch base clear of it. (On HW/RTL the i-cache absorbs
+        # an overwrite of the running loop, but ttsim fetches each instruction straight from L1.)
+        base = 0x100
+        for address in range(base, base + 128, 1):
             # Write over regular TLB access to clean any previous data
             location.noc_write(address, b"\x00" * len(data), use_4B_mode=False, dma_threshold=len(data) + 1)
 
@@ -284,81 +290,99 @@ class TestReadWrite(unittest.TestCase):
             lib.write_to_device(location, address, data, device_id)
 
     def test_unaligned_read(self):
+        # brisc idles in a loop at L1 offset 0; read/write a scratch region clear of it. (On HW/RTL the i-cache
+        # absorbs an overwrite of the running loop, but ttsim fetches each instruction straight from L1.)
+        base = 0x100
         for device_id in self.context.device_ids:
             location = self.context.devices[device_id].get_block_locations()[0]
-            lib.write_words_to_device(location, 0, [0x12345678, 0x90ABCDEF], device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x12345678, 0x90ABCDEF]
-            assert lib.read_from_device(location, 0, device_id, 1, self.context) == bytes([0x78])
-            assert lib.read_from_device(location, 1, device_id, 1, self.context) == bytes([0x56])
-            assert lib.read_from_device(location, 2, device_id, 1, self.context) == bytes([0x34])
-            assert lib.read_from_device(location, 3, device_id, 1, self.context) == bytes([0x12])
-            assert lib.read_from_device(location, 4, device_id, 1, self.context) == bytes([0xEF])
-            assert lib.read_from_device(location, 5, device_id, 1, self.context) == bytes([0xCD])
-            assert lib.read_from_device(location, 6, device_id, 1, self.context) == bytes([0xAB])
-            assert lib.read_from_device(location, 7, device_id, 1, self.context) == bytes([0x90])
-            assert lib.read_from_device(location, 0, device_id, 2, self.context) == bytes([0x78, 0x56])
-            assert lib.read_from_device(location, 2, device_id, 2, self.context) == bytes([0x34, 0x12])
-            assert lib.read_from_device(location, 4, device_id, 2, self.context) == bytes([0xEF, 0xCD])
-            assert lib.read_from_device(location, 6, device_id, 2, self.context) == bytes([0xAB, 0x90])
-            assert lib.read_from_device(location, 0, device_id, 4, self.context) == bytes([0x78, 0x56, 0x34, 0x12])
-            assert lib.read_from_device(location, 4, device_id, 4, self.context) == bytes([0xEF, 0xCD, 0xAB, 0x90])
-            assert lib.read_from_device(location, 0, device_id, 8, self.context) == bytes(
+            lib.write_words_to_device(location, base, [0x12345678, 0x90ABCDEF], device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0x12345678, 0x90ABCDEF]
+            assert lib.read_from_device(location, base + 0, device_id, 1, self.context) == bytes([0x78])
+            assert lib.read_from_device(location, base + 1, device_id, 1, self.context) == bytes([0x56])
+            assert lib.read_from_device(location, base + 2, device_id, 1, self.context) == bytes([0x34])
+            assert lib.read_from_device(location, base + 3, device_id, 1, self.context) == bytes([0x12])
+            assert lib.read_from_device(location, base + 4, device_id, 1, self.context) == bytes([0xEF])
+            assert lib.read_from_device(location, base + 5, device_id, 1, self.context) == bytes([0xCD])
+            assert lib.read_from_device(location, base + 6, device_id, 1, self.context) == bytes([0xAB])
+            assert lib.read_from_device(location, base + 7, device_id, 1, self.context) == bytes([0x90])
+            assert lib.read_from_device(location, base + 0, device_id, 2, self.context) == bytes([0x78, 0x56])
+            assert lib.read_from_device(location, base + 2, device_id, 2, self.context) == bytes([0x34, 0x12])
+            assert lib.read_from_device(location, base + 4, device_id, 2, self.context) == bytes([0xEF, 0xCD])
+            assert lib.read_from_device(location, base + 6, device_id, 2, self.context) == bytes([0xAB, 0x90])
+            assert lib.read_from_device(location, base + 0, device_id, 4, self.context) == bytes(
+                [0x78, 0x56, 0x34, 0x12]
+            )
+            assert lib.read_from_device(location, base + 4, device_id, 4, self.context) == bytes(
+                [0xEF, 0xCD, 0xAB, 0x90]
+            )
+            assert lib.read_from_device(location, base + 0, device_id, 8, self.context) == bytes(
                 [0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]
             )
-            assert lib.read_from_device(location, 1, device_id, 2, self.context) == bytes([0x56, 0x34])
-            assert lib.read_from_device(location, 3, device_id, 2, self.context) == bytes([0x12, 0xEF])
-            assert lib.read_from_device(location, 5, device_id, 2, self.context) == bytes([0xCD, 0xAB])
-            assert lib.read_from_device(location, 1, device_id, 4, self.context) == bytes([0x56, 0x34, 0x12, 0xEF])
-            assert lib.read_from_device(location, 2, device_id, 4, self.context) == bytes([0x34, 0x12, 0xEF, 0xCD])
-            assert lib.read_from_device(location, 3, device_id, 4, self.context) == bytes([0x12, 0xEF, 0xCD, 0xAB])
-            assert lib.read_from_device(location, 0, device_id, 8, self.context) == bytes(
+            assert lib.read_from_device(location, base + 1, device_id, 2, self.context) == bytes([0x56, 0x34])
+            assert lib.read_from_device(location, base + 3, device_id, 2, self.context) == bytes([0x12, 0xEF])
+            assert lib.read_from_device(location, base + 5, device_id, 2, self.context) == bytes([0xCD, 0xAB])
+            assert lib.read_from_device(location, base + 1, device_id, 4, self.context) == bytes(
+                [0x56, 0x34, 0x12, 0xEF]
+            )
+            assert lib.read_from_device(location, base + 2, device_id, 4, self.context) == bytes(
+                [0x34, 0x12, 0xEF, 0xCD]
+            )
+            assert lib.read_from_device(location, base + 3, device_id, 4, self.context) == bytes(
+                [0x12, 0xEF, 0xCD, 0xAB]
+            )
+            assert lib.read_from_device(location, base + 0, device_id, 8, self.context) == bytes(
                 [0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]
             )
-            assert lib.read_from_device(location, 1, device_id, 6, self.context) == bytes(
+            assert lib.read_from_device(location, base + 1, device_id, 6, self.context) == bytes(
                 [0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB]
             )
 
     def test_unaligned_write(self):
+        # brisc idles in a loop at L1 offset 0; read/write a scratch region clear of it. (On HW/RTL the i-cache
+        # absorbs an overwrite of the running loop, but ttsim fetches each instruction straight from L1.)
+        base = 0x100
         for device_id in self.context.device_ids:
             location = self.context.devices[device_id].get_block_locations()[0]
-            lib.write_words_to_device(location, 0, [0xDEADBEEF, 0xDEADBEEF], device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDEADBEEF, 0xDEADBEEF]
-            lib.write_to_device(location, 0, bytes([0x12]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDEADBE12, 0xDEADBEEF]
-            lib.write_to_device(location, 1, bytes([0x34]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDEAD3412, 0xDEADBEEF]
-            lib.write_to_device(location, 2, bytes([0x56]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDE563412, 0xDEADBEEF]
-            lib.write_to_device(location, 3, bytes([0x78]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBEEF]
-            lib.write_to_device(location, 4, bytes([0x90]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x78563412, 0xDEADBE90]
-            lib.write_to_device(location, 5, bytes([0xAB]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x78563412, 0xDEADAB90]
-            lib.write_to_device(location, 6, bytes([0xCD]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x78563412, 0xDECDAB90]
-            lib.write_to_device(location, 7, bytes([0xEF]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x78563412, 0xEFCDAB90]
-            lib.write_to_device(location, 0, bytes([0xAA, 0xBB]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x7856BBAA, 0xEFCDAB90]
-            lib.write_to_device(location, 2, bytes([0xCC, 0xDD]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDAB90]
-            lib.write_to_device(location, 4, bytes([0xEE, 0xFF]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDFFEE]
-            lib.write_to_device(location, 6, bytes([0x00, 0x11]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDDCCBBAA, 0x1100FFEE]
-            lib.write_to_device(location, 1, bytes([0x22, 0x33]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xDD3322AA, 0x1100FFEE]
-            lib.write_to_device(location, 3, bytes([0x44, 0x55]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x443322AA, 0x1100FF55]
-            lib.write_to_device(location, 5, bytes([0x66, 0x77]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x443322AA, 0x11776655]
-            lib.write_to_device(location, 2, bytes([0x88, 0x99, 0xAA]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x998822AA, 0x117766AA]
-            lib.write_to_device(location, 3, bytes([0xBB, 0xCC, 0xDD]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0xBB8822AA, 0x1177DDCC]
-            lib.write_to_device(location, 1, bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]), device_id, self.context)
-            assert lib.read_words_from_device(location, 0, device_id, 2, self.context) == [0x332211AA, 0x11665544]
+            lib.write_words_to_device(location, base, [0xDEADBEEF, 0xDEADBEEF], device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0xDEADBEEF, 0xDEADBEEF]
+            lib.write_to_device(location, base + 0, bytes([0x12]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0xDEADBE12, 0xDEADBEEF]
+            lib.write_to_device(location, base + 1, bytes([0x34]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0xDEAD3412, 0xDEADBEEF]
+            lib.write_to_device(location, base + 2, bytes([0x56]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0xDE563412, 0xDEADBEEF]
+            lib.write_to_device(location, base + 3, bytes([0x78]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0x78563412, 0xDEADBEEF]
+            lib.write_to_device(location, base + 4, bytes([0x90]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0x78563412, 0xDEADBE90]
+            lib.write_to_device(location, base + 5, bytes([0xAB]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0x78563412, 0xDEADAB90]
+            lib.write_to_device(location, base + 6, bytes([0xCD]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0x78563412, 0xDECDAB90]
+            lib.write_to_device(location, base + 7, bytes([0xEF]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0x78563412, 0xEFCDAB90]
+            lib.write_to_device(location, base + 0, bytes([0xAA, 0xBB]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0x7856BBAA, 0xEFCDAB90]
+            lib.write_to_device(location, base + 2, bytes([0xCC, 0xDD]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDAB90]
+            lib.write_to_device(location, base + 4, bytes([0xEE, 0xFF]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0xDDCCBBAA, 0xEFCDFFEE]
+            lib.write_to_device(location, base + 6, bytes([0x00, 0x11]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0xDDCCBBAA, 0x1100FFEE]
+            lib.write_to_device(location, base + 1, bytes([0x22, 0x33]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0xDD3322AA, 0x1100FFEE]
+            lib.write_to_device(location, base + 3, bytes([0x44, 0x55]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0x443322AA, 0x1100FF55]
+            lib.write_to_device(location, base + 5, bytes([0x66, 0x77]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0x443322AA, 0x11776655]
+            lib.write_to_device(location, base + 2, bytes([0x88, 0x99, 0xAA]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0x998822AA, 0x117766AA]
+            lib.write_to_device(location, base + 3, bytes([0xBB, 0xCC, 0xDD]), device_id, self.context)
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0xBB8822AA, 0x1177DDCC]
+            lib.write_to_device(
+                location, base + 1, bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]), device_id, self.context
+            )
+            assert lib.read_words_from_device(location, base, device_id, 2, self.context) == [0x332211AA, 0x11665544]
 
     @parameterized.expand(
         [

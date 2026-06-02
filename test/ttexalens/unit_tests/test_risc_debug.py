@@ -103,6 +103,21 @@ class TestDebugging(unittest.TestCase):
             f"Pc should be less than {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
         )
 
+    def wait_for_simulator(self, predicate, iterations: int = 2000):
+        """Wait for a free-running core to reach an expected state on a simulator.
+
+        Simulators (Quasar, ttsim, RTL) only advance their clock when the host accesses the device, so a
+        core that should be running after continue()/deassert does not make progress on its own. Each
+        device read issued while evaluating ``predicate`` advances the simulator clock, so we poll until
+        the predicate holds. This is a no-op on silicon, where the result is already present and the
+        following assertion checks it directly.
+        """
+        if not self.device.is_simulation:
+            return
+        for _ in range(iterations):
+            if predicate():
+                return
+
     def test_default_start_address(self):
         if self.device.is_quasar():
             self.skipTest("Skipping Quasar test since it lasts for 1 hour on simulator.")
@@ -124,6 +139,9 @@ class TestDebugging(unittest.TestCase):
         if risc_info.can_change_code_start_address:
             self.core_sim.risc_debug.set_code_start_address(None)
         self.core_sim.set_reset(False)
+
+        # Simulators only advance when the host reads, so poll until the core has run into the first ebreak.
+        self.wait_for_simulator(lambda: self.core_sim.is_halted())
 
         # Verify that PC is what we expect
         # We take into account that ebreak instruction has completed and that the PC is now at the next instruction
@@ -417,11 +435,8 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.set_reset(False)
         self.assertFalse(self.core_sim.is_in_reset())
 
-        # Since simulator is slow, we need to wait a bit by reading something
-        if self.device.is_quasar():
-            for _ in range(50):
-                if self.core_sim.read_data(addr) == 0x87654000:
-                    break
+        # Simulators only advance when the host reads, so poll until the store has executed.
+        self.wait_for_simulator(lambda: self.core_sim.read_data(noc_addr) == 0x87654000)
 
         # Verify value at address
         self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
@@ -530,6 +545,9 @@ class TestDebugging(unittest.TestCase):
         # Continue
         self.core_sim.continue_execution()
 
+        # Simulators only advance when the host reads, so poll until the store has executed.
+        self.wait_for_simulator(lambda: self.core_sim.read_data(noc_addr) == 0x87654000)
+
         # Verify value at address
         self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
 
@@ -537,6 +555,11 @@ class TestDebugging(unittest.TestCase):
         """Running code that should lock up the core and then trying to halt it."""
         if not self.device.is_wormhole():
             self.skipTest("Issue is hit only on wormhole.")
+
+        if self.device.is_simulation:
+            self.skipTest(
+                "Core lockup is a Wormhole hardware behavior that the functional simulator does not reproduce."
+            )
 
         # Write code for brisc core at address 0
         # C++:
@@ -606,12 +629,18 @@ class TestDebugging(unittest.TestCase):
         # Continue
         self.core_sim.continue_execution()
 
+        # Simulators only advance when the host reads, so poll until the store has executed.
+        self.wait_for_simulator(lambda: self.core_sim.read_data(noc_addr) >= 0x87654000)
+
         # Verify that value changed cause of continue
         previous_value = self.core_sim.read_data(noc_addr)
         self.assertGreaterEqual(previous_value, 0x87654000)
 
         # Loop halt and continue
         for _ in range(10):
+            # On a simulator, poll until the loop has incremented the value (it only runs while we read).
+            self.wait_for_simulator(lambda: self.core_sim.read_data(noc_addr) > previous_value)
+
             # Halt
             self.core_sim.halt()
 
@@ -658,6 +687,9 @@ class TestDebugging(unittest.TestCase):
 
         # Continue
         self.core_sim.continue_execution()
+
+        # Simulators only advance when the host reads, so poll until the store has executed.
+        self.wait_for_simulator(lambda: self.core_sim.read_data(noc_addr) == 0x87654000)
 
         # Verify value at address
         self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
@@ -826,10 +858,8 @@ class TestDebugging(unittest.TestCase):
         # Take risc out of reset
         self.core_sim.set_reset(False)
 
-        # Since simulator is slow, we need to wait a bit by reading something
-        if self.device.is_quasar():
-            for _ in range(50):
-                self.core_sim.read_data(0)
+        # Simulators only advance when the host reads, so poll until the core has run into the ebreak.
+        self.wait_for_simulator(lambda: self.core_sim.is_halted())
 
         # Value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
@@ -852,11 +882,8 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.continue_execution()
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
 
-        # Since simulator is slow, we need to wait a bit by reading something
-        if self.device.is_quasar():
-            for _ in range(200):
-                if self.core_sim.read_data(noc_addr) == 0x87654000:
-                    break
+        # Simulators only advance when the host reads, so poll until the store has executed.
+        self.wait_for_simulator(lambda: self.core_sim.read_data(noc_addr) == 0x87654000)
 
         # Halt to verify PC
         self.core_sim.halt()
@@ -933,6 +960,8 @@ class TestDebugging(unittest.TestCase):
 
         # Continue and verify that we hit first watchpoint
         self.core_sim.continue_execution()
+        # On a simulator, poll until the core has run to the watchpoint and halted.
+        self.wait_for_simulator(lambda: self.core_sim.is_halted())
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
         self.assertTrue(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should be the cause.")
@@ -947,6 +976,8 @@ class TestDebugging(unittest.TestCase):
 
         # Continue and verify that we hit first watchpoint
         self.core_sim.continue_execution()
+        # On a simulator, poll until the core has run to the watchpoint and halted.
+        self.wait_for_simulator(lambda: self.core_sim.is_halted())
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
         self.assertTrue(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should be the cause.")
@@ -1210,6 +1241,8 @@ class TestDebugging(unittest.TestCase):
             # Verify that we hit the correct watchpoints
             for i in range(watchpoints_per_iteration):
                 self.core_sim.continue_execution()
+                # On a simulator, poll until the core has run to the watchpoint and halted.
+                self.wait_for_simulator(lambda: self.core_sim.is_halted())
                 self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
                 self.assertFalse(
                     self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause."
@@ -1241,6 +1274,9 @@ class TestDebugging(unittest.TestCase):
 
         if self.device.is_quasar():
             self.skipTest("BNE instruction with debug hardware enabled is fixed in quasar.")
+
+        if self.device.is_simulation:
+            self.skipTest("This verifies a Wormhole hardware bug that the functional simulator does not reproduce.")
 
         # Enable branch prediction
         self.core_sim.set_branch_prediction(True)
@@ -1342,10 +1378,8 @@ class TestDebugging(unittest.TestCase):
         # Continue to proceed with bne test
         self.core_sim.debug_hardware.continue_without_debug()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
-        # Since simulator is slow, we need to wait a bit by reading something
-        if self.device.is_quasar():
-            for _ in range(20):
-                self.core_sim.read_data(0)
+        # Simulators only advance when the host reads, so poll until the core has run into the ebreak.
+        self.wait_for_simulator(lambda: self.core_sim.is_halted())
 
         # We should pass for loop very fast and should be halted here already
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
@@ -1353,6 +1387,8 @@ class TestDebugging(unittest.TestCase):
 
         # Verify value at address
         self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
+        # Simulators only advance when the host reads, so poll until the store has executed.
+        self.wait_for_simulator(lambda: self.core_sim.read_data(addr) == 0x87654000)
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
 
@@ -1414,10 +1450,8 @@ class TestDebugging(unittest.TestCase):
         # Continue to proceed with bne test
         self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
 
-        # Since simulator is slow, we need to wait a bit by reading something
-        if self.device.is_quasar():
-            for _ in range(20):
-                self.core_sim.read_data(0)
+        # Simulators only advance when the host reads, so poll until the core has run into the ebreak.
+        self.wait_for_simulator(lambda: self.core_sim.is_halted())
 
         # We should pass for loop very fast and should be halted here already
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
@@ -1425,6 +1459,8 @@ class TestDebugging(unittest.TestCase):
 
         # Verify value at address
         self.core_sim.debug_hardware.cont()  # We need to use debug hardware as there is a bug fix in risc debug implementation for wormhole
+        # Simulators only advance when the host reads, so poll until the store has executed.
+        self.wait_for_simulator(lambda: self.core_sim.read_data(addr) == 0x87654000)
         self.assertEqual(self.core_sim.read_data(addr), 0x87654000)
         self.assertFalse(self.core_sim.is_halted(), "Core should not be halted.")
 

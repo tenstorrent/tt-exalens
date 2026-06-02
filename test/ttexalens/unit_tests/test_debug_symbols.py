@@ -89,6 +89,10 @@ class TestDebugSymbols(unittest.TestCase):
             risc_debug.risc_location.neo_id,
         )
         cls.core_sim.load_elf("globals_test.release")
+        # On a simulator the core only advances while the host reads it, so run it to the ebreak in main: the
+        # CRT (tmu-crt0.S) copies global initializers into private memory and update_struct() sets the
+        # expected values before halting. On silicon this has already happened by the time load_elf returns.
+        cls.core_sim.wait_for_simulator(lambda: cls.core_sim.is_halted())
         cls.parsed_elf = cls.core_sim.parse_elf("globals_test.release")
 
         # Create the memory access wrapper

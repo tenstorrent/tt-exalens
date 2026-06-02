@@ -117,6 +117,16 @@ class Device:
     def is_quasar(self) -> bool:
         return False
 
+    @property
+    def is_simulation(self) -> bool:
+        """True when running against a simulator (e.g. ttsim or RTL simulation) rather than silicon.
+
+        Simulators advance time only when clocked by the host on each access, so they are far slower than
+        silicon; tests that rely on a core free-running must poll (repeatedly read) until the expected
+        result appears instead of reading once.
+        """
+        return self._umd_device.is_simulation
+
     # Class method to create a Device object given device architecture
     @staticmethod
     def create(device_id: int, context: Context):

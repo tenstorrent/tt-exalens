@@ -12,6 +12,7 @@ from ttexalens import Context, OnChipCoordinate, Device, TTException
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.coverage import dump_coverage
+from ttexalens.memory_access import MemoryAccess
 
 ELFS = ["run_elf_test.coverage", "cov_test.coverage"]  # We only run ELFs that don't halt.
 
@@ -103,6 +104,10 @@ class TestCoverage(unittest.TestCase):
     def test_coverage_not_finished(self):
         elf_path = self.get_elf_name("callstack.coverage")
         elf = get_parsed_elf_file(elf_path)
+        # On a simulator the coverage region keeps a prior run's data; zero bytes_written so dump_coverage sees
+        # this run's (unfinished) coverage rather than latching onto a stale finished value from an earlier ELF.
+        if self.device.is_simulation:
+            self.location.noc_write32(elf.symbols["__coverage_start"].value, 0)
         self.loader.run_elf(elf)
         with self.assertRaises(TTException) as cm:
             dump_coverage(elf, self.location, "/tmp/callstack.release.gcda", "/tmp/callstack.release.gcno")
@@ -115,11 +120,37 @@ class TestCoverage(unittest.TestCase):
             # Run the ELF and save its coverage data.
             elf_path = self.get_elf_name(elf)
             elf = get_parsed_elf_file(elf_path)
+
+            # The coverage region is not a loaded ELF section, so on a simulator it still holds the previous
+            # run's data; zero bytes_written before starting the core so the poll below waits for this run's
+            # fresh coverage instead of latching onto a stale "finished" value left by an earlier ELF. Use the
+            # static __coverage_start symbol: the coverage_header pointer lives in LDM and is only valid once
+            # the CRT has run, whereas bytes_written is the first word of the region at __coverage_start.
+            if self.device.is_simulation:
+                l1 = MemoryAccess.create_l1(self.location)
+                self.location.noc_write32(elf.symbols["__coverage_start"].value, 0)
+
             self.loader.run_elf(elf)
 
             basename, _ = os.path.splitext(os.path.basename(elf_path))
             gcda = os.path.join(temp_root, f"{basename}.gcda")
             gcno = os.path.join(temp_root, f"{basename}.gcno")
+
+            # On a simulator the core only advances while the host reads it, so run it until the kernel has
+            # finished writing coverage: main returns and the CRT's gcov_dump fills the coverage header. These
+            # ELFs loop after main (no ebreak), so poll the header's bytes_written instead of waiting for halt.
+            # gcov_dump grows bytes_written as it writes the header, then the filename and data; wait until it
+            # has grown past the header and stabilized (the program loops after gcov_dump).
+            if self.device.is_simulation:
+                header_size = elf.get_global("coverage_header", l1).dereference().get_size()
+                prev = -1
+                for _ in range(1000):
+                    cur = elf.get_global("coverage_header", l1).dereference().bytes_written.read_value()
+                    if cur > header_size and cur == prev:
+                        break
+                    prev = cur
+                    for _ in range(100):
+                        self.location.noc_read32(0)
 
             dump_coverage(elf, self.location, gcda, gcno)
 

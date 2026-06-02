@@ -106,6 +106,8 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
         program_writer.write_program()
 
         self.core_sim.set_reset(False)
+        # On a simulator the core advances only while the host reads it; poll until the store lands.
+        self.core_sim.wait_for_simulator(lambda: self.core_sim.read_data(address) != pattern)
         read_data = self.core_sim.read_data(address)
         self.assertEqual(
             read_data, value, f"Data mismatch at address {address:x}: expected 0x{value:x}, got 0x{read_data:x}"
@@ -131,6 +133,8 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
         ]
     )
     def test_word_unaligned_writes(self, offset: int, value: int):
+        if self.device.is_simulation:
+            self.skipTest("Unaligned RISC stores are hardware-specific and not modeled on the simulator")
         base_address = 0x20000
         address = base_address + offset
         pattern = 0xDEADBEEF
@@ -191,6 +195,9 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
             address = base_address + offset
             aligned_address = address & ~0x3
 
+            # Reset the core before rewriting its program, so it cannot execute stale code/registers while
+            # the host overwrites the code (on a simulator every host access also clocks the core).
+            self.core_sim.set_reset(True)
             self.core_sim.write_data_checked(aligned_address, pattern)
 
             program_writer = RiscvProgramWriter(self.core_sim)
@@ -198,8 +205,9 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
             program_writer.append_while_true()
             program_writer.write_program()
 
-            self.core_sim.set_reset(True)
             self.core_sim.set_reset(False)
+            # On a simulator the core advances only while the host reads it; poll until the store lands.
+            self.core_sim.wait_for_simulator(lambda: self.core_sim.read_data(aligned_address) != pattern)
             read_data = self.core_sim.read_data(aligned_address)
             expected_value = (pattern & ~(0xFFFF << ((address & 0x3) * 8))) | (value << ((address & 0x3) * 8))
             self.assertEqual(
@@ -209,6 +217,8 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
             )
 
     def test_half_word_unaligned_writes(self):
+        if self.device.is_simulation:
+            self.skipTest("Unaligned RISC stores are hardware-specific and not modeled on the simulator")
         base_address = 0x20000
         value = 0xCC69
         pattern = 0xDEADBEEF
@@ -263,6 +273,9 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
             address = base_address + offset
             aligned_address = address & ~0x3
 
+            # Reset the core before rewriting its program, so it cannot execute stale code/registers while
+            # the host overwrites the code (on a simulator every host access also clocks the core).
+            self.core_sim.set_reset(True)
             self.core_sim.write_data_checked(aligned_address, pattern)
 
             program_writer = RiscvProgramWriter(self.core_sim)
@@ -270,8 +283,9 @@ class TestL1MemoryAccessFromRiscs(unittest.TestCase):
             program_writer.append_while_true()
             program_writer.write_program()
 
-            self.core_sim.set_reset(True)
             self.core_sim.set_reset(False)
+            # On a simulator the core advances only while the host reads it; poll until the store lands.
+            self.core_sim.wait_for_simulator(lambda: self.core_sim.read_data(aligned_address) != pattern)
             read_data = self.core_sim.read_data(aligned_address)
 
             expected_value = (pattern & ~(0xFF << ((address & 0x3) * 8))) | (value << ((address & 0x3) * 8))

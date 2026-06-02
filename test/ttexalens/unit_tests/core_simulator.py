@@ -133,6 +133,22 @@ class RiscvCoreSimulator:
         """Check if core is halted."""
         return self.risc_debug.is_halted()
 
+    def wait_for_simulator(self, predicate, max_polls: int = 5000) -> bool:
+        """Wait for a free-running core to reach an expected state on a simulator.
+
+        Simulators (ttsim, RTL, Quasar) only advance their clock when the host accesses the device, so a
+        core that should be running after continue()/deassert (e.g. executing the CRT and main) does not
+        make progress on its own. Each device read issued while evaluating ``predicate`` advances the
+        simulator clock, so we poll until the predicate holds. This is a no-op on silicon, where the result
+        is already present. Returns the final predicate value.
+        """
+        if not self.device.is_simulation:
+            return predicate()
+        for _ in range(max_polls):
+            if predicate():
+                return True
+        return predicate()
+
     def is_ebreak_hit(self) -> bool:
         """Check if ebreak instruction was hit."""
         return self.read_status().is_ebreak_hit
