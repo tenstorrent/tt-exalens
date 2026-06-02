@@ -2,6 +2,8 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+
 # Re-export the C++ types from the `_native_ttexalens` extension module.
 from ttexalens._native_ttexalens import (
     DwarfAttribute,
@@ -30,14 +32,16 @@ def read_elf(
     """Read an ELF binary through `file_ifc` and return an `ElfFile` view
     anchored at `load_address` (when given) so subsequent live-PC lookups
     map back to the static ELF address space."""
-    # The file_ifc indirection is what redirects to the tmp folder for
-    # remote runs.
-    with file_ifc.get_binary(elf_file_path) as f:
-        data = f.read()
-        elf = ElfFile.from_bytes(data, elf_file_path, load_address)
-        if require_debug_symbols and not elf.has_dwarf_info():
-            raise ValueError(f"{elf_file_path} does not have DWARF info. Source file must be compiled with -g")
-        return elf
+    if file_ifc.is_local():
+        if not os.path.isfile(elf_file_path):
+            raise FileNotFoundError(elf_file_path)
+        elf = ElfFile(elf_file_path, load_address)
+    else:
+        with file_ifc.get_binary(elf_file_path) as f:
+            elf = ElfFile.from_bytes(f.read(), elf_file_path, load_address)
+    if require_debug_symbols and not elf.has_dwarf_info():
+        raise ValueError(f"{elf_file_path} does not have DWARF info. Source file must be compiled with -g")
+    return elf
 
 
 __all__ = [

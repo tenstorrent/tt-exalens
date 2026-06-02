@@ -43,9 +43,14 @@ ElfFile& ElfFile::operator=(const ElfFile&) = default;
 ElfFile::ElfFile(std::shared_ptr<details::ElfFileImpl> impl, std::string elf_file_path, int64_t loaded_offset)
     : impl(std::move(impl)), elf_file_path(std::move(elf_file_path)), loaded_offset(loaded_offset) {}
 
-ElfFile::ElfFile(const std::string& path) : ElfFile(std::make_shared<details::PathImpl>(path), path) {}
-ElfFile::ElfFile(const std::filesystem::path& path)
-    : ElfFile(std::make_shared<details::PathImpl>(path), path.string()) {}
+ElfFile::ElfFile(const std::string& path, std::optional<uint64_t> load_address)
+    : ElfFile(std::filesystem::path(path), load_address) {}
+ElfFile::ElfFile(const std::filesystem::path& path, std::optional<uint64_t> load_address)
+    : ElfFile(std::make_shared<details::PathImpl>(path), path.string(), 0) {
+    if (load_address.has_value()) {
+        loaded_offset = static_cast<int64_t>(get_code_load_address()) - static_cast<int64_t>(*load_address);
+    }
+}
 
 ElfFile ElfFile::from_bytes(std::span<const std::byte> data, std::string elf_file_path,
                             std::optional<uint64_t> load_address) {

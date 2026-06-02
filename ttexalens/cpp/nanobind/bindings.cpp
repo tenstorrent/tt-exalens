@@ -856,7 +856,8 @@ NB_MODULE(_native_ttexalens, m) {
         .def_ro("bind", &ElfSymbol::bind);
 
     nb::class_<ElfFile>(m, "ElfFile")
-        .def(nb::init<const std::string&>(), nb::arg("path"))
+        .def(nb::init<const std::string&, std::optional<uint64_t>>(), nb::arg("path"),
+             nb::arg("load_address").none() = nb::none())
         .def_static(
             "from_bytes",
             [](nb::handle data, std::string elf_file_path, std::optional<uint64_t> load_address) {

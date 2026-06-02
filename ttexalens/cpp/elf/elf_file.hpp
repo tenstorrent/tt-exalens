@@ -81,13 +81,9 @@ struct ElfSymbol {
 
 class ElfFile {
    public:
-    explicit ElfFile(const std::string& path);
-    explicit ElfFile(const std::filesystem::path& path);
+    explicit ElfFile(const std::string& path, std::optional<uint64_t> load_address = std::nullopt);
+    explicit ElfFile(const std::filesystem::path& path, std::optional<uint64_t> load_address = std::nullopt);
 
-    // Constructs from an in-memory ELF buffer.
-    // `elf_file_path` is recorded for diagnostics / re-loading
-    // `load_address` (when given) sets the loaded_offset = code_load_address - load_address so subsequent PC
-    // lookups can map live addresses to ELF addresses.
     static ElfFile from_bytes(std::span<const std::byte> data, std::string elf_file_path = "",
                               std::optional<uint64_t> load_address = std::nullopt);
 

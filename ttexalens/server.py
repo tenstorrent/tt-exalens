@@ -21,6 +21,9 @@ if TYPE_CHECKING:
 
 @Pyro5.api.expose
 class FileAccessApi:
+    def is_local(self) -> bool:
+        return True
+
     def get_file(self, file_path: str) -> str:
         with open(file_path, "r") as f:
             return f.read()
@@ -252,6 +255,9 @@ class FileAccessApiWrapper:
     def __getattr__(self, name):
         function = getattr(self.proxy, name)
         return lambda *args, **kwargs: function(*args, **kwargs)
+
+    def is_local(self) -> bool:
+        return False
 
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         """
