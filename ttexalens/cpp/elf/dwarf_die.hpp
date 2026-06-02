@@ -170,6 +170,11 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     explicit operator bool() const { return static_cast<bool>(die); }
     Dwarf_Debug get_state() const { return die.get_state(); }
 
+    // Returns the compile unit that owns this DIE, or nullptr if the
+    // owning NativeDwarfInfo has been destroyed. The pointer is valid only
+    // while the owning ElfFile is alive — do not store it.
+    const NativeDwarfCompileUnit* get_cu() const;
+
     // Lazily reads DW_AT_name off this DIE. First call invokes dwarf_diename
     // and caches the result; later calls return the cached view. Returns an
     // empty view when the DIE has no name attribute.
@@ -313,7 +318,7 @@ class NativeDwarfDie : public std::enable_shared_from_this<NativeDwarfDie> {
     // member with a resolvable location. Returns std::nullopt if the DIE
     // has no location, the location is unsupported or can't be evaluated,
     // or the resolved type is unusably incomplete.
-    std::optional<NativeElfVariable> read_value(const NativeFrameInspection* frame) const;
+    std::optional<NativeElfVariable> read_value(const NativeFrameInspection& frame) const;
 
     // Walk this DIE's children:
     //   for (auto child = die->get_first_child(); child;

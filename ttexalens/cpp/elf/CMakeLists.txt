@@ -12,6 +12,7 @@ add_library(ttexalens_elf STATIC
     dwarf_die.cpp
     dwarf_cu.cpp
     dwarf_frame.cpp
+    dwarf_location.cpp
     variable.cpp
 )
 target_compile_features(ttexalens_elf PUBLIC cxx_std_20)

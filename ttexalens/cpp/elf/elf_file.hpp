@@ -7,12 +7,14 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "dwarf_info.hpp"
+#include "memory_access.hpp"
 
 // Forward declarations.
 namespace ELFIO {
@@ -82,15 +84,20 @@ class NativeElfFile {
     explicit NativeElfFile(const std::string& path);
     explicit NativeElfFile(const std::filesystem::path& path);
 
-    static NativeElfFile from_bytes(std::span<const std::byte> data);
+    // Constructs from an in-memory ELF buffer.
+    // `elf_file_path` is recorded for diagnostics / re-loading
+    // `load_address` (when given) sets the loaded_offset = code_load_address - load_address so subsequent PC
+    // lookups can map live addresses to ELF addresses.
+    static NativeElfFile from_bytes(std::span<const std::byte> data, std::string elf_file_path = "",
+                                    std::optional<uint64_t> load_address = std::nullopt);
 
     // Defined out-of-line in elf_file.cpp because Impl needs to be complete
     // at the point of destruction.
     ~NativeElfFile();
     NativeElfFile(NativeElfFile&&) noexcept;
     NativeElfFile& operator=(NativeElfFile&&) noexcept;
-    NativeElfFile(const NativeElfFile&) = delete;
-    NativeElfFile& operator=(const NativeElfFile&) = delete;
+    NativeElfFile(const NativeElfFile&);
+    NativeElfFile& operator=(const NativeElfFile&);
 
     // Sections are enumerated by index (0 .. get_sections_count()-1). The
     // pointer-returning accessors hand out a non-owning pointer into the
@@ -111,12 +118,42 @@ class NativeElfFile {
     // libdwarf init failures). Pointer is owned by NativeElfFile.
     const NativeDwarfInfo* get_dwarf_info() const;
 
+    const std::string& get_elf_file_path() const { return elf_file_path; }
+    int64_t get_loaded_offset() const { return loaded_offset; }
+
+    // Static base address of the code section (.text, falling back to
+    // .firmware_text). Throws std::runtime_error if neither exists.
+    uint64_t get_code_load_address() const;
+
+    // Returns a copy of this NativeElfFile (sharing Impl) re-anchored so
+    // that the supplied live load_address maps back to get_code_load_address
+    // — i.e. with loaded_offset = get_code_load_address() - load_address.
+    NativeElfFile with_load_address(uint64_t load_address) const;
+
+    // Translates a live PC by loaded_offset and asks the DWARF FDE table
+    // for the matching frame description. Returns nullopt when no DWARF
+    // info is present or no FDE covers the PC.
+    std::optional<NativeFrameDescription> get_frame_description(uint64_t pc,
+                                                                std::shared_ptr<MemoryAccess> memory_access) const;
+
+    // Convenience pass-throughs to the underlying NativeDwarfInfo so call
+    // sites don't need to reach for `.dwarf_info` for every lookup.
+    const NativeElfSymbol* find_symbol_by_name(std::string_view name) const;
+    NativeDwarfDiePtr find_die_by_name(std::string_view name) const;
+    std::optional<uint64_t> get_enum_value(std::string_view name) const;
+    NativeDwarfDie::ConstantValue get_constant(std::string_view name) const;
+    NativeElfVariable get_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const;
+    NativeElfVariable read_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const;
+
    private:
-    explicit NativeElfFile(std::shared_ptr<details::NativeElfFileImpl> impl);
+    explicit NativeElfFile(std::shared_ptr<details::NativeElfFileImpl> impl, std::string elf_file_path = "",
+                           int64_t loaded_offset = 0);
 
     friend class NativeDwarfDie;
 
     std::shared_ptr<details::NativeElfFileImpl> impl;
+    std::string elf_file_path;
+    int64_t loaded_offset = 0;
 };
 
 }  // namespace ttexalens::native_elf

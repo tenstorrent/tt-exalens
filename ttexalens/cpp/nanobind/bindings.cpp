@@ -74,6 +74,27 @@ class DieChildIterator {
     ttexalens::native_elf::NativeDwarfDiePtr current;
 };
 
+// Forward index-based iterator over an ElfFile's sections. Paired with
+// nb::make_iterator so NativeElfFile.iter_sections() exposes its element
+// type to Python as Iterator[NativeElfSection].
+class ElfSectionIterator {
+   public:
+    ElfSectionIterator() = default;
+    ElfSectionIterator(const ttexalens::native_elf::NativeElfFile* elf, size_t index) : elf(elf), index(index) {}
+
+    const ttexalens::native_elf::NativeElfSection* operator*() const { return elf->get_section(index); }
+    ElfSectionIterator& operator++() {
+        ++index;
+        return *this;
+    }
+    bool operator==(const ElfSectionIterator& other) const { return elf == other.elf && index == other.index; }
+    bool operator!=(const ElfSectionIterator& other) const { return !(*this == other); }
+
+   private:
+    const ttexalens::native_elf::NativeElfFile* elf = nullptr;
+    size_t index = 0;
+};
+
 // Trampoline so Python can subclass MemoryAccess and provide implementations.
 class MemoryAccessTrampoline : public MemoryAccess {
    public:
@@ -838,7 +859,7 @@ NB_MODULE(_native_ttexalens, m) {
         .def(nb::init<const std::string&>(), nb::arg("path"))
         .def_static(
             "from_bytes",
-            [](nb::handle data) {
+            [](nb::handle data, std::string elf_file_path, std::optional<uint64_t> load_address) {
                 // Accept any buffer-protocol object — bytes, bytearray,
                 // memoryview, NativeElfSection.data, etc. BytesImpl copies
                 // into its own vector at construction, so the borrowed
@@ -852,9 +873,12 @@ NB_MODULE(_native_ttexalens, m) {
                     ~BufferGuard() { PyBuffer_Release(b); }
                 } guard{&buf};
                 return NativeElfFile::from_bytes(
-                    std::span<const std::byte>(static_cast<const std::byte*>(buf.buf), static_cast<size_t>(buf.len)));
+                    std::span<const std::byte>(static_cast<const std::byte*>(buf.buf), static_cast<size_t>(buf.len)),
+                    std::move(elf_file_path), load_address);
             },
-            nb::arg("data"), nb::sig("def from_bytes(data: bytes | bytearray | memoryview) -> NativeElfFile"))
+            nb::arg("data"), nb::arg("elf_file_path") = std::string{}, nb::arg("load_address").none() = nb::none(),
+            nb::sig("def from_bytes(data: bytes | bytearray | memoryview, elf_file_path: str = '', "
+                    "load_address: int | None = None) -> NativeElfFile"))
         .def("get_sections_count", &NativeElfFile::get_sections_count)
         .def("get_section", &NativeElfFile::get_section, nb::arg("index"), nb::rv_policy::reference_internal,
              nb::sig("def get_section(self, index: int) -> NativeElfSection | None"))
@@ -865,7 +889,33 @@ NB_MODULE(_native_ttexalens, m) {
              nb::call_guard<nb::gil_scoped_release>())
         .def("has_dwarf_info", &NativeElfFile::has_dwarf_info, nb::arg("strict") = false)
         .def_prop_ro("dwarf_info", &NativeElfFile::get_dwarf_info, nb::rv_policy::reference_internal,
-                     nb::call_guard<nb::gil_scoped_release>());
+                     nb::call_guard<nb::gil_scoped_release>())
+        .def_prop_ro("elf_file_path", &NativeElfFile::get_elf_file_path)
+        .def_prop_ro("loaded_offset", &NativeElfFile::get_loaded_offset)
+        .def_prop_ro("code_load_address", &NativeElfFile::get_code_load_address)
+        .def("with_load_address", &NativeElfFile::with_load_address, nb::arg("load_address"))
+        // Iterates over the file's sections in index order. For direct
+        // lookups, prefer get_section_by_name(name).
+        .def(
+            "iter_sections",
+            [](NativeElfFile& self) {
+                return nb::make_iterator<nb::rv_policy::reference_internal>(
+                    nb::type<NativeElfSection>(), "ElfSectionIterator", ElfSectionIterator(&self, 0),
+                    ElfSectionIterator(&self, self.get_sections_count()));
+            },
+            nb::rv_policy::reference_internal)
+        .def("get_frame_description", &NativeElfFile::get_frame_description, nb::arg("pc"), nb::arg("memory_access"),
+             nb::call_guard<nb::gil_scoped_release>())
+        .def("find_symbol_by_name", &NativeElfFile::find_symbol_by_name, nb::arg("name"),
+             nb::rv_policy::reference_internal,
+             nb::sig("def find_symbol_by_name(self, name: str) -> NativeElfSymbol | None"))
+        .def("find_die_by_name", &NativeElfFile::find_die_by_name, nb::arg("name"))
+        .def("get_enum_value", &NativeElfFile::get_enum_value, nb::arg("name"))
+        .def("get_constant", &NativeElfFile::get_constant, nb::arg("name"))
+        .def("get_global", &NativeElfFile::get_global, nb::arg("name"), nb::arg("memory_access"),
+             nb::keep_alive<0, 1>())
+        .def("read_global", &NativeElfFile::read_global, nb::arg("name"), nb::arg("memory_access"),
+             nb::keep_alive<0, 1>());
 
     nb::class_<NativeDwarfFileLine>(m, "NativeDwarfFileLine")
         .def(nb::init<std::string, uint32_t, uint32_t>(), nb::arg("file"), nb::arg("line"), nb::arg("column") = 0)
@@ -1011,14 +1061,21 @@ NB_MODULE(_native_ttexalens, m) {
              nb::arg("current_cfa").none() = nb::none());
 
     // Per-frame context for NativeDwarfDie::read_value. Construct with the
-    // active MemoryAccess plus an optional NativeFrameDescription: pass
-    // None for the top frame (read_register hits live GPRs through
-    // MemoryAccess) and a description for inner frames (read_register
-    // delegates to try_read_register against the FDE save rules).
+    // active MemoryAccess, the inspected frame's FDE/CFA/PC, and the chain
+    // of frames between the inspected one and live state (immediate child
+    // first, live last). Pass None / [] for the top frame.
+    //
+    //   * top frame  — frame_description=None, inner_frames=[]; read_register
+    //                  hits live GPRs through MemoryAccess.
+    //   * non-top    — frame_description is the inspected frame's FDE; on a
+    //                  SameValue rule, read_register walks inner_frames in
+    //                  order to find the value saved by the nearest callee.
     nb::class_<NativeFrameInspection>(m, "NativeFrameInspection")
         .def(nb::init<std::shared_ptr<MemoryAccess>, std::optional<NativeFrameDescription>, std::optional<uint64_t>,
-                      uint64_t>(),
-             nb::arg("memory_access"), nb::arg("frame_description").none(), nb::arg("cfa").none(), nb::arg("pc"))
+                      uint64_t, std::vector<NativeFrameInspection::InnerFrame>>(),
+             nb::arg("memory_access"), nb::arg("frame_description").none() = nb::none(),
+             nb::arg("cfa").none() = nb::none(), nb::arg("pc") = 0,
+             nb::arg("inner_frames") = std::vector<NativeFrameInspection::InnerFrame>{})
         .def("read_register", &NativeFrameInspection::read_register, nb::arg("register_index"))
         .def("read_memory", &NativeFrameInspection::read_memory, nb::arg("address"), nb::arg("register_size"))
         .def_prop_ro("cfa", &NativeFrameInspection::get_cfa)

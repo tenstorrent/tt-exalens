@@ -10,8 +10,10 @@
 #include <utility>
 
 #include "dwarf_cu.hpp"
+#include "dwarf_location.hpp"
 #include "elf_file.hpp"
 #include "private/dwarf_info_impl.hpp"
+#include "variable.hpp"
 
 namespace ttexalens::native_elf {
 
@@ -514,6 +516,14 @@ NativeDwarfDie::ConstantValue NativeDwarfDie::get_constant_value() const {
     return passthrough_constant(attr->get_value());
 }
 
+const NativeDwarfCompileUnit* NativeDwarfDie::get_cu() const {
+    auto info_ptr = info.lock();
+    if (!info_ptr) {
+        return nullptr;
+    }
+    return info_ptr->get_die_cu(get_offset());
+}
+
 NativeDwarfDiePtr NativeDwarfDie::get_resolved_type() const {
     auto current = std::const_pointer_cast<NativeDwarfDie>(shared_from_this());
     while (current) {
@@ -986,13 +996,20 @@ std::optional<NativeDwarfFileLine> NativeDwarfDie::get_call_file_info() const {
                              NativeDwarfAttributeTag::call_column);
 }
 
-std::optional<NativeElfVariable> NativeDwarfDie::read_value(const NativeFrameInspection* /*frame*/) const {
+std::optional<NativeElfVariable> NativeDwarfDie::read_value(const NativeFrameInspection& frame) const {
+    // Reading value only makes sense for variables and parameters.
+    const auto tag = get_tag();
+    if (tag != NativeDwarfDieTag::formal_parameter && tag != NativeDwarfDieTag::variable &&
+        tag != NativeDwarfDieTag::template_value_parameter) {
+        return std::nullopt;
+    }
+
     auto resolved = get_resolved_type();
     if (!resolved || resolved.get() == this) {
         return std::nullopt;
     }
 
-    // Check if it is compile-time constant.
+    // Compile-time constant (DW_AT_const_value).
     auto const_value = get_constant_value();
     if (!std::holds_alternative<std::monostate>(const_value)) {
         const uint64_t size = resolved->get_size().value_or(4);
@@ -1016,8 +1033,37 @@ std::optional<NativeElfVariable> NativeDwarfDie::read_value(const NativeFrameIns
         return NativeElfVariable(resolved, 0, std::move(cache));
     }
 
-    // TODO: Implement runtime value reading.
-    return std::nullopt;
+    // Static-storage variable (globals, file/function statics):
+    // address is fixed at link time. memory_access alone is enough.
+    if (auto addr = get_address(); addr.has_value()) {
+        return NativeElfVariable(resolved, *addr, frame.get_memory_access());
+    }
+
+    // Runtime location expression — needs the live callstack context
+    // (registers, CFA, inner-frame chain) carried by `frame`.
+    auto location = evaluate_die_location(*this, &frame);
+    if (!location.has_value() || !location->value.has_value()) {
+        return std::nullopt;
+    }
+    if (location->is_address) {
+        return NativeElfVariable(resolved, *location->value, frame.get_memory_access());
+    }
+    // Literal value (DW_OP_stack_value / register-direct / composite via
+    // DW_OP_piece): synthesise a backing buffer holding the materialised
+    // bytes and hand back a NativeElfVariable that reads from it.
+    const uint64_t size = resolved->get_size().value_or(4);
+    std::vector<std::byte> bytes(size);
+    if (!location->raw_bytes.empty()) {
+        // Composite location already assembled the bytes in little-endian
+        // order — copy as much as fits the variable's type.
+        std::memcpy(bytes.data(), location->raw_bytes.data(),
+                    std::min(size, static_cast<uint64_t>(location->raw_bytes.size())));
+    } else {
+        uint64_t raw = *location->value;
+        std::memcpy(bytes.data(), &raw, std::min(size, static_cast<uint64_t>(sizeof(raw))));
+    }
+    auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(bytes), NoMemoryAccess::instance());
+    return NativeElfVariable(resolved, 0, std::move(cache));
 }
 
 }  // namespace ttexalens::native_elf

@@ -4,7 +4,7 @@
 
 from ttexalens import util
 from ttexalens.exceptions import TTException
-from ttexalens.elf.parsed import ParsedElfFile
+from ttexalens.elf import ElfFile
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.memory_access import create_l1_memory_access, create_memory_access
@@ -152,7 +152,7 @@ class ElfLoader:
         return address
 
     def load_elf_sections(
-        self, elf: ParsedElfFile, loader_data: str | int, loader_code: str | int, verify_write: bool = True
+        self, elf: ElfFile, loader_data: str | int, loader_code: str | int, verify_write: bool = True
     ):
         """
         Given an ELF file, this function loads the sections specified in SECTIONS_TO_LOAD to the
@@ -169,14 +169,14 @@ class ElfLoader:
             loader_code_address = loader_code if isinstance(loader_code, int) else None
 
             # Try to find address mapping for loader_data and loader_code
-            for section in elf.sections.values():
+            for section in elf.iter_sections():
                 if section.name == loader_data:
                     loader_data_address = section.address
                 elif section.name == loader_code:
                     loader_code_address = section.address
 
             # Load section into memory
-            for section in elf.sections.values():
+            for section in elf.iter_sections():
                 if section.name in self.SECTIONS_TO_LOAD and section.data:
                     if section.address % 4 != 0:
                         raise ValueError(
@@ -209,9 +209,7 @@ class ElfLoader:
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
 
-    def load_elf(
-        self, elf_file: ParsedElfFile, verify_write: bool = True, return_start_address: bool = False
-    ) -> int | None:
+    def load_elf(self, elf_file: ElfFile, verify_write: bool = True, return_start_address: bool = False) -> int | None:
         # Risc must be in reset
         assert self.risc_debug.is_in_reset(), f"RISC at location {self.risc_debug.risc_location} is not in reset."
 
@@ -227,7 +225,7 @@ class ElfLoader:
             self.risc_debug.set_code_start_address(init_section_address)
             return None
 
-    def run_elf(self, elf_file: ParsedElfFile, verify_write: bool = True):
+    def run_elf(self, elf_file: ElfFile, verify_write: bool = True):
         # Make sure risc is in reset
         if not self.risc_debug.is_in_reset():
             self.risc_debug.set_reset_signal(True)

@@ -185,6 +185,16 @@ NativeDwarfInfoImpl::NativeDwarfInfoImpl(std::weak_ptr<NativeElfFileImpl> elf_im
         }
         throw std::runtime_error(msg);
     }
+
+    // libdwarf defaults the initial rule for any register the CIE/FDE
+    // doesn't mention to DW_FRAME_SAME_VAL — that's the historical Itanium
+    // convention. The DWARF v3+ spec says "undefined" instead, and
+    // (critically for us) GCC's RISC-V CIE doesn't explicitly mark
+    // caller-saved registers as undefined. Without this override our
+    // chain-walking register reader treats every volatile register as
+    // "preserved" and ends up reading the live (clobbered) GPR, which
+    // produces garbage for callee-frame argument reads.
+    dwarf_set_frame_rule_initial_value(dbg, DW_FRAME_UNDEFINED_VAL);
 }
 
 NativeDwarfInfoImpl::~NativeDwarfInfoImpl() {

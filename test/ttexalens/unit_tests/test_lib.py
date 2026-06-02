@@ -15,7 +15,7 @@ from test.ttexalens.unit_tests.test_base import get_core_location, get_parsed_el
 import ttexalens as lib
 from ttexalens import util
 from ttexalens.exceptions import TTException
-from ttexalens.elf.parsed import ParsedElfFile
+from ttexalens.elf import ElfFile
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -1536,8 +1536,8 @@ class TestCallStack(unittest.TestCase):
             if entry1.pc is not None and entry2.pc is not None:
                 self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
 
-    def set_recursion_count(self, elf: ParsedElfFile, count: int):
-        text_section = elf.sections.get(".text")
+    def set_recursion_count(self, elf: ElfFile, count: int):
+        text_section = elf.get_section_by_name(".text")
         assert text_section is not None
         assert text_section.address is not None
 
@@ -1730,21 +1730,21 @@ class TestCallStack(unittest.TestCase):
         ),
     ]
 
-    def get_mailbox_value_address(self, elf: ParsedElfFile) -> int:
+    def get_mailbox_value_address(self, elf: ElfFile) -> int:
         """Address of the host-written value buffer in callstack.cc (see mailbox_value_buffer())."""
-        text_section = elf.sections.get(".text")
+        text_section = elf.get_section_by_name(".text")
         assert text_section is not None
         assert text_section.address is not None
 
         firmware_end: int = text_section.address + text_section.size
         return (firmware_end + 4 + 16) & ~15
 
-    def get_symbol_address(self, elf: ParsedElfFile, name: str) -> int:
+    def get_symbol_address(self, elf: ElfFile, name: str) -> int:
         symbol = elf.find_symbol_by_name(name)
         assert symbol is not None and symbol.value is not None, f"Symbol {name} not found in ELF"
         return int(symbol.value)
 
-    def pack_value_test_value(self, elf: ParsedElfFile, struct_format: str, value):
+    def pack_value_test_value(self, elf: ElfFile, struct_format: str, value):
         # If struct_format doesn't start with "<", it's not a raw value but a symbol name whose address we want to get and pack as a uint32_t.
         if struct_format.startswith("<"):
             return struct.pack(struct_format, value)

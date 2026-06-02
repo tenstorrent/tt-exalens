@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <utility>
+#include <vector>
 
 #include "memory_access.hpp"
 
@@ -18,6 +20,20 @@ class NativeDwarfInfoImpl;
 }  // namespace details
 
 class MemoryAccess;
+
+// Classification of a CFI rule for a single (register, PC) pair. Used when
+// walking the live frame outward to recover a callee-saved register's value
+// at an outer frame's PC.
+//   * Saved      — the value is in memory at `saved_address`.
+//   * SameValue  — this frame preserves the register; look further in.
+//   * Undefined  — this frame does not preserve the register; abandon.
+//   * Unknown    — rule kind not yet handled (DWARF expression, register-
+//                  to-register, etc.). Treated as a hard stop.
+enum class RegisterRuleKind { Saved, SameValue, Undefined, Unknown };
+struct RegisterRule {
+    RegisterRuleKind kind;
+    uint64_t saved_address = 0;
+};
 
 // Resolved Call Frame Information for a single PC inside an FDE. Combines the
 // FDE we found with a MemoryAccess the caller wires up so we can read live
@@ -32,10 +48,16 @@ class NativeFrameDescription {
                            std::shared_ptr<MemoryAccess> memory_access);
 
     uint64_t get_pc() const { return pc; }
+    uint16_t get_pointer_size() const;
 
     std::optional<uint64_t> read_register(uint16_t register_index, uint64_t cfa) const;
     std::optional<uint64_t> try_read_register(uint16_t register_index, std::optional<uint64_t> cfa) const;
     std::optional<uint64_t> read_previous_cfa(std::optional<uint64_t> current_cfa) const;
+
+    // Resolves the CFI rule for `register_index` at this frame's PC into one
+    // of the four `RegisterRule` shapes. `cfa` must be the inspected frame's
+    // CFA; for `Saved` rules the returned address is `cfa + offset`.
+    RegisterRule classify_register_rule(uint16_t register_index, uint64_t cfa) const;
 
    private:
     // Guard for fde validity
@@ -46,22 +68,28 @@ class NativeFrameDescription {
 };
 
 // Per-frame context the DWARF location-expression evaluator reads through.
-// Mirrors the legacy Python FrameInspection: bundles a MemoryAccess, an
-// optional NativeFrameDescription (present only for non-top frames), this
-// frame's CFA, and the PC at which the expression applies.
+// Bundles a MemoryAccess, the inspected frame's FDE/CFA/PC, and the chain of
+// frames between this one and the live state — needed to recover the value
+// of a callee-saved register that this frame preserves but inner frames
+// have spilled to the stack.
 //
-//   * top frame  — frame_description is nullopt; read_register goes
-//                  straight to MemoryAccess::read_register (the live RISC).
-//   * non-top    — frame_description carries the FDE; read_register
-//                  delegates to FrameDescription::try_read_register(reg, cfa),
-//                  which can return std::nullopt when no save rule exists.
+//   * top frame  — frame_description is nullopt; inner_frames is empty;
+//                  read_register reads the live register.
+//   * non-top    — frame_description carries this frame's FDE. inner_frames
+//                  is ordered immediate-child-of-inspected first, live last.
+//                  read_register classifies this frame's CFI rule and walks
+//                  the chain on SameValue, returning the live register only
+//                  if no frame between here and live saved it.
 //
 // Memory loads always route through MemoryAccess regardless of frame depth.
 class NativeFrameInspection {
    public:
+    using InnerFrame = std::pair<NativeFrameDescription, uint64_t>;
+
     NativeFrameInspection(std::shared_ptr<MemoryAccess> memory_access,
-                          std::optional<NativeFrameDescription> frame_description, std::optional<uint64_t> cfa,
-                          uint64_t pc);
+                          std::optional<NativeFrameDescription> frame_description = std::nullopt,
+                          std::optional<uint64_t> cfa = std::nullopt, uint64_t pc = 0,
+                          std::vector<InnerFrame> inner_frames = {});
 
     std::optional<uint64_t> read_register(int register_index) const;
     std::optional<uint64_t> read_memory(uint64_t address, uint8_t register_size) const;
@@ -74,6 +102,7 @@ class NativeFrameInspection {
     std::optional<NativeFrameDescription> frame_description;
     std::optional<uint64_t> cfa;
     uint64_t pc;
+    std::vector<InnerFrame> inner_frames;
 };
 
 }  // namespace ttexalens::native_elf

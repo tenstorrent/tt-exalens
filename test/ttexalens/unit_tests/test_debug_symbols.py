@@ -10,7 +10,7 @@ from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.elf import ElfVariable, ParsedElfFile
+from ttexalens.elf import ElfFile, ElfVariable
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.memory_access import MemoryAccess, create_memory_access
 from ttexalens.exceptions import RestrictedMemoryAccessError
@@ -96,7 +96,7 @@ class RiscHaltErrorMemoryAccess(MemoryAccess):
 class TestDebugSymbols(unittest.TestCase):
     context: Context  # TTExaLens context
     core_sim: RiscvCoreSimulator  # RISC-V core simulator instance
-    parsed_elf: ParsedElfFile
+    parsed_elf: ElfFile
     mem_access: MemoryAccessWrapper  # Wrapped memory access
 
     @classmethod

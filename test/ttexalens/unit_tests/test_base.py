@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device
-from ttexalens.elf import ParsedElfFile, read_elf
+from ttexalens.elf import ElfFile, read_elf
 from ttexalens.server import FileAccessApi
 
 
@@ -19,7 +19,7 @@ _cached_test_context = None
 
 # Storing all parsed ELF files to avoid multiple reads of the same file
 # during tests
-_cached_parsed_elf_files: dict[str, ParsedElfFile] = {}
+_cached_parsed_elf_files: dict[str, ElfFile] = {}
 
 
 def init_default_test_context(use_noc1: bool | None = None):
@@ -97,8 +97,8 @@ def get_core_location(core_desc: str, device: Device) -> OnChipCoordinate:
         raise ValueError(f"Unknown core description {core_desc}") from e
 
 
-def get_parsed_elf_file(elf_path: str) -> ParsedElfFile:
-    """Get a cached ParsedElfFile or parse and cache it if not already done."""
+def get_parsed_elf_file(elf_path: str) -> ElfFile:
+    """Get a cached ElfFile or parse and cache it if not already done."""
     global _cached_parsed_elf_files
     if elf_path not in _cached_parsed_elf_files:
         parsed_elf = read_elf(FileAccessApi(), elf_path)

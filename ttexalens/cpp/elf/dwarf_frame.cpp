@@ -63,10 +63,73 @@ std::optional<uint64_t> NativeFrameDescription::read_register(uint16_t register_
     return memory_access->read_register(register_index);
 }
 
-std::optional<uint64_t> NativeFrameDescription::try_read_register(uint16_t /*register_index*/,
-                                                                  std::optional<uint64_t> /*cfa*/) const {
-    // TODO #761: handle the full rule taxonomy.
-    return std::nullopt;
+std::optional<uint64_t> NativeFrameDescription::try_read_register(uint16_t register_index,
+                                                                  std::optional<uint64_t> cfa) const {
+    if (!cfa.has_value()) {
+        return std::nullopt;
+    }
+    const RegisterRule rule = classify_register_rule(register_index, *cfa);
+    if (rule.kind != RegisterRuleKind::Saved) {
+        return std::nullopt;
+    }
+    auto info_ptr = info.lock();
+    if (!info_ptr) {
+        return std::nullopt;
+    }
+    return memory_access->try_read_word(rule.saved_address, info_ptr->pointer_size);
+}
+
+// True iff `register_index` is callee-saved per the RISC-V calling
+// convention. Used to fix up libdwarf's `dwarf_set_frame_rule_initial_value`
+// default — GCC's RISC-V CIE doesn't declare an initial rule for unmentioned
+// registers, so libdwarf would report them all as Undefined. ABI-wise,
+// callee-saved registers should default to SameValue (preserved across the
+// call), only volatiles to Undefined.
+//
+// RISC-V psABI: x2 (sp), x3 (gp), x4 (tp), x8 (s0/fp), x9 (s1), x18..x27
+// (s2..s11). Other registers (ra, ta, ax, tx) are volatile.
+bool is_callee_saved_register(uint16_t reg) {
+    if (reg == 2 || reg == 3 || reg == 4) return true;  // sp, gp, tp
+    if (reg == 8 || reg == 9) return true;              // s0, s1
+    if (reg >= 18 && reg <= 27) return true;            // s2..s11
+    return false;
+}
+
+RegisterRule NativeFrameDescription::classify_register_rule(uint16_t register_index, uint64_t cfa) const {
+    auto info_ptr = info.lock();
+    if (!info_ptr) {
+        return {RegisterRuleKind::Unknown, 0};
+    }
+    auto q = query_rule(info_ptr->dbg, fde, static_cast<Dwarf_Half>(register_index), pc);
+    if (q.status != DW_DLV_OK) {
+        return {RegisterRuleKind::Unknown, 0};
+    }
+    // libdwarf encodes UNDEFINED / SAME_VAL as sentinel register columns in
+    // the rule's `reg` field.
+    if (q.reg == DW_FRAME_UNDEFINED_VAL) {
+        // Promote callee-saved-by-ABI registers from the libdwarf default
+        // "undefined" back to SameValue so the chain walker can recover
+        // them from frames that left them untouched.
+        if (is_callee_saved_register(register_index)) {
+            return {RegisterRuleKind::SameValue, 0};
+        }
+        return {RegisterRuleKind::Undefined, 0};
+    }
+    if (q.reg == DW_FRAME_SAME_VAL) {
+        return {RegisterRuleKind::SameValue, 0};
+    }
+    if (q.value_type == DW_EXPR_OFFSET && q.offset_relevant != 0) {
+        return {RegisterRuleKind::Saved, cfa + static_cast<uint64_t>(q.offset)};
+    }
+    // Register-to-register (DW_EXPR_OFFSET with offset_relevant=0), DWARF
+    // expressions (DW_EXPR_EXPRESSION / DW_EXPR_VAL_*), etc. Treat as
+    // unknown for now — chain-walking stops here. TODO #761.
+    return {RegisterRuleKind::Unknown, 0};
+}
+
+uint16_t NativeFrameDescription::get_pointer_size() const {
+    auto info_ptr = info.lock();
+    return info_ptr ? info_ptr->pointer_size : uint16_t{0};
 }
 
 std::optional<uint64_t> NativeFrameDescription::read_previous_cfa(std::optional<uint64_t> current_cfa) const {
@@ -110,12 +173,39 @@ std::optional<uint64_t> NativeFrameDescription::read_previous_cfa(std::optional<
 
 NativeFrameInspection::NativeFrameInspection(std::shared_ptr<MemoryAccess> memory_access,
                                              std::optional<NativeFrameDescription> frame_description,
-                                             std::optional<uint64_t> cfa, uint64_t pc)
-    : memory_access(std::move(memory_access)), frame_description(std::move(frame_description)), cfa(cfa), pc(pc) {}
+                                             std::optional<uint64_t> cfa, uint64_t pc,
+                                             std::vector<InnerFrame> inner_frames)
+    : memory_access(std::move(memory_access)),
+      frame_description(std::move(frame_description)),
+      cfa(cfa),
+      pc(pc),
+      inner_frames(std::move(inner_frames)) {}
 
 std::optional<uint64_t> NativeFrameInspection::read_register(int register_index) const {
-    if (frame_description.has_value()) {
-        return frame_description->try_read_register(register_index, cfa);
+    // Top frame: live register holds the value.
+    if (!frame_description.has_value() || !cfa.has_value()) {
+        return memory_access->read_register(static_cast<uint64_t>(register_index));
+    }
+    const uint16_t reg = static_cast<uint16_t>(register_index);
+
+    // The inspected frame's own CFI rule for X describes where its CALLER
+    // will find X after this frame returns — i.e. the caller's view of X,
+    // not this frame's. To recover the inspected frame's view we walk the
+    // chain of frames it called into (immediate child first, live last):
+    // the first callee that saved X preserved exactly the value the
+    // inspected frame had at its call instruction. If none of them saved
+    // it, no one between here and live touched X, so the live register
+    // still holds the inspected-frame value.
+    for (const auto& [inner_fd, inner_cfa] : inner_frames) {
+        const RegisterRule rule = inner_fd.classify_register_rule(reg, inner_cfa);
+        if (rule.kind == RegisterRuleKind::Saved) {
+            return memory_access->try_read_word(rule.saved_address, inner_fd.get_pointer_size());
+        }
+        if (rule.kind == RegisterRuleKind::SameValue) {
+            continue;
+        }
+        // Undefined or unhandled rule kind — no recoverable value.
+        return std::nullopt;
     }
     return memory_access->read_register(static_cast<uint64_t>(register_index));
 }

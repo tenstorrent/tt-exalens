@@ -110,6 +110,12 @@ using DwarfStringHandle = DwarfAllocationHandle<char*, DW_DLA_STRING>;
 using DwarfAttributeHandle = DwarfAllocationHandle<Dwarf_Attribute, DW_DLA_ATTR>;
 using DwarfBlockHandle = DwarfAllocationHandle<Dwarf_Block*, DW_DLA_BLOCK>;
 
+// RAII wrapper around Dwarf_Loc_Head_c. Released via dwarf_dealloc_loc_head_c.
+class DwarfLocHeadHandle : public DwarfHandleBase<DwarfLocHeadHandle, Dwarf_Loc_Head_c, DwarfHandleNoState> {
+   public:
+    static void do_cleanup(DwarfHandleNoState, Dwarf_Loc_Head_c head) { dwarf_dealloc_loc_head_c(head); }
+};
+
 struct DwarfAttributeListState {
     Dwarf_Debug dbg = nullptr;
     Dwarf_Signed count = 0;

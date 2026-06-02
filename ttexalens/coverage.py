@@ -4,7 +4,7 @@
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import TTException
-from ttexalens.elf import ParsedElfFile
+from ttexalens.elf import ElfFile
 from ttexalens.memory_access import create_l1_memory_access
 
 """
@@ -21,7 +21,7 @@ hardcoding offsets, which would break in case of linker script changes.
 
 
 def dump_coverage(
-    elf: ParsedElfFile,
+    elf: ElfFile,
     location: OnChipCoordinate,
     gcda_path: str,
     gcno_copy_path: str | None = None,
