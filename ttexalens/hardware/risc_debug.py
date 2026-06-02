@@ -18,6 +18,7 @@ from ttexalens.elf import (
     ElfVariable,
     FrameDescription,
     FrameInspection,
+    FrameSnapshot,
 )
 from ttexalens.hardware.risc_info import RiscInfo
 from ttexalens.memory_access import MemoryAccess, create_memory_access
@@ -88,6 +89,23 @@ class CallstackEntry:
     arguments: list[CallstackEntryVariable] = field(default_factory=list)
     locals: list[CallstackEntryVariable] = field(default_factory=list)
     template_parameters: list[CallstackEntryVariable] = field(default_factory=list)
+
+
+class ExtendedFrameSnapshot(FrameSnapshot):
+    """Snapshot of one frame on the callstack at the PC where execution was
+    when we walked through it. Extends the native snapshot (which carries
+    `pc`, `fde`, `cfa` — everything `FrameInspection` consumes) with one
+    Python-only field, `reported_pc`: the PC value `CallstackEntry.pc`
+    exposes to callers. For the live frame this is the live PC; for outer
+    frames it is the return address (what GDB's backtrace prints), so our
+    callstack lines up with GDB output for tests and tooling. The native
+    `pc` itself is the call-instruction PC (return address minus one JAL),
+    which is what DWARF lookups need.
+    """
+
+    def __init__(self, *, pc: int, fde: FrameDescription, cfa: int, reported_pc: int):
+        super().__init__(fde=fde, cfa=cfa, pc=pc)
+        self.reported_pc = reported_pc
 
 
 class RiscDebug:
@@ -390,25 +408,36 @@ class RiscDebug:
         return None, None
 
     @staticmethod
+    def _get_elf_and_frame_snapshot(
+        elf: ElfFile | None,
+        elfs: list[ElfFile],
+        pc: int,
+        reported_pc: int,
+        mem_access: MemoryAccess,
+        inner_cfa: int | None = None,
+    ) -> tuple[ExtendedFrameSnapshot | None, ElfFile | None]:
+        fde = elf.get_frame_description(pc, mem_access) if elf is not None else None
+        if fde is None:
+            new_elf, fde = RiscDebug._find_elf_and_frame_description(elfs, pc, mem_access)
+            if fde is not None and new_elf is not None:
+                elf = new_elf
+        if fde is None:
+            util.WARN("We don't have information on frame and we don't know how to proceed")
+            return None, None
+        cfa = fde.compute_cfa(inner_cfa)
+        if cfa is None:
+            return None, None
+        return ExtendedFrameSnapshot(pc=pc, fde=fde, cfa=cfa, reported_pc=reported_pc), elf
+
+    @staticmethod
     def get_frame_callstack(
         elf: ElfFile,
-        pc: int,
-        frame_pointer: int | None = None,
+        frame: ExtendedFrameSnapshot,
         callstack: list[CallstackEntry] | None = None,
-        top_frame: bool = True,
         mem_access: MemoryAccess | None = None,
-        frame_description: "FrameDescription | None" = None,
-        cfa: int | None = None,
-        inner_frames: "list[tuple[FrameDescription, int]] | None" = None,
+        inner_frames: list[ExtendedFrameSnapshot] | None = None,
     ) -> tuple[list[CallstackEntry], DwarfDie | None]:
-        # If we are at the top frame, pc is correct.
-        # If we are not at the top frame, pc points to the instruction after the call instruction.
-        # We need to adjust pc by -4 to get the correct call instruction address.
-        adjusted_pc = pc if top_frame else pc - 4
-        # DWARF lookups expect addresses in the ELF's own address space; the
-        # live PC is shifted by `loaded_offset` relative to that space, so
-        # apply the same shift here.
-        dwarf_pc = adjusted_pc + elf.loaded_offset
+        dwarf_pc = frame.pc + elf.loaded_offset
         dwarf = elf.dwarf_info
         assert dwarf is not None, "ELF has no DWARF info; cannot inspect callstack"
         file_info = dwarf.find_file_line_by_address(dwarf_pc)
@@ -420,12 +449,13 @@ class RiscDebug:
 
         frame_inspection: FrameInspection | None = None
         if mem_access is not None:
+            # Empty inner_frames means this IS the top frame; the chain
+            # walker's reverse loop then runs zero iterations and falls
+            # through to a live register read. No special case needed.
             frame_inspection = FrameInspection(
                 mem_access,
-                frame_description,
-                cfa,
-                adjusted_pc + elf.loaded_offset,
-                inner_frames if inner_frames is not None else [],
+                FrameSnapshot(fde=frame.fde, cfa=frame.cfa, pc=dwarf_pc),
+                inner_frames or [],
             )
 
         def extract_variables(
@@ -461,10 +491,10 @@ class RiscDebug:
             extract_variables(function_die, arguments, locals, template_parameters)
             callstack.append(
                 CallstackEntry(
-                    pc,
+                    frame.reported_pc,
                     function_die.get_path(),
                     file_info,
-                    frame_pointer,
+                    frame.cfa,
                     arguments,
                     locals,
                     template_parameters,
@@ -489,7 +519,7 @@ class RiscDebug:
                 extract_variables(function_die, arguments, locals, template_parameters)
                 callstack.append(
                     CallstackEntry(
-                        None, function_die.get_path(), file_info, frame_pointer, arguments, locals, template_parameters
+                        None, function_die.get_path(), file_info, frame.cfa, arguments, locals, template_parameters
                     )
                 )
                 arguments = []
@@ -500,11 +530,19 @@ class RiscDebug:
             extract_variables(function_die, arguments, locals, template_parameters)
             callstack.append(
                 CallstackEntry(
-                    pc, function_die.get_path(), file_info, frame_pointer, arguments, locals, template_parameters
+                    frame.reported_pc,
+                    function_die.get_path(),
+                    file_info,
+                    frame.cfa,
+                    arguments,
+                    locals,
+                    template_parameters,
                 )
             )
         else:
-            callstack.append(CallstackEntry(pc, None, file_info, frame_pointer, arguments, locals, template_parameters))
+            callstack.append(
+                CallstackEntry(frame.reported_pc, None, file_info, frame.cfa, arguments, locals, template_parameters)
+            )
         return callstack, function_die
 
     def get_callstack(
@@ -530,36 +568,16 @@ class RiscDebug:
 
             mem_access: MemoryAccess = create_memory_access(self)
 
-            # Choose the elf which is referenced by the program counter
-            elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, mem_access)
+            # Chain of frames inner to the one being inspected
+            inner_frames: list[ExtendedFrameSnapshot] = []
 
-            # If we do not get frame description from any elf, we cannot proceed
-            if frame_description is None or elf is None:
-                util.WARN("We don't have information on frame and we don't know how to proceed.")
-                return []
+            # Find top frame
+            current_frame, elf = RiscDebug._get_elf_and_frame_snapshot(None, elfs, pc, pc, mem_access)
 
-            # Chain of frames inner to the one being inspected, ordered
-            # immediate-child-first → live-last. Read_register at an outer
-            # frame walks this chain to find the nearest callee that saved
-            # the requested register.
-            inner_frames: list[tuple[FrameDescription, int]] = []
-            frame_pointer = frame_description.read_previous_cfa()
-            while len(callstack) < limit:
-                is_top = len(callstack) == 0
-                # Top frame: read_register hits live GPRs, so we pass
-                # frame_description=None to short-circuit the chain walk.
-                # Non-top: pass this frame's own FDE so its save rules apply
-                # before the inner chain is consulted.
+            while current_frame is not None and len(callstack) < limit:
+                assert elf is not None
                 callstack, function_die = RiscDebug.get_frame_callstack(
-                    elf,
-                    pc,
-                    frame_pointer,
-                    callstack,
-                    top_frame=is_top,
-                    mem_access=mem_access,
-                    frame_description=None if is_top else frame_description,
-                    cfa=frame_pointer,
-                    inner_frames=inner_frames,
+                    elf, current_frame, callstack, mem_access, inner_frames
                 )
 
                 # We want to stop when we print main as frame descriptor might not be correct afterwards
@@ -567,38 +585,17 @@ class RiscDebug:
                     break
 
                 # We want to stop when we are at the end of frames list
-                if frame_pointer == 0 or frame_pointer is None:
+                if current_frame.cfa == 0:
                     break
 
-                # If we do not get frame description from any elf, we cannot proceed
-                if frame_description is None:
-                    util.WARN("We don't have information on frame and we don't know how to proceed")
-                    break
-
-                # Prepare for next iteration
-                cfa = frame_pointer
-                return_address = frame_description.read_register(1, cfa)
+                # Step one frame outward by reading the return-address register (index 1).
+                return_address = current_frame.fde.read_register(1, current_frame.cfa)
                 if return_address is None:
                     break
-                pc = return_address
-                # The frame we just inspected becomes the immediate child of
-                # the next outer frame. Prepend so iteration order remains
-                # outermost-of-inner → live.
-                inner_frames = [(frame_description, cfa)] + inner_frames
-
-                # Get the caller's frame description BEFORE computing the caller's CFA,
-                # because the CFA offset comes from the caller's FDE, not the current one.
-                frame_description = elf.get_frame_description(pc, mem_access)
-
-                # If we do not get frame description from current elf check in others
-                if frame_description is None:
-                    new_elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, mem_access)
-                    if frame_description is not None and new_elf is not None:
-                        elf = new_elf
-
-                if frame_description is not None:
-                    frame_pointer = frame_description.read_previous_cfa(cfa)
-                else:
-                    frame_pointer = None
+                pc = return_address - 4  # Move back from return address to call instruction
+                inner_frames.append(current_frame)
+                current_frame, elf = RiscDebug._get_elf_and_frame_snapshot(
+                    elf, elfs, pc, return_address, mem_access, current_frame.cfa
+                )
 
         return callstack

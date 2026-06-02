@@ -172,34 +172,31 @@ std::optional<uint64_t> NativeFrameDescription::compute_cfa(std::optional<uint64
 }
 
 NativeFrameInspection::NativeFrameInspection(std::shared_ptr<MemoryAccess> memory_access,
-                                             std::optional<NativeFrameDescription> frame_description,
-                                             std::optional<uint64_t> cfa, uint64_t pc,
-                                             std::vector<InnerFrame> inner_frames)
-    : memory_access(std::move(memory_access)),
-      frame_description(std::move(frame_description)),
-      cfa(cfa),
-      pc(pc),
-      inner_frames(std::move(inner_frames)) {}
+                                             std::optional<NativeFrameSnapshot> inspected,
+                                             std::vector<NativeFrameSnapshot> inner_frames)
+    : memory_access(std::move(memory_access)), inspected(std::move(inspected)), inner_frames(std::move(inner_frames)) {}
 
 std::optional<uint64_t> NativeFrameInspection::read_register(int register_index) const {
-    // Top frame: live register holds the value.
-    if (!frame_description.has_value() || !cfa.has_value()) {
-        return memory_access->read_register(static_cast<uint64_t>(register_index));
-    }
     const uint16_t reg = static_cast<uint16_t>(register_index);
 
     // The inspected frame's own CFI rule for X describes where its CALLER
     // will find X after this frame returns — i.e. the caller's view of X,
     // not this frame's. To recover the inspected frame's view we walk the
-    // chain of frames it called into (immediate child first, live last):
+    // chain of frames it called into, starting from the immediate child:
     // the first callee that saved X preserved exactly the value the
     // inspected frame had at its call instruction. If none of them saved
-    // it, no one between here and live touched X, so the live register
-    // still holds the inspected-frame value.
-    for (const auto& [inner_fd, inner_cfa] : inner_frames) {
-        const RegisterRule rule = inner_fd.classify_register_rule(reg, inner_cfa);
+    // it (or inner_frames is empty because this IS the live frame), no
+    // one between here and live touched X, so the live register still
+    // holds the inspected-frame value.
+    //
+    // inner_frames is stored in natural callstack order (live first,
+    // immediate-child-of-inspected last) to match the Python convention,
+    // so we iterate it in reverse to start at the immediate child and
+    // walk toward live.
+    for (auto it = inner_frames.rbegin(); it != inner_frames.rend(); ++it) {
+        const RegisterRule rule = it->fde.classify_register_rule(reg, it->cfa);
         if (rule.kind == RegisterRuleKind::Saved) {
-            return memory_access->try_read_word(rule.saved_address, inner_fd.get_pointer_size());
+            return memory_access->try_read_word(rule.saved_address, it->fde.get_pointer_size());
         }
         if (rule.kind == RegisterRuleKind::SameValue) {
             continue;

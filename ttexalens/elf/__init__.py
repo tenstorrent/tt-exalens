@@ -21,6 +21,7 @@ from ttexalens._native_ttexalens import (
     NativeElfVariable as ElfVariable,
     NativeFrameDescription as FrameDescription,
     NativeFrameInspection as FrameInspection,
+    NativeFrameSnapshot as FrameSnapshot,
 )
 from ttexalens.server import FileAccessApi
 
@@ -57,5 +58,6 @@ __all__ = [
     "ElfVariable",
     "FrameDescription",
     "FrameInspection",
+    "FrameSnapshot",
     "read_elf",
 ]

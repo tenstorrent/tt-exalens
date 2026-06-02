@@ -1059,22 +1059,26 @@ NB_MODULE(_native_ttexalens, m) {
              nb::arg("cfa").none())
         .def("compute_cfa", &NativeFrameDescription::compute_cfa, nb::arg("inner_cfa").none() = nb::none());
 
+    // Snapshot of one frame on the callstack at a particular PC. Used as
+    // the building block for NativeFrameInspection — both for the
+    // inspected frame and for each frame in the inner chain.
+    nb::class_<ttexalens::native_elf::NativeFrameSnapshot>(m, "NativeFrameSnapshot")
+        .def(nb::init<ttexalens::native_elf::NativeFrameDescription, uint64_t, uint64_t>(), nb::arg("fde"),
+             nb::arg("cfa"), nb::arg("pc"))
+        .def_rw("fde", &ttexalens::native_elf::NativeFrameSnapshot::fde)
+        .def_rw("cfa", &ttexalens::native_elf::NativeFrameSnapshot::cfa)
+        .def_rw("pc", &ttexalens::native_elf::NativeFrameSnapshot::pc);
+
     // Per-frame context for NativeDwarfDie::read_value. Construct with the
-    // active MemoryAccess, the inspected frame's FDE/CFA/PC, and the chain
-    // of frames between the inspected one and live state (immediate child
-    // first, live last). Pass None / [] for the top frame.
-    //
-    //   * top frame  — frame_description=None, inner_frames=[]; read_register
-    //                  hits live GPRs through MemoryAccess.
-    //   * non-top    — frame_description is the inspected frame's FDE; on a
-    //                  SameValue rule, read_register walks inner_frames in
-    //                  order to find the value saved by the nearest callee.
+    // active MemoryAccess, the inspected frame's snapshot, and the chain
+    // of frames between the inspected one and live state (live first,
+    // immediate-child-of-inspected last). For the top frame, pass an empty
+    // inner_frames; read_register reads live GPRs in that case.
     nb::class_<NativeFrameInspection>(m, "NativeFrameInspection")
-        .def(nb::init<std::shared_ptr<MemoryAccess>, std::optional<NativeFrameDescription>, std::optional<uint64_t>,
-                      uint64_t, std::vector<NativeFrameInspection::InnerFrame>>(),
-             nb::arg("memory_access"), nb::arg("frame_description").none() = nb::none(),
-             nb::arg("cfa").none() = nb::none(), nb::arg("pc") = 0,
-             nb::arg("inner_frames") = std::vector<NativeFrameInspection::InnerFrame>{})
+        .def(nb::init<std::shared_ptr<MemoryAccess>, std::optional<ttexalens::native_elf::NativeFrameSnapshot>,
+                      std::vector<ttexalens::native_elf::NativeFrameSnapshot>>(),
+             nb::arg("memory_access"), nb::arg("inspected").none() = nb::none(),
+             nb::arg("inner_frames") = std::vector<ttexalens::native_elf::NativeFrameSnapshot>{})
         .def("read_register", &NativeFrameInspection::read_register, nb::arg("register_index"))
         .def("read_memory", &NativeFrameInspection::read_memory, nb::arg("address"), nb::arg("register_size"))
         .def_prop_ro("cfa", &NativeFrameInspection::get_cfa)

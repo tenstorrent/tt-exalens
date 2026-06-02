@@ -605,7 +605,7 @@ def top_callstack(
         List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
     """
 
-    from ttexalens.hardware.risc_debug import RiscDebug
+    from ttexalens.hardware.risc_debug import RiscDebug, ExtendedFrameSnapshot
 
     context = check_context(context)
 
@@ -628,7 +628,9 @@ def top_callstack(
     elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs_loaded, pc, NO_MEMORY_ACCESS)
     if frame_description is None or elf is None:
         return []
-    return RiscDebug.get_frame_callstack(elf, pc)[0]
+    return RiscDebug.get_frame_callstack(
+        elf, ExtendedFrameSnapshot(pc=pc, fde=frame_description, cfa=0, reported_pc=pc)
+    )[0]
 
 
 @trace_api

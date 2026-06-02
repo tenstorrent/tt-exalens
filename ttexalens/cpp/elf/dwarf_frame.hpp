@@ -8,7 +8,6 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
-#include <utility>
 #include <vector>
 
 #include "memory_access.hpp"
@@ -73,42 +72,56 @@ class NativeFrameDescription {
     std::shared_ptr<MemoryAccess> memory_access;
 };
 
+// Snapshot of one frame on the callstack at the PC where execution was
+// when we walked through it. `fde` is the FDE whose address range covers
+// `pc`; `cfa` is the Canonical Frame Address at that PC computed via
+// `fde.compute_cfa(...)`. Used both for the inspected frame and for each
+// frame in the inner chain that NativeFrameInspection carries.
+struct NativeFrameSnapshot {
+    NativeFrameDescription fde;
+    uint64_t cfa = 0;
+    uint64_t pc = 0;
+};
+
 // Per-frame context the DWARF location-expression evaluator reads through.
-// Bundles a MemoryAccess, the inspected frame's FDE/CFA/PC, and the chain of
-// frames between this one and the live state — needed to recover the value
-// of a callee-saved register that this frame preserves but inner frames
-// have spilled to the stack.
+// Bundles a MemoryAccess, the inspected frame's snapshot, and the chain of
+// frames between it and the live state — needed to recover the value of a
+// callee-saved register that this frame preserves but inner frames have
+// spilled to the stack.
 //
-//   * top frame  — frame_description is nullopt; inner_frames is empty;
-//                  read_register reads the live register.
-//   * non-top    — frame_description carries this frame's FDE. inner_frames
-//                  is ordered immediate-child-of-inspected first, live last.
-//                  read_register classifies this frame's CFI rule and walks
-//                  the chain on SameValue, returning the live register only
-//                  if no frame between here and live saved it.
+// inner_frames is in natural callstack order: live first, immediate-child-
+// of-inspected last. read_register walks the list in reverse — starting at
+// the immediate child and moving toward live — until a frame's CFI says it
+// saved the requested register; if none did, the live register is returned.
+// For the top frame `inner_frames` is empty: the walk is a no-op and we
+// read the live register directly. The inspected frame's own CFI is
+// intentionally NOT consulted — it describes the caller's view, not this
+// frame's — so the inspected snapshot's `fde` is carried only to keep the
+// (cfa, pc) plumbing uniform with inner_frames.
 //
 // Memory loads always route through MemoryAccess regardless of frame depth.
 class NativeFrameInspection {
    public:
-    using InnerFrame = std::pair<NativeFrameDescription, uint64_t>;
-
+    // The inspected snapshot defaults to nullopt for the "no frame
+    // context" case (e.g. reading globals outside a callstack walk).
+    // Runtime-location DIEs need a real snapshot and will fail to
+    // evaluate otherwise.
     NativeFrameInspection(std::shared_ptr<MemoryAccess> memory_access,
-                          std::optional<NativeFrameDescription> frame_description = std::nullopt,
-                          std::optional<uint64_t> cfa = std::nullopt, uint64_t pc = 0,
-                          std::vector<InnerFrame> inner_frames = {});
+                          std::optional<NativeFrameSnapshot> inspected = std::nullopt,
+                          std::vector<NativeFrameSnapshot> inner_frames = {});
 
     std::optional<uint64_t> read_register(int register_index) const;
     std::optional<uint64_t> read_memory(uint64_t address, uint8_t register_size) const;
-    std::optional<uint64_t> get_cfa() const { return cfa; }
-    uint64_t get_pc() const { return pc; }
+    std::optional<uint64_t> get_cfa() const {
+        return inspected.has_value() ? std::optional{inspected->cfa} : std::nullopt;
+    }
+    uint64_t get_pc() const { return inspected.has_value() ? inspected->pc : 0; }
     const std::shared_ptr<MemoryAccess>& get_memory_access() const { return memory_access; }
 
    private:
     std::shared_ptr<MemoryAccess> memory_access;
-    std::optional<NativeFrameDescription> frame_description;
-    std::optional<uint64_t> cfa;
-    uint64_t pc;
-    std::vector<InnerFrame> inner_frames;
+    std::optional<NativeFrameSnapshot> inspected;
+    std::vector<NativeFrameSnapshot> inner_frames;
 };
 
 }  // namespace ttexalens::native_elf
