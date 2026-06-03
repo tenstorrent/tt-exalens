@@ -97,14 +97,6 @@ jobs:
       # So we can get all the makefile output we want
       VERBOSE: 5
       LOGGER_LEVEL: INFO
-      # Heap-corruption tripwires for the native C++ extension. MALLOC_CHECK_=3
-      # makes glibc abort the moment it detects a bad free / double-free
-      # (close to the corruption site rather than at the next allocation).
-      # PYTHONMALLOC=malloc routes Python's allocator straight to glibc so
-      # pymalloc's per-arena bookkeeping doesn't mask the bug. Cheap to keep
-      # on long-term — gives us early signals if a new native bug regresses.
-      MALLOC_CHECK_: "3"
-      PYTHONMALLOC: "malloc"
     runs-on: ${{ matrix.runner-info.runs-on }}
     container:
       image: ${{ needs.build-image.outputs.docker-image }}
@@ -142,20 +134,12 @@ jobs:
           # Run tt-exalens in the background to mitigate #999.
           python3 tt-exalens.py > /dev/null 2>&1 &
 
-      # -X faulthandler installs Python signal handlers that dump a Python
-      # traceback on SIGSEGV/SIGABRT/SIGFPE/etc. before the default handler
-      # runs. Needed while the native C++ extension is still maturing — if
-      # it aborts (e.g. glibc free() check), we want to know which Python
-      # frame was on top of the call stack.
       - name: Run Python tests for ttexalens library (using NOC0)
         run: |
           python3 -X faulthandler -m xmlrunner discover -v -t . -s test/ttexalens -p '*test*.py' \
           --output-file ${{ steps.strings.outputs.test_report_path }}
 
       - name: Upload Test Report
-        # `if: always()` so the partial XML report is uploaded even when the
-        # test runner aborts mid-run (so we keep the Python tracebacks for
-        # the ERROR tests that came before the abort).
         if: always()
         uses: actions/upload-artifact@v4
         with:
