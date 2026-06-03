@@ -47,6 +47,22 @@ bool is_real_register(Dwarf_Unsigned reg) {
     return reg != DW_FRAME_UNDEFINED_VAL && reg != DW_FRAME_SAME_VAL && reg != DW_FRAME_CFA_COL;
 }
 
+// True iff `register_index` is callee-saved per the RISC-V calling
+// convention. Used to fix up libdwarf's `dwarf_set_frame_rule_initial_value`
+// default — GCC's RISC-V CIE doesn't declare an initial rule for unmentioned
+// registers, so libdwarf would report them all as Undefined. ABI-wise,
+// callee-saved registers should default to SameValue (preserved across the
+// call), only volatiles to Undefined.
+//
+// RISC-V psABI: x2 (sp), x3 (gp), x4 (tp), x8 (s0/fp), x9 (s1), x18..x27
+// (s2..s11). Other registers (ra, ta, ax, tx) are volatile.
+bool is_callee_saved_register(uint16_t reg) {
+    if (reg == 2 || reg == 3 || reg == 4) return true;  // sp, gp, tp
+    if (reg == 8 || reg == 9) return true;              // s0, s1
+    if (reg >= 18 && reg <= 27) return true;            // s2..s11
+    return false;
+}
+
 }  // namespace
 
 std::optional<uint64_t> FrameDescription::read_register(uint16_t register_index, uint64_t cfa) const {
@@ -77,22 +93,6 @@ std::optional<uint64_t> FrameDescription::try_read_register(uint16_t register_in
         return std::nullopt;
     }
     return memory_access->try_read_word(rule.saved_address, info_ptr->pointer_size);
-}
-
-// True iff `register_index` is callee-saved per the RISC-V calling
-// convention. Used to fix up libdwarf's `dwarf_set_frame_rule_initial_value`
-// default — GCC's RISC-V CIE doesn't declare an initial rule for unmentioned
-// registers, so libdwarf would report them all as Undefined. ABI-wise,
-// callee-saved registers should default to SameValue (preserved across the
-// call), only volatiles to Undefined.
-//
-// RISC-V psABI: x2 (sp), x3 (gp), x4 (tp), x8 (s0/fp), x9 (s1), x18..x27
-// (s2..s11). Other registers (ra, ta, ax, tx) are volatile.
-bool is_callee_saved_register(uint16_t reg) {
-    if (reg == 2 || reg == 3 || reg == 4) return true;  // sp, gp, tp
-    if (reg == 8 || reg == 9) return true;              // s0, s1
-    if (reg >= 18 && reg <= 27) return true;            // s2..s11
-    return false;
 }
 
 RegisterRule FrameDescription::classify_register_rule(uint16_t register_index, uint64_t cfa) const {
