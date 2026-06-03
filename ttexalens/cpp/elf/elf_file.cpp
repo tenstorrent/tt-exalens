@@ -98,17 +98,7 @@ bool ElfFile::has_dwarf_info(bool strict) const {
 
 const DwarfInfo* ElfFile::get_dwarf_info() const { return impl->get_dwarf_info(); }
 
-uint64_t ElfFile::get_code_load_address() const {
-    const ElfSection* text = get_section_by_name(".text");
-    if (text == nullptr) {
-        text = get_section_by_name(".firmware_text");
-    }
-    if (text == nullptr) {
-        throw std::runtime_error("Could not locate text section in " +
-                                 (elf_file_path.empty() ? std::string("ELF") : elf_file_path));
-    }
-    return text->address();
-}
+uint64_t ElfFile::get_code_load_address() const { return impl->get_entry(); }
 
 ElfFile ElfFile::with_load_address(uint64_t load_address) const {
     ElfFile clone(*this);

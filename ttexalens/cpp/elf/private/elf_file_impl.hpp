@@ -25,6 +25,9 @@ class ElfFileImpl : public std::enable_shared_from_this<ElfFileImpl> {
     std::vector<ElfSymbol> read_symbol_table_section(std::string_view section_name);
     DwarfInfo* get_dwarf_info();
 
+    // ELF header e_entry — the program's start-of-execution address.
+    uint64_t get_entry() const { return static_cast<uint64_t>(elf.get_entry()); }
+
    protected:
     void populate_sections();
     void try_open_dwarf();
