@@ -198,10 +198,6 @@ DwarfInfoImpl::DwarfInfoImpl(std::weak_ptr<ElfFileImpl> elf_impl)
 }
 
 DwarfInfoImpl::~DwarfInfoImpl() {
-    // DIE allocations must be released before dwarf_object_finish
-    // invalidates dbg. Caller MUST not keep DIE shared_ptrs alive past
-    // ~DwarfInfo — nanobind's reference_internal handles this
-    // automatically on the Python side.
     die_cache.clear();
     cus.clear();
     if (fdes != nullptr || cies != nullptr) {
@@ -290,8 +286,13 @@ DwarfDiePtr DwarfInfoImpl::get_or_create_die(Dwarf_Off offset) {
 }
 
 DwarfCompileUnit* DwarfInfoImpl::get_die_cu(Dwarf_Off target_offset) {
-    // TODO: Implement a more efficient lookup than linear search through all CU headers. A sorted vector + binary
-    // search would be a simple improvement, or we could build a more complex index if needed.
+    if (get_cus().size() > 5) {
+        // Implement a more efficient lookup than linear search through all CU headers. A sorted vector + binary
+        // search would be a simple improvement, or we could build a more complex index if needed.
+        // At the moment, our elfs have 2 CUs. If we ever start using this library for bigger elfs we can optimize this.
+        printf("Warning: more than 5 CUs (%zu) — consider implementing a more efficient DIE-to-CU lookup\n",
+               get_cus().size());
+    }
     for (auto& cu : get_cus()) {
         const auto& cu_root = cu.get_die();
         if (!cu_root) {
