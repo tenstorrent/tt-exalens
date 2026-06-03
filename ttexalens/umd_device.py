@@ -164,7 +164,8 @@ class UmdDevice:
             self._is_mmio_capable
             and not self._is_simulation
             and elapsed_time > UmdDevice.READ_TIMEOUT
-            and bytes(buffer[-4:]) == b"\xFF\xFF\xFF\xFF"
+            and len(buffer) >= 4
+            and buffer[-4] == buffer[-3] == buffer[-2] == buffer[-1] == 0xFF
         ):
             try:
                 translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.LOGICAL)
