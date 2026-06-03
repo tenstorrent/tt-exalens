@@ -66,11 +66,11 @@ class ElfLoader:
         """
         self.mem_access.write(address, data)
 
-    def read_block_through_debug(self, address: int, byte_count: int) -> bytes:
+    def read_block_through_debug(self, address: int, buffer: bytearray | memoryview) -> None:
         """
-        Reads a block of data from a given address through the debug interface.
+        Reads a block of data from a given address through the debug interface into 'buffer'.
         """
-        return self.mem_access.read(address, byte_count)
+        self.mem_access.read(address, buffer)
 
     @staticmethod
     def __inside_private_memory(memory_block: MemoryBlock | None, address: int) -> bool:
@@ -122,9 +122,9 @@ class ElfLoader:
             and private_code_memory.address.noc_address is None
         ):
             # Use debug interface
-            buffer[:] = self.read_block_through_debug(private_address, len(buffer))
+            self.read_block_through_debug(private_address, buffer)
         elif self.l1_block is not None and self.l1_block.memory_block.contains_private_address(private_address):
-            buffer[:] = self.l1_mem_access.read(private_address, len(buffer))
+            self.l1_mem_access.read(private_address, buffer)
         else:
             self.location.noc_read(private_address, buffer)
 

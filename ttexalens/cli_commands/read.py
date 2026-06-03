@@ -122,7 +122,8 @@ def execute_safe_read(
             data = bytearray(read_size)
             location.noc_read(noc_address, data)
         else:
-            data = risc_debug.read_memory_bytes(address, read_size)
+            data = bytearray(read_size)
+            risc_debug.read_memory_bytes(address, data)
         return bytes(data), memory_block_info.name
 
 
@@ -154,7 +155,8 @@ def execute_unsafe_read(
                 data = bytearray(read_size)
                 location.noc_read(noc_address, data, safe_mode=False)
             else:
-                data = risc_debug.read_memory_bytes(address, read_size)
+                data = bytearray(read_size)
+                risc_debug.read_memory_bytes(address, data)
             return bytes(data), memory_block_info.name
 
     # Find end address of unknown block and limit read size to that
@@ -170,10 +172,10 @@ def execute_unsafe_read(
             bytes_to_read = min(bytes_to_read, next_block_start - address)
 
     # Not found in known memory blocks, do direct read
+    data = bytearray(bytes_to_read)
     if risc_debug:
         with risc_debug.ensure_private_memory_access():
-            data = risc_debug.read_memory_bytes(address, bytes_to_read, safe_mode=False)
+            risc_debug.read_memory_bytes(address, data, safe_mode=False)
     else:
-        data = bytearray(bytes_to_read)
         location.noc_read(address, data, safe_mode=False)
     return bytes(data), "???"

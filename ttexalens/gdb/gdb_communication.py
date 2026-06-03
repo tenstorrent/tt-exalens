@@ -376,7 +376,7 @@ class GdbMessageWriter:
             self.data.append(char)
             self.checksum += char
 
-    def append(self, data: bytes):
+    def append(self, data: bytes | bytearray | memoryview):
         length = len(data)
         position = 0
         while position < length:

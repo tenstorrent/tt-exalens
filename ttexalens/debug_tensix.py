@@ -180,7 +180,8 @@ class TensixDebug:
         if size_bytes > dest_size:
             raise TTException(f"Size {size_bytes} bytes is out of bounds for destination memory block.")
 
-        bytes_data = self.mem_access.read(base_address, size_bytes)
+        bytes_data = bytearray(size_bytes)
+        self.mem_access.read(base_address, bytes_data)
         data.extend(int.from_bytes(bytes_data[i : i + 4], byteorder="little") for i in range(0, size_bytes, 4))
 
         return data

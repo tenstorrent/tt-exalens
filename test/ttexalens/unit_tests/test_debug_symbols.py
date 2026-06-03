@@ -31,15 +31,15 @@ class MemoryAccessWrapper(MemoryAccess):
         self.write_count = 0
         self.total_bytes_written = 0
 
-    def read(self, private_address: int, size_bytes: int) -> bytes:
+    def read(self, private_address: int, buffer: bytearray | memoryview) -> None:
         self.read_count += 1
-        self.total_bytes_read += size_bytes
-        return self._mem_access.read(private_address, size_bytes)
+        self.total_bytes_read += len(buffer)
+        self._mem_access.read(private_address, buffer)
 
-    def write(self, private_address: int, data: bytes) -> None:
+    def write(self, private_address: int, data: bytes | bytearray | memoryview) -> None:
         self.write_count += 1
         self.total_bytes_written += len(data)
-        return self._mem_access.write(private_address, data)
+        self._mem_access.write(private_address, data)
 
     def reset_stats(self):
         """Reset all statistics counters."""
@@ -52,10 +52,10 @@ class MemoryAccessWrapper(MemoryAccess):
 class TimeoutMemoryAccess(MemoryAccess):
     _coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
 
-    def read(self, private_address: int, size_bytes: int) -> bytes:
-        raise TimeoutDeviceRegisterError(0, self._coord, private_address, size_bytes, True, 0.0)
+    def read(self, private_address: int, buffer: bytearray | memoryview) -> None:
+        raise TimeoutDeviceRegisterError(0, self._coord, private_address, len(buffer), True, 0.0)
 
-    def write(self, private_address: int, data: bytes) -> None:
+    def write(self, private_address: int, data: bytes | bytearray | memoryview) -> None:
         raise TimeoutDeviceRegisterError(0, self._coord, private_address, len(data), False, 0.0)
 
 
@@ -65,10 +65,10 @@ class RiscHaltErrorMemoryAccess(MemoryAccess):
         self._risc_name = "dummy risc"
         self._location = OnChipCoordinate.create("0,0", self._device)
 
-    def read(self, private_address: int, size_bytes: int) -> bytes:
+    def read(self, private_address: int, buffer: bytearray | memoryview) -> None:
         raise RiscHaltError(self._risc_name, self._location)
 
-    def write(self, private_address: int, data: bytes) -> None:
+    def write(self, private_address: int, data: bytes | bytearray | memoryview) -> None:
         raise RiscHaltError(self._risc_name, self._location)
 
 
