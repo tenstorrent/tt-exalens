@@ -24,6 +24,13 @@ DM_OUT_OF_RESET_BIT = 1 << 17
 ABSTRACTS_BUSY = 1 << 12
 CMD_READ_DPC = (3 << 20) | (1 << 17) | 0x7B1
 
+# System Bus Access Control and Status (SBCS) fields.
+SBCS_SBBUSY = 1 << 21
+SBCS_SBREADONADDR = 1 << 20
+SBCS_SBACCESS_32 = 2 << 17
+SBCS_SBERROR_MASK = 0x7 << 12
+SBCS_SBBUSYERROR = 1 << 22
+
 
 class QuasarRocketCoreDebug(RocketCoreDebug):
     def __init__(self, risc_info: BabyRiscInfo, register_store: RegisterStore, enable_asserts: bool = True):
@@ -119,6 +126,36 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             self.register_store.read_register("TT_CLUSTER_CTRL_WB_PC_CTRL") == 1
         ), "WB PC control has to be enabled to read PC"
         return self.register_store.read_register(f"TT_CLUSTER_CTRL_WB_PC_REG_C{self.baby_risc_info.risc_id}")
+
+    def _sba_wait_not_busy(self, timeout: int = 10) -> None:
+        """Poll SBCS until the system bus manager is idle. Raise on timeout."""
+        start_time = time.time()
+        while self.register_store.read_register("TT_DEBUG_MODULE_APB_SBCS") & SBCS_SBBUSY:
+            if time.time() - start_time > timeout:
+                raise Exception("Timeout waiting for system bus access")
+            time.sleep(0.01)
+
+    def read_memory(self, address: int, safe_mode: bool | None = None) -> int:
+        """Read a 32-bit word via System Bus Access."""
+        with self.ensure_debug_module_out_of_reset():
+            self._sba_wait_not_busy()
+            self.register_store.write_register(
+                "TT_DEBUG_MODULE_APB_SBCS",
+                SBCS_SBACCESS_32 | SBCS_SBREADONADDR | SBCS_SBERROR_MASK | SBCS_SBBUSYERROR,
+            )
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address & 0xFFFFFFFF)
+            return self.register_store.read_register("TT_DEBUG_MODULE_APB_SBDATA0")
+
+    def write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
+        """Write a 32-bit word via System Bus Access."""
+        with self.ensure_debug_module_out_of_reset():
+            self._sba_wait_not_busy()
+            self.register_store.write_register(
+                "TT_DEBUG_MODULE_APB_SBCS",
+                SBCS_SBACCESS_32 | SBCS_SBERROR_MASK | SBCS_SBBUSYERROR,
+            )
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address & 0xFFFFFFFF)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBDATA0", data & 0xFFFFFFFF)
 
     def set_code_start_address(self, address: int | None) -> None:
         self.baby_risc_info.set_code_start_address(self.register_store, address if address is not None else 0)
