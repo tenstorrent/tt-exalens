@@ -9,6 +9,7 @@ add_library(ttexalens_elf STATIC
     private/dwarf_info_impl.cpp
     elf_file.cpp
     dwarf_info.cpp
+    dwarf_attribute.cpp
     dwarf_die.cpp
     dwarf_cu.cpp
     dwarf_frame.cpp

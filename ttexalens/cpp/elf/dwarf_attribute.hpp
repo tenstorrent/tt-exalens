@@ -7,6 +7,7 @@
 #include <libdwarf.h>
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -430,6 +431,10 @@ class DwarfAttribute {
     const Value& get_value() const { return value; }
 
    private:
+    static std::optional<DwarfAttribute> from_libdwarf(Dwarf_Debug dbg, Dwarf_Attribute attr);
+
+    friend class DwarfDie;
+
     DwarfAttributeTag tag;
     DwarfAttributeForm form;
     Value value;
