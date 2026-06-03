@@ -279,14 +279,18 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     // can be determined.
     std::optional<uint64_t> get_size() const;
 
-    // TODO: member location should be extracted out!!!
-    // Address for variable / member DIEs. Walks DW_AT_data_member_location,
-    // then DW_AT_low_pc, then a DW_OP_addr-only DW_AT_location expression,
-    // then follows DW_AT_specification / DW_AT_abstract_origin once. Returns
-    // 0 for union members, falls back to DW_AT_const_value when present.
-    // (Skipped vs Python: full location expression evaluation, symbol table
-    // lookup, and the global find-DIE-that-specifies search.)
+    // Absolute address for a variable DIE. Walks DW_AT_low_pc, then a
+    // DW_OP_addr-only DW_AT_location expression, then follows
+    // DW_AT_specification / DW_AT_abstract_origin once, then falls back to
+    // DW_AT_const_value, then to the linker .symtab.
+    // (Skipped vs Python: full location expression evaluation and the
+    // global find-DIE-that-specifies search.)
     std::optional<uint64_t> get_address() const;
+
+    // Byte offset from the enclosing struct/union to this member DIE.
+    // Reads DW_AT_data_member_location, with a zero fallback for union
+    // members (which have an implicit offset of 0).
+    std::optional<uint64_t> get_data_member_location() const;
 
     // Walks the direct children of this DIE and returns the first whose
     // DW_AT_name matches `name`. nullptr on miss.

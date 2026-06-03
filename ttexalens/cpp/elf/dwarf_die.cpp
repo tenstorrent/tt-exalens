@@ -765,9 +765,7 @@ std::optional<uint64_t> DwarfDie::get_size() const {
 static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool allow_recursion) {
     std::optional<uint64_t> addr;
 
-    if (const auto* a = die.get_attribute(DwarfAttributeTag::data_member_location)) {
-        addr = attr_as_uint(a);
-    } else if (const auto* a = die.get_attribute(DwarfAttributeTag::low_pc)) {
+    if (const auto* a = die.get_attribute(DwarfAttributeTag::low_pc)) {
         addr = attr_as_uint(a);
     } else {
         // Try a simple DW_OP_addr location: the byte stream is just
@@ -812,11 +810,6 @@ static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool al
         if (die.is_type() || die.get_tag() == DwarfDieTag::enumerator) {
             return std::nullopt;
         }
-        if (auto parent = die.get_parent()) {
-            if (parent->get_tag() == DwarfDieTag::union_type) {
-                return uint64_t{0};
-            }
-        }
         if (const auto* cv = die.get_attribute(DwarfAttributeTag::const_value)) {
             return attr_as_uint(cv);
         }
@@ -824,6 +817,17 @@ static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool al
         // this free function from needing private access to DwarfDie.
     }
     return addr;
+}
+
+std::optional<uint64_t> DwarfDie::get_data_member_location() const {
+    if (const auto* a = get_attribute(DwarfAttributeTag::data_member_location)) {
+        return attr_as_uint(a);
+    }
+    // Union members have an implicit offset of 0 — DWARF omits the attribute.
+    if (auto p = get_parent(); p && p->get_tag() == DwarfDieTag::union_type) {
+        return uint64_t{0};
+    }
+    return std::nullopt;
 }
 
 std::optional<uint64_t> DwarfDie::get_address() const {

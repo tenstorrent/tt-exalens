@@ -28,15 +28,15 @@ std::pair<std::optional<uint64_t>, DwarfDiePtr> resolve_unnamed_struct_union_mem
             continue;
         }
         if (auto member = struct_union_type->find_child_by_name(name)) {
-            return {child->get_address(), member};
+            return {child->get_data_member_location(), member};
         }
         auto [nested_offset, nested_member] = resolve_unnamed_struct_union_member(*struct_union_type, name);
         if (nested_member && nested_offset.has_value()) {
-            auto child_address = child->get_address();
-            if (!child_address.has_value()) {
+            auto child_offset = child->get_data_member_location();
+            if (!child_offset.has_value()) {
                 continue;
             }
-            return {*nested_offset + *child_address, nested_member};
+            return {*nested_offset + *child_offset, nested_member};
         }
     }
     return {std::nullopt, nullptr};
@@ -50,11 +50,11 @@ std::pair<std::optional<uint64_t>, DwarfDiePtr> resolve_inheritance_member(const
         if (child->get_tag() != DwarfDieTag::inheritance) {
             continue;
         }
-        auto child_address = child->get_address();
-        if (!child_address.has_value()) {
+        auto child_offset = child->get_data_member_location();
+        if (!child_offset.has_value()) {
             continue;
         }
-        uint64_t data_member_location = offset + *child_address;
+        uint64_t data_member_location = offset + *child_offset;
         auto child_type = child->get_resolved_type();
         if (!child_type) {
             continue;
@@ -182,15 +182,15 @@ ElfVariable ElfVariable::get_member(std::string_view member_name) const {
         path += member_name;
         throw SymbolNotFoundException(std::move(path));
     }
-    auto child_address = child_die->get_address();
-    if (!child_address.has_value()) {
+    auto child_offset = child_die->get_data_member_location();
+    if (!child_offset.has_value()) {
         std::string path = type_die->get_path();
         path += "::";
         path += member_name;
         throw SymbolNotFoundException(std::move(path));
     }
     auto resolved_type = child_die->get_resolved_type();
-    return ElfVariable(std::move(resolved_type), address + *child_address + offset, memory_access);
+    return ElfVariable(std::move(resolved_type), address + *child_offset + offset, memory_access);
 }
 
 ElfVariable ElfVariable::dereference() const {
