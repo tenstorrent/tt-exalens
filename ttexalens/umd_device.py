@@ -378,6 +378,21 @@ class UmdDevice:
             self.__reinit_device_after_sigbus()
             self.noc_read(noc_id, noc0_x, noc0_y, address, buffer, use_4B_mode, dma_threshold)
 
+    def noc_read_bytes(
+        self,
+        noc_id: int,
+        noc0_x: int,
+        noc0_y: int,
+        address: int,
+        size: int,
+        use_4B_mode: bool,
+        dma_threshold: int,
+    ) -> bytes:
+        """Reads 'size' bytes from address and returns them. Avoid using this method if caller can provide buffer, to save extra copy."""
+        buffer = bytearray(size)
+        self.noc_read(noc_id, noc0_x, noc0_y, address, buffer, use_4B_mode, dma_threshold)
+        return bytes(buffer)
+
     def noc_write(
         self,
         noc_id: int,
