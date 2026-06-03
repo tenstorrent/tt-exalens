@@ -131,6 +131,7 @@ class TestReadWrite(unittest.TestCase):
         location_str = "1,0"
         location = OnChipCoordinate.create(location_str, self.context.devices[0])
         data = b"test_me!" * 16  # 128 bytes
+        read_data = bytearray(len(data))
         for address in range(0, 128, 1):
             # Write over regular TLB access to clean any previous data
             location.noc_write(address, b"\x00" * len(data), use_4B_mode=False, dma_threshold=len(data) + 1)
@@ -139,11 +140,11 @@ class TestReadWrite(unittest.TestCase):
             location.noc_write(address, data, use_4B_mode=False, dma_threshold=0)
 
             # Read over regular TLB access
-            read_data = location.noc_read(address, len(data), use_4B_mode=False, dma_threshold=len(data) + 1)
+            location.noc_read(address, read_data, use_4B_mode=False, dma_threshold=len(data) + 1)
             self.assertEqual(read_data, data)
 
             # Read over DMA
-            read_data = location.noc_read(address, len(data), use_4B_mode=False, dma_threshold=0)
+            location.noc_read(address, read_data, use_4B_mode=False, dma_threshold=0)
             self.assertEqual(read_data, data)
 
     @parameterized.expand(

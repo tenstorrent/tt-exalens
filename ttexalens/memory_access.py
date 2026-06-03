@@ -101,7 +101,9 @@ class L1MemoryAccess(MemoryAccess):
     def read(self, private_address: int, size_bytes: int) -> bytes:
         self._validate_access(private_address, size_bytes)
         noc_address = self._tranlate_to_noc_address(private_address)
-        return self._location.noc_read(noc_address, size_bytes)
+        buffer = bytearray(size_bytes)
+        self._location.noc_read(noc_address, buffer)
+        return bytes(buffer)
 
     def write(self, private_address: int, data: bytes) -> None:
         self._validate_access(private_address, len(data))

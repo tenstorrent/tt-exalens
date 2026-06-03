@@ -61,7 +61,9 @@ def dump_coverage(
         filename_len = coverage_header.filename_length.read_value()
         assert isinstance(filename_len, int)
         filename_addr = coverage_header.filename.dereference().get_address()
-        filename: str = location.noc_read(filename_addr, filename_len).decode("ascii")
+        filename_buffer = bytearray(filename_len)
+        location.noc_read(filename_addr, filename_buffer)
+        filename: str = filename_buffer.decode("ascii")
 
         # This points to the expected gcda file, which is in the same directory where the compiler placed the gcno,
         # so we just replace the extension and get the gcno path.
@@ -71,6 +73,7 @@ def dump_coverage(
             with open(gcno_copy_path, "wb") as f:
                 f.write(gcno_reader.read())
 
-    data = location.noc_read(coverage_start + header_size, length - header_size)
+    data = bytearray(length - header_size)
+    location.noc_read(coverage_start + header_size, data)
     with open(gcda_path, "wb") as f:
         f.write(data)
