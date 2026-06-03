@@ -529,7 +529,7 @@ const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& DwarfDie::get_address_rang
     Dwarf_Debug dbg = die.get_state();
     DwarfErrorHandle error(dbg);
 
-    // 1. DwarfAttributeTag::low_pc + DwarfAttributeTag::high_pc → one absolute range.
+    // DW_AT_low_pc + DW_AT_high_pc = one absolute range.
     Dwarf_Addr low_pc = 0;
     if (dwarf_lowpc(die, &low_pc, &error) == DW_DLV_OK) {
         Dwarf_Half hp_form = 0;
@@ -542,8 +542,8 @@ const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& DwarfDie::get_address_rang
         }
     }
 
-    // 2. DwarfAttributeTag::ranges (DWARF 5 .debug_rnglists). Use libdwarf's "cooked"
-    //    addresses so base-address selection is applied for us.
+    // DW_AT_ranges (DWARF 5 .debug_rnglists). Use libdwarf's "cooked"
+    // addresses so base-address selection is applied for us.
     DwarfAttributeHandle attr(dbg);
     if (dwarf_attr(die, static_cast<Dwarf_Half>(DwarfAttributeTag::ranges), &attr, &error) == DW_DLV_OK) {
         Dwarf_Half version = 0;
@@ -594,12 +594,46 @@ const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& DwarfDie::get_address_rang
                     }
                 }
             }
+        } else {
+            // DWARF 2/3/4: raw .debug_ranges. Entries are relative to a base
+            // address that starts at the CU's DW_AT_low_pc and is updated by
+            // any DW_RANGES_ADDRESS_SELECTION entries along the way.
+            Dwarf_Off ranges_offset = 0;
+            if (dwarf_global_formref(attr, &ranges_offset, &error) == DW_DLV_OK) {
+                Dwarf_Bool known_base = 0;
+                Dwarf_Unsigned base_address = 0;
+                Dwarf_Bool ranges_present = 0;
+                Dwarf_Unsigned ranges_attr_offset = 0;
+                dwarf_get_ranges_baseaddress(dbg, die, &known_base, &base_address, &ranges_present, &ranges_attr_offset,
+                                             &error);
+                if (!known_base) {
+                    base_address = 0;
+                }
+
+                DwarfRangesHandle raw(dbg);
+                Dwarf_Off real_offset = 0;
+                Dwarf_Unsigned byte_count = 0;
+                if (dwarf_get_ranges_b(dbg, ranges_offset, die, &real_offset, &raw, raw.count_ptr(), &byte_count,
+                                       &error) == DW_DLV_OK) {
+                    for (Dwarf_Signed i = 0; i < raw.size(); ++i) {
+                        const Dwarf_Ranges& entry = raw[i];
+                        if (entry.dwr_type == DW_RANGES_END) {
+                            break;
+                        }
+                        if (entry.dwr_type == DW_RANGES_ADDRESS_SELECTION) {
+                            base_address = entry.dwr_addr2;
+                            continue;
+                        }
+                        // DW_RANGES_ENTRY: addresses are relative to base.
+                        ranges.emplace_back(base_address + entry.dwr_addr1, base_address + entry.dwr_addr2);
+                    }
+                }
+            }
         }
-        // TODO: DWARF <=4 .debug_ranges via dwarf_get_ranges_b.
         return ranges;
     }
 
-    // 3. No address attributes on this DIE — union of children's ranges.
+    // No address attributes on this DIE — union of children's ranges.
     for (auto child = get_first_child(); child; child = child->get_next_sibling()) {
         const auto& child_ranges = child->get_address_ranges();
         ranges.insert(ranges.end(), child_ranges.begin(), child_ranges.end());

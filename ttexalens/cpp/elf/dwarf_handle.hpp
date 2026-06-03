@@ -116,20 +116,34 @@ class DwarfLocHeadHandle : public DwarfHandleBase<DwarfLocHeadHandle, Dwarf_Loc_
     static void do_cleanup(DwarfHandleNoState, Dwarf_Loc_Head_c head) { dwarf_dealloc_loc_head_c(head); }
 };
 
-struct DwarfAttributeListState {
+struct DwarfCountedListState {
     Dwarf_Debug dbg = nullptr;
     Dwarf_Signed count = 0;
 };
 
-// RAII for the (list, count) pair returned by dwarf_attrlist.
-class DwarfAttributeListHandle
-    : public DwarfHandleBase<DwarfAttributeListHandle, Dwarf_Attribute*, DwarfAttributeListState> {
+// CRTP intermediate for libdwarf array allocations that come back as a
+// (ItemType*, count) pair. Layers count_ptr/size/operator[] on top of
+// DwarfHandleBase; the concrete derived class only supplies do_cleanup()
+// for its libdwarf-specific deallocator.
+template <typename Derived, typename ItemType>
+class DwarfCountedListHandle : public DwarfHandleBase<Derived, ItemType*, DwarfCountedListState> {
    public:
-    explicit DwarfAttributeListHandle(Dwarf_Debug dbg)
-        : DwarfHandleBase<DwarfAttributeListHandle, Dwarf_Attribute*, DwarfAttributeListState>(
-              DwarfAttributeListState{dbg, 0}) {}
+    explicit DwarfCountedListHandle(Dwarf_Debug dbg)
+        : DwarfHandleBase<Derived, ItemType*, DwarfCountedListState>(DwarfCountedListState{dbg, 0}) {}
 
-    static void do_cleanup(DwarfAttributeListState state, Dwarf_Attribute* list) {
+    // Slot the libdwarf call writes the entry count into.
+    Dwarf_Signed* count_ptr() { return &this->state.count; }
+
+    Dwarf_Signed size() const { return this->state.count; }
+    const ItemType& operator[](Dwarf_Signed i) const { return this->get()[i]; }
+};
+
+// RAII for the (list, count) pair returned by dwarf_attrlist.
+class DwarfAttributeListHandle : public DwarfCountedListHandle<DwarfAttributeListHandle, Dwarf_Attribute> {
+   public:
+    using DwarfCountedListHandle::DwarfCountedListHandle;
+
+    static void do_cleanup(DwarfCountedListState state, Dwarf_Attribute* list) {
         for (Dwarf_Signed i = 0; i < state.count; ++i) {
             if (list[i] != nullptr) {
                 dwarf_dealloc(state.dbg, list[i], DW_DLA_ATTR);
@@ -137,12 +151,16 @@ class DwarfAttributeListHandle
         }
         dwarf_dealloc(state.dbg, list, DW_DLA_LIST);
     }
+};
 
-    // dwarf_attrlist writes the entry count through this slot.
-    Dwarf_Signed* count_ptr() { return &state.count; }
+// RAII for the (Dwarf_Ranges*, count) pair returned by dwarf_get_ranges_b.
+class DwarfRangesHandle : public DwarfCountedListHandle<DwarfRangesHandle, Dwarf_Ranges> {
+   public:
+    using DwarfCountedListHandle::DwarfCountedListHandle;
 
-    Dwarf_Signed size() const { return state.count; }
-    Dwarf_Attribute operator[](Dwarf_Signed i) const { return get()[i]; }
+    static void do_cleanup(DwarfCountedListState state, Dwarf_Ranges* ranges) {
+        dwarf_dealloc_ranges(state.dbg, ranges, state.count);
+    }
 };
 
 }  // namespace ttexalens::native_elf
