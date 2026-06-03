@@ -19,91 +19,6 @@ namespace ttexalens::native_elf {
 
 namespace {
 
-// IEEE-754 reinterpret helpers. The raw constant value can arrive as either
-// a packed integer (DwarfAttributeForm::data4 / data8) or a block of little-endian bytes
-// (DwarfAttributeForm::block*). Both encode the same bit pattern; we just need to fish
-// out the right width.
-float bits_to_float(uint64_t bits) { return std::bit_cast<float>(static_cast<uint32_t>(bits)); }
-double bits_to_double(uint64_t bits) { return std::bit_cast<double>(bits); }
-float bytes_to_float(const std::vector<uint8_t>& bytes) {
-    uint32_t bits = 0;
-    if (bytes.size() >= sizeof(bits)) {
-        std::memcpy(&bits, bytes.data(), sizeof(bits));
-    }
-    return std::bit_cast<float>(bits);
-}
-double bytes_to_double(const std::vector<uint8_t>& bytes) {
-    uint64_t bits = 0;
-    if (bytes.size() >= sizeof(bits)) {
-        std::memcpy(&bits, bytes.data(), sizeof(bits));
-    }
-    return std::bit_cast<double>(bits);
-}
-
-DwarfDie::ConstantValue passthrough_constant(const DwarfAttribute::Value& raw) {
-    if (const auto* b = std::get_if<bool>(&raw)) return *b;
-    if (const auto* s = std::get_if<int64_t>(&raw)) return *s;
-    if (const auto* u = std::get_if<uint64_t>(&raw)) return *u;
-    return std::monostate{};
-}
-
-DwarfDie::ConstantValue retype_constant(const DwarfAttribute::Value& raw, std::string_view type_name) {
-    if (type_name == "bool") {
-        if (const auto* u = std::get_if<uint64_t>(&raw)) return *u != 0;
-        if (const auto* s = std::get_if<int64_t>(&raw)) return *s != 0;
-        if (const auto* b = std::get_if<bool>(&raw)) return *b;
-        if (const auto* bytes = std::get_if<std::vector<uint8_t>>(&raw)) return !bytes->empty() && (*bytes)[0] != 0;
-        return std::monostate{};
-    }
-    if (type_name == "float") {
-        if (const auto* u = std::get_if<uint64_t>(&raw)) return bits_to_float(*u);
-        if (const auto* bytes = std::get_if<std::vector<uint8_t>>(&raw)) return bytes_to_float(*bytes);
-        return std::monostate{};
-    }
-    if (type_name == "double") {
-        if (const auto* u = std::get_if<uint64_t>(&raw)) return bits_to_double(*u);
-        if (const auto* bytes = std::get_if<std::vector<uint8_t>>(&raw)) return bytes_to_double(*bytes);
-        return std::monostate{};
-    }
-    return passthrough_constant(raw);
-}
-
-bool is_type_tag(DwarfDieTag tag) {
-    switch (tag) {
-        case DwarfDieTag::typedef_:
-        case DwarfDieTag::namespace_:
-        case DwarfDieTag::array_type:
-        case DwarfDieTag::base_type:
-        case DwarfDieTag::class_type:
-        case DwarfDieTag::const_type:
-        case DwarfDieTag::enumeration_type:
-        case DwarfDieTag::pointer_type:
-        case DwarfDieTag::ptr_to_member_type:
-        case DwarfDieTag::reference_type:
-        case DwarfDieTag::rvalue_reference_type:
-        case DwarfDieTag::string_type:
-        case DwarfDieTag::structure_type:
-        case DwarfDieTag::subrange_type:
-        case DwarfDieTag::subroutine_type:
-        case DwarfDieTag::thrown_type:
-        case DwarfDieTag::union_type:
-        case DwarfDieTag::unspecified_type:
-        case DwarfDieTag::volatile_type:
-        case DwarfDieTag::packed_type:
-        case DwarfDieTag::restrict_type:
-        case DwarfDieTag::atomic_type:
-        case DwarfDieTag::immutable_type:
-        case DwarfDieTag::shared_type:
-        case DwarfDieTag::interface_type:
-        case DwarfDieTag::set_type:
-        case DwarfDieTag::coarray_type:
-        case DwarfDieTag::dynamic_type:
-            return true;
-        default:
-            return false;
-    }
-}
-
 bool is_type_wrapper(DwarfDieTag tag) {
     return tag == DwarfDieTag::typedef_ || tag == DwarfDieTag::const_type || tag == DwarfDieTag::volatile_type;
 }
@@ -122,36 +37,6 @@ std::optional<uint64_t> attr_as_uint(const DwarfAttribute* attr) {
     }
     return std::nullopt;
 }
-
-// Inline parse for the common single-op DW_OP_addr location: the byte
-// stream is just `[0x03, addr_bytes...]`. Anything more elaborate (multi-op
-// expressions, location lists) goes through Phase 5's evaluator.
-std::optional<uint64_t> location_addr_only(const DwarfDie& die) {
-    const DwarfAttribute* loc_attr = die.get_attribute(DwarfAttributeTag::location);
-    if (loc_attr == nullptr) {
-        return std::nullopt;
-    }
-    const auto* bytes = std::get_if<std::vector<uint8_t>>(&loc_attr->get_value());
-    if (bytes == nullptr || bytes->empty() || (*bytes)[0] != DW_OP_addr) {
-        return std::nullopt;
-    }
-    Dwarf_Debug dbg = die.get_state();
-    DwarfErrorHandle error(dbg);
-    Dwarf_Half addr_size = 0;
-    if (dwarf_get_die_address_size(die, &addr_size, &error) != DW_DLV_OK) {
-        return std::nullopt;
-    }
-    if (bytes->size() < static_cast<size_t>(1 + addr_size)) {
-        return std::nullopt;
-    }
-    uint64_t addr = 0;
-    std::memcpy(&addr, bytes->data() + 1, addr_size);
-    return addr;
-}
-
-// Returns true iff a tag should never have an address attached (types,
-// namespaces, enumerators).
-bool tag_is_address_less(DwarfDieTag tag) { return is_type_tag(tag) || tag == DwarfDieTag::enumerator; }
 
 }  // namespace
 
@@ -397,10 +282,47 @@ DwarfDie::ConstantValue DwarfDie::get_constant_value() const {
         return std::monostate{};
     }
 
+    // For base_type DIEs, reinterpret the raw DW_FORM_data{4,8} / DW_FORM_block*
+    // bit pattern as the underlying scalar type. Same bits in either encoding;
+    // we just need to fish out the right width.
+    const auto& raw = attr->get_value();
+
     if (auto type_die = get_resolved_type(); type_die && type_die->get_tag() == DwarfDieTag::base_type) {
-        return retype_constant(attr->get_value(), type_die->get_name());
+        const auto type_name = type_die->get_name();
+        if (type_name == "bool") {
+            if (const auto* u = std::get_if<uint64_t>(&raw)) return *u != 0;
+            if (const auto* s = std::get_if<int64_t>(&raw)) return *s != 0;
+            if (const auto* b = std::get_if<bool>(&raw)) return *b;
+            if (const auto* bytes = std::get_if<std::vector<uint8_t>>(&raw)) return !bytes->empty() && (*bytes)[0] != 0;
+            return std::monostate{};
+        }
+        if (type_name == "float") {
+            if (const auto* u = std::get_if<uint64_t>(&raw)) return std::bit_cast<float>(static_cast<uint32_t>(*u));
+            if (const auto* bytes = std::get_if<std::vector<uint8_t>>(&raw)) {
+                uint32_t bits = 0;
+                if (bytes->size() >= sizeof(bits)) {
+                    std::memcpy(&bits, bytes->data(), sizeof(bits));
+                }
+                return std::bit_cast<float>(bits);
+            }
+            return std::monostate{};
+        }
+        if (type_name == "double") {
+            if (const auto* u = std::get_if<uint64_t>(&raw)) return std::bit_cast<double>(*u);
+            if (const auto* bytes = std::get_if<std::vector<uint8_t>>(&raw)) {
+                uint64_t bits = 0;
+                if (bytes->size() >= sizeof(bits)) {
+                    std::memcpy(&bits, bytes->data(), sizeof(bits));
+                }
+                return std::bit_cast<double>(bits);
+            }
+            return std::monostate{};
+        }
     }
-    return passthrough_constant(attr->get_value());
+    if (const auto* b = std::get_if<bool>(&raw)) return *b;
+    if (const auto* s = std::get_if<int64_t>(&raw)) return *s;
+    if (const auto* u = std::get_if<uint64_t>(&raw)) return *u;
+    return std::monostate{};
 }
 
 const DwarfCompileUnit* DwarfDie::get_cu() const {
@@ -429,7 +351,7 @@ DwarfDiePtr DwarfDie::get_resolved_type() const {
         }
 
         // Check DwarfAttributeTag::type for non-type DIEs
-        if (!is_type_tag(tag) && current->has_attribute(DwarfAttributeTag::type)) {
+        if (!current->is_type() && current->has_attribute(DwarfAttributeTag::type)) {
             auto next = current->get_die_from_attribute(DwarfAttributeTag::type);
             if (!next) {
                 break;
@@ -694,6 +616,42 @@ DwarfDiePtr DwarfDie::find_child_by_name(std::string_view target) const {
     return nullptr;
 }
 
+bool DwarfDie::is_type() const {
+    switch (get_tag()) {
+        case DwarfDieTag::typedef_:
+        case DwarfDieTag::namespace_:
+        case DwarfDieTag::array_type:
+        case DwarfDieTag::base_type:
+        case DwarfDieTag::class_type:
+        case DwarfDieTag::const_type:
+        case DwarfDieTag::enumeration_type:
+        case DwarfDieTag::pointer_type:
+        case DwarfDieTag::ptr_to_member_type:
+        case DwarfDieTag::reference_type:
+        case DwarfDieTag::rvalue_reference_type:
+        case DwarfDieTag::string_type:
+        case DwarfDieTag::structure_type:
+        case DwarfDieTag::subrange_type:
+        case DwarfDieTag::subroutine_type:
+        case DwarfDieTag::thrown_type:
+        case DwarfDieTag::union_type:
+        case DwarfDieTag::unspecified_type:
+        case DwarfDieTag::volatile_type:
+        case DwarfDieTag::packed_type:
+        case DwarfDieTag::restrict_type:
+        case DwarfDieTag::atomic_type:
+        case DwarfDieTag::immutable_type:
+        case DwarfDieTag::shared_type:
+        case DwarfDieTag::interface_type:
+        case DwarfDieTag::set_type:
+        case DwarfDieTag::coarray_type:
+        case DwarfDieTag::dynamic_type:
+            return true;
+        default:
+            return false;
+    }
+}
+
 bool DwarfDie::is_signed_type() const {
     const auto* enc = get_attribute_value<uint64_t>(DwarfAttributeTag::encoding);
     if (enc == nullptr) {
@@ -778,8 +736,23 @@ static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool al
     } else if (const auto* a = die.get_attribute(DwarfAttributeTag::low_pc)) {
         addr = attr_as_uint(a);
     } else {
-        // Try a simple DW_OP_addr location.
-        addr = location_addr_only(die);
+        // Try a simple DW_OP_addr location: the byte stream is just
+        // `[0x03, addr_bytes...]`. Anything more elaborate (multi-op
+        // expressions, location lists) goes through Phase 5's evaluator.
+        if (const DwarfAttribute* loc_attr = die.get_attribute(DwarfAttributeTag::location)) {
+            const auto* bytes = std::get_if<std::vector<uint8_t>>(&loc_attr->get_value());
+            if (bytes != nullptr && !bytes->empty() && (*bytes)[0] == DW_OP_addr) {
+                Dwarf_Debug dbg = die.get_state();
+                DwarfErrorHandle error(dbg);
+                Dwarf_Half addr_size = 0;
+                if (dwarf_get_die_address_size(die, &addr_size, &error) == DW_DLV_OK &&
+                    bytes->size() >= static_cast<size_t>(1 + addr_size)) {
+                    uint64_t a = 0;
+                    std::memcpy(&a, bytes->data() + 1, addr_size);
+                    addr = a;
+                }
+            }
+        }
 
         // Failing that, follow specification / abstract_origin if allowed.
         if (!addr && allow_recursion) {
@@ -801,8 +774,8 @@ static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool al
     }
 
     if (!addr) {
-        const DwarfDieTag tag = die.get_tag();
-        if (tag_is_address_less(tag)) {
+        // Types, namespaces, and enumerators never have an address attached.
+        if (die.is_type() || die.get_tag() == DwarfDieTag::enumerator) {
             return std::nullopt;
         }
         if (auto parent = die.get_parent()) {

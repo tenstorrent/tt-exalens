@@ -256,6 +256,11 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     // DIE and runs get_resolved_type on it. nullptr for any other tag.
     DwarfDiePtr get_array_element_type() const;
 
+    // True iff this DIE is one of the DWARF type-describing tags (typedef_,
+    // base_type, pointer_type, structure_type, ...). Used to distinguish
+    // type DIEs from data/location DIEs when walking DW_AT_type chains.
+    bool is_type() const;
+
     // True iff this DIE is a base type with a signed integer encoding
     // (DW_AT_encoding ∈ {DW_ATE_signed, DW_ATE_signed_char, DW_ATE_signed_fixed}).
     bool is_signed_type() const;
