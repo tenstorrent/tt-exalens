@@ -20,9 +20,9 @@ class MemoryAccess(ABC):
     """
 
     @abstractmethod
-    def read(self, private_address: int, size_bytes: int) -> bytes:
+    def read(self, private_address: int, buffer: bytearray | memoryview) -> None:
         """
-        Read 'size_bytes' bytes from 'private_address' and return them as bytes.
+        Read 'len(buffer)' bytes from 'private_address' into 'buffer'.
         'private_address' is the address as seen from the core's private address space, which may be translated to a NOC address by the implementation.
         """
         pass
@@ -32,11 +32,12 @@ class MemoryAccess(ABC):
         Read a word from 'private_address' and return it as an integer.
         'private_address' is the address as seen from the core's private address space, which may be translated to a NOC address by the implementation.
         """
-        data_bytes = self.read(private_address, 4)
-        return int.from_bytes(data_bytes, byteorder="little")
+        buffer = bytearray(4)
+        self.read(private_address, buffer)
+        return int.from_bytes(buffer, byteorder="little")
 
     @abstractmethod
-    def write(self, private_address: int, data: bytes) -> None:
+    def write(self, private_address: int, data: bytes | bytearray | memoryview) -> None:
         """
         Write 'data' bytes to 'private_address'.
         'private_address' is the address as seen from the core's private address space, which may be translated to a NOC address by the implementation.
@@ -98,12 +99,12 @@ class L1MemoryAccess(MemoryAccess):
         offset = private_address - self.l1_block.address.private_address
         return self.l1_block.address.noc_address + offset
 
-    def read(self, private_address: int, size_bytes: int) -> bytes:
-        self._validate_access(private_address, size_bytes)
+    def read(self, private_address: int, buffer: bytearray | memoryview) -> None:
+        self._validate_access(private_address, len(buffer))
         noc_address = self._tranlate_to_noc_address(private_address)
-        return self._location.noc_read(noc_address, size_bytes)
+        self._location.noc_read(noc_address, buffer)
 
-    def write(self, private_address: int, data: bytes) -> None:
+    def write(self, private_address: int, data: bytes | bytearray | memoryview) -> None:
         self._validate_access(private_address, len(data))
         noc_address = self._tranlate_to_noc_address(private_address)
         self._location.noc_write(noc_address, data)
@@ -130,10 +131,10 @@ class FixedMemoryAccess(MemoryAccess):
     def __init__(self, data: bytes):
         self._data = data
 
-    def read(self, private_address: int, size_bytes: int) -> bytes:
-        return self._data[private_address : private_address + size_bytes]
+    def read(self, private_address: int, buffer: bytearray | memoryview) -> None:
+        buffer[:] = self._data[private_address : private_address + len(buffer)]
 
-    def write(self, private_address: int, data: bytes) -> None:
+    def write(self, private_address: int, data: bytes | bytearray | memoryview) -> None:
         raise ReadOnlyMemoryError(private_address, len(data))
 
 
@@ -163,16 +164,16 @@ class RiscDebugMemoryAccess(MemoryAccess):
         self._restricted_access = restricted_access  # restrict access to only L1 and Data Private Memory
         self._safe_mode = safe_mode  # additional safety checks to prevent access to known unsafe memory regions
 
-    def read(self, private_address: int, size_bytes: int) -> bytes:
-        self._validate_access(private_address, size_bytes)
+    def read(self, private_address: int, buffer: bytearray | memoryview) -> None:
+        self._validate_access(private_address, len(buffer))
 
         if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
-                return self._risc_debug.read_memory_bytes(private_address, size_bytes, safe_mode=self._safe_mode)
+                self._risc_debug.read_memory_bytes(private_address, buffer, safe_mode=self._safe_mode)
         else:
-            return self._risc_debug.read_memory_bytes(private_address, size_bytes, safe_mode=self._safe_mode)
+            self._risc_debug.read_memory_bytes(private_address, buffer, safe_mode=self._safe_mode)
 
-    def write(self, private_address: int, data: bytes) -> None:
+    def write(self, private_address: int, data: bytes | bytearray | memoryview) -> None:
         self._validate_access(private_address, len(data))
 
         if self._ensure_halted_access or self._risc_debug.can_debug():
@@ -219,14 +220,15 @@ class CachedReadMemoryAccess(MemoryAccess):
         self._cached_address = cached_address
         self._cached_data = cached_data
 
-    def read(self, private_address: int, size_bytes: int) -> bytes:
+    def read(self, private_address: int, buffer: bytearray | memoryview) -> None:
+        size_bytes = len(buffer)
         if private_address >= self._cached_address and private_address + size_bytes <= self._cached_address + len(
             self._cached_data
         ):
             offset = private_address - self._cached_address
-            return self._cached_data[offset : offset + size_bytes]
+            buffer[:] = self._cached_data[offset : offset + size_bytes]
         else:
-            return self._base_mem_access.read(private_address, size_bytes)
+            self._base_mem_access.read(private_address, buffer)
 
-    def write(self, private_address: int, data: bytes) -> None:
+    def write(self, private_address: int, data: bytes | bytearray | memoryview) -> None:
         self._base_mem_access.write(private_address, data)
