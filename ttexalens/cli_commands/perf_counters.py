@@ -11,10 +11,10 @@ Usage:
 
 Options:
   --block=<name>        Block to operate on (FPU, INSTRN_THREAD, TDMA_UNPACK, TDMA_PACK).
-                        For reset/start/stop/read: omit to operate on all blocks.
+                        [Default: all]
   --counter=<id>        Counter id (0..511) or human name from the block's counter map.
                         For read: omit to read every counter in the selected block(s).
-  --snapshot            Take two snapshots over a short interval and report the delta
+  --snapshot            Take two snapshots over a 100ms interval and report the delta
                         between them. Without --snapshot, ``read`` does a single
                         read and omits the Δ column.
   --active              Only show counters whose value changed during the snapshot
@@ -66,7 +66,7 @@ from ttexalens.uistate import UIState
 
 
 command_metadata = CommandMetadata(
-    short_name="pc",
+    short_name="pcnt",
     long_name="perf-counters",
     type="low-level",
     description=__doc__,
@@ -279,6 +279,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     args = dopt.args
     block_name = args["--block"]
 
+    if block_name == "all":
+        block_name = None
+
     if args["list"]:
         _run_list(context)
         return
@@ -292,6 +295,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         if not args[op_name]:
             continue
         for device, loc in _iter_perf_targets(dopt, context, ui_state):
-            fn(loc, block_name)
+            fn(loc, block_name, noc_id=None, neo_id=None, safe_mode=None)
             util.INFO(f"chip={device.id} core={loc.to_user_str()}: {op_name} {block_name or 'all blocks'}")
         return

@@ -107,6 +107,7 @@ class TensixPerfCounters:
         block_name: str,
         *,
         noc_id: int | None = None,
+        neo_id: int | None = None,
         safe_mode: bool | None = None,
     ) -> None:
         block = self.get_block(block_name)
@@ -116,16 +117,12 @@ class TensixPerfCounters:
         store.write_register(block.reg2, 0, safe_mode=safe_mode)
         store.write_register(block.reg2, self._CTRL_START, safe_mode=safe_mode)
 
-    def reset_all(self, *, noc_id: int | None = None, safe_mode: bool | None = None) -> None:
-        """Reset every known block. Equivalent to firmware reset on tt-1xx."""
-        for name in self._blocks:
-            self.reset_block(name, noc_id=noc_id, safe_mode=safe_mode)
-
     def start_block(
         self,
         block_name: str,
         *,
         noc_id: int | None = None,
+        neo_id: int | None = None,
         safe_mode: bool | None = None,
     ) -> None:
         """Start one block (rising edge on REG2[0])."""
@@ -139,6 +136,7 @@ class TensixPerfCounters:
         block_name: str,
         *,
         noc_id: int | None = None,
+        neo_id: int | None = None,
         safe_mode: bool | None = None,
     ) -> None:
         """Stop one block (rising edge on REG2[1])."""
@@ -146,19 +144,6 @@ class TensixPerfCounters:
         store = self._register_store(noc_id)
         store.write_register(block.reg2, 0, safe_mode=safe_mode)
         store.write_register(block.reg2, self._CTRL_STOP, safe_mode=safe_mode)
-
-    def start_all(self, *, noc_id: int | None = None, safe_mode: bool | None = None) -> None:
-        """Start every known block.
-
-        Iterates per-block.
-        """
-        for name in self._blocks:
-            self.start_block(name, noc_id=noc_id, safe_mode=safe_mode)
-
-    def stop_all(self, *, noc_id: int | None = None, safe_mode: bool | None = None) -> None:
-        """Stop every known block (per-block; see ``start_all`` for rationale)."""
-        for name in self._blocks:
-            self.stop_block(name, noc_id=noc_id, safe_mode=safe_mode)
 
     def read_ref_cnt(
         self,
