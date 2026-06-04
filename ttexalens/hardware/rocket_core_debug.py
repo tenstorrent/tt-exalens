@@ -68,13 +68,15 @@ class RocketCoreDebug(RiscDebug):
     def _read_memory(self, address: int) -> int:
         raise NotImplementedError("_read_memory must be implemented by subclasses of RocketCoreDebug")
 
-    def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
+    def read_memory_bytes(self, address: int, buffer: bytearray | memoryview, safe_mode: bool | None = None) -> None:
         raise NotImplementedError("read_memory_bytes must be implemented by subclasses of RocketCoreDebug")
 
     def _write_memory(self, address: int, data: int) -> None:
         raise NotImplementedError("_write_memory must be implemented by subclasses of RocketCoreDebug")
 
-    def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None) -> None:
+    def write_memory_bytes(
+        self, address: int, data: bytes | bytearray | memoryview, safe_mode: bool | None = None
+    ) -> None:
         raise NotImplementedError("write_memory_bytes must be implemented by subclasses of RocketCoreDebug")
 
     def read_status(self) -> RiscDebugStatus:

@@ -740,7 +740,9 @@ class ElfDie:
             if frame_inspection is None:
                 return None
             try:
-                return bytes(frame_inspection.mem_access.read(int(value), size))
+                buffer = bytearray(size)
+                frame_inspection.mem_access.read(int(value), buffer)
+                return bytes(buffer)
             except Exception:
                 util.DEBUG(f"Failed to read {size} bytes for location piece:\n{traceback.format_exc()}")
                 return None

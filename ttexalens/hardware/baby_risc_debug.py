@@ -696,12 +696,15 @@ class BabyRiscDebug(RiscDebug):
         pass
 
     def _read_memory(self, address: int, safe_mode: bool | None = None) -> int:
-        return int.from_bytes(self.read_memory_bytes(address, 4, safe_mode=safe_mode), byteorder="little")
+        buffer = bytearray(4)
+        self.read_memory_bytes(address, buffer, safe_mode=safe_mode)
+        return int.from_bytes(buffer, byteorder="little")
 
     def _write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
         self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"), safe_mode=safe_mode)
 
-    def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
+    def read_memory_bytes(self, address: int, buffer: bytearray | memoryview, safe_mode: bool | None = None) -> None:
+        size_bytes = len(buffer)
         safe_mode = safe_mode if safe_mode is not None else self.device._context.safe_mode
         if safe_mode:
             self._validate_safe_access(address, size_bytes)
@@ -712,19 +715,20 @@ class BabyRiscDebug(RiscDebug):
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
 
         word_size = 4
-        aligned_start = address - (address % word_size)
-        aligned_end = ((address + size_bytes + word_size - 1) // word_size) * word_size
+        pos = 0
+        while pos < size_bytes:
+            addr = address + pos
+            word_addr = addr - (addr % word_size)
+            word: int = self.debug_hardware.read_memory(word_addr)
+            word_bytes = word.to_bytes(word_size, byteorder="little")
+            start_in_word = addr - word_addr
+            n = min(word_size - start_in_word, size_bytes - pos)
+            buffer[pos : pos + n] = word_bytes[start_in_word : start_in_word + n]
+            pos += n
 
-        result = bytearray()
-        words_to_read = (aligned_end - aligned_start) // word_size
-        for offset in range(words_to_read):
-            new_addr = aligned_start + offset * word_size
-            word: int = self.debug_hardware.read_memory(new_addr)
-            result.extend(word.to_bytes(4, byteorder="little"))
-
-        return bytes(result[address - aligned_start : address - aligned_start + size_bytes])
-
-    def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None) -> None:
+    def write_memory_bytes(
+        self, address: int, data: bytes | bytearray | memoryview, safe_mode: bool | None = None
+    ) -> None:
         safe_mode = safe_mode if safe_mode is not None else self.device._context.safe_mode
         if safe_mode:
             self._validate_safe_access(address, len(data))

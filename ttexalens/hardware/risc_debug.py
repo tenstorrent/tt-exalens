@@ -197,15 +197,13 @@ class RiscDebug:
         return self._read_memory(address)
 
     @abstractmethod
-    def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
+    def read_memory_bytes(self, address: int, buffer: bytearray | memoryview, safe_mode: bool | None = None) -> None:
         """
-        Read size_bytes bytes from a memory address.
+        Read len(buffer) bytes from a memory address into 'buffer'.
         Args:
             address (int): Memory address to read.
-            size_bytes (int): Number of bytes to read.
+            buffer (bytearray | memoryview): Destination buffer; exactly len(buffer) bytes are read into it.
             safe_mode (bool | None): If True, apply additional safety checks to prevent access to known unsafe memory regions.
-        Returns:
-            bytes: Size_bytes bytes at the memory address.
         """
         pass
 
@@ -226,12 +224,14 @@ class RiscDebug:
         self._write_memory(address, data)
 
     @abstractmethod
-    def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None) -> None:
+    def write_memory_bytes(
+        self, address: int, data: bytes | bytearray | memoryview, safe_mode: bool | None = None
+    ) -> None:
         """
-        Write size_bytes bytes to a memory address.
+        Write len(data) bytes to a memory address.
         Args:
             address (int): Memory address to write.
-            data (bytes): Bytes to write to the memory address.
+            data (bytes | bytearray | memoryview): Bytes to write to the memory address.
             safe_mode (bool | None): If True, apply additional safety checks to prevent access to known unsafe memory regions.
         """
         pass

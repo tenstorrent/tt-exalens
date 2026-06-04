@@ -292,12 +292,12 @@ class Device:
         self,
         location: OnChipCoordinate,
         address: int,
-        size_bytes: int,
+        buffer: bytearray | memoryview,
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
-    ) -> bytes:
+    ) -> None:
         noc_x, noc_y = location._noc0_coord
 
         if use_4B_mode is None:
@@ -308,24 +308,25 @@ class Device:
             safe_mode = self._context.safe_mode
 
         if safe_mode:
-            self._validate_noc_access_is_safe(location, address, size_bytes, is_write=False)
+            self._validate_noc_access_is_safe(location, address, len(buffer), is_write=False)
 
-        def noc_operation(noc_id: int) -> bytes:
-            return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
+        def noc_operation(noc_id: int) -> None:
+            self._umd_device.noc_read(noc_id, noc_x, noc_y, address, buffer, use_4B_mode, dma_threshold)
 
-        return self._with_noc_failover(noc_operation, noc_id)
+        self._with_noc_failover(noc_operation, noc_id)
 
     def noc_read32(
         self, location: OnChipCoordinate, address: int, noc_id: int | None = None, safe_mode: bool | None = None
     ) -> int:
-        result = self.noc_read(location, address, 4, noc_id, True, safe_mode=safe_mode)
-        return int.from_bytes(result, byteorder="little")
+        buffer = bytearray(4)
+        self.noc_read(location, address, buffer, noc_id, True, safe_mode=safe_mode)
+        return int.from_bytes(buffer, byteorder="little")
 
     def noc_write(
         self,
         location: OnChipCoordinate,
         address: int,
-        data: bytes,
+        data: bytes | bytearray | memoryview,
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
@@ -346,7 +347,7 @@ class Device:
         def noc_operation(noc_id: int) -> None:
             self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
 
-        return self._with_noc_failover(noc_operation, noc_id)
+        self._with_noc_failover(noc_operation, noc_id)
 
     def noc_write32(
         self,
@@ -356,9 +357,7 @@ class Device:
         noc_id: int | None = None,
         safe_mode: bool | None = None,
     ):
-        return self.noc_write(
-            location, address, data.to_bytes(4, byteorder="little"), noc_id, True, safe_mode=safe_mode
-        )
+        self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True, safe_mode=safe_mode)
 
     def bar0_read32(self, address: int) -> int:
         return self._umd_device.bar0_read32(address)

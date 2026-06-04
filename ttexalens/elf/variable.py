@@ -168,7 +168,8 @@ class ElfVariable:
             raise TypeMismatchError("dereference", self.__type_die.name)
         assert self.__type_die.size is not None
         assert self.__type_die.dereference_type is not None
-        address_bytes = self.__mem_access.read(self.__address, self.__type_die.size)
+        address_bytes = bytearray(self.__type_die.size)
+        self.__mem_access.read(self.__address, address_bytes)
         address = int.from_bytes(address_bytes, byteorder="little")
         return ElfVariable(self.__type_die.dereference_type, address, self.__mem_access)
 
@@ -197,9 +198,10 @@ class ElfVariable:
             address = self.dereference().get_address()
             limit = 1024 * 1024  # Arbitrary max length to prevent infinite loops on non-null-terminated data
         data = bytearray()
+        byte = bytearray(1)
         for offset in range(limit):
-            byte = self.__mem_access.read(address + offset, 1)
-            if len(byte) == 0 or byte[0] == 0:
+            self.__mem_access.read(address + offset, byte)
+            if byte[0] == 0:
                 break
             data.append(byte[0])
         return data.decode("utf-8", errors="replace")
@@ -220,7 +222,8 @@ class ElfVariable:
 
         # Read the value from memory
         assert type.size is not None
-        value_bytes = self.__mem_access.read(self.__address, type.size)
+        value_bytes = bytearray(type.size)
+        self.__mem_access.read(self.__address, value_bytes)
 
         # Convert the value to the appropriate type
         if type.tag_is("pointer_type"):
@@ -705,7 +708,9 @@ class ElfVariable:
         return self.__type_die.size
 
     def read_bytes(self) -> bytes:
-        return self.__mem_access.read(self.__address, self.get_size())
+        buffer = bytearray(self.get_size())
+        self.__mem_access.read(self.__address, buffer)
+        return bytes(buffer)
 
     def read(self) -> "ElfVariable":
         if self.__type_die.tag_is("pointer_type"):
