@@ -7,7 +7,6 @@ from typing import Any, Generator
 import time
 
 from ttexalens import util
-from ttexalens.device import Device
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
@@ -37,10 +36,6 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
     def __init__(self, risc_info: BabyRiscInfo, register_store: RegisterStore, enable_asserts: bool = True):
         super().__init__(risc_info, enable_asserts)
         self.register_store = register_store
-
-    @property
-    def device(self) -> Device:
-        return self.risc_info.noc_block.device
 
     def is_in_reset(self) -> bool:
         reset_bit = 1 << self.baby_risc_info.reset_flag_shift
