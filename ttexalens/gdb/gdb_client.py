@@ -26,7 +26,7 @@ def get_gdb_client_path() -> str:
 
     sfpi_roots = [
         os.path.join(app_path, "sfpi"),
-        os.path.join(app_path, "..", "build", "sfpi"),
+        os.path.join(app_path, "..", "build_riscv", "sfpi"),
         "/opt/tenstorrent/sfpi",
     ]
     sfpi_root_env = os.environ.get("SFPI_ROOT")
