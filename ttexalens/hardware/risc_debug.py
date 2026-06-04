@@ -175,7 +175,15 @@ class RiscDebug:
         """
         pass
 
+    def _validate_32_bit_value(self, value: int):
+        """Validate that a value fits within 32 bits for SBA access."""
+        if value < 0 or value > 0xFFFFFFFF:
+            raise ValueError(f"Value out of bounds: value=0x{value:08x}. Value must fit within 32 bits.")
+
     @abstractmethod
+    def _read_memory(self, address: int) -> int:
+        raise NotImplementedError("_read_memory must be implemented by subclasses of RiscDebug")
+
     def read_memory(self, address: int, safe_mode: bool | None = None) -> int:
         """
         Read a memory address.
@@ -185,7 +193,8 @@ class RiscDebug:
         Returns:
             int: Value at the memory address.
         """
-        pass
+        self._validate_32_bit_value(address)
+        return self._read_memory(address)
 
     @abstractmethod
     def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
@@ -201,6 +210,9 @@ class RiscDebug:
         pass
 
     @abstractmethod
+    def _write_memory(self, address: int, data: int) -> None:
+        raise NotImplementedError("_write_memory must be implemented by subclasses of RiscDebug")
+
     def write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
         """
         Write data to a memory address.
@@ -209,7 +221,9 @@ class RiscDebug:
             data (int): Data to write to the memory address.
             safe_mode (bool | None): If True, apply additional safety checks to prevent access to known unsafe memory regions.
         """
-        pass
+        self._validate_32_bit_value(address)
+        self._validate_32_bit_value(data)
+        self._write_memory(address, data)
 
     @abstractmethod
     def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None) -> None:

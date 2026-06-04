@@ -695,10 +695,10 @@ class BabyRiscDebug(RiscDebug):
         """Safety validations to be added. tt-exalens:#913"""
         pass
 
-    def read_memory(self, address: int, safe_mode: bool | None = None) -> int:
+    def _read_memory(self, address: int, safe_mode: bool | None = None) -> int:
         return int.from_bytes(self.read_memory_bytes(address, 4, safe_mode=safe_mode), byteorder="little")
 
-    def write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
+    def _write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
         self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"), safe_mode=safe_mode)
 
     def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:

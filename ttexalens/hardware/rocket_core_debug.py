@@ -30,10 +30,8 @@ class RocketCoreDebug(RiscDebug):
         raise NotImplementedError("set_reset_signal must be implemented by subclasses of RocketCoreDebug")
 
     @contextmanager
-    def ensure_debug_module_out_of_reset(self) -> Generator[None, Any, None]:
-        raise NotImplementedError(
-            "ensure_debug_module_out_of_reset must be implemented by subclasses of RocketCoreDebug"
-        )
+    def ensure_debug_module_is_active(self) -> Generator[None, Any, None]:
+        raise NotImplementedError("ensure_debug_module_is_active must be implemented by subclasses of RocketCoreDebug")
 
     def is_halted(self) -> bool:
         raise NotImplementedError("is_halted must be implemented by subclasses of RocketCoreDebug")
@@ -67,14 +65,14 @@ class RocketCoreDebug(RiscDebug):
     def get_pc(self) -> int:
         raise NotImplementedError("get_pc must be implemented by subclasses of RocketCoreDebug")
 
-    def read_memory(self, address: int, safe_mode: bool | None = None) -> int:
-        raise NotImplementedError("read_memory must be implemented by subclasses of RocketCoreDebug")
+    def _read_memory(self, address: int) -> int:
+        raise NotImplementedError("_read_memory must be implemented by subclasses of RocketCoreDebug")
 
     def read_memory_bytes(self, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
         raise NotImplementedError("read_memory_bytes must be implemented by subclasses of RocketCoreDebug")
 
-    def write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
-        raise NotImplementedError("write_memory must be implemented by subclasses of RocketCoreDebug")
+    def _write_memory(self, address: int, data: int) -> None:
+        raise NotImplementedError("_write_memory must be implemented by subclasses of RocketCoreDebug")
 
     def write_memory_bytes(self, address: int, data: bytes, safe_mode: bool | None = None) -> None:
         raise NotImplementedError("write_memory_bytes must be implemented by subclasses of RocketCoreDebug")

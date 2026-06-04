@@ -7,6 +7,7 @@ from typing import Any, Generator
 import time
 
 from ttexalens import util
+from ttexalens.device import Device
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
@@ -36,6 +37,10 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
     def __init__(self, risc_info: BabyRiscInfo, register_store: RegisterStore, enable_asserts: bool = True):
         super().__init__(risc_info, enable_asserts)
         self.register_store = register_store
+
+    @property
+    def device(self) -> Device:
+        return self.risc_info.noc_block.device
 
     def is_in_reset(self) -> bool:
         reset_bit = 1 << self.baby_risc_info.reset_flag_shift
@@ -71,7 +76,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         assert not self.is_debug_module_in_reset(), "Debug module should be out of reset"
 
     @contextmanager
-    def ensure_debug_module_out_of_reset(self) -> Generator[None, Any, None]:
+    def ensure_debug_module_is_active(self) -> Generator[None, Any, None]:
         value = self.register_store.read_register("SMN_RISC_RESET_REG")
         dm_was_in_reset = self.is_debug_module_in_reset(value)
         if dm_was_in_reset:
@@ -84,12 +89,12 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
                 self.register_store.write_register("SMN_RISC_RESET_REG", value)
 
     def is_halted(self) -> bool:
-        with self.ensure_debug_module_out_of_reset():
+        with self.ensure_debug_module_is_active():
             haltsummary = self.register_store.read_register("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
             return bool(haltsummary & (1 << self.baby_risc_info.risc_id))
 
     def halt(self) -> None:
-        with self.ensure_debug_module_out_of_reset():
+        with self.ensure_debug_module_is_active():
             if self.is_halted():
                 util.WARN(f"Halt: {self.risc_location.risc_name} at {self.risc_location.location} is already halted")
                 return
@@ -100,7 +105,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
                 raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
 
     def cont(self) -> None:
-        with self.ensure_debug_module_out_of_reset():
+        with self.ensure_debug_module_is_active():
             if not self.is_halted():
                 util.WARN(
                     f"Continue: {self.risc_location.risc_name} at {self.risc_location.location} is already running"
@@ -135,27 +140,27 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
                 raise Exception("Timeout waiting for system bus access")
             time.sleep(0.01)
 
-    def read_memory(self, address: int, safe_mode: bool | None = None) -> int:
+    def _read_memory(self, address: int, safe_mode: bool | None = None) -> int:
         """Read a 32-bit word via System Bus Access."""
-        with self.ensure_debug_module_out_of_reset():
+        with self.ensure_debug_module_is_active():
             self._sba_wait_not_busy()
             self.register_store.write_register(
                 "TT_DEBUG_MODULE_APB_SBCS",
                 SBCS_SBACCESS_32 | SBCS_SBREADONADDR | SBCS_SBERROR_MASK | SBCS_SBBUSYERROR,
             )
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address & 0xFFFFFFFF)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address)
             return self.register_store.read_register("TT_DEBUG_MODULE_APB_SBDATA0")
 
-    def write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
+    def _write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
         """Write a 32-bit word via System Bus Access."""
-        with self.ensure_debug_module_out_of_reset():
+        with self.ensure_debug_module_is_active():
             self._sba_wait_not_busy()
             self.register_store.write_register(
                 "TT_DEBUG_MODULE_APB_SBCS",
                 SBCS_SBACCESS_32 | SBCS_SBERROR_MASK | SBCS_SBBUSYERROR,
             )
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address & 0xFFFFFFFF)
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBDATA0", data & 0xFFFFFFFF)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBDATA0", data)
 
     def set_code_start_address(self, address: int | None) -> None:
         self.baby_risc_info.set_code_start_address(self.register_store, address if address is not None else 0)
