@@ -31,7 +31,7 @@ __all__ = [
 def _check_and_get_perf_counters(
     location: OnChipCoordinate,
     neo_id: int | None,
-) -> None:
+) -> TensixPerfCounters:
     perf = location.noc_block.get_perf_counters(neo_id=neo_id)
     if perf is None:
         raise TTException(
