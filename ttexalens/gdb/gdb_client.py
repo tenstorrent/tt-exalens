@@ -33,6 +33,7 @@ def get_gdb_client_path() -> str:
         sfpi_roots.append(sfpi_root_env)
 
     searched: list[str] = []
+    gdb_client_path: str | None = None
     for sfpi_root in sfpi_roots:
         gdb_client_path = os.path.abspath(os.path.join(sfpi_root, GDB_CLIENT_SFPI_RELATIVE_PATH))
         searched.append(gdb_client_path)
