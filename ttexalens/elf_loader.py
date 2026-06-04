@@ -192,7 +192,7 @@ class ElfLoader:
                     if verify_write:
                         read_data = bytearray(len(section.data))
                         self.read_block(address, read_data)
-                        if bytes(read_data) != bytes(section.data):
+                        if memoryview(read_data) != section.data:
                             util.ERROR(f"Error writing section {section.name} to address 0x{address:08x}.")
                             continue
                         else:
