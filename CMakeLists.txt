@@ -17,13 +17,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Set default values for variables/options
 set(TTEXALENS_HOME "${PROJECT_SOURCE_DIR}")
-option(BUILD_PYTHON_WHEEL "Only download SFPI, skip RISCV kernel builds" OFF)
-option(STRIP_SYMBOLS "Strip symbols from GDB binary" OFF)
+option(BUILD_PYTHON_WHEEL "Skip SFPI download and RISCV kernel builds (pure-Python wheel)" OFF)
 
 # build_riscv: shared output dir for RISCV kernel builds AND sfpi download.
 # Decoupled from host build mode so switching Debug<->Release doesn't trigger
-# kernel rebuilds or toolchain redownload. Created unconditionally because
-# sfpi_release.cmake writes the toolchain archive here even in wheel builds.
+# kernel rebuilds or toolchain redownload.
 file(MAKE_DIRECTORY "${CMAKE_SOURCE_DIR}/build_riscv")
 
 # Symlinks for the Makefile-driven dev flow:
@@ -53,11 +51,14 @@ if(NOT BUILD_PYTHON_WHEEL)
     endif()
 endif()
 
-# Check for SFPI release (writes to build_riscv/, see sfpi_release.cmake)
-include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
-
-# Build RISCV kernels unless building Python wheel
+# The Python wheel is pure Python: it no longer bundles the SFPI GDB client
+# (the binary is not portable across platforms; it is located at runtime via
+# the system install, SFPI_ROOT, or PATH instead - see get_gdb_client_path()).
+# So wheel builds skip both the SFPI download and the RISCV kernel build, which
+# also lets the wheel be built on hosts that SFPI does not ship binaries for.
 if(NOT BUILD_PYTHON_WHEEL)
+    # SFPI provides the RISCV toolchain used to build the test kernels.
+    include(${PROJECT_SOURCE_DIR}/cmake/sfpi_release.cmake)
     add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src)
 endif()
 
@@ -65,29 +66,3 @@ endif()
 include(${PROJECT_SOURCE_DIR}/cmake/native_elf.cmake)
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens/cpp/elf)
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens/cpp/nanobind)
-
-# Staging copy of the GDB binary for wheel packaging. Lives under the current
-# CMAKE_BINARY_DIR so dev and wheel builds keep their staging trees separate.
-set(SFPI_GDB_SOURCE "${SFPI_RELEASE_PATH}/compiler/bin/riscv-tt-elf-gdb")
-set(SFPI_GDB_DEST "${CMAKE_BINARY_DIR}/stripped/riscv-tt-elf-gdb")
-
-add_custom_target(install-gdb-for-wheel ALL
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_BINARY_DIR}/stripped"
-    COMMAND ${CMAKE_COMMAND} -E copy "${SFPI_GDB_SOURCE}" "${SFPI_GDB_DEST}"
-    COMMENT "Copying GDB binary for Python wheel packaging"
-)
-
-# Add optional strip command if STRIP_SYMBOLS is enabled
-if(STRIP_SYMBOLS)
-    add_custom_command(TARGET install-gdb-for-wheel POST_BUILD
-        COMMAND strip "${SFPI_GDB_DEST}"
-        COMMENT "Stripping symbols from GDB binary"
-    )
-endif()
-
-# Install the GDB binary for the wheel when BUILD_PYTHON_WHEEL is enabled
-if(BUILD_PYTHON_WHEEL)
-    install(FILES "${SFPI_GDB_DEST}"
-            DESTINATION "sfpi/compiler/bin"
-            COMPONENT python_wheel)
-endif()

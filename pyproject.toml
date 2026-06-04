@@ -37,7 +37,7 @@ tt-exalens = "ttexalens.cli:main"
 
 [tool.scikit-build]
 cmake.build-type = "Release"
-cmake.args = ["-DBUILD_PYTHON_WHEEL=ON", "-DSTRIP_SYMBOLS=ON"]
+cmake.args = ["-DBUILD_PYTHON_WHEEL=ON"]
 wheel.install-dir = "ttexalens"
 wheel.packages = ["ttexalens"]
 wheel.platlib = true
@@ -72,26 +72,15 @@ build-frontend = "pip"
 test-command = "python -c \"import ttexalens; from ttexalens._native_ttexalens import ElfFile; print('import OK')\""
 
 [tool.cibuildwheel.linux]
-# manylinux_2_34 (AlmaLinux 9, glibc 2.34) — chosen because the vendored
-# `riscv-tt-elf-gdb` from SFPI links against GLIBC_2.34 / GLIBCXX_3.4.30.
-# A lower baseline would fail auditwheel on that binary. The chosen baseline
-# matches what tt-exalens already requires in practice (Ubuntu 22.04+,
-# RHEL 9+, Debian 12+). Full image URL is required for cibuildwheel < 3.0,
-# which didn't recognise `manylinux_2_34` as a shortcut.
+# manylinux_2_34 (AlmaLinux 9, glibc 2.34) matches what tt-exalens already
+# requires in practice (Ubuntu 22.04+, RHEL 9+, Debian 12+). Full image URL
+# is required for cibuildwheel < 3.0, which didn't recognise `manylinux_2_34`
+# as a shortcut.
 manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34_x86_64"
 manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64"
 # AlmaLinux 9 ships with gcc 11.5; xz is needed by FetchContent for the
 # .txz SFPI archive.
 before-all = "yum install -y xz"
-# `wheel` is needed by our custom repair-wheel script (python -m wheel
-# pack/unpack); the target Python in the manylinux image doesn't have it
-# preinstalled.
-before-build = "pip install wheel"
-# Custom repair: pull SFPI's GDB binary out of the wheel before auditwheel
-# runs, then put it back. GDB needs GLIBCXX_3.4.30 (libstdc++ from gcc-12+)
-# which is above manylinux_2_34's baseline, so auditwheel would reject the
-# wheel otherwise. See .github/scripts/repair-wheel.sh for details.
-repair-wheel-command = "bash /project/.github/scripts/repair-wheel.sh {wheel} {dest_dir}"
 
 [tool.pyright]
 include = ["."]
