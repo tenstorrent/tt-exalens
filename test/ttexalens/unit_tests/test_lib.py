@@ -35,6 +35,13 @@ from ttexalens.gdb.gdb_communication import ServerSocket
 from ttexalens.gdb.gdb_server import GdbServer
 
 
+def _read_bytes(rd: RiscDebug, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
+    """Test helper: allocate a buffer, fill it via the buffer-based read_memory_bytes, and return bytes."""
+    buffer = bytearray(size_bytes)
+    rd.read_memory_bytes(address, buffer, safe_mode=safe_mode)
+    return bytes(buffer)
+
+
 def invalid_argument_decorator(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -131,6 +138,7 @@ class TestReadWrite(unittest.TestCase):
         location_str = "1,0"
         location = OnChipCoordinate.create(location_str, self.context.devices[0])
         data = b"test_me!" * 16  # 128 bytes
+        read_data = bytearray(len(data))
         for address in range(0, 128, 1):
             # Write over regular TLB access to clean any previous data
             location.noc_write(address, b"\x00" * len(data), use_4B_mode=False, dma_threshold=len(data) + 1)
@@ -139,11 +147,11 @@ class TestReadWrite(unittest.TestCase):
             location.noc_write(address, data, use_4B_mode=False, dma_threshold=0)
 
             # Read over regular TLB access
-            read_data = location.noc_read(address, len(data), use_4B_mode=False, dma_threshold=len(data) + 1)
+            location.noc_read(address, read_data, use_4B_mode=False, dma_threshold=len(data) + 1)
             self.assertEqual(read_data, data)
 
             # Read over DMA
-            read_data = location.noc_read(address, len(data), use_4B_mode=False, dma_threshold=0)
+            location.noc_read(address, read_data, use_4B_mode=False, dma_threshold=0)
             self.assertEqual(read_data, data)
 
     @parameterized.expand(
@@ -648,35 +656,35 @@ class TestReadWrite(unittest.TestCase):
             address = private_memory.address.private_address
             risc_debug.write_memory_bytes(address, bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
+                _read_bytes(risc_debug, address, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
             )
-            self.assertEqual(risc_debug.read_memory_bytes(address + 0, 1), bytes([0x78]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 1), bytes([0x56]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 2, 1), bytes([0x34]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 3, 1), bytes([0x12]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 4, 1), bytes([0xEF]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 5, 1), bytes([0xCD]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 6, 1), bytes([0xAB]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 7, 1), bytes([0x90]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 0, 2), bytes([0x78, 0x56]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 2, 2), bytes([0x34, 0x12]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 4, 2), bytes([0xEF, 0xCD]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 6, 2), bytes([0xAB, 0x90]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 0, 4), bytes([0x78, 0x56, 0x34, 0x12]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 4, 4), bytes([0xEF, 0xCD, 0xAB, 0x90]))
+            self.assertEqual(_read_bytes(risc_debug, address + 0, 1), bytes([0x78]))
+            self.assertEqual(_read_bytes(risc_debug, address + 1, 1), bytes([0x56]))
+            self.assertEqual(_read_bytes(risc_debug, address + 2, 1), bytes([0x34]))
+            self.assertEqual(_read_bytes(risc_debug, address + 3, 1), bytes([0x12]))
+            self.assertEqual(_read_bytes(risc_debug, address + 4, 1), bytes([0xEF]))
+            self.assertEqual(_read_bytes(risc_debug, address + 5, 1), bytes([0xCD]))
+            self.assertEqual(_read_bytes(risc_debug, address + 6, 1), bytes([0xAB]))
+            self.assertEqual(_read_bytes(risc_debug, address + 7, 1), bytes([0x90]))
+            self.assertEqual(_read_bytes(risc_debug, address + 0, 2), bytes([0x78, 0x56]))
+            self.assertEqual(_read_bytes(risc_debug, address + 2, 2), bytes([0x34, 0x12]))
+            self.assertEqual(_read_bytes(risc_debug, address + 4, 2), bytes([0xEF, 0xCD]))
+            self.assertEqual(_read_bytes(risc_debug, address + 6, 2), bytes([0xAB, 0x90]))
+            self.assertEqual(_read_bytes(risc_debug, address + 0, 4), bytes([0x78, 0x56, 0x34, 0x12]))
+            self.assertEqual(_read_bytes(risc_debug, address + 4, 4), bytes([0xEF, 0xCD, 0xAB, 0x90]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address + 0, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
+                _read_bytes(risc_debug, address + 0, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
             )
-            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 2), bytes([0x56, 0x34]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 3, 2), bytes([0x12, 0xEF]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 5, 2), bytes([0xCD, 0xAB]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 4), bytes([0x56, 0x34, 0x12, 0xEF]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 2, 4), bytes([0x34, 0x12, 0xEF, 0xCD]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 3, 4), bytes([0x12, 0xEF, 0xCD, 0xAB]))
+            self.assertEqual(_read_bytes(risc_debug, address + 1, 2), bytes([0x56, 0x34]))
+            self.assertEqual(_read_bytes(risc_debug, address + 3, 2), bytes([0x12, 0xEF]))
+            self.assertEqual(_read_bytes(risc_debug, address + 5, 2), bytes([0xCD, 0xAB]))
+            self.assertEqual(_read_bytes(risc_debug, address + 1, 4), bytes([0x56, 0x34, 0x12, 0xEF]))
+            self.assertEqual(_read_bytes(risc_debug, address + 2, 4), bytes([0x34, 0x12, 0xEF, 0xCD]))
+            self.assertEqual(_read_bytes(risc_debug, address + 3, 4), bytes([0x12, 0xEF, 0xCD, 0xAB]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address + 0, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
+                _read_bytes(risc_debug, address + 0, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
             )
-            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 6), bytes([0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB]))
+            self.assertEqual(_read_bytes(risc_debug, address + 1, 6), bytes([0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB]))
 
     @parameterized.expand(
         [
@@ -704,79 +712,79 @@ class TestReadWrite(unittest.TestCase):
             address = private_memory.address.private_address
             risc_debug.write_memory_bytes(address, bytes([0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 0, bytes([0x12]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 1, bytes([0x34]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 2, bytes([0x56]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 3, bytes([0x78]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0xDE, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0xDE, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 4, bytes([0x90]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 5, bytes([0xAB]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 6, bytes([0xCD]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 7, bytes([0xFE]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xFE])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xFE])
             )
             risc_debug.write_memory_bytes(address + 0, bytes([0xAA, 0xBB]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xFE])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0xBB, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xFE])
             )
             risc_debug.write_memory_bytes(address + 2, bytes([0xCC, 0xDD]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0x90, 0xAB, 0xCD, 0xFE])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0x90, 0xAB, 0xCD, 0xFE])
             )
             risc_debug.write_memory_bytes(address + 4, bytes([0xEE, 0xFF]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0xCD, 0xFE])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0xCD, 0xFE])
             )
             risc_debug.write_memory_bytes(address + 6, bytes([0x00, 0x11]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11])
             )
             risc_debug.write_memory_bytes(address + 1, bytes([0x22, 0x33]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x33, 0xDD, 0xEE, 0xFF, 0x00, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x22, 0x33, 0xDD, 0xEE, 0xFF, 0x00, 0x11])
             )
             risc_debug.write_memory_bytes(address + 3, bytes([0x44, 0x55]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x33, 0x44, 0x55, 0xFF, 0x00, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x22, 0x33, 0x44, 0x55, 0xFF, 0x00, 0x11])
             )
             risc_debug.write_memory_bytes(address + 5, bytes([0x66, 0x77]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x11])
             )
             risc_debug.write_memory_bytes(address + 2, bytes([0x88, 0x99, 0xAA]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x88, 0x99, 0xAA, 0x66, 0x77, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x22, 0x88, 0x99, 0xAA, 0x66, 0x77, 0x11])
             )
             risc_debug.write_memory_bytes(address + 3, bytes([0xBB, 0xCC, 0xDD]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x88, 0xBB, 0xCC, 0xDD, 0x77, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x22, 0x88, 0xBB, 0xCC, 0xDD, 0x77, 0x11])
             )
             risc_debug.write_memory_bytes(address + 1, bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x11])
             )
 
 

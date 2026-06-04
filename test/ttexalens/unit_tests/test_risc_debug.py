@@ -271,14 +271,15 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
 
         # Test reading initial data
-        data = self.core_sim.risc_debug.read_memory_bytes(addr, 8)
+        data = bytearray(8)
+        self.core_sim.risc_debug.read_memory_bytes(addr, data)
         self.assertEqual(data, b"\x44\x33\x22\x11\x88\x77\x66\x55", "Should read initial 8 bytes")
 
         # Test writing new data
         self.core_sim.risc_debug.write_memory_bytes(addr, b"\x78\x56\x34\x12\xdd\xcc\xbb\xaa")
 
         # Test reading back what we wrote
-        data = self.core_sim.risc_debug.read_memory_bytes(addr, 8)
+        self.core_sim.risc_debug.read_memory_bytes(addr, data)
         self.assertEqual(data, b"\x78\x56\x34\x12\xdd\xcc\xbb\xaa", "Should read/write 8 bytes correctly")
         self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertEqual(self.core_sim.read_data(noc_addr + 4), 0xAABBCCDD)
@@ -350,7 +351,8 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
 
         # Test unaligned read
-        data = self.core_sim.risc_debug.read_memory_bytes(addr + offset, size)
+        data = bytearray(size)
+        self.core_sim.risc_debug.read_memory_bytes(addr + offset, data)
         self.assertEqual(data, expected_read, f"Should read {size} bytes at offset {offset}")
 
         # Test unaligned write preserves surrounding data
@@ -358,7 +360,8 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.risc_debug.write_memory_bytes(addr + offset, write_data)
 
         # Verify the write by reading back and comparing
-        read_back = self.core_sim.risc_debug.read_memory_bytes(addr + offset, size)
+        read_back = bytearray(size)
+        self.core_sim.risc_debug.read_memory_bytes(addr + offset, read_back)
         self.assertEqual(read_back, write_data, f"Read back data should match written data at offset {offset}")
 
         # Verify all three words to ensure proper boundary handling

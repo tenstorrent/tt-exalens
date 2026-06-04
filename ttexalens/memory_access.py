@@ -69,12 +69,12 @@ class L1MemoryAccess(MemoryAccess):
     def read(self, address: int, buffer: memoryview | bytearray) -> None:
         self._validate_access(address, len(buffer))
         noc_address = self._tranlate_to_noc_address(address)
-        buffer[:] = self._location.noc_read(noc_address, len(buffer))
+        self._location.noc_read(noc_address, buffer)
 
     def write(self, address: int, data: bytes | bytearray | memoryview) -> None:
         self._validate_access(address, len(data))
         noc_address = self._tranlate_to_noc_address(address)
-        self._location.noc_write(noc_address, bytes(data))
+        self._location.noc_write(noc_address, data)
 
     def read_register(self, register_index: int) -> int:
         raise NotImplementedError("L1MemoryAccess does not support register access")
@@ -147,24 +147,22 @@ class RiscDebugMemoryAccess(MemoryAccess):
         self._safe_mode = safe_mode  # additional safety checks to prevent access to known unsafe memory regions
 
     def read(self, address: int, buffer: memoryview | bytearray) -> None:
-        size_bytes = len(buffer)
-        self._validate_access(address, size_bytes)
+        self._validate_access(address, len(buffer))
 
         if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
-                buffer[:] = self._risc_debug.read_memory_bytes(address, size_bytes, safe_mode=self._safe_mode)
+                self._risc_debug.read_memory_bytes(address, buffer, safe_mode=self._safe_mode)
         else:
-            buffer[:] = self._risc_debug.read_memory_bytes(address, size_bytes, safe_mode=self._safe_mode)
+            self._risc_debug.read_memory_bytes(address, buffer, safe_mode=self._safe_mode)
 
     def write(self, address: int, data: bytes | bytearray | memoryview) -> None:
-        raw = bytes(data)
-        self._validate_access(address, len(raw))
+        self._validate_access(address, len(data))
 
         if self._ensure_halted_access or self._risc_debug.can_debug():
             with self._risc_debug.ensure_private_memory_access():
-                self._risc_debug.write_memory_bytes(address, raw, safe_mode=self._safe_mode)
+                self._risc_debug.write_memory_bytes(address, data, safe_mode=self._safe_mode)
         else:
-            self._risc_debug.write_memory_bytes(address, raw, safe_mode=self._safe_mode)
+            self._risc_debug.write_memory_bytes(address, data, safe_mode=self._safe_mode)
 
     def read_register(self, register_index: int) -> int:
         return self._risc_debug.read_gpr(register_index)

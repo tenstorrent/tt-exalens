@@ -174,8 +174,9 @@ def read_words_from_device(
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
-    bytes_data = coordinate.noc_read(addr, 4 * word_count, noc_id, use_4B_mode, safe_mode=safe_mode)
-    data = list(struct.unpack(f"<{word_count}I", bytes_data))
+    buffer = bytearray(4 * word_count)
+    coordinate.noc_read(addr, buffer, noc_id, use_4B_mode, safe_mode=safe_mode)
+    data = list(struct.unpack(f"<{word_count}I", buffer))
     return data
 
 
@@ -213,7 +214,9 @@ def read_from_device(
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
-    return coordinate.noc_read(addr, num_bytes, noc_id, use_4B_mode, safe_mode=safe_mode)
+    buffer = bytearray(num_bytes)
+    coordinate.noc_read(addr, buffer, noc_id, use_4B_mode, safe_mode=safe_mode)
+    return bytes(buffer)
 
 
 @trace_api

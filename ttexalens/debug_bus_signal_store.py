@@ -390,8 +390,9 @@ class DebugBusSignalStore:
 
         def read_sample(addr: int) -> int:
             """Read 4x32-bit words and combine them into a single 128-bit integer"""
-            data = self.location.noc_read(addr, self.L1_SAMPLE_SIZE_BYTES)
-            return int.from_bytes(data, byteorder="little")
+            buffer = bytearray(self.L1_SAMPLE_SIZE_BYTES)
+            self.location.noc_read(addr, buffer)
+            return int.from_bytes(buffer, byteorder="little")
 
         # Read samples from L1 memory
         sample_values = [read_sample(l1_address + (i * self.L1_SAMPLE_SIZE_BYTES)) for i in range(samples)]

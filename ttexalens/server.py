@@ -244,6 +244,47 @@ def start_server(port: int, context: Context):
         raise util.TTFatalException("Could not start ttexalens-server.")
 
 
+class RemoteUmdDevice:
+    """
+    Client-side adapter around a Pyro5 UmdDevice proxy.
+    """
+
+    def __init__(self, proxy):
+        self._proxy = proxy
+
+    def noc_read(
+        self,
+        noc_id: int,
+        noc0_x: int,
+        noc0_y: int,
+        address: int,
+        buffer: bytearray | memoryview,
+        use_4B_mode: bool,
+        dma_threshold: int,
+    ) -> None:
+        data = self._proxy.noc_read_bytes(noc_id, noc0_x, noc0_y, address, len(buffer), use_4B_mode, dma_threshold)
+        # Pyro5/serpent returns bytes either as real bytes or as a base64-encoded dict.
+        buffer[:] = serpent.tobytes(data) if isinstance(data, dict) else data
+
+    def __getattr__(self, name):
+        return getattr(self._proxy, name)
+
+
+class RemoteUmdApiWrapper:
+    """
+    Client-side adapter around a Pyro5 UmdApi proxy.
+    """
+
+    def __init__(self, proxy):
+        self._proxy = proxy
+
+    def get_device(self, chip_id: int) -> RemoteUmdDevice:
+        return RemoteUmdDevice(self._proxy.get_device(chip_id))
+
+    def __getattr__(self, name):
+        return getattr(self._proxy, name)
+
+
 class FileAccessApiWrapper:
     """
     A wrapper around the Pyro5 proxy to convert base64-encoded bytes back to bytes.
@@ -277,7 +318,7 @@ def connect_to_server(server_host="localhost", port=5555) -> tuple[UmdApi, FileA
         # We are returning a wrapper around the Pyro5 proxy to provide UmdApi-like behavior.
         proxy = Pyro5.api.Proxy(pyro_umd_api_address)
         proxy._pyroSerializer = "serpent"
-        umd_api: UmdApi = proxy  # type: ignore
+        umd_api: UmdApi = RemoteUmdApiWrapper(proxy)  # type: ignore
 
         # Connect to FileAccessApi
         pyro_file_api_address = f"PYRO:file_api@{server_host}:{port}"
