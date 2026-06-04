@@ -523,21 +523,11 @@ std::optional<LocationResult> evaluate_die_location(const DwarfDie& die, const F
     const uint64_t pc = (frame != nullptr) ? frame->get_pc() : 0;
     auto ops = parse_die_attribute_location(die, DwarfAttributeTag::location, pc);
     if (!ops.has_value()) {
-        std::fprintf(stderr, "[loc] %s @0x%lx: parse failed\n", std::string(die.get_name()).c_str(), (unsigned long)pc);
         return std::nullopt;
     }
-    std::fprintf(stderr, "[loc] %s @0x%lx: %zu ops, first=0x%02x a=0x%llx\n", std::string(die.get_name()).c_str(),
-                 (unsigned long)pc, ops->size(), ops->empty() ? 0 : ops->front().op,
-                 ops->empty() ? 0ULL : (unsigned long long)ops->front().a);
     Dwarf_Debug dbg = die.get_state();
     Evaluator evaluator(die, frame, dbg, *dims);
-    auto r = evaluator.run(*ops);
-    if (r.has_value() && r->value.has_value()) {
-        std::fprintf(stderr, "[loc] %s @0x%lx: result is_address=%d value=0x%llx\n",
-                     std::string(die.get_name()).c_str(), (unsigned long)pc, r->is_address,
-                     (unsigned long long)*r->value);
-    }
-    return r;
+    return evaluator.run(*ops);
 }
 
 }  // namespace ttexalens::native_elf
