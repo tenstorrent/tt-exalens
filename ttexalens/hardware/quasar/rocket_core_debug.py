@@ -24,6 +24,13 @@ DM_OUT_OF_RESET_BIT = 1 << 17
 ABSTRACTS_BUSY = 1 << 12
 CMD_READ_DPC = (3 << 20) | (1 << 17) | 0x7B1
 
+# System Bus Access Control and Status (SBCS) fields.
+SBCS_SBBUSY = 1 << 21
+SBCS_SBREADONADDR = 1 << 20
+SBCS_SBACCESS_32 = 2 << 17
+SBCS_SBERROR_MASK = 0x7 << 12
+SBCS_SBBUSYERROR = 1 << 22
+
 
 class QuasarRocketCoreDebug(RocketCoreDebug):
     def __init__(self, risc_info: BabyRiscInfo, register_store: RegisterStore, enable_asserts: bool = True):
@@ -64,7 +71,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         assert not self.is_debug_module_in_reset(), "Debug module should be out of reset"
 
     @contextmanager
-    def ensure_debug_module_out_of_reset(self) -> Generator[None, Any, None]:
+    def ensure_debug_module_is_active(self) -> Generator[None, Any, None]:
         value = self.register_store.read_register("SMN_RISC_RESET_REG")
         dm_was_in_reset = self.is_debug_module_in_reset(value)
         if dm_was_in_reset:
@@ -77,12 +84,12 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
                 self.register_store.write_register("SMN_RISC_RESET_REG", value)
 
     def is_halted(self) -> bool:
-        with self.ensure_debug_module_out_of_reset():
+        with self.ensure_debug_module_is_active():
             haltsummary = self.register_store.read_register("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
             return bool(haltsummary & (1 << self.baby_risc_info.risc_id))
 
     def halt(self) -> None:
-        with self.ensure_debug_module_out_of_reset():
+        with self.ensure_debug_module_is_active():
             if self.is_halted():
                 util.WARN(f"Halt: {self.risc_location.risc_name} at {self.risc_location.location} is already halted")
                 return
@@ -93,7 +100,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
                 raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
 
     def cont(self) -> None:
-        with self.ensure_debug_module_out_of_reset():
+        with self.ensure_debug_module_is_active():
             if not self.is_halted():
                 util.WARN(
                     f"Continue: {self.risc_location.risc_name} at {self.risc_location.location} is already running"
@@ -119,6 +126,36 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             self.register_store.read_register("TT_CLUSTER_CTRL_WB_PC_CTRL") == 1
         ), "WB PC control has to be enabled to read PC"
         return self.register_store.read_register(f"TT_CLUSTER_CTRL_WB_PC_REG_C{self.baby_risc_info.risc_id}")
+
+    def _sba_wait_not_busy(self, timeout: int = 10) -> None:
+        """Poll SBCS until the system bus manager is idle. Raise on timeout."""
+        start_time = time.time()
+        while self.register_store.read_register("TT_DEBUG_MODULE_APB_SBCS") & SBCS_SBBUSY:
+            if time.time() - start_time > timeout:
+                raise Exception("Timeout waiting for system bus access")
+            time.sleep(0.01)
+
+    def _read_memory(self, address: int, safe_mode: bool | None = None) -> int:
+        """Read a 32-bit word via System Bus Access."""
+        with self.ensure_debug_module_is_active():
+            self._sba_wait_not_busy()
+            self.register_store.write_register(
+                "TT_DEBUG_MODULE_APB_SBCS",
+                SBCS_SBACCESS_32 | SBCS_SBREADONADDR | SBCS_SBERROR_MASK | SBCS_SBBUSYERROR,
+            )
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address)
+            return self.register_store.read_register("TT_DEBUG_MODULE_APB_SBDATA0")
+
+    def _write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
+        """Write a 32-bit word via System Bus Access."""
+        with self.ensure_debug_module_is_active():
+            self._sba_wait_not_busy()
+            self.register_store.write_register(
+                "TT_DEBUG_MODULE_APB_SBCS",
+                SBCS_SBACCESS_32 | SBCS_SBERROR_MASK | SBCS_SBBUSYERROR,
+            )
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBDATA0", data)
 
     def set_code_start_address(self, address: int | None) -> None:
         self.baby_risc_info.set_code_start_address(self.register_store, address if address is not None else 0)
