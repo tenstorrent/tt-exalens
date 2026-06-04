@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 import re
+import shutil
 import subprocess
 from ttexalens import util as util
 from ttexalens.context import Context
@@ -11,14 +12,48 @@ from ttexalens.gdb.gdb_communication import ServerSocket
 from ttexalens.gdb.gdb_server import GdbServer
 from ttexalens.hardware.risc_debug import CallstackEntry
 from ttexalens.tt_exalens_lib import check_context
+from ttexalens.util import DEBUG, TRACE
 
 
-def get_gdb_client_path():
-    sfpi_path = "sfpi/compiler/bin/riscv-tt-elf-gdb"
-    gdb_client_path = os.path.abspath(os.path.join(util.application_path(), sfpi_path))
-    if not os.path.isfile(gdb_client_path):
-        gdb_client_path = os.path.abspath(os.path.join(util.application_path(), "../build", sfpi_path))
-    return gdb_client_path
+# Path to the gdb client binary inside an sfpi release tree, and its bare name on PATH.
+GDB_CLIENT_SFPI_RELATIVE_PATH = os.path.join("compiler", "bin", "riscv-tt-elf-gdb")
+GDB_CLIENT_BINARY_NAME = "riscv-tt-elf-gdb"
+
+
+def get_gdb_client_path() -> str:
+    app_path = util.application_path()
+
+    sfpi_roots = [
+        os.path.join(app_path, "sfpi"),
+        os.path.join(app_path, "..", "build", "sfpi"),
+        "/opt/tenstorrent/sfpi",
+    ]
+    sfpi_root_env = os.environ.get("SFPI_ROOT")
+    if sfpi_root_env:
+        sfpi_roots.append(sfpi_root_env)
+
+    searched: list[str] = []
+    for sfpi_root in sfpi_roots:
+        gdb_client_path = os.path.abspath(os.path.join(sfpi_root, GDB_CLIENT_SFPI_RELATIVE_PATH))
+        searched.append(gdb_client_path)
+        TRACE(f"Looking for gdb client at {gdb_client_path}")
+        if os.path.isfile(gdb_client_path):
+            DEBUG(f"Found gdb client at {gdb_client_path}")
+            return gdb_client_path
+
+    # Finally, fall back to whatever gdb client is found on PATH.
+    TRACE(f"Looking for gdb client on PATH")
+    gdb_client_path = shutil.which(GDB_CLIENT_BINARY_NAME)
+    if gdb_client_path is not None:
+        DEBUG(f"Found gdb client at {gdb_client_path}")
+        return gdb_client_path
+
+    raise FileNotFoundError(
+        f"Could not find the '{GDB_CLIENT_BINARY_NAME}' gdb client. Searched: "
+        + ", ".join(searched)
+        + ", and PATH. Install sfpi (e.g. to /opt/tenstorrent/sfpi), set the "
+        f"SFPI_ROOT environment variable, or add '{GDB_CLIENT_BINARY_NAME}' to PATH."
+    )
 
 
 def make_add_symbol_file_command(paths: list[str], offsets: list[int | None]) -> str:
