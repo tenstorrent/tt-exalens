@@ -34,7 +34,7 @@ class MemoryAccess {
         try {
             read(address, std::span<std::byte>(reinterpret_cast<std::byte*>(&result), pointer_size));
         } catch (...) {
-            // TODO: Consider rethrowing on timeouts or other non-recoverable errors instead of swallowing all
+            // TODO #1064: Consider rethrowing on timeouts or other non-recoverable errors instead of swallowing all
             // exceptions.
             return std::nullopt;
         }
