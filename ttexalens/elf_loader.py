@@ -23,7 +23,7 @@ class ElfLoader:
         self.l1_block = self.location.noc_block.noc_memory_map.find_by_name("l1")
         self.l1_mem_access = create_l1_memory_access(self.location)
 
-    SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".gcov_info"]
+    SECTIONS_TO_LOAD = [".init", ".text", ".ldm_data", ".gcov_info", ".thread_local"]
 
     @staticmethod
     def get_jump_to_offset_instruction(offset: int, rd: int = 0) -> int:
