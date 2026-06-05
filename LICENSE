@@ -221,7 +221,6 @@ distributed as part of the software:
 | `fastnumbers`               | [MIT License](https://github.com/SethMMorton/fastnumbers/blob/main/LICENSE)                                 |
 | `fuzzywuzzy`                | [GNU General Public License v2 (GPLv2)](https://github.com/seatgeek/fuzzywuzzy/blob/master/LICENSE.txt)     |
 | `prompt-toolkit`            | [BSD License](https://github.com/prompt-toolkit/python-prompt-toolkit/blob/master/LICENSE)                  |
-| `pyelftools`                | [Public Domain](https://github.com/eliben/pyelftools/blob/main/LICENSE)                                     |
 | `python-levenshtein`        | [GNU General Public License v2 or later](https://github.com/rapidfuzz/python-Levenshtein/blob/main/COPYING) |
 | `pyyaml`                    | [MIT License](https://github.com/yaml/pyyaml/blob/main/LICENSE)                                             |
 | `rapidyaml`                 | [MIT License](https://github.com/biojppm/rapidyaml/blob/master/LICENSE.txt)                                 |

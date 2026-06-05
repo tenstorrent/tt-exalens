@@ -4,7 +4,7 @@
 from dataclasses import dataclass, field
 from functools import cached_property
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.memory_access import MemoryAccess
+from ttexalens.memory_access import MemoryAccess, create_memory_access
 
 
 @dataclass
@@ -26,7 +26,7 @@ class GdbProcess:
     mem_access: MemoryAccess = field(init=False)
 
     def __post_init__(self):
-        self.mem_access = MemoryAccess.create(self.risc_debug)
+        self.mem_access = create_memory_access(self.risc_debug)
 
     @cached_property
     def thread_id(self):

@@ -5,12 +5,23 @@
 from abc import abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import Any, Generator
 from ttexalens import util
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.memory_block import MemoryBlock
-from ttexalens.elf import ParsedElfFile, ParsedElfFileWithOffset, ElfVariable, ElfDie, FrameDescription, FrameInspection
+from ttexalens.elf import (
+    DwarfDieTag,
+    DwarfDie,
+    DwarfFileLine,
+    ElfFile,
+    ElfVariable,
+    FrameDescription,
+    FrameInspection,
+    FrameSnapshot,
+)
 from ttexalens.hardware.risc_info import RiscInfo
+from ttexalens.memory_access import MemoryAccess, create_memory_access
 
 
 @dataclass
@@ -53,33 +64,48 @@ class RiscDebugWatchpointState:
 
 @dataclass
 class CallstackEntryVariable:
-    die: ElfDie
+    die: DwarfDie
     value: ElfVariable | None
 
-    @property
+    @cached_property
     def name(self):
         return self.die.name
 
-    @property
+    @cached_property
     def type(self):
-        return self.die.resolved_type
+        return self.die.get_resolved_type()
 
-    @property
+    @cached_property
     def declared_at(self):
-        return self.die.decl_file_info
+        return self.die.get_decl_file_info()
 
 
 @dataclass
 class CallstackEntry:
     pc: int | None = None
     function_name: str | None = None
-    file: str | None = None
-    line: int | None = None
-    column: int | None = None
+    file_info: DwarfFileLine | None = None
     cfa: int | None = None
     arguments: list[CallstackEntryVariable] = field(default_factory=list)
     locals: list[CallstackEntryVariable] = field(default_factory=list)
     template_parameters: list[CallstackEntryVariable] = field(default_factory=list)
+
+
+class ExtendedFrameSnapshot(FrameSnapshot):
+    """Snapshot of one frame on the callstack at the PC where execution was
+    when we walked through it. Extends the native snapshot (which carries
+    `pc`, `fde`, `cfa` — everything `FrameInspection` consumes) with one
+    Python-only field, `reported_pc`: the PC value `CallstackEntry.pc`
+    exposes to callers. For the live frame this is the live PC; for outer
+    frames it is the return address (what GDB's backtrace prints), so our
+    callstack lines up with GDB output for tests and tooling. The native
+    `pc` itself is the call-instruction PC (return address minus one JAL),
+    which is what DWARF lookups need.
+    """
+
+    def __init__(self, *, pc: int, fde: FrameDescription, cfa: int, reported_pc: int):
+        super().__init__(fde=fde, cfa=cfa, pc=pc)
+        self.reported_pc = reported_pc
 
 
 class RiscDebug:
@@ -370,27 +396,25 @@ class RiscDebug:
         pass
 
     @staticmethod
-    def _read_elfs(
-        parsed_elfs: list[ParsedElfFile] | ParsedElfFile, offsets: list[int | None] | None
-    ) -> list[ParsedElfFile]:
+    def _read_elfs(parsed_elfs: list[ElfFile] | ElfFile, offsets: list[int | None] | None) -> list[ElfFile]:
         if not isinstance(parsed_elfs, list):
             parsed_elfs = [parsed_elfs]
         if offsets is None:
             offsets = [None for _ in range(len(parsed_elfs))]
 
-        elfs: list[ParsedElfFile] = []
+        elfs: list[ElfFile] = []
         for parsed_elf, offset in zip(parsed_elfs, offsets):
             offset = None if offset == 0 else offset
             if offset is not None:
-                elfs.append(ParsedElfFileWithOffset(parsed_elf, offset))
+                elfs.append(parsed_elf.with_load_address(offset))
             else:
                 elfs.append(parsed_elf)
         return elfs
 
     @staticmethod
-    def _find_elf_and_frame_description(elfs: list[ParsedElfFile], pc: int, risc_debug: "RiscDebug | None"):
+    def _find_elf_and_frame_description(elfs: list[ElfFile], pc: int, mem_access: MemoryAccess):
         for elf in elfs:
-            frame_description = elf.frame_info.get_frame_description(pc, risc_debug)
+            frame_description = elf.get_frame_description(pc, mem_access)
             # If we get frame description from elf we return that elf and frame description
             if frame_description is not None:
                 return elf, frame_description
@@ -398,110 +422,146 @@ class RiscDebug:
         return None, None
 
     @staticmethod
-    def get_frame_callstack(
-        elf: ParsedElfFile,
+    def _get_elf_and_frame_snapshot(
+        elf: ElfFile | None,
+        elfs: list[ElfFile],
         pc: int,
-        frame_pointer: int | None = None,
+        reported_pc: int,
+        mem_access: MemoryAccess,
+        inner_cfa: int | None = None,
+    ) -> tuple[ExtendedFrameSnapshot | None, ElfFile | None]:
+        fde = elf.get_frame_description(pc, mem_access) if elf is not None else None
+        if fde is None:
+            new_elf, fde = RiscDebug._find_elf_and_frame_description(elfs, pc, mem_access)
+            if fde is not None and new_elf is not None:
+                elf = new_elf
+        if fde is None:
+            util.WARN("We don't have information on frame and we don't know how to proceed")
+            return None, None
+        cfa = fde.compute_cfa(inner_cfa)
+        if cfa is None:
+            return None, None
+        return ExtendedFrameSnapshot(pc=pc, fde=fde, cfa=cfa, reported_pc=reported_pc), elf
+
+    @staticmethod
+    def get_frame_callstack(
+        elf: ElfFile,
+        frame: ExtendedFrameSnapshot,
         callstack: list[CallstackEntry] | None = None,
-        top_frame: bool = True,
-        frame_inspection: FrameInspection | None = None,
-    ) -> tuple[list[CallstackEntry], ElfDie | None]:
-        # If we are at the top frame, pc is correct.
-        # If we are not at the top frame, pc points to the instruction after the call instruction.
-        # We need to adjust pc by -4 to get the correct call instruction address.
-        adjusted_pc = pc if top_frame else pc - 4
-        file_line = elf._dwarf.find_file_line_by_address(adjusted_pc)
-        function_die = elf._dwarf.find_function_by_address(adjusted_pc)
-        file = file_line[0] if file_line is not None else None
-        line = file_line[1] if file_line is not None else None
-        column = file_line[2] if file_line is not None else None
+        mem_access: MemoryAccess | None = None,
+        inner_frames: list[ExtendedFrameSnapshot] | None = None,
+    ) -> tuple[list[CallstackEntry], DwarfDie | None]:
+        dwarf_pc = frame.pc + elf.loaded_offset
+        dwarf = elf.dwarf_info
+        assert dwarf is not None, "ELF has no DWARF info; cannot inspect callstack"
+        file_info = dwarf.find_file_line_by_address(dwarf_pc)
+        function_die = dwarf.find_function_by_address(dwarf_pc)
         callstack = callstack if callstack is not None else []
         arguments: list[CallstackEntryVariable] = []
         locals: list[CallstackEntryVariable] = []
         template_parameters: list[CallstackEntryVariable] = []
 
-        if frame_inspection is not None:
-            frame_inspection.pc = adjusted_pc
+        frame_inspection: FrameInspection | None = None
+        if mem_access is not None:
+            # Empty inner_frames means this IS the top frame; the chain
+            # walker's reverse loop then runs zero iterations and falls
+            # through to a live register read. No special case needed.
+            frame_inspection = FrameInspection(
+                mem_access,
+                FrameSnapshot(fde=frame.fde, cfa=frame.cfa, pc=dwarf_pc),
+                inner_frames or [],
+            )
 
         def extract_variables(
-            function_die: ElfDie,
+            function_die: DwarfDie,
             arguments: list[CallstackEntryVariable],
             locals: list[CallstackEntryVariable],
             template_parameters: list[CallstackEntryVariable],
         ):
             for child in function_die.iter_children():
-                if child.tag_is("formal_parameter"):
-                    arguments.append(CallstackEntryVariable(child, child.read_value(frame_inspection)))
-                elif child.tag_is("variable"):
-                    locals.append(CallstackEntryVariable(child, child.read_value(frame_inspection)))
-            for template_value_param in function_die.template_value_parameters:
-                template_parameters.append(
-                    CallstackEntryVariable(template_value_param, template_value_param.read_value(frame_inspection))
-                )
+                value = child.read_value(frame_inspection) if frame_inspection is not None else None
+                if child.tag == DwarfDieTag.formal_parameter:
+                    arguments.append(CallstackEntryVariable(child, value))
+                elif child.tag == DwarfDieTag.variable:
+                    locals.append(CallstackEntryVariable(child, value))
+            for template_value_param in function_die.get_template_value_parameters():
+                value = template_value_param.read_value(frame_inspection) if frame_inspection is not None else None
+                template_parameters.append(CallstackEntryVariable(template_value_param, value))
 
         # Skipping lexical blocks since we do not print them
         if function_die is not None and (
-            function_die.category == "inlined_function" or function_die.category == "lexical_block"
+            function_die.tag == DwarfDieTag.inlined_subroutine or function_die.tag == DwarfDieTag.lexical_block
         ):
             # Returning inlined functions (virtual frames)
 
             # Skipping lexical blocks since we do not print them
-            while function_die.category == "lexical_block" and function_die.parent is not None:
+            while function_die.tag == DwarfDieTag.lexical_block:
+                parent = function_die.get_parent()
+                if parent is None:
+                    break
                 extract_variables(function_die, arguments, locals, template_parameters)
-                function_die = function_die.parent
+                function_die = parent
 
             extract_variables(function_die, arguments, locals, template_parameters)
             callstack.append(
                 CallstackEntry(
-                    pc, function_die.name, file, line, column, frame_pointer, arguments, locals, template_parameters
+                    frame.reported_pc,
+                    function_die.get_path(),
+                    file_info,
+                    frame.cfa,
+                    arguments,
+                    locals,
+                    template_parameters,
                 )
             )
             arguments = []
             locals = []
             template_parameters = []
-            file, line, column = function_die.call_file_info
-            while function_die.category == "inlined_function":
-                assert function_die.parent is not None
-                function_die = function_die.parent
+            file_info = function_die.get_call_file_info()
+            while function_die.tag == DwarfDieTag.inlined_subroutine:
+                parent = function_die.get_parent()
+                assert parent is not None
+                function_die = parent
                 # Skipping lexical blocks since we do not print them
-                while function_die.category == "lexical_block" and function_die.parent is not None:
+                while function_die.tag == DwarfDieTag.lexical_block:
+                    inner_parent = function_die.get_parent()
+                    if inner_parent is None:
+                        break
                     extract_variables(function_die, arguments, locals, template_parameters)
-                    function_die = function_die.parent
+                    function_die = inner_parent
 
                 extract_variables(function_die, arguments, locals, template_parameters)
                 callstack.append(
                     CallstackEntry(
-                        None,
-                        function_die.name,
-                        file,
-                        line,
-                        column,
-                        frame_pointer,
-                        arguments,
-                        locals,
-                        template_parameters,
+                        None, function_die.get_path(), file_info, frame.cfa, arguments, locals, template_parameters
                     )
                 )
                 arguments = []
                 locals = []
                 template_parameters = []
-                file, line, column = function_die.call_file_info
-        elif function_die is not None and function_die.category == "subprogram":
+                file_info = function_die.get_call_file_info()
+        elif function_die is not None and function_die.tag == DwarfDieTag.subprogram:
             extract_variables(function_die, arguments, locals, template_parameters)
             callstack.append(
                 CallstackEntry(
-                    pc, function_die.path, file, line, column, frame_pointer, arguments, locals, template_parameters
+                    frame.reported_pc,
+                    function_die.get_path(),
+                    file_info,
+                    frame.cfa,
+                    arguments,
+                    locals,
+                    template_parameters,
                 )
             )
         else:
             callstack.append(
-                CallstackEntry(pc, None, file, line, column, frame_pointer, arguments, locals, template_parameters)
+                CallstackEntry(frame.reported_pc, None, file_info, frame.cfa, arguments, locals, template_parameters)
             )
         return callstack, function_die
 
     def get_callstack(
         self,
-        parsed_elfs: list[ParsedElfFile],
+        parsed_elfs: list[ElfFile],
         offsets: list[int | None] | None = None,
         limit: int = 100,
         stop_on_main: bool = True,
@@ -520,58 +580,36 @@ class RiscDebug:
                 # Rewind pc to unwind callstack from the ebreak instruction
                 pc -= 4
 
-            # Choose the elf which is referenced by the program counter
-            elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, self)
+            mem_access: MemoryAccess = create_memory_access(self)
 
-            # If we do not get frame description from any elf, we cannot proceed
-            if frame_description is None or elf is None:
-                util.WARN("We don't have information on frame and we don't know how to proceed.")
-                return []
+            # Chain of frames inner to the one being inspected
+            inner_frames: list[ExtendedFrameSnapshot] = []
 
-            frame_pointer = frame_description.read_previous_cfa()
-            inner_frames: list[tuple[FrameDescription, int]] = []
-            while len(callstack) < limit:
-                frame_inspection = FrameInspection(self, elf.loaded_offset, frame_pointer, inner_frames)
+            # Find top frame
+            current_frame, elf = RiscDebug._get_elf_and_frame_snapshot(None, elfs, pc, pc, mem_access)
+
+            while current_frame is not None and len(callstack) < limit:
+                assert elf is not None
                 callstack, function_die = RiscDebug.get_frame_callstack(
-                    elf, pc, frame_pointer, callstack, top_frame=len(callstack) == 0, frame_inspection=frame_inspection
+                    elf, current_frame, callstack, mem_access, inner_frames
                 )
 
                 # We want to stop when we print main as frame descriptor might not be correct afterwards
-                if stop_on_main and function_die is not None and function_die.name == "main":
+                if stop_on_main and function_die is not None and function_die.get_path() == "main":
                     break
 
                 # We want to stop when we are at the end of frames list
-                if frame_pointer == 0 or frame_pointer is None:
+                if current_frame.cfa == 0:
                     break
 
-                # If we do not get frame description from any elf, we cannot proceed
-                if frame_description is None:
-                    util.WARN("We don't have information on frame and we don't know how to proceed")
-                    break
-
-                # Prepare for next iteration
-                cfa = frame_pointer
-                return_address = frame_description.read_register(1, cfa)
+                # Step one frame outward by reading the return-address register (index 1).
+                return_address = current_frame.fde.read_register(1, current_frame.cfa)
                 if return_address is None:
                     break
-                pc = return_address
-
-                # Add current frame to the list
-                inner_frames = [(frame_description, cfa)] + inner_frames
-
-                # Get the caller's frame description BEFORE computing the caller's CFA,
-                # because the CFA offset comes from the caller's FDE, not the current one.
-                frame_description = elf.frame_info.get_frame_description(pc, self)
-
-                # If we do not get frame description from current elf check in others
-                if frame_description is None:
-                    new_elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs, pc, self)
-                    if frame_description is not None and new_elf is not None:
-                        elf = new_elf
-
-                if frame_description is not None:
-                    frame_pointer = frame_description.read_previous_cfa(cfa)
-                else:
-                    frame_pointer = None
+                pc = return_address - 4  # Move back from return address to call instruction
+                inner_frames.append(current_frame)
+                current_frame, elf = RiscDebug._get_elf_and_frame_snapshot(
+                    elf, elfs, pc, return_address, mem_access, current_frame.cfa
+                )
 
         return callstack

@@ -383,7 +383,7 @@ class GdbMessageWriter:
             self.append_char(data[position])
             position += 1
 
-    def append_unescaped(self, data: bytes):
+    def append_unescaped(self, data: bytes | bytearray | memoryview):
         self.data.extend(data)
         self.checksum += sum(data)
 

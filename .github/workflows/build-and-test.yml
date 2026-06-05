@@ -136,10 +136,11 @@ jobs:
 
       - name: Run Python tests for ttexalens library (using NOC0)
         run: |
-          python3 -m xmlrunner discover -v -t . -s test/ttexalens -p '*test*.py' \
+          python3 -X faulthandler -m xmlrunner discover -v -t . -s test/ttexalens -p '*test*.py' \
           --output-file ${{ steps.strings.outputs.test_report_path }}
 
       - name: Upload Test Report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-reports-${{ inputs.ubuntu-version }}-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.board }}
@@ -147,21 +148,23 @@ jobs:
 
       - name: Run Python tests for TTExaLens app (using NOC0)
         run: |
-          python3 -m unittest discover -v -t . -s test/app -p *test*.py
+          python3 -X faulthandler -m unittest discover -v -t . -s test/app -p *test*.py
 
       - name: Run Python tests for ttexalens library (using NOC1)
         run: |
           export TTEXALENS_TESTS_USE_NOC1=1
-          python3 -m unittest discover -v -t . -s test/ttexalens -p *test*.py
+          python3 -X faulthandler -m unittest discover -v -t . -s test/ttexalens -p *test*.py
 
       - name: Run Python tests for TTExaLens app (using NOC1)
         run: |
           export TTEXALENS_TESTS_USE_NOC1=1
-          python3 -m unittest discover -v -t . -s test/app -p *test*.py
+          python3 -X faulthandler -m unittest discover -v -t . -s test/app -p *test*.py
 
       - name: Install wheel
+        # `make wheel` puts the produced wheel at build_wheel/*.whl
+        # (scikit-build-core via the Makefile target).
         run: |
-          pip install build/ttexalens_wheel/*.whl
+          pip install build_wheel/*.whl
       - name: Run tests
         run: |
           # Change to the wheel tests directory so that we are certain we don't import dev files

@@ -93,8 +93,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                         print(f"{util.CLR_BLUE}0x{frame.pc:08X}{util.CLR_END} in ", end="")
                     if frame.function_name is not None:
                         print(f"{util.CLR_YELLOW}{frame.function_name}{util.CLR_END} () ", end="")
-                    if frame.file is not None:
-                        print(f"at {util.CLR_GREEN}{frame.file} {frame.line}:{frame.column}{util.CLR_END}", end="")
+                    if frame.file_info is not None:
+                        print(
+                            f"at {util.CLR_GREEN}{frame.file_info.file} {frame.file_info.line}:{frame.file_info.column}{util.CLR_END}",
+                            end="",
+                        )
                     print()
 
     return None

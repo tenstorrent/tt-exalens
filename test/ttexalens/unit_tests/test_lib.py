@@ -15,14 +15,14 @@ from test.ttexalens.unit_tests.test_base import get_core_location, get_parsed_el
 import ttexalens as lib
 from ttexalens import util
 from ttexalens.exceptions import TTException
-from ttexalens.elf.parsed import ParsedElfFile
+from ttexalens.elf import ElfFile
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device, UnsafeAccessException
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
-from ttexalens.memory_access import MemoryAccess
+from ttexalens.memory_access import create_l1_memory_access, create_memory_access
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.risc_debug import CallstackEntry, CallstackEntryVariable, RiscDebug
 
@@ -1122,7 +1122,7 @@ class TestSafeAccess(unittest.TestCase):
         # Case 2: Next block is adjacent but not accessible or has incompatible permissions
         elif next_block_info is not None and next_block_info.memory_block.address.noc_address == block_end:
             next_noc_addr = next_block_info.memory_block.address.noc_address
-            assert next_noc_addr is not None
+            assert next_noc_addr is not None, "NOC address should not be None here"
             next_is_accessible = next_block_info.is_accessible
             next_is_safe_to_read = next_block_info.is_safe_to_read(next_noc_addr, 4)
             next_is_safe_to_write = next_block_info.is_safe_to_write(next_noc_addr, 4)
@@ -1240,7 +1240,7 @@ class TestRunElf(unittest.TestCase):
         assert rdbg.debug_hardware is not None, "Debug hardware is not available."
 
         elf = lib.parse_elf(elf_path)
-        mem_access = MemoryAccess.create(risc_debug)
+        mem_access = create_memory_access(risc_debug)
         mailbox = elf.get_global("g_MAILBOX", mem_access)
         testbyteaccess = elf.get_global("g_TESTBYTEACCESS", mem_access)
 
@@ -1288,13 +1288,14 @@ class TestRunElf(unittest.TestCase):
 
         # Step 5b: Continue and check that the core reached 0xFFB12088. But first set the breakpoint at
         # function "decrement_mailbox"
+        from ttexalens.elf import DwarfDieTag
+
         decrement_mailbox_die = elf.find_die_by_name("decrement_mailbox")
         assert decrement_mailbox_die is not None, "decrement_mailbox function not found in ELF."
-        assert decrement_mailbox_die.tag_is(
-            "subprogram"
+        assert (
+            decrement_mailbox_die.tag == DwarfDieTag.subprogram
         ), f"decrement_mailbox DIE is not a subprogram, got {decrement_mailbox_die.tag}"
-        decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
-        decrement_mailbox_address = elf.symbols[decrement_mailbox_linkage_name].value
+        decrement_mailbox_address = decrement_mailbox_die.get_address()
 
         # Step 6. Setting breakpoint at decrement_mailbox
         watchpoint_id = 1  # Out of 8
@@ -1507,7 +1508,7 @@ class TestCallStack(unittest.TestCase):
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
         self.loader = ElfLoader(self.risc_debug)
-        self.l1_mem_access = MemoryAccess.create_l1(self.location)
+        self.l1_mem_access = create_l1_memory_access(self.location)
 
         # Stop risc with reset
         self.risc_debug.set_reset_signal(True)
@@ -1534,18 +1535,22 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(len(cs1), len(cs2), "Callstacks have different lengths")
         for entry1, entry2 in zip(cs1, cs2):
             self.assertEqual(entry1.function_name, entry2.function_name, "Function names do not match")
-            self.assertEqual(entry1.file, entry2.file, "Source files do not match")
-            self.assertEqual(entry1.line, entry2.line, "Line numbers do not match")
+            file1 = entry1.file_info.file if entry1.file_info is not None else None
+            file2 = entry2.file_info.file if entry2.file_info is not None else None
+            line1 = entry1.file_info.line if entry1.file_info is not None else None
+            line2 = entry2.file_info.line if entry2.file_info is not None else None
+            self.assertEqual(file1, file2, "Source files do not match")
+            self.assertEqual(line1, line2, "Line numbers do not match")
             if entry1.pc is not None and entry2.pc is not None:
                 self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
 
-    def set_recursion_count(self, elf: ParsedElfFile, count: int):
-        text_section = elf.sections.get(".text")
+    def set_recursion_count(self, elf: ElfFile, count: int):
+        text_section = elf.get_section_by_name(".text")
         assert text_section is not None
         assert text_section.address is not None
 
         address = text_section.address + text_section.size
-        self.l1_mem_access.write_word(address, count)
+        self.l1_mem_access.write(address, count.to_bytes(4, byteorder="little"))
 
     CALLSTACK_ELFS = ["callstack.debug", "callstack.release", "callstack.coverage"]
     RECURSION_COUNT = [1, 10, 40]
@@ -1560,7 +1565,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
 
-        mem_access = MemoryAccess.create(self.risc_debug)
+        mem_access = create_memory_access(self.risc_debug)
         parsed_elf.get_global("g_MAILBOX", mem_access)
 
         callstack: list[CallstackEntry] = lib.callstack(
@@ -1733,21 +1738,21 @@ class TestCallStack(unittest.TestCase):
         ),
     ]
 
-    def get_mailbox_value_address(self, elf: ParsedElfFile) -> int:
+    def get_mailbox_value_address(self, elf: ElfFile) -> int:
         """Address of the host-written value buffer in callstack.cc (see mailbox_value_buffer())."""
-        text_section = elf.sections.get(".text")
+        text_section = elf.get_section_by_name(".text")
         assert text_section is not None
         assert text_section.address is not None
 
         firmware_end: int = text_section.address + text_section.size
         return (firmware_end + 4 + 16) & ~15
 
-    def get_symbol_address(self, elf: ParsedElfFile, name: str) -> int:
-        symbol = elf.symbols.get(name)
+    def get_symbol_address(self, elf: ElfFile, name: str) -> int:
+        symbol = elf.find_symbol_by_name(name)
         assert symbol is not None and symbol.value is not None, f"Symbol {name} not found in ELF"
         return int(symbol.value)
 
-    def pack_value_test_value(self, elf: ParsedElfFile, struct_format: str, value):
+    def pack_value_test_value(self, elf: ElfFile, struct_format: str, value):
         # If struct_format doesn't start with "<", it's not a raw value but a symbol name whose address we want to get and pack as a uint32_t.
         if struct_format.startswith("<"):
             return struct.pack(struct_format, value)
