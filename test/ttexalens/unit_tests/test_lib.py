@@ -1179,16 +1179,23 @@ class TestRunElf(unittest.TestCase):
     def test_run_elf(self, elf_name: str, risc_name: str):
         """Test running an ELF file."""
         location = "0,0"
-        addr = 0x64000
+
+        # The mailbox lives in the per-RISC thread_local region, so resolve its
+        # address from the ELF instead of assuming a fixed one (the old 0x64000
+        # was out of range on smaller L1s such as ETH).
+        elf_path = self.get_elf_path(elf_name, risc_name)
+        elf = get_parsed_elf_file(elf_path)
+        mailbox_die = elf.find_die_by_name("mailbox")
+        assert mailbox_die is not None, f"mailbox symbol not found in {elf_path}"
+        addr = mailbox_die.get_address()
+        assert addr is not None, f"could not resolve mailbox address in {elf_path}"
 
         # Reset memory at addr
         lib.write_words_to_device(location, addr, 0, context=self.context)
         ret = lib.read_words_from_device(location, addr, context=self.context)
         self.assertEqual(ret[0], 0)
 
-        # Run an ELF that writes to the addr and check if it executed correctly
-        elf_path = self.get_elf_path(elf_name, risc_name)
-        elf = get_parsed_elf_file(elf_path)
+        # Run an ELF that writes to the mailbox and check if it executed correctly
         lib.run_elf(elf, location, risc_name, context=self.context)
         ret = lib.read_words_from_device(location, addr, context=self.context)
         self.assertEqual(ret[0], 0x12345678)

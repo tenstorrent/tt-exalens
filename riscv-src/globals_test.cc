@@ -145,7 +145,8 @@ struct GlobalStruct : public BaseStruct, public BaseStruct2 {
 };
 
 GlobalStruct g_global_struct;
-GlobalStruct* const g_global_const_struct_ptr = (GlobalStruct*)(0x60000);
+GlobalStruct* const g_global_const_struct_ptr = (GlobalStruct*)(0x30000);
+thread_local GlobalStruct g_global_tls_struct;
 
 void halt() {
     // Halt core with ebrake instruction
@@ -201,6 +202,7 @@ void update_struct(GlobalStruct* gs) {
 int main() {
     update_struct(&g_global_struct);
     update_struct(g_global_const_struct_ptr);
+    update_struct(&g_global_tls_struct);
     halt();
     return 0;
 }
