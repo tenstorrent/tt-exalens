@@ -58,8 +58,8 @@ If you wish to integrate gcov into your project, some build adjustments will be 
   Alternatively, you can ignore the CRT and manually call `gcov_dump` at the end of every kernel.
 - Build script changes (present in [`riscv-src/CMakeLists.txt`](../riscv-src/CMakeLists.txt)):
   - Add `-fprofile-arcs -ftest-coverage -fprofile-info-section -DCOVERAGE` to your compiler flags.
-  - Compile two additional source files: [`gcov.c`](../riscv-src/coverage/gcov.c) and [`coverage.c`](../riscv-src/coverage/coverage.c) into object files.
-  - Link every kernel with those two object files.
+  - Compile one additional source file: [`coverage.c`](../riscv-src/coverage.c) into an object file.
+  - Link every kernel with that object file and with `-lgcov` (the compiler-shipped libgcov, which provides `__gcov_info_to_gcda`).
   - Make sure you use the changed linker scripts when compiling for coverage.
 
 Now you can run your kernels as per usual. You can run multiple coverage kernels at the same time with no issues (they all work with their separate parts of memory).
@@ -98,7 +98,7 @@ Making gcov work on our hardware involved a few things:
 
 This is a lot more involved beyond mechanically adding the compiler flags and typing `make`.
 
-Just telling GCC to compile with `-fprofile-arcs -ftest-coverage -fprofile-info-section` will pull in libgcov, which then pulls in the entirety of the C standard library I/O (from newlib), which made my first attempt at compiling fail spectacularly (with 60KiB+ `.text` section overflows).
+Just telling GCC to compile with `-fprofile-arcs -ftest-coverage -fprofile-info-section` and linking libgcov the usual way will pull in the entirety of the C standard library I/O (from newlib), which made my first attempt at compiling fail spectacularly (with 60KiB+ `.text` section overflows). We avoid that by linking only the one routine we need (`__gcov_info_to_gcda`) from the compiler-shipped libgcov and providing its handful of freestanding dependencies ourselves; see [2. Converting counters into gcda and exposing it](#2-converting-counters-into-gcda-and-exposing-it).
 
 Linker script adjustments were immediately necessary. The private memory region (or L0 if you will) got bloated, so I placed it into L1 and let only the stack reside in L0. I also added a new region where the coverage data stream in gcda format will be written into, and hacked together a minimal library for extracting coverage data; more on those topics in [2. Converting counters into gcda and exposing it](#2-converting-counters-into-gcda-and-exposing-it).
 
@@ -123,7 +123,9 @@ More linker script tweaks may be necessary depending on the nature of the instru
 
 ### 2. Converting counters into gcda and exposing it
 
-libgcov provides `__gcov_info_to_gcda` (found in `gcc/libgcc/libgcov-driver.c`) which converts raw counter info into the gcda format that can later be used by tools like `gcov` and `lcov`. However, as already mentioned, linking against libgcov turned out to be a problem (as we don't want all of newlib). That function itself does not have any libc dependencies, so I copied the minimal required implementation of `__gcov_info_to_gcda` and its dependencies from GCC's codebase into `gcov.c`, which should then be linked into kernels compiled for coverage.
+libgcov provides `__gcov_info_to_gcda` (found in `gcc/libgcc/libgcov-driver.c`) which converts raw counter info into the gcda format that can later be used by tools like `gcov` and `lcov`. We link the libgcov that ships with the SFPI compiler with `-lgcov`. Because the linker only pulls archive members that are actually referenced, this brings in just `__gcov_info_to_gcda` (and not the file-I/O machinery that depends on newlib). That routine has only a few freestanding dependencies - `strlen`, `abort`, `__udivsi3` and `__umodsi3` - which we supply with trimmed implementations in [`coverage.c`](../riscv-src/coverage.c), along with a no-op `__gcov_merge_add` that the instrumented `gcov_info` points at.
+
+Earlier we vendored a copy of `__gcov_info_to_gcda` (in a `gcov.c`) to dodge the newlib dependency. The problem with a copy is that the gcda format carries a version stamp that must match the gcno emitted by the compiler; the copy hardcoded that stamp, so every SFPI/GCC bump silently broke the gcno/gcda version match until someone remembered to edit the constant. Linking the compiler's own libgcov removes that footgun entirely: the version it writes is always the version of the compiler that also produced the gcno.
 
 The counters for each kernel, its pointer to the `struct gcov_info`, and the struct itself, are all in its `.ldm_data` (the counter being in the `bss` portion, unlike the other two). When the kernel ends, the C runtime `tmu-crt0.S` calls `gcov_dump`, which passes that pointer to `__gcov_info_to_gcda`, which then gives us a data stream in gcda format. The linker scripts define `REGION_GCOV` (as well as two symbols to access it: `__coverage_start` and `__coverage_end`), and we write a short header and then the data stream as a byte array into that region.
 

@@ -58,10 +58,8 @@ function(add_riscv_object OBJECT_NAME SOURCE_FILE BUILD_TYPE)
     )
 endfunction()
 
-# Compile the coverage-related libraries (always optimized and without instrumentation)
-set(GCOV_OBJ "${RISCV_OBJECT}/gcov.o")
+# Compile the coverage support file (always optimized and without instrumentation).
 set(COVERAGE_OBJ "${RISCV_OBJECT}/coverage.o")
-add_riscv_object("${GCOV_OBJ}" "${RISCV_SOURCE}/coverage/gcov.c" "release")
 
 # Compile coverage.c with -fno-strict-aliasing, the tricks done in the code necessitate it.
 add_custom_command(
@@ -71,8 +69,8 @@ add_custom_command(
             ${OPTIMIZED_OPTIONS_COMPILE}
             -fno-strict-aliasing
             -c -o ${COVERAGE_OBJ}
-            ${RISCV_SOURCE}/coverage/coverage.c
-    DEPENDS ${RISCV_SOURCE}/coverage/coverage.c
+            ${RISCV_SOURCE}/coverage.c
+    DEPENDS ${RISCV_SOURCE}/coverage.c
 )
 
 # Add the CRT object (assembly file)
@@ -107,9 +105,11 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
 
     # Handle memory.${ARCH}.debug.ld and memory.${ARCH}.release.ld
     set(LDSCRIPT_EXTENSION ${BUILD_TYPE})
+    set(LINK_LIBS)
 
     if(BUILD_TYPE STREQUAL "coverage")
-        list(APPEND LINK_OBJECTS ${GCOV_OBJ} ${COVERAGE_OBJ})
+        list(APPEND LINK_OBJECTS ${COVERAGE_OBJ})
+        list(APPEND LINK_LIBS -lgcov)
         # Debug ld script should be used in coverage builds
         set(LDSCRIPT_EXTENSION "debug")
     endif()
@@ -118,6 +118,7 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
         OUTPUT ${OUTPUT_ELF}
         COMMAND ${GXX} ${LINK_OPTIONS}
             ${LINK_OBJECTS}
+            ${LINK_LIBS}
             -T${RISCV_SOURCE}/memory.${ARCH}.${LDSCRIPT_EXTENSION}.ld
             -T${RISCV_SOURCE}/${CORE}.ld
             -T${RISCV_SOURCE}/sections.ld

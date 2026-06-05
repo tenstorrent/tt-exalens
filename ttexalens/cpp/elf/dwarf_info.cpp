@@ -53,51 +53,27 @@ std::optional<DwarfFileLine> DwarfInfo::find_file_line_by_address(uint64_t addre
             dwarf_lineaddr(lines[i], &a, &error);
             return a;
         };
+        auto is_end_sequence = [&](Dwarf_Signed i) -> bool {
+            Dwarf_Bool b = 0;
+            dwarf_lineendsequence(lines[i], &b, &error);
+            return b != 0;
+        };
 
-        // Quick reject: target outside this CU's line-table address range
-        // (the +4 mirrors the last-entry fallback applied below). Both
-        // bounds are pulled from the line context, which has them cached
-        // — no extra parsing cost.
-        if (target < line_addr(0) || target >= line_addr(line_count - 1) + 4) {
-            continue;
-        }
-
-        // Binary search for the largest entry with address <= target
-        // (upper_bound semantics: lo ends at the first entry whose addr > target).
-        // Assumes line addresses within a CU are monotonically non-decreasing,
-        // which holds for our RISC-V kernel ELFs.
-        Dwarf_Signed lo = 0;
-        Dwarf_Signed hi = line_count;
-        while (lo < hi) {
-            Dwarf_Signed mid = lo + (hi - lo) / 2;
-            if (line_addr(mid) > target) {
-                hi = mid;
-            } else {
-                lo = mid + 1;
+        for (Dwarf_Signed i = 0; i + 1 < line_count; ++i) {
+            if (is_end_sequence(i)) {
+                continue;
             }
+            if (target < line_addr(i) || target >= line_addr(i + 1)) {
+                continue;
+            }
+            Dwarf_Unsigned ln = 0;
+            Dwarf_Unsigned col = 0;
+            DwarfString src(dbg);
+            dwarf_lineno(lines[i], &ln, &error);
+            dwarf_lineoff_b(lines[i], &col, &error);
+            dwarf_linesrc(lines[i], &src, &error);
+            return DwarfFileLine{std::string(src.get()), static_cast<uint32_t>(ln), static_cast<uint32_t>(col)};
         }
-        if (lo == 0) {
-            continue;  // target precedes every entry in this CU
-        }
-        const Dwarf_Signed match_idx = lo - 1;
-        const Dwarf_Addr match_addr = line_addr(match_idx);
-
-        // The matching entry covers [match_addr, next_addr). For the very last
-        // entry there's no successor, so apply the +4 heuristic from the
-        // existing Python ElfDwarf.file_lines_ranges.
-        const Dwarf_Addr upper = (lo < line_count) ? line_addr(lo) : (match_addr + 4);
-        if (target >= upper) {
-            continue;
-        }
-
-        Dwarf_Line match = lines[match_idx];
-        Dwarf_Unsigned ln = 0;
-        Dwarf_Unsigned col = 0;
-        DwarfString src(dbg);
-        dwarf_lineno(match, &ln, &error);
-        dwarf_lineoff_b(match, &col, &error);
-        dwarf_linesrc(match, &src, &error);
-        return DwarfFileLine{std::string(src.get()), static_cast<uint32_t>(ln), static_cast<uint32_t>(col)};
     }
 
     return std::nullopt;
