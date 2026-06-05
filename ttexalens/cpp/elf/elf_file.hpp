@@ -32,6 +32,7 @@ class ElfSection {
     explicit ElfSection(const ELFIO::section& section);
 
     std::string name() const;
+    uint16_t index() const;
     uint64_t address() const;
     uint64_t size() const;
     std::span<const std::byte> data() const;
@@ -77,6 +78,7 @@ struct ElfSymbol {
     uint64_t size;
     ElfSymbolType type;
     ElfSymbolBinding bind;
+    uint16_t section_index;
 };
 
 class ElfFile {

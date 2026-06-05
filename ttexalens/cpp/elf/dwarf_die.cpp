@@ -840,6 +840,14 @@ std::optional<uint64_t> DwarfDie::get_address() const {
     // assembly; DWARF has the name + type but no DwarfAttributeTag::location, so the
     // linker-produced .symtab is the only place the address lives.
     if (const ElfSymbol* sym = find_symbol()) {
+        // A STT_TLS symbol's value is its offset within the TLS block, not an
+        // absolute address. The runtime address is the containing section's VMA
+        // plus that offset.
+        if (sym->type == ElfSymbolType::STT_TLS) {
+            if (auto info_ptr = info.lock()) {
+                return info_ptr->get_section_address(sym->section_index) + sym->value;
+            }
+        }
         return sym->value;
     }
     return std::nullopt;

@@ -47,6 +47,7 @@ std::vector<ElfSymbol> ElfFileImpl::read_symbol_table_section(std::string_view s
             static_cast<uint64_t>(size),
             static_cast<ElfSymbolType>(type),
             static_cast<ElfSymbolBinding>(bind),
+            static_cast<uint16_t>(section_index),
         });
     }
     return result;
@@ -67,6 +68,16 @@ void ElfFileImpl::populate_sections() {
     for (size_t i = 0; i < n; ++i) {
         sections.emplace_back(*elf.sections[static_cast<unsigned int>(i)]);
     }
+
+    section_by_index.reserve(n);
+    for (const ElfSection& s : sections) {
+        section_by_index.emplace(s.index(), &s);
+    }
+}
+
+const ElfSection* ElfFileImpl::get_section_by_index(uint16_t index) const {
+    auto it = section_by_index.find(index);
+    return it == section_by_index.end() ? nullptr : it->second;
 }
 
 // Identical for path- and bytes-backed sources: both just need elf and
