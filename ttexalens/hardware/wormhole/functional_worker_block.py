@@ -11,11 +11,13 @@ from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from ttexalens.hardware.risc_debug import RiscDebug
+from ttexalens.hardware.perf_counters import TensixPerfCounters
 from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import debug_bus_signal_map, group_map
 from ttexalens.hardware.wormhole.functional_worker_registers import register_map
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
+from ttexalens.hardware.wormhole.perf_counters import initialization as perf_counters_initialization
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
@@ -61,6 +63,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             location,
             block_type="functional_workers",
             debug_bus=DebugBusSignalStore(debug_bus_signals_initialization, self),
+            perf_counters=TensixPerfCounters(perf_counters_initialization, self),
         )
 
         self.l1 = MemoryBlock(
