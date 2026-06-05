@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import datetime
 import os
 import struct
-from typing import Any, Callable
+from typing import Callable
 
 from ttexalens import util
 from ttexalens._lib_helpers import (
@@ -17,7 +17,6 @@ from ttexalens._lib_helpers import (
     validate_addr,
     validate_device_id,
 )
-from ttexalens.device import Device
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.elf import read_elf, ElfFile

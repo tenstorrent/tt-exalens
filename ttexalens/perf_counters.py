@@ -7,7 +7,6 @@ Each function operates on exactly one core (one ``OnChipCoordinate``) and
 raises if perf counters are not wired there. Callers that want to fan
 out across many cores iterate themselves.
 """
-from typing import Literal
 
 from ttexalens import _lib_helpers
 from ttexalens.coordinate import OnChipCoordinate
@@ -39,6 +38,7 @@ def _check_and_get_perf_counters(
             f"(block_type={location.noc_block.block_type})."
         )
     return perf
+
 
 @_lib_helpers.trace_api
 def reset_perf_counters(

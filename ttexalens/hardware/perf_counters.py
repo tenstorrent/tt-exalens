@@ -31,9 +31,6 @@ from functools import cached_property
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Mapping
 
-from ttexalens._lib_helpers import trace_api
-from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.exceptions import TTException
 
 if TYPE_CHECKING:
     from ttexalens.hardware.noc_block import NocBlock
