@@ -3,6 +3,7 @@
 
 #include "dwarf_info_impl.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <elfio/elfio.hpp>
@@ -215,6 +216,55 @@ std::vector<DwarfCompileUnit>& DwarfInfoImpl::get_cus() {
         load_compile_units();
     }
     return cus;
+}
+
+const std::vector<LineRange>& DwarfInfoImpl::get_line_ranges() {
+    if (!loaded_line_ranges) {
+        loaded_line_ranges = true;
+        load_line_ranges();
+    }
+    return line_ranges;
+}
+
+void DwarfInfoImpl::load_line_ranges() {
+    // Flatten every CU's line table into half-open [low, high) ranges so address
+    // lookups become a single binary search.
+    for (auto& cu : get_cus()) {
+        DwarfLineContextHandle& line_context = cu.get_line_context();
+        if (!line_context) {
+            continue;
+        }
+
+        DwarfErrorHandle error(dbg);
+        Dwarf_Line* lines = nullptr;
+        Dwarf_Signed line_count = 0;
+        if (dwarf_srclines_from_linecontext(line_context, &lines, &line_count, &error) != DW_DLV_OK ||
+            line_count == 0) {
+            continue;
+        }
+
+        for (Dwarf_Signed i = 0; i + 1 < line_count; ++i) {
+            Dwarf_Bool is_end = 0;
+            dwarf_lineendsequence(lines[i], &is_end, &error);
+            if (is_end) {
+                continue;
+            }
+            Dwarf_Addr low = 0;
+            Dwarf_Addr high = 0;
+            dwarf_lineaddr(lines[i], &low, &error);
+            dwarf_lineaddr(lines[i + 1], &high, &error);
+            // Skip empty ranges (consecutive rows at the same address, e.g. a
+            // column/statement change); the later row supersedes and carries the
+            // real upper bound, matching gdb/GCC behavior.
+            if (high <= low) {
+                continue;
+            }
+            line_ranges.push_back(LineRange{low, high, lines[i]});
+        }
+    }
+
+    std::sort(line_ranges.begin(), line_ranges.end(),
+              [](const LineRange& a, const LineRange& b) { return a.low < b.low; });
 }
 
 std::pair<Dwarf_Fde*, Dwarf_Signed> DwarfInfoImpl::get_fdes() {

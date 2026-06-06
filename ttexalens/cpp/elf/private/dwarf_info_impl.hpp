@@ -15,6 +15,15 @@ namespace ttexalens::native_elf::details {
 
 class ElfFileImpl;
 
+// A half-open address range [low, high) mapped to the line-table row covering
+// it. `line` is owned by the originating CU's cached line context and stays
+// valid for the DwarfInfoImpl lifetime.
+struct LineRange {
+    Dwarf_Addr low;
+    Dwarf_Addr high;
+    Dwarf_Line line;
+};
+
 // Adapter that lets libdwarf read DWARF data from an already-parsed
 // ELFIO::elfio without opening the file again (path-loaded) or needing a path
 // at all (from_bytes). Implements the Dwarf_Obj_Access_Interface_a vtable.
@@ -54,6 +63,9 @@ class DwarfInfoImpl : public std::enable_shared_from_this<DwarfInfoImpl> {
     // Lazy CU cache (libdwarf's CU cursor is stateful and one-shot).
     std::vector<DwarfCompileUnit>& get_cus();
 
+    // Lazy, sorted address->line index across all CUs (see LineRange).
+    const std::vector<LineRange>& get_line_ranges();
+
     // Lazy CFI loader. Returns the FDE array (libdwarf-owned, lifetime tied
     // to ~Impl) plus its count. Tries .debug_frame first, then .eh_frame —
     // both produce the same Dwarf_Fde shape, so callers don't care which.
@@ -74,6 +86,7 @@ class DwarfInfoImpl : public std::enable_shared_from_this<DwarfInfoImpl> {
     friend class ttexalens::native_elf::FrameDescription;
 
     void load_compile_units();
+    void load_line_ranges();
     void load_symbols_table();
 
     ElfObjAccess obj_access;
@@ -83,6 +96,10 @@ class DwarfInfoImpl : public std::enable_shared_from_this<DwarfInfoImpl> {
     std::vector<DwarfCompileUnit> cus;
     std::unordered_map<Dwarf_Off, DwarfDiePtr> die_cache;
     bool loaded_cus = false;
+
+    // Sorted (by low) address->line index; see get_line_ranges().
+    std::vector<LineRange> line_ranges;
+    bool loaded_line_ranges = false;
 
     // Call Frame Information state. cies/fdes are libdwarf-owned arrays
     // (allocated by dwarf_get_fde_list[_eh]) freed in ~Impl via

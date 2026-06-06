@@ -6,6 +6,7 @@
 #include <dwarf.h>  // DW_END_* constants
 #include <libdwarf.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <elfio/elfio.hpp>
@@ -31,52 +32,31 @@ DwarfInfo::DwarfInfo(DwarfInfo&&) noexcept = default;
 DwarfInfo& DwarfInfo::operator=(DwarfInfo&&) noexcept = default;
 
 std::optional<DwarfFileLine> DwarfInfo::find_file_line_by_address(uint64_t address) const {
-    Dwarf_Debug dbg = impl->dbg;
     const Dwarf_Addr target = static_cast<Dwarf_Addr>(address);
+    const auto& ranges = impl->get_line_ranges();
 
-    for (auto& cu : impl->get_cus()) {
-        DwarfLineContextHandle& line_context = cu.get_line_context();
-        if (!line_context) {
-            continue;
-        }
-
-        DwarfErrorHandle error(dbg);
-        Dwarf_Line* lines = nullptr;
-        Dwarf_Signed line_count = 0;
-        if (dwarf_srclines_from_linecontext(line_context, &lines, &line_count, &error) != DW_DLV_OK ||
-            line_count == 0) {
-            continue;
-        }
-
-        auto line_addr = [&](Dwarf_Signed i) -> Dwarf_Addr {
-            Dwarf_Addr a = 0;
-            dwarf_lineaddr(lines[i], &a, &error);
-            return a;
-        };
-        auto is_end_sequence = [&](Dwarf_Signed i) -> bool {
-            Dwarf_Bool b = 0;
-            dwarf_lineendsequence(lines[i], &b, &error);
-            return b != 0;
-        };
-
-        for (Dwarf_Signed i = 0; i + 1 < line_count; ++i) {
-            if (is_end_sequence(i)) {
-                continue;
-            }
-            if (target < line_addr(i) || target >= line_addr(i + 1)) {
-                continue;
-            }
-            Dwarf_Unsigned ln = 0;
-            Dwarf_Unsigned col = 0;
-            DwarfString src(dbg);
-            dwarf_lineno(lines[i], &ln, &error);
-            dwarf_lineoff_b(lines[i], &col, &error);
-            dwarf_linesrc(lines[i], &src, &error);
-            return DwarfFileLine{std::string(src.get()), static_cast<uint32_t>(ln), static_cast<uint32_t>(col)};
-        }
+    // Ranges are sorted by `low` and disjoint (see LineRange), so the only
+    // candidate is the entry with the greatest low <= target; a single binary
+    // search suffices.
+    auto it = std::upper_bound(ranges.begin(), ranges.end(), target,
+                               [](Dwarf_Addr t, const details::LineRange& r) { return t < r.low; });
+    if (it == ranges.begin()) {
+        return std::nullopt;
+    }
+    --it;
+    if (target >= it->high) {
+        return std::nullopt;  // target lies in a gap between ranges
     }
 
-    return std::nullopt;
+    Dwarf_Debug dbg = impl->dbg;
+    DwarfErrorHandle error(dbg);
+    Dwarf_Unsigned ln = 0;
+    Dwarf_Unsigned col = 0;
+    DwarfString src(dbg);
+    dwarf_lineno(it->line, &ln, &error);
+    dwarf_lineoff_b(it->line, &col, &error);
+    dwarf_linesrc(it->line, &src, &error);
+    return DwarfFileLine{std::string(src.get()), static_cast<uint32_t>(ln), static_cast<uint32_t>(col)};
 }
 
 DwarfDiePtr DwarfInfo::find_function_by_address(uint64_t address) const {
