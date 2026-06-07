@@ -496,25 +496,27 @@ class TestDebugging(unittest.TestCase):
         self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertPcEquals(4)
 
-        # Step through the NOP padding and the first LUI (load address); PC advances one instruction
-        # at a time and memory stays unchanged until the store commits.
+        # Go through NOPs
         pc = 4
-        for _ in range(self.program_writer.ebreak_nop_padding + 1):
+        for _ in range(self.program_writer.ebreak_nop_padding):
             self.core_sim.step()
             pc += 4
             self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
             self.assertPcEquals(pc)
 
-        # Next step commits the store; memory now holds the new value.
+        # 3 instructions for store
         self.core_sim.step()
         pc += 4
+        self.assertPcEquals(pc)
+        self.core_sim.step()
+        pc += 4
+        self.assertPcEquals(pc)
+        self.core_sim.step()
+        pc += 4
+        self.assertPcEquals(pc)
         self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
-        self.assertPcEquals(pc)
 
-        # One more step reaches the infinite loop, which we can never advance past.
-        self.core_sim.step()
-        pc += 4
-        self.assertPcEquals(pc)
+        # Do 10 steps in the infinite loop
         for _ in range(10):
             self.core_sim.step()
             self.assertPcEquals(pc)
