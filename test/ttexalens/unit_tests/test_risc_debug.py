@@ -897,9 +897,6 @@ class TestDebugging(unittest.TestCase):
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
 
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest("This test ND fails in CI. Issue: #770")
-
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
         assert noc_addr is not None, "Translated NOC address should not be None."
