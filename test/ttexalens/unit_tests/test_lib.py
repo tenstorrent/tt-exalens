@@ -1661,10 +1661,21 @@ class TestCallStack(unittest.TestCase):
             pc = self.risc_debug.read_gpr(32)
         callstack: list[CallstackEntry] = lib.top_callstack(pc, parsed_elf, None, self.context)
 
-        self.assertEqual(len(callstack), expected_f1_on_callstack_count + 1)
-        for i in range(0, expected_f1_on_callstack_count):
-            self.assertEqual(callstack[i].function_name, "f1")
-        self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
+        if self.device.is_blackhole() or self.device.is_wormhole():
+            # The core halts on the ebreak inside halt(). The reported PC is the instruction after the
+            # ebreak, which lands in the NOP padding emitted by -mtt-fix-whbhebreak; that padding is
+            # attributed to halt() (callstack.cc:30), so halt() is the innermost (inlined) frame,
+            # followed by the f1 frame(s) and recurse.
+            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
+            self.assertEqual(callstack[0].function_name, "halt")
+            for i in range(0, expected_f1_on_callstack_count):
+                self.assertEqual(callstack[1 + i].function_name, "f1")
+            self.assertEqual(callstack[1 + expected_f1_on_callstack_count].function_name, "recurse")
+        else:
+            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 1)
+            for i in range(0, expected_f1_on_callstack_count):
+                self.assertEqual(callstack[i].function_name, "f1")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_template_arguments(self, elf_name):
