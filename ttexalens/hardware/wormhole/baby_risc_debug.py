@@ -14,14 +14,17 @@ class WormholeBabyRiscDebug(BabyRiscDebug):
         # If this is functional worker core, we need to disable branch prediction as a hardware workaround
         if self.baby_risc_info.branch_prediction_register is not None:
             self.set_branch_prediction(False)
-            super().cont()
         else:
-            # For erisc, we don't have option to disable branch prediction, so we should continue without debug
-            if self.enable_asserts:
-                self.assert_not_in_reset()
-            self.assert_debug_hardware()
-            assert self.debug_hardware is not None, "Debug hardware is not initialized"
-            self.debug_hardware.continue_without_debug()
+            # erisc has no branch-prediction register to disable. Resuming from an ebreak with a plain
+            # CONTINUE re-asserts the ebreak (Wormhole/Blackhole ebreak hardware bug): the fetch pipeline
+            # re-runs the window after the ebreak and the core re-halts with ebreak still set. Flushing
+            # the pipeline to the current PC clears the latched ebreak so we can continue in debug mode
+            # (which keeps watchpoints active), instead of falling back to continue_without_debug().
+            if self.is_halted() and self.is_ebreak_hit():
+                self.assert_debug_hardware()
+                assert self.debug_hardware is not None, "Debug hardware is not initialized"
+                self.debug_hardware.flush(self.get_pc())
+        super().cont()
 
     def step(self):
         # We need to disable branch prediction as a hardware workaround, if there is an option to do so
