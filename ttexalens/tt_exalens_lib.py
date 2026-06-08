@@ -19,7 +19,7 @@ from ttexalens._lib_helpers import (
 )
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.elf import read_elf, ElfFile
+from ttexalens.elf import read_elf, ElfFile, ElfVariable
 from ttexalens.hardware.risc_debug import CallstackEntry
 from ttexalens.exceptions import TTException
 from ttexalens.memory_access import NO_MEMORY_ACCESS, create_memory_access
@@ -502,6 +502,43 @@ def parse_elf(elf_path: str, context: Context | None = None, require_debug_symbo
     """
     context = check_context(context)
     return read_elf(context.file_api, elf_path, require_debug_symbols=require_debug_symbols)
+
+
+@trace_api
+def get_global(
+    location: str | OnChipCoordinate,
+    elf: str | ElfFile,
+    name: str,
+    risc_name: str,
+    neo_id: int | None = None,
+    device_id: int = 0,
+    context: Context | None = None,
+    safe_mode: bool | None = None,
+) -> ElfVariable:
+    """
+    Resolves a global (or static) variable by name from the given ELF and binds it to
+    the specified RISC-V core, returning an ElfVariable that reads/writes the variable
+    through its type. This wraps the construction of the underlying memory access so a
+    typed read is as simple as a raw read_word_from_device call.
+
+    Args:
+        location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+        elf (str | ElfFile): ELF file (path or already-parsed) that defines the variable.
+        name (str): Name of the variable to resolve.
+        risc_name (str): RISC-V core name (e.g. "brisc", "trisc0", etc.).
+        neo_id (int | None, optional): NEO ID of the RISC-V core.
+        device_id (int, optional): ID of the device to access. Default 0.
+        context (Context | None, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        safe_mode (bool | None, optional): Whether to use safe mode for memory access. If None, it is decided based on context.
+
+    Returns:
+        ElfVariable: The resolved variable, bound to the core's memory for reading/writing.
+    """
+    coordinate = convert_coordinate(location, device_id, context)
+    parsed_elf = parse_elf(elf, coordinate.context) if isinstance(elf, str) else elf
+    risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
+    memory_access = create_memory_access(risc_debug, safe_mode=safe_mode)
+    return parsed_elf.get_global(name, memory_access)
 
 
 @trace_api

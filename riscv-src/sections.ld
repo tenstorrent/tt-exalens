@@ -163,6 +163,28 @@ SECTIONS
    . += __firmware_stack_size;
     __stack_top = .;
   } > REGION_STACK
+  /*
+   * Per-RISC `thread_local` storage. Collects the compiler's TLS sections
+   * (.tdata/.tbss, emitted for `thread_local` variables) and the equivalent
+   * `__attribute__((section(".thread_local")))` form into REGION_THREAD_LOCAL -
+   * a dedicated, in-range L1 window declared per core in memory.*.ld. The TLS
+   * inputs come first so the TLS segment base equals the region origin; tmu-crt0
+   * sets `tp` to __thread_local_start, so a thread_local's runtime address is
+   * `tp + tprel_offset`, i.e. its slot in this region. .tbss is bracketed by
+   * __thread_local_bss_{start,end} and zeroed by tmu-crt0 (the host loader
+   * initializes the rest of the section directly). The attribute form keeps its
+   * absolute address and is placed after the TLS block so it is not zeroed.
+   */
+  .thread_local :
+  {
+    __thread_local_start = .;
+    *(.tdata .tdata.* .gnu.linkonce.td.*)
+    __thread_local_bss_start = .;
+    *(.tbss .tbss.* .gnu.linkonce.tb.* .tcommon)
+    __thread_local_bss_end = .;
+    *(.thread_local .thread_local.*)
+    __thread_local_end = .;
+  } > REGION_THREAD_LOCAL
   .stab 0 : { *(.stab) }
   .stabstr 0 : { *(.stabstr) }
   .stab.excl 0 : { *(.stab.excl) }
@@ -232,8 +254,6 @@ SECTIONS
         *(.gnu_extab)
         *(.gcc_except_table .gcc_except_table.*)
         *(.exception_ranges .exception_ranges*)
-        *(.tdata .tdata.* .gnu.linkonce.td.*)
-        *(.tbss .tbss.* .gnu.linkonce.tb.*) *(.tcommon)
         *(.jcr)
         *(.got.plt) *(.igot.plt) *(.got) *(.igot)
   }

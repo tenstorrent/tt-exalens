@@ -288,6 +288,30 @@ class TestDebugSymbols(unittest.TestCase):
         self.verify_global_struct(g_global_struct)
         self.assertEqual(self.mem_access.read_count, 1)
 
+    def test_elf_thread_local_variable_low_level(self):
+        # g_global_tls_struct lives in the per-RISC thread_local region. Its DIE
+        # has no DW_AT_location, so its address is resolved from .symtab as the
+        # containing section's VMA plus the symbol's TLS-relative offset (STT_TLS
+        # handling in the native ELF reader).
+        variable_die = self.parsed_elf.find_die_by_name("g_global_tls_struct")
+        assert variable_die is not None
+        address = variable_die.get_address()
+        assert address is not None
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
+        self.verify_global_struct_low_level(g_global_struct)
+
+    def test_elf_thread_local_global_variable(self):
+        g_global_struct = self.parsed_elf.get_global("g_global_tls_struct", TestDebugSymbols.mem_access)
+        self.verify_global_struct(g_global_struct)
+
+    def test_read_elf_thread_local_global_variable(self):
+        self.mem_access.reset_stats()
+        g_global_struct = self.parsed_elf.read_global("g_global_tls_struct", TestDebugSymbols.mem_access)
+        self.verify_global_struct(g_global_struct)
+        self.assertEqual(self.mem_access.read_count, 1)
+
     def test_symtab_fallback_address(self):
         """Variables declared `extern` (no DW_AT_location on the DIE) need
         the .symtab fallback in DwarfDie::get_address. Anchored by

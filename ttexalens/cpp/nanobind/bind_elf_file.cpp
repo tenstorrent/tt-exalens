@@ -94,7 +94,8 @@ void bind_elf_file(nb::module_& m) {
         .def_ro("value", &ElfSymbol::value)
         .def_ro("size", &ElfSymbol::size)
         .def_ro("type", &ElfSymbol::type)
-        .def_ro("bind", &ElfSymbol::bind);
+        .def_ro("bind", &ElfSymbol::bind)
+        .def_ro("section_index", &ElfSymbol::section_index);
 
     nb::class_<ElfFile>(m, "ElfFile")
         .def(nb::init<const std::string&, std::optional<uint64_t>>(), nb::arg("path"),

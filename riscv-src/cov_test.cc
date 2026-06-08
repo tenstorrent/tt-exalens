@@ -34,16 +34,18 @@ constexpr char flip_case() {
         return 0;
 }
 
+thread_local volatile uint32_t mailbox;
+thread_local volatile uint32_t results[4];
+
 int main(void) {
-    uint32_t* ptr = (uint32_t*)0x64000;
-    if (*ptr - 0xDEADBEEF) {
-        ptr[1] = 0xDEADC0DE;
-        ptr[2] = factorial<0>::value;
-        ptr[3] = fib<1>();
-        ptr[4] = flip_case<'C'>();
+    if (mailbox != 0xDEADBEEF) {
+        results[0] = 0xDEADC0DE;
+        results[1] = factorial<0>::value;
+        results[2] = fib<1>();
+        results[3] = flip_case<'C'>();
     } else {
-        ptr[1] = 0xB1E55ED;
-        ptr[2] = factorial<3 * factorial<1>::value>::value;
-        ptr[3] = fib<3>();
+        results[0] = 0xB1E55ED;
+        results[1] = factorial<3 * factorial<1>::value>::value;
+        results[2] = fib<3>();
     }
 }
