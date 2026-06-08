@@ -227,8 +227,8 @@ const std::vector<LineRange>& DwarfInfoImpl::get_line_ranges() {
 }
 
 void DwarfInfoImpl::load_line_ranges() {
-    // Flatten every CU's line table into half-open [low, high) ranges so address
-    // lookups become a single binary search.
+    // Flatten every CU's line table into half-open [low, high) ranges, sorted by
+    // `low`, so address lookups are a binary search plus a short left-scan.
     for (auto& cu : get_cus()) {
         DwarfLineContextHandle& line_context = cu.get_line_context();
         if (!line_context) {
@@ -336,11 +336,11 @@ DwarfDiePtr DwarfInfoImpl::get_or_create_die(Dwarf_Off offset) {
 }
 
 DwarfCompileUnit* DwarfInfoImpl::get_die_cu(Dwarf_Off target_offset) {
-    if (get_cus().size() > 5) {
+    if (get_cus().size() > 10) {
         // Implement a more efficient lookup than linear search through all CU headers. A sorted vector + binary
         // search would be a simple improvement, or we could build a more complex index if needed.
         // At the moment, our elfs have 2 CUs. If we ever start using this library for bigger elfs we can optimize this.
-        printf("Warning: more than 5 CUs (%zu) — consider implementing a more efficient DIE-to-CU lookup\n",
+        printf("Warning: more than 10 CUs (%zu) — consider implementing a more efficient DIE-to-CU lookup\n",
                get_cus().size());
     }
     for (auto& cu : get_cus()) {

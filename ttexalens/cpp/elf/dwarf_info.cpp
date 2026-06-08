@@ -35,17 +35,41 @@ std::optional<DwarfFileLine> DwarfInfo::find_file_line_by_address(uint64_t addre
     const Dwarf_Addr target = static_cast<Dwarf_Addr>(address);
     const auto& ranges = impl->get_line_ranges();
 
-    // Ranges are sorted by `low` and disjoint (see LineRange), so the only
-    // candidate is the entry with the greatest low <= target; a single binary
-    // search suffices.
+    // Ranges are sorted by `low` but may overlap (inlining/LTO/COMDAT can make
+    // line tables from different CUs describe the same address). Binary search to
+    // the last range with low <= target, then walk left to the NARROWEST range
+    // still covering target -- the most-specific source location, matching
+    // find_function_by_address's narrowest-wins policy.
+    //
+    // The left-walk is bounded: any range covering target that starts at `low`
+    // has width > target - low, and target - low only grows as we move left. So
+    // once a candidate of width W is found, the first range with target - low >= W
+    // ends the scan; nothing further left can be narrower. On the common
+    // non-overlapping input this stops right after the single covering range.
+    // (An address in a gap has no candidate to bound the scan and walks to the
+    // start; that is acceptable here as lookups are per-frame, not in a hot loop.)
     auto it = std::upper_bound(ranges.begin(), ranges.end(), target,
                                [](Dwarf_Addr t, const details::LineRange& r) { return t < r.low; });
-    if (it == ranges.begin()) {
-        return std::nullopt;
+
+    const details::LineRange* best = nullptr;
+    Dwarf_Addr best_width = 0;
+    while (it != ranges.begin()) {
+        --it;
+        // Every range here has low <= target, so target - it->low is well-defined
+        // and non-decreasing as we move left.
+        if (best != nullptr && target - it->low >= best_width) {
+            break;
+        }
+        if (target < it->high) {  // covers target (low <= target already holds)
+            const Dwarf_Addr width = it->high - it->low;
+            if (best == nullptr || width < best_width) {
+                best = &(*it);
+                best_width = width;
+            }
+        }
     }
-    --it;
-    if (target >= it->high) {
-        return std::nullopt;  // target lies in a gap between ranges
+    if (best == nullptr) {
+        return std::nullopt;  // target precedes all ranges or lies in a gap
     }
 
     Dwarf_Debug dbg = impl->dbg;
@@ -53,9 +77,9 @@ std::optional<DwarfFileLine> DwarfInfo::find_file_line_by_address(uint64_t addre
     Dwarf_Unsigned ln = 0;
     Dwarf_Unsigned col = 0;
     DwarfString src(dbg);
-    dwarf_lineno(it->line, &ln, &error);
-    dwarf_lineoff_b(it->line, &col, &error);
-    dwarf_linesrc(it->line, &src, &error);
+    dwarf_lineno(best->line, &ln, &error);
+    dwarf_lineoff_b(best->line, &col, &error);
+    dwarf_linesrc(best->line, &src, &error);
     return DwarfFileLine{std::string(src.get()), static_cast<uint32_t>(ln), static_cast<uint32_t>(col)};
 }
 
