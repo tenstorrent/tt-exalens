@@ -13,9 +13,11 @@ extern "C" {
 typedef int64_t gcov_type;
 void __gcov_merge_add(gcov_type* counters, unsigned n_counters) {}
 int gcov_error(const char* fmt, ...) { return 0; }
-void abort() { while (1); }
-uint32_t __umodsi3(uint32_t a, uint32_t b) { return a % b; }
-uint32_t __udivsi3(uint32_t a, uint32_t b) { return a / b; }
+void abort() {
+    // `for(;;)` with an empty asm is a well-defined infinite loop; a bare `while(1);`
+    // is UB in C++17 and the optimizer may delete it.
+    for (;;) asm volatile("");
+}
 
 #define COVERAGE_OVERFLOW 0xDEADBEEF
 

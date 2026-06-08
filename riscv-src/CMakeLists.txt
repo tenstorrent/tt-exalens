@@ -68,6 +68,7 @@ add_custom_command(
             ${OPTIMIZED_OPTIONS_ALL}
             ${OPTIMIZED_OPTIONS_COMPILE}
             -fno-strict-aliasing
+            -fno-builtin
             -c -o ${COVERAGE_OBJ}
             ${RISCV_SOURCE}/coverage.c
     DEPENDS ${RISCV_SOURCE}/coverage.c
