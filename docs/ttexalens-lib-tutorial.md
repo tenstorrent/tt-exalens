@@ -135,27 +135,44 @@ Let's take a look at this simple program:
 ```cpp
 #include <cstdint>
 
-#define MAILBOX_ADDRESS 0x64000
-volatile uint32_t *mailbox = reinterpret_cast<volatile uint32_t *>(MAILBOX_ADDRESS);
+// `thread_local` places the variable in a small per-RISC region that the build
+// reserves in L1 for each core type (see riscv-src/sections.ld and
+// riscv-src/memory.*.ld). This guarantees a valid, in-range address on every
+// core - including ones with a smaller L1, such as ETH - instead of a hardcoded
+// address that may fall outside that core's memory. (Equivalently, you can tag a
+// variable with `__attribute__((section(".thread_local")))` to place it in the
+// same region.)
+thread_local volatile uint32_t mailbox;
 
 int main() {
-    *mailbox = 0x12345678;
-}```
+    mailbox = 0x12345678;
+}
+```
 
-This program writes the value `0x12345678` into L1 memory at address `0x64000`, and then enters an infinite loop (due to the C runtime).
+This program writes the value `0x12345678` into the `mailbox` variable, and then enters an infinite loop (due to the C runtime).
 To compile the .elf file, you can simply run `make build` and use the output generated in `build/riscv-src/wormhole/run_elf_test.debug.brisc.elf`.
 It can then be run on a brisc core through the TTExaLens library.
 
+Because `mailbox` lives in the per-RISC region, the linker assigns its address (which differs per core), so we resolve it from the ELF instead of hardcoding it.
+We parse the ELF once and reuse it both to run the program and to look up the symbol:
+
 ```python
-from ttexalens.tt_exalens_lib import run_elf, read_words_from_device
+from ttexalens.tt_exalens_lib import run_elf, read_words_from_device, parse_elf, get_global
 
-run_elf("build/riscv-src/wormhole/run_elf_test.debug.brisc.elf", "0,0")
+elf = parse_elf("build/riscv-src/wormhole/run_elf_test.debug.brisc.elf")
+run_elf(elf, "0,0", "brisc")
 
-ret = read_words_from_device("0,0", 0x64000)
-print(hex(ret[0]))
+# Option 1: resolve the mailbox's address from the ELF and read the raw word.
+mailbox_address = elf.find_die_by_name("mailbox").get_address()
+print(hex(read_words_from_device("0,0", mailbox_address)[0]))
+
+# Option 2: read it as a typed variable. get_global() binds the variable to the
+# core and returns an ElfVariable; read_value() decodes it using its type.
+mailbox = get_global("0,0", elf, "mailbox", "brisc")
+print(hex(mailbox.read_value()))
 ```
 
-In the example above, we run the .elf file and then read the value that should be written to address `0x64000` at core `0,0`.
+Both reads print `0x12345678`: the first resolves the address and reads a raw word, while the second reads the variable through its type as an `ElfVariable`.
 
 `core_loc` parameter of `run_elf` function can either be a string specifying a single core, `OnChipCoordinate` object, `all` keyword (in which case the program is run on all available cores) or a list consisting of the first two options for specifying multiple cores.
 

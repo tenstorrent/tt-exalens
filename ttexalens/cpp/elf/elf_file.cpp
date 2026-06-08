@@ -20,6 +20,8 @@ ElfSection::ElfSection(const ELFIO::section& section) : section(section) {}
 
 std::string ElfSection::name() const { return section.get_name(); }
 
+uint16_t ElfSection::index() const { return static_cast<uint16_t>(section.get_index()); }
+
 uint64_t ElfSection::address() const { return static_cast<uint64_t>(section.get_address()); }
 
 uint64_t ElfSection::size() const { return static_cast<uint64_t>(section.get_size()); }

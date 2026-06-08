@@ -16,6 +16,17 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         super().step()
         super().step()
 
+    def cont(self):
+        # There is a bug in hardware: resuming from an ebreak with a plain CONTINUE
+        # re-asserts the ebreak. The fetch pipeline re-runs the window after the ebreak
+        # (the NOPs emitted by -mtt-fix-whbhebreak) and the core re-halts at the end of
+        # that pad with ebreak still set. Flushing the pipeline to the current PC clears
+        # the latched ebreak so execution resumes cleanly past it.
+        if self.is_halted() and self.is_ebreak_hit():
+            assert self.debug_hardware is not None, "Debug hardware is not initialized"
+            self.debug_hardware.flush(self.get_pc())
+        super().cont()
+
     def read_gpr(self, register_index: int) -> int:
         if register_index != 32:
             return super().read_gpr(register_index)

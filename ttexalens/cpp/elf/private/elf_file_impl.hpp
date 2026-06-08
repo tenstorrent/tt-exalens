@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
+#include <unordered_map>
 
 #include "../dwarf_info.hpp"
 #include "../elf_file.hpp"
@@ -25,6 +26,11 @@ class ElfFileImpl : public std::enable_shared_from_this<ElfFileImpl> {
     std::vector<ElfSymbol> read_symbol_table_section(std::string_view section_name);
     DwarfInfo* get_dwarf_info();
 
+    // Looks up a section by its ELF section header index (st_shndx), not by its
+    // position in `sections`. Returns nullptr when no section carries that
+    // index.
+    const ElfSection* get_section_by_index(uint16_t index) const;
+
     // ELF header e_entry — the program's start-of-execution address.
     uint64_t get_entry() const { return static_cast<uint64_t>(elf.get_entry()); }
 
@@ -38,6 +44,8 @@ class ElfFileImpl : public std::enable_shared_from_this<ElfFileImpl> {
     uint64_t file_size = 0;
     std::optional<DwarfInfo> dwarf_info;
     bool loaded_dwarf_info = false;
+
+    std::unordered_map<uint16_t, const ElfSection*> section_by_index;
 
     friend class ElfObjAccess;
 };
