@@ -16,7 +16,12 @@ class WormholeBabyRiscDebug(BabyRiscDebug):
             self.set_branch_prediction(False)
             super().cont()
         else:
-            # For erisc, we don't have option to disable branch prediction, so we should continue without debug
+            # For erisc we cannot disable branch prediction: the eth tile has no DISABLE_RISC_BP config
+            # register, the RISC debug module cannot reach CSRs to set cfg0.DisBp (its register-access
+            # command masks the index to the GPR file), and a `csr` instruction in a debugger-loaded
+            # program traps. A debug-mode CONTINUE with branch prediction enabled corrupts the core
+            # (subsequent NoC writes to its L1 intermittently fail), so we continue without debug mode.
+            # This is stable but means hardware watchpoints cannot halt the erisc (see #762).
             if self.enable_asserts:
                 self.assert_not_in_reset()
             self.assert_debug_hardware()

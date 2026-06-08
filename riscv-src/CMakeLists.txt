@@ -96,6 +96,13 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
         set(LINK_OPTIONS ${OPTIONS_ALL} ${OPTIONS_LINK})
     endif()
 
+    # -mtt-fix-whbhebreak emits the Wormhole/Blackhole ebreak hardware-bug workaround
+    # (8 NOPs after every ebreak; the fetch pipeline has already prefetched the
+    # instructions following an ebreak, so on WH/BH those must be NOPs).
+    if(ARCH STREQUAL "wormhole" OR ARCH STREQUAL "blackhole")
+        list(APPEND LINK_OPTIONS -mtt-fix-whbhebreak)
+    endif()
+
     set(OUTPUT_ELF "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.elf")
     set(OUTPUT_OBJDUMP "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.objdump")
     set(OUTPUT_DWARF "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.dwarf")
