@@ -22,7 +22,21 @@ DM_OUT_OF_RESET_BIT = 1 << 17
 
 # Abstract command (COMMAND) — Access Register, 64-bit, transfer=1, write=0, regno=dpc (0x7B1)
 ABSTRACTS_BUSY = 1 << 12
+ABSTRACTS_CMDERR_MASK = 0x7 << 8  # ABSTRACTCS[10:8], write-1-to-clear
 CMD_READ_DPC = (3 << 20) | (1 << 17) | 0x7B1
+
+# Reading the program counter of a halted hart.
+# This debug module does NOT implement abstract Access-Register access to CSRs
+# (it returns cmderr=2 "not supported"), so we recover the saved PC (the `dpc`
+# CSR, 0x7B1) through the Program Buffer: run `csrr x5, dpc; ebreak`, then read
+# x5 via an abstract GPR access (GPR access is supported).
+INSN_CSRR_X5_DPC = 0x7B1022F3  # csrr x5, dpc  (csrrs x5, 0x7B1, x0)
+INSN_EBREAK = 0x00100073  # ebreak
+# Access Register abstract command, 64-bit, postexec=1, no register transfer.
+CMD_EXEC_PROGBUF = (3 << 20) | (1 << 18)
+# Access Register abstract command, 64-bit GPR read: regno = 0x1000 + index.
+GPR_REGNO_BASE = 0x1000
+SCRATCH_GPR_INDEX = 5  # x5, clobbered by the dpc read sequence
 
 # System Bus Access Control and Status (SBCS) fields.
 SBCS_SBBUSY = 1 << 21
@@ -122,10 +136,63 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
                 self.cont()
 
     def get_pc(self) -> int:
+        # When the hart is halted it is parked in the debug ROM, so the write-back
+        # PC tap no longer reflects the program PC (it shows the debug-ROM park
+        # loop). In that case read the saved PC (dpc) through the debug module.
+        if self.is_halted():
+            return self._read_pc_through_debug_module()
+
+        # Running: read the write-back stage PC tap.
         assert (
             self.register_store.read_register("TT_CLUSTER_CTRL_WB_PC_CTRL") == 1
         ), "WB PC control has to be enabled to read PC"
         return self.register_store.read_register(f"TT_CLUSTER_CTRL_WB_PC_REG_C{self.baby_risc_info.risc_id}")
+
+    def _abstract_wait_not_busy(self, timeout: int = 10) -> int:
+        """Poll ABSTRACTCS until the abstract command engine is idle. Return the final ABSTRACTCS."""
+        start_time = time.time()
+        while True:
+            value = self.register_store.read_register("TT_DEBUG_MODULE_APB_ABSTRACTCS")
+            if not (value & ABSTRACTS_BUSY):
+                return value
+            if time.time() - start_time > timeout:
+                raise Exception("Timeout waiting for abstract command to complete")
+            time.sleep(0.01)
+
+    def _read_gpr_via_debug_module(self, index: int) -> int:
+        """Read a 64-bit general purpose register via the Access Register abstract command.
+
+        The debug module must already be active and the hart halted.
+        """
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_ABSTRACTCS", ABSTRACTS_CMDERR_MASK)
+        self.register_store.write_register(
+            "TT_DEBUG_MODULE_APB_COMMAND", (3 << 20) | (1 << 17) | (GPR_REGNO_BASE + index)
+        )
+        cmderr = (self._abstract_wait_not_busy() >> 8) & 0x7
+        if cmderr != 0:
+            raise Exception(f"Abstract GPR read failed (cmderr={cmderr})")
+        low = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA0")
+        high = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA1")
+        return (high << 32) | low
+
+    def _read_pc_through_debug_module(self) -> int:
+        """Read the program counter (dpc) of a halted hart through the debug module.
+
+        See INSN_CSRR_X5_DPC above for why this goes through the Program Buffer
+        instead of a direct abstract CSR access.
+        """
+        with self.ensure_debug_module_is_active():
+            self._abstract_wait_not_busy()
+            # Clear any sticky cmderr, then load the program buffer: csrr x5, dpc ; ebreak.
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_ABSTRACTCS", ABSTRACTS_CMDERR_MASK)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_PROGBUF0", INSN_CSRR_X5_DPC)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_PROGBUF1", INSN_EBREAK)
+            # Execute the program buffer, then read the scratch GPR that now holds dpc.
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_COMMAND", CMD_EXEC_PROGBUF)
+            cmderr = (self._abstract_wait_not_busy() >> 8) & 0x7
+            if cmderr != 0:
+                raise Exception(f"Program buffer execution failed (cmderr={cmderr})")
+            return self._read_gpr_via_debug_module(SCRATCH_GPR_INDEX)
 
     def _sba_wait_not_busy(self, timeout: int = 10) -> None:
         """Poll SBCS until the system bus manager is idle. Raise on timeout."""
