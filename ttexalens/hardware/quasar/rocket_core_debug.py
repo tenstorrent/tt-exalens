@@ -148,6 +148,34 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         ), "WB PC control has to be enabled to read PC"
         return self.register_store.read_register(f"TT_CLUSTER_CTRL_WB_PC_REG_C{self.baby_risc_info.risc_id}")
 
+    def read_gpr(self, register_index: int) -> int:
+        """Read a general purpose register (x0-x31), or the program counter (index 32).
+
+        The hart must be halted. Index 32 is the program counter, matching the
+        convention used by RiscDebug.get_callstack and the baby-RISC cores.
+        """
+        if not 0 <= register_index <= 32:
+            raise ValueError(f"Invalid register index {register_index}. Must be between 0 and 32.")
+        # Index 32 is the program counter; get_pc() picks the right source for the
+        # running (WB-PC tap) vs halted (dpc) case.
+        if register_index == 32:
+            return self.get_pc()
+        else:
+            return self._read_gpr_via_debug_module(register_index)
+
+    def write_gpr(self, register_index: int, value: int) -> None:
+        """Write a general purpose register (x0-x31). The hart must be halted.
+
+        Writing the program counter (dpc) is not supported here: dpc is a CSR and
+        this debug module rejects abstract CSR access (cmderr=2), so index 32 is
+        not accepted (unlike read_gpr).
+        """
+        if not 0 <= register_index <= 31:
+            raise ValueError(f"Invalid register index {register_index}. Must be between 0 and 31.")
+        if not 0 <= value <= 0xFFFFFFFFFFFFFFFF:
+            raise ValueError(f"Value out of range: 0x{value:x}. Must fit within 64 bits.")
+        self._write_gpr_via_debug_module(register_index, value)
+
     def _abstract_wait_not_busy(self, timeout: int = 10) -> int:
         """Poll ABSTRACTCS until the abstract command engine is idle. Return the final ABSTRACTCS."""
         start_time = time.time()
@@ -164,16 +192,35 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
 
         The debug module must already be active and the hart halted.
         """
-        self.register_store.write_register("TT_DEBUG_MODULE_APB_ABSTRACTCS", ABSTRACTS_CMDERR_MASK)
-        self.register_store.write_register(
-            "TT_DEBUG_MODULE_APB_COMMAND", (3 << 20) | (1 << 17) | (GPR_REGNO_BASE + index)
-        )
-        cmderr = (self._abstract_wait_not_busy() >> 8) & 0x7
-        if cmderr != 0:
-            raise Exception(f"Abstract GPR read failed (cmderr={cmderr})")
-        low = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA0")
-        high = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA1")
-        return (high << 32) | low
+        with self.ensure_debug_module_is_active():
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_ABSTRACTCS", ABSTRACTS_CMDERR_MASK)
+            self.register_store.write_register(
+                "TT_DEBUG_MODULE_APB_COMMAND", (3 << 20) | (1 << 17) | (GPR_REGNO_BASE + index)
+            )
+            cmderr = (self._abstract_wait_not_busy() >> 8) & 0x7
+            if cmderr != 0:
+                raise Exception(f"Abstract GPR read failed (cmderr={cmderr})")
+            low = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA0")
+            high = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA1")
+            return (high << 32) | low
+
+    def _write_gpr_via_debug_module(self, index: int, value: int) -> None:
+        """Write a 64-bit general purpose register via the Access Register abstract command.
+
+        The debug module must already be active and the hart halted.
+        """
+        with self.ensure_debug_module_is_active():
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_ABSTRACTCS", ABSTRACTS_CMDERR_MASK)
+            # The value to write goes in DATA0 (low) / DATA1 (high) before the command.
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DATA0", value & 0xFFFFFFFF)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DATA1", (value >> 32) & 0xFFFFFFFF)
+            # Access Register: aarsize=3 (64-bit), transfer=1, write=1, regno = 0x1000 + index.
+            self.register_store.write_register(
+                "TT_DEBUG_MODULE_APB_COMMAND", (3 << 20) | (1 << 17) | (1 << 16) | (GPR_REGNO_BASE + index)
+            )
+            cmderr = (self._abstract_wait_not_busy() >> 8) & 0x7
+            if cmderr != 0:
+                raise Exception(f"Abstract GPR write failed (cmderr={cmderr})")
 
     def _read_pc_through_debug_module(self) -> int:
         """Read the program counter (dpc) of a halted hart through the debug module.
