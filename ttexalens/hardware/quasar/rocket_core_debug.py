@@ -25,20 +25,12 @@ ABSTRACTS_BUSY = 1 << 12
 ABSTRACTS_CMDERR_MASK = 0x7 << 8  # ABSTRACTCS[10:8], write-1-to-clear
 CMD_READ_DPC = (3 << 20) | (1 << 17) | 0x7B1
 
-# Reading the program counter of a halted hart.
-# This debug module does NOT implement abstract Access-Register access to CSRs
-# (it returns cmderr=2 "not supported"), so we recover the saved PC (the `dpc`
-# CSR, 0x7B1) through the Program Buffer: run `csrr x5, dpc; ebreak`, then read
-# x5 via an abstract GPR access (GPR access is supported).
 INSN_CSRR_X5_DPC = 0x7B1022F3  # csrr x5, dpc  (csrrs x5, 0x7B1, x0)
-INSN_EBREAK = 0x00100073  # ebreak
+INSN_EBREAK = 0x00100073 
 # Access Register abstract command, 64-bit, postexec=1, no register transfer.
 CMD_EXEC_PROGBUF = (3 << 20) | (1 << 18)
 # Access Register abstract command for 64-bit GPRs (regno = 0x1000 + index).
 GPR_REGNO_BASE = 0x1000
-# Constant part of the GPR access COMMAND; add the register index (0-31) to select
-# x[index]. Bit fields: aarsize=3 (64-bit), transfer=1; the write variant also sets
-# the write bit (1<<16). regno (low 16 bits) = GPR_REGNO_BASE + index.
 CMD_READ_GPR_BASE = (3 << 20) | (1 << 17) | GPR_REGNO_BASE
 CMD_WRITE_GPR_BASE = (3 << 20) | (1 << 17) | (1 << 16) | GPR_REGNO_BASE
 SCRATCH_GPR_INDEX = 5  # x5, clobbered by the dpc read sequence
@@ -152,11 +144,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         return self.register_store.read_register(f"TT_CLUSTER_CTRL_WB_PC_REG_C{self.baby_risc_info.risc_id}")
 
     def read_gpr(self, register_index: int) -> int:
-        """Read a general purpose register (x0-x31), or the program counter (index 32).
-
-        The hart must be halted. Index 32 is the program counter, matching the
-        convention used by RiscDebug.get_callstack and the baby-RISC cores.
-        """
+        """Read a general purpose register (x0-x31), or the program counter (index 32)."""
         if not 0 <= register_index <= 32:
             raise ValueError(f"Invalid register index {register_index}. Must be between 0 and 32.")
         # Index 32 is the program counter; get_pc() picks the right source for the
@@ -167,12 +155,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             return self._read_gpr_via_debug_module(register_index)
 
     def write_gpr(self, register_index: int, value: int) -> None:
-        """Write a general purpose register (x0-x31). The hart must be halted.
-
-        Writing the program counter (dpc) is not supported here: dpc is a CSR and
-        this debug module rejects abstract CSR access (cmderr=2), so index 32 is
-        not accepted (unlike read_gpr).
-        """
+        """Write a general purpose register (x0-x31). The hart must be halted."""
         if not 0 <= register_index <= 31:
             raise ValueError(f"Invalid register index {register_index}. Must be between 0 and 31.")
         if not 0 <= value <= 0xFFFFFFFFFFFFFFFF:
