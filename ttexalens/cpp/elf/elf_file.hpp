@@ -143,6 +143,8 @@ class ElfFile {
     ElfVariable get_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const;
     ElfVariable read_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const;
 
+    uint8_t get_pointer_size() const;
+
    private:
     explicit ElfFile(std::shared_ptr<details::ElfFileImpl> impl, std::string elf_file_path = "",
                      int64_t loaded_offset = 0);

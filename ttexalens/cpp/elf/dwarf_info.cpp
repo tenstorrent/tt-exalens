@@ -6,6 +6,7 @@
 #include <dwarf.h>  // DW_END_* constants
 #include <libdwarf.h>
 
+#include <algorithm>
 #include <cstdlib>
 #include <cstring>
 #include <elfio/elfio.hpp>
@@ -31,76 +32,55 @@ DwarfInfo::DwarfInfo(DwarfInfo&&) noexcept = default;
 DwarfInfo& DwarfInfo::operator=(DwarfInfo&&) noexcept = default;
 
 std::optional<DwarfFileLine> DwarfInfo::find_file_line_by_address(uint64_t address) const {
-    Dwarf_Debug dbg = impl->dbg;
     const Dwarf_Addr target = static_cast<Dwarf_Addr>(address);
+    const auto& ranges = impl->get_line_ranges();
 
-    for (auto& cu : impl->get_cus()) {
-        DwarfLineContextHandle& line_context = cu.get_line_context();
-        if (!line_context) {
-            continue;
+    // Ranges are sorted by `low` but may overlap (inlining/LTO/COMDAT can make
+    // line tables from different CUs describe the same address). Binary search to
+    // the last range with low <= target, then walk left to the NARROWEST range
+    // still covering target -- the most-specific source location, matching
+    // find_function_by_address's narrowest-wins policy.
+    //
+    // The left-walk is bounded: any range covering target that starts at `low`
+    // has width > target - low, and target - low only grows as we move left. So
+    // once a candidate of width W is found, the first range with target - low >= W
+    // ends the scan; nothing further left can be narrower. On the common
+    // non-overlapping input this stops right after the single covering range.
+    // (An address in a gap has no candidate to bound the scan and walks to the
+    // start; that is acceptable here as lookups are per-frame, not in a hot loop.)
+    auto it = std::upper_bound(ranges.begin(), ranges.end(), target,
+                               [](Dwarf_Addr t, const details::LineRange& r) { return t < r.low; });
+
+    const details::LineRange* best = nullptr;
+    Dwarf_Addr best_width = 0;
+    while (it != ranges.begin()) {
+        --it;
+        // Every range here has low <= target, so target - it->low is well-defined
+        // and non-decreasing as we move left.
+        if (best != nullptr && target - it->low >= best_width) {
+            break;
         }
-
-        DwarfErrorHandle error(dbg);
-        Dwarf_Line* lines = nullptr;
-        Dwarf_Signed line_count = 0;
-        if (dwarf_srclines_from_linecontext(line_context, &lines, &line_count, &error) != DW_DLV_OK ||
-            line_count == 0) {
-            continue;
-        }
-
-        auto line_addr = [&](Dwarf_Signed i) -> Dwarf_Addr {
-            Dwarf_Addr a = 0;
-            dwarf_lineaddr(lines[i], &a, &error);
-            return a;
-        };
-
-        // Quick reject: target outside this CU's line-table address range
-        // (the +4 mirrors the last-entry fallback applied below). Both
-        // bounds are pulled from the line context, which has them cached
-        // — no extra parsing cost.
-        if (target < line_addr(0) || target >= line_addr(line_count - 1) + 4) {
-            continue;
-        }
-
-        // Binary search for the largest entry with address <= target
-        // (upper_bound semantics: lo ends at the first entry whose addr > target).
-        // Assumes line addresses within a CU are monotonically non-decreasing,
-        // which holds for our RISC-V kernel ELFs.
-        Dwarf_Signed lo = 0;
-        Dwarf_Signed hi = line_count;
-        while (lo < hi) {
-            Dwarf_Signed mid = lo + (hi - lo) / 2;
-            if (line_addr(mid) > target) {
-                hi = mid;
-            } else {
-                lo = mid + 1;
+        if (target < it->high) {  // covers target (low <= target already holds)
+            const Dwarf_Addr width = it->high - it->low;
+            if (best == nullptr || width < best_width) {
+                best = &(*it);
+                best_width = width;
             }
         }
-        if (lo == 0) {
-            continue;  // target precedes every entry in this CU
-        }
-        const Dwarf_Signed match_idx = lo - 1;
-        const Dwarf_Addr match_addr = line_addr(match_idx);
-
-        // The matching entry covers [match_addr, next_addr). For the very last
-        // entry there's no successor, so apply the +4 heuristic from the
-        // existing Python ElfDwarf.file_lines_ranges.
-        const Dwarf_Addr upper = (lo < line_count) ? line_addr(lo) : (match_addr + 4);
-        if (target >= upper) {
-            continue;
-        }
-
-        Dwarf_Line match = lines[match_idx];
-        Dwarf_Unsigned ln = 0;
-        Dwarf_Unsigned col = 0;
-        DwarfString src(dbg);
-        dwarf_lineno(match, &ln, &error);
-        dwarf_lineoff_b(match, &col, &error);
-        dwarf_linesrc(match, &src, &error);
-        return DwarfFileLine{std::string(src.get()), static_cast<uint32_t>(ln), static_cast<uint32_t>(col)};
+    }
+    if (best == nullptr) {
+        return std::nullopt;  // target precedes all ranges or lies in a gap
     }
 
-    return std::nullopt;
+    Dwarf_Debug dbg = impl->dbg;
+    DwarfErrorHandle error(dbg);
+    Dwarf_Unsigned ln = 0;
+    Dwarf_Unsigned col = 0;
+    DwarfString src(dbg);
+    dwarf_lineno(best->line, &ln, &error);
+    dwarf_lineoff_b(best->line, &col, &error);
+    dwarf_linesrc(best->line, &src, &error);
+    return DwarfFileLine{std::string(src.get()), static_cast<uint32_t>(ln), static_cast<uint32_t>(col)};
 }
 
 DwarfDiePtr DwarfInfo::find_function_by_address(uint64_t address) const {
