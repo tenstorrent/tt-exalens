@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from contextlib import contextmanager
-from typing import Any, Generator
+from typing import Any, Callable, Generator
 import time
 
 from ttexalens import util
@@ -22,7 +22,18 @@ DM_OUT_OF_RESET_BIT = 1 << 17
 
 # Abstract command (COMMAND) — Access Register, 64-bit, transfer=1, write=0, regno=dpc (0x7B1)
 ABSTRACTS_BUSY = 1 << 12
+ABSTRACTS_CMDERR_MASK = 0x7 << 8  # ABSTRACTCS[10:8], write-1-to-clear
 CMD_READ_DPC = (3 << 20) | (1 << 17) | 0x7B1
+
+INSN_CSRR_X5_DPC = 0x7B1022F3  # csrr x5, dpc  (csrrs x5, 0x7B1, x0)
+INSN_EBREAK = 0x00100073
+# Access Register abstract command, 64-bit, postexec=1, no register transfer.
+CMD_EXEC_PROGBUF = (3 << 20) | (1 << 18)
+# Access Register abstract command for 64-bit GPRs (regno = 0x1000 + index).
+GPR_REGNO_BASE = 0x1000
+CMD_READ_GPR_BASE = (3 << 20) | (1 << 17) | GPR_REGNO_BASE
+CMD_WRITE_GPR_BASE = (3 << 20) | (1 << 17) | (1 << 16) | GPR_REGNO_BASE
+SCRATCH_GPR_INDEX = 5  # x5, clobbered by the dpc read sequence
 
 # System Bus Access Control and Status (SBCS) fields.
 SBCS_SBBUSY = 1 << 21
@@ -122,10 +133,89 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
                 self.cont()
 
     def get_pc(self) -> int:
+        # When the hart is halted it is parked in the debug ROM, so the write-back
+        # PC tap no longer reflects the program PC (it shows the debug-ROM park
+        # loop). In that case read the saved PC (dpc) through the debug module.
+        if self.is_halted():
+            return self._read_pc_through_debug_module()
         assert (
             self.register_store.read_register("TT_CLUSTER_CTRL_WB_PC_CTRL") == 1
         ), "WB PC control has to be enabled to read PC"
         return self.register_store.read_register(f"TT_CLUSTER_CTRL_WB_PC_REG_C{self.baby_risc_info.risc_id}")
+
+    def read_gpr(self, register_index: int) -> int:
+        """Read a general purpose register (x0-x31), or the program counter (index 32)."""
+        if not 0 <= register_index <= 32:
+            raise ValueError(f"Invalid register index {register_index}. Must be between 0 and 32.")
+        # Reading GPR with index 32 returns PC to align with other architectures
+        if register_index == 32:
+            return self.get_pc()
+        else:
+            return self._read_gpr_via_debug_module(register_index)
+
+    def write_gpr(self, register_index: int, value: int) -> None:
+        """Write a general purpose register (x0-x31). The hart must be halted."""
+        if not 0 <= register_index <= 31:
+            raise ValueError(f"Invalid register index {register_index}. Must be between 0 and 31.")
+        if not 0 <= value <= 0xFFFFFFFFFFFFFFFF:
+            raise ValueError(f"Value out of range: 0x{value:x}. Must fit within 64 bits.")
+        self._write_gpr_via_debug_module(register_index, value)
+
+    def _abstract_wait_not_busy(self, timeout: int = 10) -> int:
+        """Poll ABSTRACTCS until the abstract command engine is idle. Return the command error code."""
+        start_time = time.time()
+        while True:
+            value = self.register_store.read_register("TT_DEBUG_MODULE_APB_ABSTRACTCS")
+            if not (value & ABSTRACTS_BUSY):
+                cmderr = (value >> 8) & 0x7
+                return cmderr
+            if time.time() - start_time > timeout:
+                raise Exception("Timeout waiting for abstract command to complete")
+            time.sleep(0.01)
+
+    def _execute_abstract_command(self, command: int, prepare: Callable[[], None] | None = None) -> None:
+        """Run an abstract COMMAND with the full handshake."""
+        with self.ensure_debug_module_is_active():
+            with self.ensure_halted():
+                self._abstract_wait_not_busy()  # Enusre idle before issuing a new command
+                self.register_store.write_register(
+                    "TT_DEBUG_MODULE_APB_ABSTRACTCS", ABSTRACTS_CMDERR_MASK
+                )  # Clear any sticky cmderr
+                # Run prerequisite steps
+                if prepare is not None:
+                    prepare()
+                self.register_store.write_register("TT_DEBUG_MODULE_APB_COMMAND", command)
+                cmderr = self._abstract_wait_not_busy()  # Wait for completion and get cmderr
+                if cmderr != 0:
+                    raise Exception(f"Abstract command 0x{command:x} failed with command error {cmderr}")
+
+    def _read_gpr_via_debug_module(self, index: int) -> int:
+        """Read a 64-bit general purpose register via the Access Register abstract command."""
+        with self.ensure_debug_module_is_active():
+            self._execute_abstract_command(CMD_READ_GPR_BASE + index)
+            low = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA0")
+            high = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA1")
+            return (high << 32) | low
+
+    def _write_gpr_via_debug_module(self, index: int, value: int) -> None:
+        """Write a 64-bit general purpose register via the Access Register abstract command."""
+        # Value to write: LSB -> DATA0, MSB -> DATA1
+        def stage_value() -> None:
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DATA0", value & 0xFFFFFFFF)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DATA1", (value >> 32) & 0xFFFFFFFF)
+
+        self._execute_abstract_command(CMD_WRITE_GPR_BASE + index, stage_value)
+
+    def _read_pc_through_debug_module(self) -> int:
+        """Read the program counter (dpc) of a halted hart through the debug module."""
+        # Stage the program buffer (csrr x5, dpc ; ebreak), execute it, then read the
+        # scratch GPR that now holds dpc.
+        def stage_progbuf() -> None:
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_PROGBUF0", INSN_CSRR_X5_DPC)
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_PROGBUF1", INSN_EBREAK)
+
+        self._execute_abstract_command(CMD_EXEC_PROGBUF, stage_progbuf)
+        return self._read_gpr_via_debug_module(SCRATCH_GPR_INDEX)
 
     def _sba_wait_not_busy(self, timeout: int = 10) -> None:
         """Poll SBCS until the system bus manager is idle. Raise on timeout."""

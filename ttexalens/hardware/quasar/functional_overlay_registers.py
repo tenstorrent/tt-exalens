@@ -1276,6 +1276,7 @@ register_map: dict[str, RegisterDescription] = {
     "TT_DEBUG_MODULE_APB_COMMAND": DebugRegisterDescription(offset=0x05C),
     "TT_DEBUG_MODULE_APB_ABSTRACTAUTO": DebugRegisterDescription(offset=0x060),
     "TT_DEBUG_MODULE_APB_PROGBUF0": DebugRegisterDescription(offset=0x080),
+    "TT_DEBUG_MODULE_APB_PROGBUF1": DebugRegisterDescription(offset=0x084),
     "TT_DEBUG_MODULE_APB_SBCS": DebugRegisterDescription(offset=0x0E0),
     "TT_DEBUG_MODULE_APB_SBADDR0": DebugRegisterDescription(offset=0x0E4),
     "TT_DEBUG_MODULE_APB_SBADDR1": DebugRegisterDescription(offset=0x0E8),
