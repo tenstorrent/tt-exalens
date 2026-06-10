@@ -156,7 +156,8 @@ void bind_elf_file(nb::module_& m) {
         .def("get_global", &ElfFile::get_global, nb::arg("name"), nb::arg("memory_access"),
              nb::rv_policy::reference_internal)
         .def("read_global", &ElfFile::read_global, nb::arg("name"), nb::arg("memory_access"),
-             nb::rv_policy::reference_internal);
+             nb::rv_policy::reference_internal)
+        .def("get_pointer_size", &ElfFile::get_pointer_size);
 }
 
 }  // namespace ttexalens::native_elf::bindings
