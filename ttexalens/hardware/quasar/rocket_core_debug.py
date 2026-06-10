@@ -147,8 +147,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         """Read a general purpose register (x0-x31), or the program counter (index 32)."""
         if not 0 <= register_index <= 32:
             raise ValueError(f"Invalid register index {register_index}. Must be between 0 and 32.")
-        # Index 32 is the program counter; get_pc() picks the right source for the
-        # running (WB-PC tap) vs halted (dpc) case.
+        # Reading GPR with index 32 returns PC to align with other architectures
         if register_index == 32:
             return self.get_pc()
         else:
