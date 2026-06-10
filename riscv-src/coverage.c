@@ -5,10 +5,19 @@
 extern "C" {
 #endif
 
+#include <gcov.h>
 #include <stddef.h>
 #include <stdint.h>
 
-#include "gcov.h"
+// Needed functions and types for libgcov. These are the only ones that are actually called by libgcov.
+typedef int64_t gcov_type;
+void __gcov_merge_add(gcov_type* counters, unsigned n_counters) {}
+int gcov_error(const char* fmt, ...) { return 0; }
+void abort() {
+    // `for(;;)` with an empty asm is a well-defined infinite loop; a bare `while(1);`
+    // is UB in C++17 and the optimizer may delete it.
+    for (;;) asm volatile("");
+}
 
 #define COVERAGE_OVERFLOW 0xDEADBEEF
 
@@ -55,7 +64,7 @@ static void write_data(const void* _data, unsigned int length, void* arg) {
     *written += length;
 }
 
-static size_t strlen(const char* s) {
+size_t strlen(const char* s) {
     size_t n;
     for (n = 0; s[n]; n++);
     return n;

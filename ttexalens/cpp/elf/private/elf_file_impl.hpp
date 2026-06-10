@@ -48,6 +48,7 @@ class ElfFileImpl : public std::enable_shared_from_this<ElfFileImpl> {
     std::unordered_map<uint16_t, const ElfSection*> section_by_index;
 
     friend class ElfObjAccess;
+    friend class ttexalens::native_elf::ElfFile;
 };
 
 // ELF loaded from a filesystem path. Owns the ifstream so ELFIO can read

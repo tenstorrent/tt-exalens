@@ -153,4 +153,6 @@ ElfVariable ElfFile::read_global(std::string_view name, std::shared_ptr<MemoryAc
     return dwarf->read_global(name, std::move(memory_access));
 }
 
+uint8_t ElfFile::get_pointer_size() const { return impl->elf.get_class() == ELFIO::ELFCLASS32 ? 4 : 8; }
+
 }  // namespace ttexalens::native_elf
