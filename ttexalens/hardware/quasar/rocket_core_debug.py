@@ -26,7 +26,7 @@ ABSTRACTS_CMDERR_MASK = 0x7 << 8  # ABSTRACTCS[10:8], write-1-to-clear
 CMD_READ_DPC = (3 << 20) | (1 << 17) | 0x7B1
 
 INSN_CSRR_X5_DPC = 0x7B1022F3  # csrr x5, dpc  (csrrs x5, 0x7B1, x0)
-INSN_EBREAK = 0x00100073 
+INSN_EBREAK = 0x00100073
 # Access Register abstract command, 64-bit, postexec=1, no register transfer.
 CMD_EXEC_PROGBUF = (3 << 20) | (1 << 18)
 # Access Register abstract command for 64-bit GPRs (regno = 0x1000 + index).
@@ -174,16 +174,18 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             time.sleep(0.01)
 
     def _execute_abstract_command(self, command: int, prepare: Callable[[], None] | None = None) -> None:
-        """Run an abstract COMMAND with the full handshake."""  
+        """Run an abstract COMMAND with the full handshake."""
         with self.ensure_debug_module_is_active():
             with self.ensure_halted():
-                self._abstract_wait_not_busy() # Enusre idle before issuing a new command
-                self.register_store.write_register("TT_DEBUG_MODULE_APB_ABSTRACTCS", ABSTRACTS_CMDERR_MASK) # Clear any sticky cmderr
+                self._abstract_wait_not_busy()  # Enusre idle before issuing a new command
+                self.register_store.write_register(
+                    "TT_DEBUG_MODULE_APB_ABSTRACTCS", ABSTRACTS_CMDERR_MASK
+                )  # Clear any sticky cmderr
                 # Run prerequisite steps
                 if prepare is not None:
                     prepare()
                 self.register_store.write_register("TT_DEBUG_MODULE_APB_COMMAND", command)
-                cmderr = self._abstract_wait_not_busy() # Wait for completion and get cmderr
+                cmderr = self._abstract_wait_not_busy()  # Wait for completion and get cmderr
                 if cmderr != 0:
                     raise Exception(f"Abstract command 0x{command:x} failed with command error {cmderr}")
 
@@ -213,7 +215,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             self.register_store.write_register("TT_DEBUG_MODULE_APB_PROGBUF1", INSN_EBREAK)
 
         self._execute_abstract_command(CMD_EXEC_PROGBUF, stage_progbuf)
-        return self._read_gpr_via_debug_module(SCRATCH_GPR_INDEX) 
+        return self._read_gpr_via_debug_module(SCRATCH_GPR_INDEX)
 
     def _sba_wait_not_busy(self, timeout: int = 10) -> None:
         """Poll SBCS until the system bus manager is idle. Raise on timeout."""
