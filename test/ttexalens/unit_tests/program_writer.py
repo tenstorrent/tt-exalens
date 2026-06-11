@@ -25,6 +25,9 @@ class RiscvProgramWriter:
         return self.start_address + len(self.instructions) * 4
 
     def write_program(self):
+        # Mitigation for firmware corrupting L1 in ETH block on wormhole
+        # Since we can't change code start address for erisc we always
+        # start program with jump to code start address we want
         if self.core_simulator.risc_name.lower() == "erisc":
             self.append_jal(self.core_simulator.program_base_address)
             self.core_simulator.write_program(-self.core_simulator.program_base_address, self.instructions[-1])

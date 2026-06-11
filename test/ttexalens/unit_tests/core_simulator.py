@@ -42,6 +42,7 @@ class RiscvCoreSimulator:
         self.program_base_address = self.risc_debug.baby_risc_info.get_code_start_address(
             self.risc_debug.register_store
         )
+        # Mitigation for firmware corrupting L1 in ETH block on wormhole
         if self.risc_name.lower() == "erisc":
             self.program_base_address = 0x1000
         self.loader = ElfLoader(self.risc_debug)
