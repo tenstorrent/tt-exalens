@@ -42,6 +42,8 @@ class RiscvCoreSimulator:
         self.program_base_address = self.risc_debug.baby_risc_info.get_code_start_address(
             self.risc_debug.register_store
         )
+        if self.risc_name.lower() == "erisc":
+            self.program_base_address = 0x1000
         self.loader = ElfLoader(self.risc_debug)
 
         # Initialize core in reset state
@@ -83,12 +85,15 @@ class RiscvCoreSimulator:
         """Write data to memory and verify it was written correctly."""
         if isinstance(data, int):
             write_words_to_device(self.location, addr, data)
-            assert self.read_data(addr) == data, f"Data verification failed at address {addr:x}"
+            rd = self.read_data(addr)
+            assert rd == data, f"Data verification failed at address {addr:x}, got {rd:x}, expected {data:x}"
         else:
             byte_data = b"".join(x.to_bytes(4, "little") for x in data)
             write_to_device(self.location, addr, byte_data)
             read_data = read_from_device(self.location, addr, num_bytes=len(byte_data))
-            assert read_data == byte_data, f"Data verification failed at address {addr:x}"
+            assert (
+                read_data == byte_data
+            ), f"Data verification failed at address {addr:x}, got {read_data.hex()}, expected {byte_data.hex()}"
 
     def read_data(self, addr: int) -> int:
         """Read data from memory at specified address."""

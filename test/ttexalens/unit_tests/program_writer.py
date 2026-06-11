@@ -25,6 +25,10 @@ class RiscvProgramWriter:
         return self.start_address + len(self.instructions) * 4
 
     def write_program(self):
+        if self.core_simulator.risc_name.lower() == "erisc":
+            self.append_jal(self.core_simulator.program_base_address)
+            self.core_simulator.write_program(-self.core_simulator.program_base_address, self.instructions[-1])
+            self.instructions = self.instructions[:-1]
         for i, instruction in enumerate(self.instructions):
             self.core_simulator.write_program(i * 4, instruction)
 
