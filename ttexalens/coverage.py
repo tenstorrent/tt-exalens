@@ -4,8 +4,8 @@
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import TTException
-from ttexalens.elf import ParsedElfFile
-from ttexalens.memory_access import MemoryAccess
+from ttexalens.elf import ElfFile
+from ttexalens.memory_access import create_l1_memory_access
 
 """
 Extract the coverage data from the device into a .gcda file.
@@ -21,35 +21,35 @@ hardcoding offsets, which would break in case of linker script changes.
 
 
 def dump_coverage(
-    elf: ParsedElfFile,
+    elf: ElfFile,
     location: OnChipCoordinate,
     gcda_path: str,
     gcno_copy_path: str | None = None,
 ) -> None:
 
     # Find coverage region in ELF.
-    coverage_start = elf.symbols["__coverage_start"].value
-    if not coverage_start:
+    start_sym = elf.find_symbol_by_name("__coverage_start")
+    if start_sym is None or not start_sym.value:
         raise TTException("__coverage_start not found")
-    coverage_end = elf.symbols["__coverage_end"].value
-    if not coverage_end:
+    coverage_start = start_sym.value
+    end_sym = elf.find_symbol_by_name("__coverage_end")
+    if end_sym is None or not end_sym.value:
         raise TTException("__coverage_end not found")
+    coverage_end = end_sym.value
 
     # Find coverage header in device memory.
-    coverage_header = elf.get_global("coverage_header", MemoryAccess.create_l1(location))
-    if coverage_header is None:
-        raise TTException("coverage_header not found")
+    coverage_header = elf.get_global("coverage_header", create_l1_memory_access(location))
     coverage_header = coverage_header.dereference()
     if coverage_header.get_address() != coverage_start:
         raise TTException("coverage_header address does not match __coverage_start")
 
     # Check magic number.
     magic_number = elf.get_constant("COVERAGE_MAGIC_NUMBER")
-    if magic_number is None or coverage_header.magic_number != magic_number:
-        raise TTException("COVERAGE_MAGIC_NUMBER not found in ELF")
+    if coverage_header.magic_number != magic_number:
+        raise TTException("COVERAGE_MAGIC_NUMBER does not match in ELF")
 
     header_size = coverage_header.get_size()
-    length = coverage_header.bytes_written
+    length = int(coverage_header.bytes_written)
 
     # 0xDEADBEEF will be written in place of length if overflow occurred.
     if length == 0xDEADBEEF:
@@ -63,7 +63,9 @@ def dump_coverage(
         filename_len = coverage_header.filename_length.read_value()
         assert isinstance(filename_len, int)
         filename_addr = coverage_header.filename.dereference().get_address()
-        filename: str = location.noc_read(filename_addr, filename_len).decode("ascii")
+        filename_buffer = bytearray(filename_len)
+        location.noc_read(filename_addr, filename_buffer)
+        filename: str = filename_buffer.decode("ascii")
 
         # This points to the expected gcda file, which is in the same directory where the compiler placed the gcno,
         # so we just replace the extension and get the gcno path.
@@ -73,6 +75,7 @@ def dump_coverage(
             with open(gcno_copy_path, "wb") as f:
                 f.write(gcno_reader.read())
 
-    data = location.noc_read(coverage_start + header_size, length - header_size)
+    data = bytearray(length - header_size)
+    location.noc_read(coverage_start + header_size, data)
     with open(gcda_path, "wb") as f:
         f.write(data)

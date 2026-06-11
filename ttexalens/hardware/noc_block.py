@@ -13,16 +13,24 @@ if TYPE_CHECKING:
     from ttexalens.device import Device
     from ttexalens.coordinate import OnChipCoordinate
     from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+    from ttexalens.hardware.perf_counters import TensixPerfCounters
     from ttexalens.hardware.risc_debug import RiscDebug
     from ttexalens.register_store import RegisterStore
     from ttexalens.memory_map import MemoryMap
 
 
 class NocBlock:
-    def __init__(self, location: OnChipCoordinate, block_type: str, debug_bus: DebugBusSignalStore | None = None):
+    def __init__(
+        self,
+        location: OnChipCoordinate,
+        block_type: str,
+        debug_bus: DebugBusSignalStore | None = None,
+        perf_counters: TensixPerfCounters | None = None,
+    ):
         self.location = location
         self.block_type = block_type
         self.debug_bus = debug_bus
+        self.perf_counters = perf_counters
         self.noc_memory_map: MemoryMap = MemoryMap()
 
     @property
@@ -37,6 +45,9 @@ class NocBlock:
         if neo_id is None:
             return self.debug_bus
         return None
+
+    def get_perf_counters(self, neo_id: int | None = None) -> TensixPerfCounters | None:
+        return self.perf_counters
 
     @cached_property
     def has_risc_cores(self) -> bool:

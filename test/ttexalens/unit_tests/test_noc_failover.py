@@ -19,6 +19,24 @@ def create_timeout_error(chip_id=0, is_read=True):
     )
 
 
+def noc_read_outcomes(*outcomes):
+    """Build a side_effect for a mocked umd_device.noc_read.
+
+    Each outcome is consumed per call: an exception instance is raised, while a bytes value is
+    written into the caller's buffer argument, mirroring how the real noc_read fills the buffer
+    in place instead of returning the data.
+    """
+    remaining = list(outcomes)
+
+    def side_effect(noc_id, noc_x, noc_y, address, buffer, *args, **kwargs):
+        outcome = remaining.pop(0)
+        if isinstance(outcome, BaseException):
+            raise outcome
+        buffer[: len(outcome)] = outcome
+
+    return side_effect
+
+
 def setup_safe_mode_mocks(test_location):
     """Set up noc_block mock chain on test_location so safe mode validation passes."""
     mock_memory_block_info = Mock()
@@ -90,7 +108,7 @@ class TestNocFailoverDisabled(unittest.TestCase):
         self.mock_umd_device.noc_read.side_effect = create_timeout_error()
 
         with self.assertRaises(TimeoutDeviceRegisterError):
-            device.noc_read(self.test_location, 0x1000, 4)
+            device.noc_read(self.test_location, 0x1000, bytearray(4))
 
         # Should only try once (no failover)
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 1)
@@ -129,9 +147,10 @@ class TestNocFailoverEnabled(unittest.TestCase):
         device = self._create_device(noc_id)
         self.mock_umd_device.noc_read.return_value = b"\x00\x01\x02\x03"
 
-        result = device.noc_read(self.test_location, 0x1000, 4)
+        buffer = bytearray(4)
+        device.noc_read(self.test_location, 0x1000, buffer)
 
-        self.assertEqual(result, b"\x00\x01\x02\x03")
+        self.assertEqual(bytes(buffer), b"\x00\x01\x02\x03")
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 1)
         # NOC order should remain unchanged (primary still first)
         self.assertEqual(device._noc_to_use[0], primary_noc)
@@ -147,11 +166,14 @@ class TestNocFailoverEnabled(unittest.TestCase):
         device = self._create_device(noc_id)
 
         # First call (primary) times out, second call (other) succeeds
-        self.mock_umd_device.noc_read.side_effect = [create_timeout_error(is_read=True), b"\x00\x01\x02\x03"]
+        self.mock_umd_device.noc_read.side_effect = noc_read_outcomes(
+            create_timeout_error(is_read=True), b"\x00\x01\x02\x03"
+        )
 
-        result = device.noc_read(self.test_location, 0x1000, 4)
+        buffer = bytearray(4)
+        device.noc_read(self.test_location, 0x1000, buffer)
 
-        self.assertEqual(result, b"\x00\x01\x02\x03")
+        self.assertEqual(bytes(buffer), b"\x00\x01\x02\x03")
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 2)
 
         # Verify NOC order was rotated (primary moved to back, other now first)
@@ -180,7 +202,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
         ]
 
         with self.assertRaises(TimeoutDeviceRegisterError):
-            device.noc_read(self.test_location, 0x1000, 4)
+            device.noc_read(self.test_location, 0x1000, bytearray(4))
 
         # Should try both NOCs
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 2)
@@ -218,7 +240,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
         self.mock_umd_device.noc_read.side_effect = create_timeout_error()
 
         with self.assertRaises(TimeoutDeviceRegisterError):
-            device.noc_read(self.test_location, 0x1000, 4, noc_id=expected_noc)
+            device.noc_read(self.test_location, 0x1000, bytearray(4), noc_id=expected_noc)
 
         # Should only try once (no failover)
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 1)
@@ -236,24 +258,25 @@ class TestNocFailoverEnabled(unittest.TestCase):
         device = self._create_device(noc_id)
 
         # First call fails (primary), second succeeds (other)
-        self.mock_umd_device.noc_read.side_effect = [
+        self.mock_umd_device.noc_read.side_effect = noc_read_outcomes(
             create_timeout_error(is_read=True),
             b"\x00\x01\x02\x03",
-        ]
+        )
 
         # First read triggers failover
-        device.noc_read(self.test_location, 0x1000, 4)
+        device.noc_read(self.test_location, 0x1000, bytearray(4))
 
         # Verify NOC order changed
         self.assertEqual(device._noc_to_use[0], other_noc)
 
         # Reset side_effect for second read
-        self.mock_umd_device.noc_read.side_effect = [b"\x04\x05\x06\x07"]
+        self.mock_umd_device.noc_read.side_effect = noc_read_outcomes(b"\x04\x05\x06\x07")
 
         # Second read should use other NOC directly
-        result = device.noc_read(self.test_location, 0x2000, 4)
+        buffer = bytearray(4)
+        device.noc_read(self.test_location, 0x2000, buffer)
 
-        self.assertEqual(result, b"\x04\x05\x06\x07")
+        self.assertEqual(bytes(buffer), b"\x04\x05\x06\x07")
         # Verify it's using the other NOC
         last_call_args = self.mock_umd_device.noc_read.call_args[0]
         self.assertEqual(last_call_args[0], other_noc)

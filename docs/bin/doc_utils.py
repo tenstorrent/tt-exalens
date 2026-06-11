@@ -48,7 +48,7 @@ class ElementPPrinter:
         self,
         argname: str | None = None,
         argdesc: str | None = None,
-        argtype: str | None = None,
+        argtype: str | list[str] | None = None,
         optarg: str | None = None,
         optshort: str | None = None,
     ) -> str:

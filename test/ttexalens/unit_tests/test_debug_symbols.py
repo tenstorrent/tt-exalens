@@ -10,9 +10,10 @@ from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.elf import ElfVariable, ParsedElfFile
-from ttexalens.hardware.risc_debug import RiscHaltError
-from ttexalens.memory_access import MemoryAccess, RestrictedMemoryAccessError
+from ttexalens.elf import ElfFile, ElfVariable
+from ttexalens.exceptions import RiscHaltError
+from ttexalens.memory_access import MemoryAccess, create_memory_access
+from ttexalens.exceptions import RestrictedMemoryAccessError
 from ttexalens.umd_device import TimeoutDeviceRegisterError
 
 from parameterized import parameterized
@@ -25,21 +26,28 @@ class MemoryAccessWrapper(MemoryAccess):
     """
 
     def __init__(self, mem_access: MemoryAccess):
+        super().__init__()
         self._mem_access = mem_access
         self.read_count = 0
         self.total_bytes_read = 0
         self.write_count = 0
         self.total_bytes_written = 0
 
-    def read(self, address: int, size_bytes: int) -> bytes:
+    def read(self, address: int, buffer: memoryview | bytearray) -> None:
         self.read_count += 1
-        self.total_bytes_read += size_bytes
-        return self._mem_access.read(address, size_bytes)
+        self.total_bytes_read += len(buffer)
+        self._mem_access.read(address, buffer)
 
-    def write(self, address: int, data: bytes) -> None:
+    def write(self, address: int, data: bytes | bytearray | memoryview) -> None:
         self.write_count += 1
         self.total_bytes_written += len(data)
-        return self._mem_access.write(address, data)
+        self._mem_access.write(address, data)
+
+    def read_register(self, register_index: int) -> int:
+        return self._mem_access.read_register(register_index)
+
+    def write_register(self, register_index: int, value: int) -> None:
+        self._mem_access.write_register(register_index, value)
 
     def reset_stats(self):
         """Reset all statistics counters."""
@@ -52,30 +60,43 @@ class MemoryAccessWrapper(MemoryAccess):
 class TimeoutMemoryAccess(MemoryAccess):
     _coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
 
-    def read(self, address: int, size_bytes: int) -> bytes:
-        raise TimeoutDeviceRegisterError(0, self._coord, address, size_bytes, True, 0.0)
+    def read(self, address: int, buffer: memoryview | bytearray) -> None:
+        raise TimeoutDeviceRegisterError(0, self._coord, address, len(buffer), True, 0.0)
 
-    def write(self, address: int, data: bytes) -> None:
+    def write(self, address: int, data: bytes | bytearray | memoryview) -> None:
         raise TimeoutDeviceRegisterError(0, self._coord, address, len(data), False, 0.0)
+
+    def read_register(self, register_index: int) -> int:
+        raise TimeoutDeviceRegisterError(0, self._coord, register_index, 0, True, 0.0)
+
+    def write_register(self, register_index: int, value: int) -> None:
+        raise TimeoutDeviceRegisterError(0, self._coord, register_index, 0, False, 0.0)
 
 
 class RiscHaltErrorMemoryAccess(MemoryAccess):
     def __init__(self):
+        super().__init__()
         self._device = init_cached_test_context().devices[0]
         self._risc_name = "dummy risc"
         self._location = OnChipCoordinate.create("0,0", self._device)
 
-    def read(self, address: int, size_bytes: int) -> bytes:
+    def read(self, address: int, buffer: memoryview | bytearray) -> None:
         raise RiscHaltError(self._risc_name, self._location)
 
-    def write(self, address: int, data: bytes) -> None:
+    def write(self, address: int, data: bytes | bytearray | memoryview) -> None:
+        raise RiscHaltError(self._risc_name, self._location)
+
+    def read_register(self, register_index: int) -> int:
+        raise RiscHaltError(self._risc_name, self._location)
+
+    def write_register(self, register_index: int, value: int) -> None:
         raise RiscHaltError(self._risc_name, self._location)
 
 
 class TestDebugSymbols(unittest.TestCase):
     context: Context  # TTExaLens context
     core_sim: RiscvCoreSimulator  # RISC-V core simulator instance
-    parsed_elf: ParsedElfFile
+    parsed_elf: ElfFile
     mem_access: MemoryAccessWrapper  # Wrapped memory access
 
     @classmethod
@@ -92,7 +113,7 @@ class TestDebugSymbols(unittest.TestCase):
         cls.parsed_elf = cls.core_sim.parse_elf("globals_test.release")
 
         # Create the memory access wrapper
-        original_mem_access = MemoryAccess.create(risc_debug)
+        original_mem_access = create_memory_access(risc_debug)
         cls.mem_access = MemoryAccessWrapper(original_mem_access)
 
         assert not cls.core_sim.is_in_reset()
@@ -158,6 +179,8 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(2, g_global_struct.enum_class_field.read_value())
         self.assertEqual(20, g_global_struct.enum_type_field.read_value())
         self.assertEqual(-123456789, g_global_struct.signed_int_field.read_value())
+        # A char array is read as its text (it lives inside the struct, so no extra memory read).
+        self.assertEqual("Hello, struct!", g_global_struct.string_buffer.read_value())
 
     def verify_global_struct(self, g_global_struct):
         self.assertEqual(0xAA, g_global_struct.base_field1)
@@ -210,23 +233,37 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(20, g_global_struct.enum_type_field)
         self.assertEqual("EnumType::TYPE_Y", str(g_global_struct.enum_type_field))
         self.assertEqual(-123456789, g_global_struct.signed_int_field)
+        # A char array compares as its text (it lives inside the struct, so no extra memory read).
+        self.assertEqual("Hello, struct!", g_global_struct.string_buffer)
 
     def test_elf_variable_low_level(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None
+        address = variable_die.get_address()
+        assert address is not None
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         self.verify_global_struct_low_level(g_global_struct)
 
     def test_elf_variable(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None
+        address = variable_die.get_address()
+        assert address is not None
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct)
 
     def test_read_elf_variable(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None
+        address = variable_die.get_address()
+        assert address is not None
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         self.verify_global_struct(g_global_struct.read())
 
     def test_elf_global_variable(self):
@@ -251,16 +288,112 @@ class TestDebugSymbols(unittest.TestCase):
         self.verify_global_struct(g_global_struct)
         self.assertEqual(self.mem_access.read_count, 1)
 
+    def test_elf_thread_local_variable_low_level(self):
+        # g_global_tls_struct lives in the per-RISC thread_local region. Its DIE
+        # has no DW_AT_location, so its address is resolved from .symtab as the
+        # containing section's VMA plus the symbol's TLS-relative offset (STT_TLS
+        # handling in the native ELF reader).
+        variable_die = self.parsed_elf.find_die_by_name("g_global_tls_struct")
+        assert variable_die is not None
+        address = variable_die.get_address()
+        assert address is not None
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
+        self.verify_global_struct_low_level(g_global_struct)
+
+    def test_elf_thread_local_global_variable(self):
+        g_global_struct = self.parsed_elf.get_global("g_global_tls_struct", TestDebugSymbols.mem_access)
+        self.verify_global_struct(g_global_struct)
+
+    def test_read_elf_thread_local_global_variable(self):
+        self.mem_access.reset_stats()
+        g_global_struct = self.parsed_elf.read_global("g_global_tls_struct", TestDebugSymbols.mem_access)
+        self.verify_global_struct(g_global_struct)
+        self.assertEqual(self.mem_access.read_count, 1)
+
+    def test_symtab_fallback_address(self):
+        """Variables declared `extern` (no DW_AT_location on the DIE) need
+        the .symtab fallback in DwarfDie::get_address. Anchored by
+        the top-level asm() in globals_test.cc:
+          (1) `g_symtab_var_by_name` — bare name matches .symtab directly.
+          (2) `ttexalens_symtab_test::g_symtab_var_by_linkage` — needs
+              DW_AT_linkage_name → Itanium-mangled .symtab key.
+        """
+        # Case 1: DW_AT_name path
+        die1 = self.parsed_elf.find_die_by_name("g_symtab_var_by_name")
+        assert die1 is not None, "DIE for g_symtab_var_by_name not found"
+        self.assertTrue(die1.is_declaration)
+        addr1 = die1.get_address()
+        assert addr1 is not None
+        self.assertGreater(addr1, 0)
+
+        # Case 2: DW_AT_linkage_name path
+        die2 = self.parsed_elf.find_die_by_name("ttexalens_symtab_test::g_symtab_var_by_linkage")
+        assert die2 is not None, "DIE for ttexalens_symtab_test::g_symtab_var_by_linkage not found"
+        self.assertTrue(die2.is_declaration)
+        addr2 = die2.get_address()
+        assert addr2 is not None
+        self.assertGreater(addr2, 0)
+
+        # Distinct symbols have distinct addresses.
+        self.assertNotEqual(addr1, addr2)
+
+    def test_file_static_resolution(self):
+        def read_u32(address: int) -> int:
+            buf = bytearray(4)
+            TestDebugSymbols.mem_access.read(address, buf)
+            return int.from_bytes(buf, byteorder="little")
+
+        top = self.parsed_elf.find_die_by_name("g_symtab_var_file_static")
+        assert top is not None, "DIE for g_symtab_var_file_static not found"
+        top_addr = top.get_address()
+        assert top_addr is not None
+        self.assertGreater(top_addr, 0)
+        self.assertEqual(0x99AABBCC, read_u32(top_addr))
+
+        ns = self.parsed_elf.find_die_by_name("ttexalens_symtab_test::g_symtab_var_ns_file_static")
+        assert ns is not None, "DIE for ttexalens_symtab_test::g_symtab_var_ns_file_static not found"
+        ns_addr = ns.get_address()
+        assert ns_addr is not None
+        self.assertGreater(ns_addr, 0)
+        self.assertEqual(0xDDEEFF00, read_u32(ns_addr))
+
+        # Function-local static — the DIE sits under DW_TAG_subprogram and the
+        # symbol mangles to a function-scope nested name. Demangler reverses
+        # it to a `func()::var` path which we can match against get_path().
+        local = self.parsed_elf.find_die_by_name("ttexalens_symtab_test::touch_local_static::g_symtab_local_static")
+        assert local is not None, "DIE for function-local static not found"
+        local_addr = local.get_address()
+        assert local_addr is not None
+        self.assertGreater(local_addr, 0)
+        self.assertEqual(0xCAFE1234, read_u32(local_addr))
+
+        # Distinct symbols have distinct addresses.
+        self.assertNotEqual(top_addr, ns_addr)
+        self.assertNotEqual(top_addr, local_addr)
+        self.assertNotEqual(ns_addr, local_addr)
+
     def test_elf_variable_constants(self):
         self.assertEqual(0x11223344, self.parsed_elf.get_constant("c_uint32_t"))
         self.assertEqual(0x5566778899AABBCC, self.parsed_elf.get_constant("c_uint64_t"))
         self.assertEqual(0.5, self.parsed_elf.get_constant("c_float"))
         self.assertEqual(2.718281828459, self.parsed_elf.get_constant("c_double"))
+        self.assertIs(True, self.parsed_elf.get_constant("c_bool_true"))
+        self.assertIs(False, self.parsed_elf.get_constant("c_bool_false"))
+        self.assertEqual(-100, self.parsed_elf.get_constant("c_int8_t"))
+        self.assertEqual(-12345, self.parsed_elf.get_constant("c_int16_t"))
+        self.assertEqual(-1234567, self.parsed_elf.get_constant("c_int32_t"))
+        self.assertEqual(-1234567890123456789, self.parsed_elf.get_constant("c_int64_t"))
 
     def test_elf_variable_array_iteration(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None
+        address = variable_die.get_address()
+        assert address is not None
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         c_values = [var.read_value() for var in g_global_struct.c]
         self.assertEqual(list(range(16)), c_values)
         d_x_values = [var.x.read_value() for var in g_global_struct.d]
@@ -271,9 +404,13 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual([i % 2 == 0 for i in range(8)], h_values)
 
     def test_elf_variable_array_as_list(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None
+        address = variable_die.get_address()
+        assert address is not None
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         c_values = [var.read_value() for var in g_global_struct.c.as_list()]
         self.assertEqual(list(range(16)), c_values)
         d_x_values = [var.x.read_value() for var in g_global_struct.d.as_list()]
@@ -284,9 +421,13 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual([i % 2 == 0 for i in range(8)], h_values)
 
     def test_elf_variable_array_as_value_list(self):
-        variable_die = self.parsed_elf.variables["g_global_struct"]
-        assert variable_die.address is not None
-        g_global_struct = ElfVariable(variable_die.resolved_type, variable_die.address, TestDebugSymbols.mem_access)
+        variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
+        assert variable_die is not None
+        address = variable_die.get_address()
+        assert address is not None
+        resolved_type = variable_die.get_resolved_type()
+        assert resolved_type is not None
+        g_global_struct = ElfVariable(resolved_type, address, TestDebugSymbols.mem_access)
         c_values = g_global_struct.c.as_value_list()
         self.assertEqual(list(range(16)), c_values)
         d_x_values = [var.x.read_value() for var in g_global_struct.d.as_list()]
@@ -362,7 +503,7 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(+g_global_struct.c[7], 7)  # +7
         self.assertEqual(abs(-g_global_struct.c[3]), 3)  # abs(-3) = 3
         self.assertEqual(~g_global_struct.c[0], -1)  # ~0 = -1
-        self.assertEqual(~g_global_struct.h[0], -2)  # ~True = ~1 = -2
+        self.assertEqual(not g_global_struct.h[0], False)  # not True = False
 
         # Test __index__ operator (ElfVariable as index)
         test_list = [10, 20, 30, 40, 50]
@@ -432,6 +573,33 @@ class TestDebugSymbols(unittest.TestCase):
             Exception, g_global_struct.enum_class_field.write_value, 0xFFFFFFFFFFFFFFFF
         )  # Overflow uint64 on byte enum
 
+        # C-style string: write into the char[32] buffer and read it back.
+        g_global_struct.string_buffer.write_value("rewritten string")
+        self.assertEqual("rewritten string", g_global_struct.string_buffer)
+        # A 31-character string still fits (31 characters + the null terminator == 32 bytes).
+        g_global_struct.string_buffer.write_value("x" * 31)
+        self.assertEqual("x" * 31, g_global_struct.string_buffer)
+        # A string that does not fit (with its null terminator) must fail - no reallocation.
+        self.assertRaises(Exception, g_global_struct.string_buffer.write_value, "x" * 32)
+        g_global_struct.string_buffer.write_value("Hello, struct!")  # Restore original value
+        self.assertEqual("Hello, struct!", g_global_struct.string_buffer)
+
+    def test_elf_variable_string(self):
+        """C-style strings (char array and char pointer) are read as their text via read_value."""
+        g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
+
+        # A char array contains the string.
+        self.assertEqual("Hello, struct!", g_global_struct.string_buffer.read_value())
+        self.assertEqual("Hello, struct!", g_global_struct.string_buffer)
+        self.assertEqual(32, len(g_global_struct.string_buffer))
+
+        # A char pointer points at the string (a string literal, outside the struct).
+        self.assertEqual("pointer to string", g_global_struct.string_pointer.read_value())
+        self.assertEqual("pointer to string", g_global_struct.string_pointer)
+
+        # A non-char array (uint8_t[16]) is not a string - it is still read as numbers.
+        self.assertEqual(list(range(16)), g_global_struct.c.as_value_list())
+
     @parameterized.expand(
         [
             (RestrictedMemoryAccessError, lambda self: self.mem_access),
@@ -440,7 +608,7 @@ class TestDebugSymbols(unittest.TestCase):
         ]
     )
     def test_elf_variable_error_handling(
-        self, expected_error: type[Exception], mem_access_factory: Callable[["TestDebugSymbols"], MemoryAccess]
+        self, expected_error: type[BaseException], mem_access_factory: Callable[["TestDebugSymbols"], MemoryAccess]
     ):
         mem_access = mem_access_factory(self)
         g_global_struct = self.parsed_elf.get_global("g_global_struct", mem_access)

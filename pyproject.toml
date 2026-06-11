@@ -37,14 +37,20 @@ tt-exalens = "ttexalens.cli:main"
 
 [tool.scikit-build]
 cmake.build-type = "Release"
-cmake.args = ["-DBUILD_PYTHON_WHEEL=ON", "-DSTRIP_SYMBOLS=ON"]
+cmake.args = ["-DBUILD_PYTHON_WHEEL=ON"]
 wheel.install-dir = "ttexalens"
 wheel.packages = ["ttexalens"]
-wheel.py-api = "py3"
-wheel.platlib = false
+wheel.platlib = true
 experimental = true
+# Keep scikit-build-core's build dir distinct from the Makefile-driven `build`
+# symlink (which points to build_debug or build_release).
+build-dir = "build_wheel/{wheel_tag}"
 # Install the python_wheel component for wheel packaging
 install.components = ["python_wheel"]
+
+[tool.scikit-build.editable]
+mode = "redirect"
+rebuild = true
 
 [tool.scikit-build.metadata.version]
 provider = "scikit_build_core.metadata.regex"
@@ -54,3 +60,38 @@ regex = "(?P<value>.*)"
 [tool.scikit-build.metadata.dependencies]
 provider = "pyproject_toml_parse_requirements"
 provider-path = "."
+
+[tool.cibuildwheel]
+# Match pyproject.toml's classifier list (Python 3.10-3.13).
+build = "cp310-* cp311-* cp312-* cp313-*"
+# Skip alternative implementations and musl-based distros.
+skip = ["pp*", "*-musllinux_*"]
+build-frontend = "pip"
+# Smoke-test that the produced wheel imports cleanly. The full test suite
+# needs Tenstorrent hardware, so we only check the import path here.
+test-command = "python -c \"import ttexalens; from ttexalens._native_ttexalens import ElfFile; print('import OK')\""
+
+[tool.cibuildwheel.linux]
+# manylinux_2_34 (AlmaLinux 9, glibc 2.34) matches what tt-exalens already
+# requires in practice (Ubuntu 22.04+, RHEL 9+, Debian 12+). Full image URL
+# is required for cibuildwheel < 3.0, which didn't recognise `manylinux_2_34`
+# as a shortcut.
+manylinux-x86_64-image = "quay.io/pypa/manylinux_2_34_x86_64"
+manylinux-aarch64-image = "quay.io/pypa/manylinux_2_34_aarch64"
+# AlmaLinux 9 ships with gcc 11.5; xz is needed by FetchContent for the
+# .txz SFPI archive.
+before-all = "yum install -y xz"
+
+[tool.pyright]
+include = ["."]
+exclude = ["build", "build_asan", "build_debug", "build_release", "build_riscv", "build_wheel", "**/__pycache__", "**/.venv"]
+extraPaths = ["build/stubs"]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
+reportMissingModuleSource = "none"
+# High-signal rules from strict mode (most of strict's diagnostics are
+# annotation-coverage noise; these four catch real dead-code / logic bugs).
+reportUnnecessaryComparison = "error"
+reportUnnecessaryIsInstance = "error"
+reportMatchNotExhaustive = "error"
+reportUnusedVariable = "error"

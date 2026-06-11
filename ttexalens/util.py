@@ -8,19 +8,12 @@ from typing import Any, Iterator, TYPE_CHECKING
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
-import traceback, socket
+import traceback
 import ryml, yaml
 from fnmatch import fnmatch
 from enum import Enum
 
-from ttexalens.exceptions import (
-    TTException,
-    TTFatalException,
-    HardwareError,
-    MemoryAccessException,
-    DebugSymbolError,
-    CoordinateError,
-)
+from ttexalens.exceptions import TTFatalException
 
 if TYPE_CHECKING:
     from ttexalens.server import FileAccessApi
@@ -134,12 +127,10 @@ sys.excepthook = notify_exception
 
 
 # Get path of this script. 'frozen' means packaged with pyinstaller.
-def application_path():
+def application_path() -> str:
     if getattr(sys, "frozen", False):
         return os.path.dirname(sys.executable)
-    elif __file__:
-        return os.path.dirname(__file__)
-    return None
+    return os.path.dirname(__file__)
 
 
 def to_hex_if_possible(val):
@@ -425,7 +416,7 @@ def ryml_to_dict(tree, i):
 
 from collections.abc import Sequence
 from functools import cached_property
-from typing import Mapping, TypeVar
+from typing import Mapping, TypeVar, cast
 from fastnumbers import try_int
 
 
@@ -517,7 +508,7 @@ class RymlLazyDictionary(Mapping[KeyType, ValueType]):
         item: ValueType | None = self._items.get(key)
         if item is None:
             child_node = self.child_nodes[key]
-            item = ryml_to_lazy(self.tree, child_node)
+            item = cast(ValueType, ryml_to_lazy(self.tree, child_node))
             assert item is not None
             self._items[key] = item
         return item
@@ -534,7 +525,7 @@ class RymlLazyDictionary(Mapping[KeyType, ValueType]):
     def keys(self):
         return self.child_nodes.keys()
 
-    def items(self):
+    def items(self):  # pyright: ignore[reportIncompatibleMethodOverride]  # generator instead of ItemsView for laziness
         for key in self.keys():
             yield (key, self[key])
 
@@ -664,7 +655,7 @@ def generate_unique_filename(filename):
 
 
 # Exports filelist to a zip file
-def export_to_zip(filelist, out_file=DEFAULT_EXPORT_FILENAME, prefix_to_remove=None):
+def export_to_zip(filelist, out_file: str | None = None, prefix_to_remove=None):
     if out_file is None:
         out_file = DEFAULT_EXPORT_FILENAME
 
@@ -837,7 +828,7 @@ def array_to_str(
 
     lena = len(A)
     if lena == 0:
-        return
+        return ""
     if not start_row:
         start_row = 0
     if not end_row:

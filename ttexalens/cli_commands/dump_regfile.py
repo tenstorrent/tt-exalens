@@ -27,6 +27,8 @@ Examples:
   dr dstacc -l 0,0 -d 1
 """
 
+from collections.abc import Sequence
+
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
@@ -48,7 +50,7 @@ command_metadata = CommandMetadata(
 )
 
 
-def print_regfile(data: list[int | float] | list[str]) -> None:
+def print_regfile(data: Sequence[int | float | str]) -> None:
     for i in range(len(data)):
         if i % TILE_SIZE == 0:
             INFO(f"TILE ID: {i // TILE_SIZE}")

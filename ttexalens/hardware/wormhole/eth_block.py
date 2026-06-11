@@ -6,7 +6,6 @@ from functools import cache, cached_property
 from typing import Callable
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
-from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
@@ -14,7 +13,7 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
-from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
@@ -173,7 +172,7 @@ class WormholeEthBlock(WormholeNocBlock):
             noc_block=self,
             neo_id=None,  # NEO ID is not applicable for Wormhole
             l1=self.l1,
-            max_watchpoints=0,  # Due to #762, we disable watchpoints for erisc
+            max_watchpoints=8,
             reset_flag_shift=11,
             branch_prediction_register=None,  # We don't have a branch prediction register on erisc
             default_code_start_address=0,
@@ -193,8 +192,10 @@ class WormholeEthBlock(WormholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-        self.noc_memory_map.add_blocks(
-            [
+        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
+            WormholeEthBlock,
+            "noc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
@@ -206,11 +207,13 @@ class WormholeEthBlock(WormholeNocBlock):
                 MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
                 MemoryMapBlockInfo("eth_mac_regs", self.eth_mac_regs, safe_to_read=False),
                 MemoryMapBlockInfo("eth_pcs_regs", self.eth_pcs_regs, safe_to_read=False),
-            ]
+            ],
         )
 
-        self.erisc.memory_map.add_blocks(
-            [
+        self.erisc.memory_map = MemoryMap.get_memory_map_from_cache(
+            WormholeEthBlock,
+            "erisc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.erisc.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
@@ -223,7 +226,7 @@ class WormholeEthBlock(WormholeNocBlock):
                 MemoryMapBlockInfo("eth_control_regs", self.eth_control_regs),
                 MemoryMapBlockInfo("eth_mac_regs", self.eth_mac_regs, safe_to_read=False),
                 MemoryMapBlockInfo("eth_pcs_regs", self.eth_pcs_regs, safe_to_read=False),
-            ]
+            ],
         )
 
     @cached_property

@@ -10,7 +10,8 @@ import tt_umd
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
-from ttexalens.util import FirmwareVersion, TTException
+from ttexalens.exceptions import TTException
+from ttexalens.util import FirmwareVersion
 
 # For new firmware version (18.4 or higher) we have same telemetry tags for both wormhole and blackhole
 # We no longer support ARC telemetry for firmware versions 18.3 and lower
@@ -150,7 +151,7 @@ class ArcBlock(NocBlock):
         """
         arc_register_store = self.get_register_store()
 
-        iccm_id = re.findall("\d", mem_type)
+        iccm_id = re.findall(r"\d", mem_type)
         if len(iccm_id) == 0:
             iccm_id_int = 0
             assert mem_type == "iccm" or mem_type == "csm"
@@ -246,7 +247,7 @@ class ArcBlock(NocBlock):
         with open(file_name) as f:
             first_chunk = True
 
-            for offset, data in read_contiguous_hex_chunks(f):
+            for _, data in read_contiguous_hex_chunks(f):
                 if first_chunk:  # Load reset vector
                     word = int.from_bytes(data[0:4], "little")
                     arc_register_store.write_register("ARC_ROM_DATA", word)

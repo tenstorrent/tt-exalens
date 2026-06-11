@@ -58,10 +58,8 @@ function(add_riscv_object OBJECT_NAME SOURCE_FILE BUILD_TYPE)
     )
 endfunction()
 
-# Compile the coverage-related libraries (always optimized and without instrumentation)
-set(GCOV_OBJ "${RISCV_OBJECT}/gcov.o")
+# Compile the coverage support file (always optimized and without instrumentation).
 set(COVERAGE_OBJ "${RISCV_OBJECT}/coverage.o")
-add_riscv_object("${GCOV_OBJ}" "${RISCV_SOURCE}/coverage/gcov.c" "release")
 
 # Compile coverage.c with -fno-strict-aliasing, the tricks done in the code necessitate it.
 add_custom_command(
@@ -70,9 +68,10 @@ add_custom_command(
             ${OPTIMIZED_OPTIONS_ALL}
             ${OPTIMIZED_OPTIONS_COMPILE}
             -fno-strict-aliasing
+            -fno-builtin
             -c -o ${COVERAGE_OBJ}
-            ${RISCV_SOURCE}/coverage/coverage.c
-    DEPENDS ${RISCV_SOURCE}/coverage/coverage.c
+            ${RISCV_SOURCE}/coverage.c
+    DEPENDS ${RISCV_SOURCE}/coverage.c
 )
 
 # Add the CRT object (assembly file)
@@ -96,6 +95,13 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
         set(LINK_OPTIONS ${OPTIONS_ALL} ${OPTIONS_LINK})
     endif()
 
+    # -mtt-fix-whbhebreak emits the Wormhole/Blackhole ebreak hardware-bug workaround
+    # (8 NOPs after every ebreak; the fetch pipeline has already prefetched the
+    # instructions following an ebreak, so on WH/BH those must be NOPs).
+    if(ARCH STREQUAL "wormhole" OR ARCH STREQUAL "blackhole")
+        list(APPEND LINK_OPTIONS -mtt-fix-whbhebreak)
+    endif()
+
     set(OUTPUT_ELF "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.elf")
     set(OUTPUT_OBJDUMP "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.objdump")
     set(OUTPUT_DWARF "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.dwarf")
@@ -107,9 +113,11 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
 
     # Handle memory.${ARCH}.debug.ld and memory.${ARCH}.release.ld
     set(LDSCRIPT_EXTENSION ${BUILD_TYPE})
+    set(LINK_LIBS)
 
     if(BUILD_TYPE STREQUAL "coverage")
-        list(APPEND LINK_OBJECTS ${GCOV_OBJ} ${COVERAGE_OBJ})
+        list(APPEND LINK_OBJECTS ${COVERAGE_OBJ})
+        list(APPEND LINK_LIBS -lgcov)
         # Debug ld script should be used in coverage builds
         set(LDSCRIPT_EXTENSION "debug")
     endif()
@@ -118,6 +126,7 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
         OUTPUT ${OUTPUT_ELF}
         COMMAND ${GXX} ${LINK_OPTIONS}
             ${LINK_OBJECTS}
+            ${LINK_LIBS}
             -T${RISCV_SOURCE}/memory.${ARCH}.${LDSCRIPT_EXTENSION}.ld
             -T${RISCV_SOURCE}/${CORE}.ld
             -T${RISCV_SOURCE}/sections.ld

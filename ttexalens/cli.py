@@ -61,8 +61,10 @@ from ttexalens import init_ttexalens, init_ttexalens_remote
 from ttexalens.server import start_server
 from ttexalens import util as util
 from ttexalens.context import Context, NocId
+from ttexalens.exceptions import TTException
+from ttexalens.context import Context
 from ttexalens.uistate import UIState
-from ttexalens.command_parser import tt_docopt, CommandMetadata, find_command, CommandParsingException
+from ttexalens.command_parser import tt_docopt, CommandMetadata, CommandParsingException
 from ttexalens.gdb.gdb_client import get_gdb_client_path
 
 
@@ -111,7 +113,7 @@ def import_commands(reload: bool = False) -> list[CommandMetadata]:
     ]
 
     cmd_files = []
-    for root, dirnames, filenames in os.walk(util.application_path() + "/cli_commands"):
+    for root, _, filenames in os.walk(util.application_path() + "/cli_commands"):
         for filename in fnmatch.filter(filenames, "*.py"):
             cmd_files.append(os.path.join(root, filename))
 
@@ -266,13 +268,13 @@ def main_loop(args, context: Context):
                 if file_output is not None:
                     cmd_raw = cmd_raw[: -len(file_output)].strip()
 
-                with redirect_command_output_to_file(file_output) as terminal_override:
+                with redirect_command_output_to_file(file_output):
                     cmd_int = try_int(cmd_raw)
                     if type(cmd_int) == int:
                         if navigation_suggestions and cmd_int >= 0 and cmd_int < len(navigation_suggestions):
                             cmd_raw = navigation_suggestions[cmd_int]["cmd"]
                         else:
-                            raise util.TTException(f"Invalid speed dial number: {cmd_int}")
+                            raise TTException(f"Invalid speed dial number: {cmd_int}")
 
                     cmd = cmd_raw.split()
                     if len(cmd) > 0:
@@ -293,7 +295,7 @@ def main_loop(args, context: Context):
                                 long_names = [c.long_name for c in context.commands if c.long_name is not None]
                                 all_command_names = short_names + long_names
                                 best_match = get_close_matches(cmd_string, all_command_names)
-                                if best_match is not None and len(best_match) > 0:
+                                if len(best_match) > 0:
                                     suggestion = best_match[0]
                                     util.WARN(f"Did you mean '{suggestion}'?")
                             util.ERROR(f"Command '{cmd_string}' not found, use 'help' to list all commands.")
@@ -359,6 +361,7 @@ def main():
         subprocess.run([gdb_client_path] + gdb_client_args)
         return
 
+    assert __doc__ is not None
     args = docopt(__doc__)
 
     if args["--version"]:
@@ -381,7 +384,7 @@ def main():
         util.Verbosity.set(verbosity)
     except (TypeError, ValueError):
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
-    except Exception as e:
+    except Exception:
         util.DEBUG(f"Failed to set verbosity level:\n{traceback.format_exc()}")
     util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 

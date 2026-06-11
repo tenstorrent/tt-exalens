@@ -12,7 +12,7 @@ from ttexalens.context import Context
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.debug_tensix import TensixDebug, TILE_SIZE, TensixDataFormat, REGFILE
 from ttexalens.device import TensixInstructions
-from ttexalens.util import TTException
+from ttexalens.exceptions import TTException
 
 
 @parameterized_class(
@@ -69,7 +69,7 @@ class TestTensixDebug(unittest.TestCase):
         if value is None:
             data = [step * i - step * num_of_elements / 2 for i in range(num_of_elements)]
         else:
-            data = [value for i in range(num_of_elements)]
+            data = [value for _ in range(num_of_elements)]
         self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Float32)
         ret = self.tensix_debug.read_regfile(regfile, num_tiles)
         if value is None:

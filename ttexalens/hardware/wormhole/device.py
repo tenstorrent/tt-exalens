@@ -2,8 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from functools import cache
-import tt_umd
-from ttexalens.context import Context, NocId
+from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription

@@ -116,7 +116,9 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
             if reg_id == 32:  # PC register
                 top_callstack = callstack_value.get(risc_id, None)
                 if top_callstack is not None and len(top_callstack) > 0:
-                    src_location = f"- {top_callstack[0].file}:{top_callstack[0].line}"
+                    file_info = top_callstack[0].file_info
+                    if file_info is not None:
+                        src_location = f"- {file_info.file}:{file_info.line}"
             row.append(f"0x{reg_value[risc_id][reg_id]:08x}{src_location}" if reg_id in reg_value[risc_id] else "-")
         table.append(row)
 

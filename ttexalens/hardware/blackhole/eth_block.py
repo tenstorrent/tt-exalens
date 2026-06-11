@@ -13,7 +13,7 @@ from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
@@ -266,8 +266,10 @@ class BlackholeEthBlock(BlackholeNocBlock):
         self.register_store_noc0 = RegisterStore(register_store_noc0_initialization, self.location)
         self.register_store_noc1 = RegisterStore(register_store_noc1_initialization, self.location)
 
-        self.noc_memory_map.add_blocks(
-            [
+        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
+            BlackholeEthBlock,
+            "noc_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
@@ -280,11 +282,13 @@ class BlackholeEthBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
                 MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
                 MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs, safe_to_read=False),
-            ]
+            ],
         )
 
-        self.erisc0.memory_map.add_blocks(
-            [
+        self.erisc0.memory_map = MemoryMap.get_memory_map_from_cache(
+            BlackholeEthBlock,
+            "erisc0_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.erisc0.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
@@ -298,11 +302,13 @@ class BlackholeEthBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
                 MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
                 MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs, safe_to_read=False),
-            ]
+            ],
         )
 
-        self.erisc1.memory_map.add_blocks(
-            [
+        self.erisc1.memory_map = MemoryMap.get_memory_map_from_cache(
+            BlackholeEthBlock,
+            "erisc1_memory_map",
+            block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.erisc1.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
@@ -316,7 +322,7 @@ class BlackholeEthBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("eth_tx_header_table", self.eth_tx_header_table),
                 MemoryMapBlockInfo("eth_rx_classifier", self.eth_rx_classifier),
                 MemoryMapBlockInfo("eth_mac_pcs_regs", self.eth_mac_pcs_regs, safe_to_read=False),
-            ]
+            ],
         )
 
     @cached_property

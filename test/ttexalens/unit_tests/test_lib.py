@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import unittest
 import os
+import struct
 
 import itertools
 from functools import wraps
@@ -13,16 +14,17 @@ from parameterized import parameterized, parameterized_class
 from test.ttexalens.unit_tests.test_base import get_core_location, get_parsed_elf_file, init_cached_test_context
 import ttexalens as lib
 from ttexalens import util
-from ttexalens.elf.parsed import ParsedElfFile
+from ttexalens.exceptions import TTException
+from ttexalens.elf import ElfFile
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context, NocId
 from ttexalens.device import Device, UnsafeAccessException
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
-from ttexalens.memory_access import MemoryAccess
+from ttexalens.memory_access import create_l1_memory_access, create_memory_access
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
-from ttexalens.hardware.risc_debug import CallstackEntry, RiscDebug
+from ttexalens.hardware.risc_debug import CallstackEntry, CallstackEntryVariable, RiscDebug
 
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.elf_loader import ElfLoader
@@ -31,6 +33,13 @@ from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
 from ttexalens.gdb.gdb_client import get_gdb_callstack
 from ttexalens.gdb.gdb_communication import ServerSocket
 from ttexalens.gdb.gdb_server import GdbServer
+
+
+def _read_bytes(rd: RiscDebug, address: int, size_bytes: int, safe_mode: bool | None = None) -> bytes:
+    """Test helper: allocate a buffer, fill it via the buffer-based read_memory_bytes, and return bytes."""
+    buffer = bytearray(size_bytes)
+    rd.read_memory_bytes(address, buffer, safe_mode=safe_mode)
+    return bytes(buffer)
 
 
 def invalid_argument_decorator(func):
@@ -129,6 +138,7 @@ class TestReadWrite(unittest.TestCase):
         location_str = "1,0"
         location = OnChipCoordinate.create(location_str, self.context.devices[0])
         data = b"test_me!" * 16  # 128 bytes
+        read_data = bytearray(len(data))
         for address in range(0, 128, 1):
             # Write over regular TLB access to clean any previous data
             location.noc_write(address, b"\x00" * len(data), use_4B_mode=False, dma_threshold=len(data) + 1)
@@ -137,11 +147,11 @@ class TestReadWrite(unittest.TestCase):
             location.noc_write(address, data, use_4B_mode=False, dma_threshold=0)
 
             # Read over regular TLB access
-            read_data = location.noc_read(address, len(data), use_4B_mode=False, dma_threshold=len(data) + 1)
+            location.noc_read(address, read_data, use_4B_mode=False, dma_threshold=len(data) + 1)
             self.assertEqual(read_data, data)
 
             # Read over DMA
-            read_data = location.noc_read(address, len(data), use_4B_mode=False, dma_threshold=0)
+            location.noc_read(address, read_data, use_4B_mode=False, dma_threshold=0)
             self.assertEqual(read_data, data)
 
     @parameterized.expand(
@@ -245,9 +255,9 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_inputs_read(self, location, address, device_id, word_count):
         """Test invalid inputs for read functions."""
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.read_words_from_device(location, address, device_id, word_count)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             # word_count can be used as num_bytes
             lib.read_from_device(location, address, device_id, word_count)
 
@@ -262,7 +272,7 @@ class TestReadWrite(unittest.TestCase):
         ]
     )
     def test_invalid_write_word(self, location, address, data, device_id):
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_words_to_device(location, address, data, device_id)
 
     @parameterized.expand(
@@ -278,7 +288,7 @@ class TestReadWrite(unittest.TestCase):
     )
     def test_invalid_write(self, location, address, data, device_id):
         """Test invalid inputs for write function."""
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_to_device(location, address, data, device_id)
 
     def test_unaligned_read(self):
@@ -459,9 +469,9 @@ class TestReadWrite(unittest.TestCase):
         """Test invalid inputs for tensix register read and write functions."""
 
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
-            with self.assertRaises((util.TTException, ValueError)):
+            with self.assertRaises((TTException, ValueError)):
                 lib.read_register(location, register, device_id)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_register(location, register, value, device_id)
 
     @parameterized.expand(
@@ -615,9 +625,9 @@ class TestReadWrite(unittest.TestCase):
     def test_invalid_read_private_memory(self, location: str, address: int, value: int, risc_name="brisc", device_id=0):
         """Test invalid inputs for reading private memory."""
         if value == 0:  # Invalid value does not raies an exception in read so we skip it
-            with self.assertRaises((util.TTException, ValueError)):
+            with self.assertRaises((TTException, ValueError)):
                 lib.read_riscv_memory(location, address, risc_name, None, device_id)
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.write_riscv_memory(location, address, value, risc_name, None, device_id)
 
     @parameterized.expand(
@@ -646,35 +656,35 @@ class TestReadWrite(unittest.TestCase):
             address = private_memory.address.private_address
             risc_debug.write_memory_bytes(address, bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
+                _read_bytes(risc_debug, address, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
             )
-            self.assertEqual(risc_debug.read_memory_bytes(address + 0, 1), bytes([0x78]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 1), bytes([0x56]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 2, 1), bytes([0x34]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 3, 1), bytes([0x12]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 4, 1), bytes([0xEF]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 5, 1), bytes([0xCD]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 6, 1), bytes([0xAB]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 7, 1), bytes([0x90]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 0, 2), bytes([0x78, 0x56]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 2, 2), bytes([0x34, 0x12]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 4, 2), bytes([0xEF, 0xCD]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 6, 2), bytes([0xAB, 0x90]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 0, 4), bytes([0x78, 0x56, 0x34, 0x12]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 4, 4), bytes([0xEF, 0xCD, 0xAB, 0x90]))
+            self.assertEqual(_read_bytes(risc_debug, address + 0, 1), bytes([0x78]))
+            self.assertEqual(_read_bytes(risc_debug, address + 1, 1), bytes([0x56]))
+            self.assertEqual(_read_bytes(risc_debug, address + 2, 1), bytes([0x34]))
+            self.assertEqual(_read_bytes(risc_debug, address + 3, 1), bytes([0x12]))
+            self.assertEqual(_read_bytes(risc_debug, address + 4, 1), bytes([0xEF]))
+            self.assertEqual(_read_bytes(risc_debug, address + 5, 1), bytes([0xCD]))
+            self.assertEqual(_read_bytes(risc_debug, address + 6, 1), bytes([0xAB]))
+            self.assertEqual(_read_bytes(risc_debug, address + 7, 1), bytes([0x90]))
+            self.assertEqual(_read_bytes(risc_debug, address + 0, 2), bytes([0x78, 0x56]))
+            self.assertEqual(_read_bytes(risc_debug, address + 2, 2), bytes([0x34, 0x12]))
+            self.assertEqual(_read_bytes(risc_debug, address + 4, 2), bytes([0xEF, 0xCD]))
+            self.assertEqual(_read_bytes(risc_debug, address + 6, 2), bytes([0xAB, 0x90]))
+            self.assertEqual(_read_bytes(risc_debug, address + 0, 4), bytes([0x78, 0x56, 0x34, 0x12]))
+            self.assertEqual(_read_bytes(risc_debug, address + 4, 4), bytes([0xEF, 0xCD, 0xAB, 0x90]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address + 0, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
+                _read_bytes(risc_debug, address + 0, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
             )
-            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 2), bytes([0x56, 0x34]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 3, 2), bytes([0x12, 0xEF]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 5, 2), bytes([0xCD, 0xAB]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 4), bytes([0x56, 0x34, 0x12, 0xEF]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 2, 4), bytes([0x34, 0x12, 0xEF, 0xCD]))
-            self.assertEqual(risc_debug.read_memory_bytes(address + 3, 4), bytes([0x12, 0xEF, 0xCD, 0xAB]))
+            self.assertEqual(_read_bytes(risc_debug, address + 1, 2), bytes([0x56, 0x34]))
+            self.assertEqual(_read_bytes(risc_debug, address + 3, 2), bytes([0x12, 0xEF]))
+            self.assertEqual(_read_bytes(risc_debug, address + 5, 2), bytes([0xCD, 0xAB]))
+            self.assertEqual(_read_bytes(risc_debug, address + 1, 4), bytes([0x56, 0x34, 0x12, 0xEF]))
+            self.assertEqual(_read_bytes(risc_debug, address + 2, 4), bytes([0x34, 0x12, 0xEF, 0xCD]))
+            self.assertEqual(_read_bytes(risc_debug, address + 3, 4), bytes([0x12, 0xEF, 0xCD, 0xAB]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address + 0, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
+                _read_bytes(risc_debug, address + 0, 8), bytes([0x78, 0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB, 0x90])
             )
-            self.assertEqual(risc_debug.read_memory_bytes(address + 1, 6), bytes([0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB]))
+            self.assertEqual(_read_bytes(risc_debug, address + 1, 6), bytes([0x56, 0x34, 0x12, 0xEF, 0xCD, 0xAB]))
 
     @parameterized.expand(
         [
@@ -702,79 +712,79 @@ class TestReadWrite(unittest.TestCase):
             address = private_memory.address.private_address
             risc_debug.write_memory_bytes(address, bytes([0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0xDE, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 0, bytes([0x12]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0xAD, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 1, bytes([0x34]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0xBE, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 2, bytes([0x56]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0xEF, 0xDE, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 3, bytes([0x78]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0xDE, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0xDE, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 4, bytes([0x90]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAD, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAD, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 5, bytes([0xAB]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xBE, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xBE, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 6, bytes([0xCD]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xEF])
             )
             risc_debug.write_memory_bytes(address + 7, bytes([0xFE]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xFE])
+                _read_bytes(risc_debug, address, 8), bytes([0x12, 0x34, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xFE])
             )
             risc_debug.write_memory_bytes(address + 0, bytes([0xAA, 0xBB]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xFE])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0xBB, 0x56, 0x78, 0x90, 0xAB, 0xCD, 0xFE])
             )
             risc_debug.write_memory_bytes(address + 2, bytes([0xCC, 0xDD]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0x90, 0xAB, 0xCD, 0xFE])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0x90, 0xAB, 0xCD, 0xFE])
             )
             risc_debug.write_memory_bytes(address + 4, bytes([0xEE, 0xFF]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0xCD, 0xFE])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0xCD, 0xFE])
             )
             risc_debug.write_memory_bytes(address + 6, bytes([0x00, 0x11]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0x00, 0x11])
             )
             risc_debug.write_memory_bytes(address + 1, bytes([0x22, 0x33]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x33, 0xDD, 0xEE, 0xFF, 0x00, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x22, 0x33, 0xDD, 0xEE, 0xFF, 0x00, 0x11])
             )
             risc_debug.write_memory_bytes(address + 3, bytes([0x44, 0x55]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x33, 0x44, 0x55, 0xFF, 0x00, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x22, 0x33, 0x44, 0x55, 0xFF, 0x00, 0x11])
             )
             risc_debug.write_memory_bytes(address + 5, bytes([0x66, 0x77]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x11])
             )
             risc_debug.write_memory_bytes(address + 2, bytes([0x88, 0x99, 0xAA]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x88, 0x99, 0xAA, 0x66, 0x77, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x22, 0x88, 0x99, 0xAA, 0x66, 0x77, 0x11])
             )
             risc_debug.write_memory_bytes(address + 3, bytes([0xBB, 0xCC, 0xDD]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x22, 0x88, 0xBB, 0xCC, 0xDD, 0x77, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x22, 0x88, 0xBB, 0xCC, 0xDD, 0x77, 0x11])
             )
             risc_debug.write_memory_bytes(address + 1, bytes([0x11, 0x22, 0x33, 0x44, 0x55, 0x66]))
             self.assertEqual(
-                risc_debug.read_memory_bytes(address, 8), bytes([0xAA, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x11])
+                _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x11])
             )
 
 
@@ -1112,6 +1122,7 @@ class TestSafeAccess(unittest.TestCase):
         # Case 2: Next block is adjacent but not accessible or has incompatible permissions
         elif next_block_info is not None and next_block_info.memory_block.address.noc_address == block_end:
             next_noc_addr = next_block_info.memory_block.address.noc_address
+            assert next_noc_addr is not None, "NOC address should not be None here"
             next_is_accessible = next_block_info.is_accessible
             next_is_safe_to_read = next_block_info.is_safe_to_read(next_noc_addr, 4)
             next_is_safe_to_write = next_block_info.is_safe_to_write(next_noc_addr, 4)
@@ -1168,16 +1179,23 @@ class TestRunElf(unittest.TestCase):
     def test_run_elf(self, elf_name: str, risc_name: str):
         """Test running an ELF file."""
         location = "0,0"
-        addr = 0x64000
+
+        # The mailbox lives in the per-RISC thread_local region, so resolve its
+        # address from the ELF instead of assuming a fixed one (the old 0x64000
+        # was out of range on smaller L1s such as ETH).
+        elf_path = self.get_elf_path(elf_name, risc_name)
+        elf = get_parsed_elf_file(elf_path)
+        mailbox_die = elf.find_die_by_name("mailbox")
+        assert mailbox_die is not None, f"mailbox symbol not found in {elf_path}"
+        addr = mailbox_die.get_address()
+        assert addr is not None, f"could not resolve mailbox address in {elf_path}"
 
         # Reset memory at addr
         lib.write_words_to_device(location, addr, 0, context=self.context)
         ret = lib.read_words_from_device(location, addr, context=self.context)
         self.assertEqual(ret[0], 0)
 
-        # Run an ELF that writes to the addr and check if it executed correctly
-        elf_path = self.get_elf_path(elf_name, risc_name)
-        elf = get_parsed_elf_file(elf_path)
+        # Run an ELF that writes to the mailbox and check if it executed correctly
         lib.run_elf(elf, location, risc_name, context=self.context)
         ret = lib.read_words_from_device(location, addr, context=self.context)
         self.assertEqual(ret[0], 0x12345678)
@@ -1198,7 +1216,7 @@ class TestRunElf(unittest.TestCase):
     def test_run_elf_invalid(self, elf_file, location, risc_name, device_id):
         if elf_file is None:
             elf_file = self.get_elf_path("run_elf_test.debug", "brisc")
-        with self.assertRaises((util.TTException, ValueError)):
+        with self.assertRaises((TTException, ValueError)):
             lib.run_elf(elf_file, location, risc_name, None, device_id, context=self.context)
 
     @parameterized.expand(
@@ -1227,10 +1245,9 @@ class TestRunElf(unittest.TestCase):
         assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug, got {type(risc_debug)}"
         rdbg: BabyRiscDebug = risc_debug
         assert rdbg.debug_hardware is not None, "Debug hardware is not available."
-        rloader = ElfLoader(rdbg)
 
         elf = lib.parse_elf(elf_path)
-        mem_access = MemoryAccess.create(risc_debug)
+        mem_access = create_memory_access(risc_debug)
         mailbox = elf.get_global("g_MAILBOX", mem_access)
         testbyteaccess = elf.get_global("g_TESTBYTEACCESS", mem_access)
 
@@ -1278,9 +1295,14 @@ class TestRunElf(unittest.TestCase):
 
         # Step 5b: Continue and check that the core reached 0xFFB12088. But first set the breakpoint at
         # function "decrement_mailbox"
-        decrement_mailbox_die = elf.subprograms["decrement_mailbox"]
-        decrement_mailbox_linkage_name = decrement_mailbox_die.attributes["DW_AT_linkage_name"].value.decode("utf-8")
-        decrement_mailbox_address = elf.symbols[decrement_mailbox_linkage_name].value
+        from ttexalens.elf import DwarfDieTag
+
+        decrement_mailbox_die = elf.find_die_by_name("decrement_mailbox")
+        assert decrement_mailbox_die is not None, "decrement_mailbox function not found in ELF."
+        assert (
+            decrement_mailbox_die.tag == DwarfDieTag.subprogram
+        ), f"decrement_mailbox DIE is not a subprogram, got {decrement_mailbox_die.tag}"
+        decrement_mailbox_address = decrement_mailbox_die.get_address()
 
         # Step 6. Setting breakpoint at decrement_mailbox
         watchpoint_id = 1  # Out of 8
@@ -1431,9 +1453,6 @@ class TestARC(unittest.TestCase):
         if self.device.is_blackhole():
             self.skipTest("Loading ARC firmware is not supported on blackhole")
 
-        wait_time = 0.1
-        TT_METAL_ARC_DEBUG_BUFFER_SIZE = 1024
-
         for device_id in self.context.device_ids:
             device = self.context.devices[device_id]
             arc = device.arc_block
@@ -1475,6 +1494,10 @@ class TestCallStack(unittest.TestCase):
         cls.gdb_server = GdbServer(cls.context, server)
         cls.gdb_server.start()
 
+    @classmethod
+    def tearDownClass(cls):
+        cls.gdb_server.stop()
+
     def setUp(self):
         try:
             self.location = get_core_location(self.location_desc, self.device)
@@ -1486,13 +1509,13 @@ class TestCallStack(unittest.TestCase):
         try:
             self.risc_debug = noc_block.get_risc_debug(self.risc_name)
             self.risc_name = self.risc_debug.risc_location.risc_name
-        except ValueError as e:
+        except ValueError:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
-        except NotImplementedError as e:
+        except NotImplementedError:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
         self.loader = ElfLoader(self.risc_debug)
-        self.l1_mem_access = MemoryAccess.create_l1(self.location)
+        self.l1_mem_access = create_l1_memory_access(self.location)
 
         # Stop risc with reset
         self.risc_debug.set_reset_signal(True)
@@ -1519,17 +1542,22 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(len(cs1), len(cs2), "Callstacks have different lengths")
         for entry1, entry2 in zip(cs1, cs2):
             self.assertEqual(entry1.function_name, entry2.function_name, "Function names do not match")
-            self.assertEqual(entry1.file, entry2.file, "Source files do not match")
-            self.assertEqual(entry1.line, entry2.line, "Line numbers do not match")
+            file1 = entry1.file_info.file if entry1.file_info is not None else None
+            file2 = entry2.file_info.file if entry2.file_info is not None else None
+            line1 = entry1.file_info.line if entry1.file_info is not None else None
+            line2 = entry2.file_info.line if entry2.file_info is not None else None
+            self.assertEqual(file1, file2, "Source files do not match")
+            self.assertEqual(line1, line2, "Line numbers do not match")
             if entry1.pc is not None and entry2.pc is not None:
                 self.assertEqual(entry1.pc, entry2.pc, "Addresses do not match")
 
-    def set_recursion_count(self, elf: ParsedElfFile, count: int):
-        text_section = next((s for s in elf.sections if s.name == ".text"), None)
+    def set_recursion_count(self, elf: ElfFile, count: int):
+        text_section = elf.get_section_by_name(".text")
         assert text_section is not None
+        assert text_section.address is not None
 
         address = text_section.address + text_section.size
-        self.l1_mem_access.write_word(address, count)
+        self.l1_mem_access.write(address, count.to_bytes(4, byteorder="little"))
 
     CALLSTACK_ELFS = ["callstack.debug", "callstack.release", "callstack.coverage"]
     RECURSION_COUNT = [1, 10, 40]
@@ -1544,8 +1572,8 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
 
-        mem_access = MemoryAccess.create(self.risc_debug)
-        x = parsed_elf.get_global("g_MAILBOX", mem_access)
+        mem_access = create_memory_access(self.risc_debug)
+        parsed_elf.get_global("g_MAILBOX", mem_access)
 
         callstack: list[CallstackEntry] = lib.callstack(
             self.location, parsed_elf, None, self.risc_name, None, 100, True
@@ -1640,10 +1668,21 @@ class TestCallStack(unittest.TestCase):
             pc = self.risc_debug.read_gpr(32)
         callstack: list[CallstackEntry] = lib.top_callstack(pc, parsed_elf, None, self.context)
 
-        self.assertEqual(len(callstack), expected_f1_on_callstack_count + 1)
-        for i in range(0, expected_f1_on_callstack_count):
-            self.assertEqual(callstack[i].function_name, "f1")
-        self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
+        if self.device.is_blackhole() or self.device.is_wormhole():
+            # The core halts on the ebreak inside halt(). The reported PC is the instruction after the
+            # ebreak, which lands in the NOP padding emitted by -mtt-fix-whbhebreak; that padding is
+            # attributed to halt() (callstack.cc:30), so halt() is the innermost (inlined) frame,
+            # followed by the f1 frame(s) and recurse.
+            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 2)
+            self.assertEqual(callstack[0].function_name, "halt")
+            for i in range(0, expected_f1_on_callstack_count):
+                self.assertEqual(callstack[1 + i].function_name, "f1")
+            self.assertEqual(callstack[1 + expected_f1_on_callstack_count].function_name, "recurse")
+        else:
+            self.assertEqual(len(callstack), expected_f1_on_callstack_count + 1)
+            for i in range(0, expected_f1_on_callstack_count):
+                self.assertEqual(callstack[i].function_name, "f1")
+            self.assertEqual(callstack[expected_f1_on_callstack_count + 0].function_name, "recurse")
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_template_arguments(self, elf_name):
@@ -1694,6 +1733,194 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[3].template_parameters[1].value, 4)
         self.assertEqual(callstack[4].function_name, "main")
 
+    # Argument and local variable values used by every value-test scenario in callstack.cc. Each
+    # entry is (chained_function, single_frame_type, struct_format, argument, local).
+    VALUE_TEST_TYPES = [
+        ("value_test_bool", "bool", "<?", True, False),
+        ("value_test_uint8", "unsigned char", "<B", 200, 17),
+        ("value_test_int8", "signed char", "<b", -100, 50),
+        ("value_test_uint16", "short unsigned int", "<H", 60000, 1234),
+        ("value_test_int16", "short int", "<h", -30000, 5678),
+        ("value_test_uint32", "long unsigned int", "<I", 4000000000, 12345678),
+        ("value_test_int32", "long int", "<i", -2000000000, 87654321),
+        ("value_test_uint64", "long long unsigned int", "<Q", 18000000000000000000, 1234567890123),
+        ("value_test_int64", "long long int", "<q", -9000000000000000000, 9876543210),
+        ("value_test_float", "float", "<f", 3.5, -1.25),
+        ("value_test_double", "double", "<d", 2.5, -7.75),
+        (
+            "value_test_charptr",
+            "char const*",
+            "g_test_string",
+            "Tenstorrent callstack string",
+            "Tenstorrent callstack string",
+        ),
+    ]
+
+    def get_mailbox_value_address(self, elf: ElfFile) -> int:
+        """Address of the host-written value buffer in callstack.cc (see mailbox_value_buffer())."""
+        text_section = elf.get_section_by_name(".text")
+        assert text_section is not None
+        assert text_section.address is not None
+
+        firmware_end: int = text_section.address + text_section.size
+        return (firmware_end + 4 + 16) & ~15
+
+    def get_symbol_address(self, elf: ElfFile, name: str) -> int:
+        symbol = elf.find_symbol_by_name(name)
+        assert symbol is not None and symbol.value is not None, f"Symbol {name} not found in ELF"
+        return int(symbol.value)
+
+    def pack_value_test_value(self, elf: ElfFile, struct_format: str, value):
+        # If struct_format doesn't start with "<", it's not a raw value but a symbol name whose address we want to get and pack as a uint32_t.
+        if struct_format.startswith("<"):
+            return struct.pack(struct_format, value)
+        return struct.pack("<I", self.get_symbol_address(elf, struct_format))
+
+    def assert_value_equals(self, actual, expected):
+        if isinstance(expected, float):
+            self.assertAlmostEqual(actual, expected, places=6)
+        else:
+            self.assertEqual(actual, expected)
+
+    def assert_variable(
+        self, variable: CallstackEntryVariable, expected_name: str, expected_value, require_value: bool, message: str
+    ):
+        self.assertEqual(variable.name, expected_name, message)
+        if variable.value is None:
+            self.assertFalse(require_value, f"Could not read {message}")
+        else:
+            self.assert_value_equals(variable.value.read_value(), expected_value)
+
+    def assert_string_pointer(self, variable: CallstackEntryVariable, expected_name: str, address: int, message: str):
+        self.assertEqual(variable.name, expected_name, message)
+        value = variable.value
+        assert value is not None, f"Could not read {message}"
+        self.assertEqual(value.dereference().get_address(), address, message)
+
+    def check_chained_value_test(
+        self, elf_name: str, mailbox: int, namespace: str, require_arguments: bool, wrapper: str | None = None
+    ):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, mailbox)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        # The callstack is: halt, the value-test chain (one frame per type), an optional wrapper
+        # frame, then main.
+        self.assertEqual(len(callstack), len(self.VALUE_TEST_TYPES) + 2 + (1 if wrapper else 0))
+        self.assertEqual(callstack[0].function_name, "halt")
+        self.assertEqual(callstack[-1].function_name, "main")
+        if wrapper is not None:
+            # As with the chain leaf, the optimized debug info may drop the namespace prefix.
+            self.assertIn(callstack[len(self.VALUE_TEST_TYPES) + 1].function_name, (wrapper, wrapper.split("::")[-1]))
+
+        for index, (function, _, _, expected_arg, expected_local) in enumerate(self.VALUE_TEST_TYPES):
+            entry = callstack[index + 1]
+            function_name = f"{namespace}::{function}"
+            # On the optimized build a constant-propagated clone of a leaf function can lose its
+            # namespace qualification in the debug info, so accept the bare name there too.
+            self.assertIn(entry.function_name, (function_name, function), f"Unexpected frame: {entry.function_name}")
+
+            # Every value-test function has exactly one argument and one local variable.
+            self.assertEqual(len(entry.arguments), 1, f"Unexpected arguments for {function_name}")
+            self.assertEqual(len(entry.locals), 1, f"Unexpected locals for {function_name}")
+            self.assert_variable(
+                entry.arguments[0], "arg", expected_arg, require_arguments, f"argument of {function_name}"
+            )
+            self.assert_variable(entry.locals[0], "local", expected_local, True, f"local of {function_name}")
+
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_argument_and_local_values(self, elf_name: str):
+        require_arguments = "release" not in elf_name
+        # 0xFFFFFFFD selects the value_test chain (separate frames, one per type) in callstack.cc.
+        self.check_chained_value_test(elf_name, 0xFFFFFFFD, "value_test", require_arguments)
+
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_inlined_argument_and_local_values(self, elf_name: str):
+        # 0xFFFFFFFC selects the inline_value_test chain (inlined virtual frames) in callstack.cc.
+        self.check_chained_value_test(elf_name, 0xFFFFFFFC, "inline_value_test", True, wrapper="inline_value_test::run")
+
+    @parameterized.expand(itertools.product(CALLSTACK_ELFS, range(len(VALUE_TEST_TYPES))))
+    def test_callstack_single_frame_argument_and_local_values(self, elf_name: str, type_index: int):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        _, type_name, struct_format, expected_arg, expected_local = self.VALUE_TEST_TYPES[type_index]
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+
+        # Select the single-frame dispatch for this type, then provide the argument (offset 0)
+        # and local (offset 8) values through the host-written value buffer.
+        # 0xFFFFFE00 | type_index invokes single_frame_value_test::dispatch for that type.
+        self.set_recursion_count(parsed_elf, 0xFFFFFE00 | type_index)
+        mailbox_value_address = self.get_mailbox_value_address(parsed_elf)
+        self.l1_mem_access.write(
+            mailbox_value_address, self.pack_value_test_value(parsed_elf, struct_format, expected_arg)
+        )
+        self.l1_mem_access.write(
+            mailbox_value_address + 8, self.pack_value_test_value(parsed_elf, struct_format, expected_local)
+        )
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        # The callstack is: value_test<T> (top frame), dispatch, main.
+        top = callstack[0]
+        self.assertEqual(top.function_name, f"single_frame_value_test::value_test<{type_name}>")
+        self.assertEqual(len(top.arguments), 1)
+        self.assertEqual(len(top.locals), 1)
+        if struct_format.startswith("<"):
+            self.assert_variable(top.arguments[0], "arg", expected_arg, True, f"argument of {top.function_name}")
+            self.assert_variable(top.locals[0], "local", expected_local, True, f"local of {top.function_name}")
+        else:
+            # A const char* transferred through a register: verify it points at the test string.
+            address = self.get_symbol_address(parsed_elf, struct_format)
+            self.assert_string_pointer(top.arguments[0], "arg", address, f"argument of {top.function_name}")
+            self.assert_string_pointer(top.locals[0], "local", address, f"local of {top.function_name}")
+
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_callee_saved_register_values(self, elf_name: str):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        mailbox_value_address = self.get_mailbox_value_address(parsed_elf)
+        for index, (_, _, struct_format, value, _) in enumerate(self.VALUE_TEST_TYPES):
+            self.l1_mem_access.write(
+                mailbox_value_address + index * 8, self.pack_value_test_value(parsed_elf, struct_format, value)
+            )
+        # 0xFFFFFFFB selects the callee_saved_test chain (value per type in a callee-saved register).
+        self.set_recursion_count(parsed_elf, 0xFFFFFFFB)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        # The callstack is: halt, the callee_saved_test chain (one frame per type), then main.
+        self.assertEqual(len(callstack), len(self.VALUE_TEST_TYPES) + 2)
+        self.assertEqual(callstack[0].function_name, "halt")
+        self.assertEqual(callstack[-1].function_name, "main")
+        for index, (function, _, struct_format, value, _) in enumerate(self.VALUE_TEST_TYPES):
+            frame = callstack[index + 1]
+            function_name = f"callee_saved_test::{function}"
+            # As elsewhere, the optimized build can drop the namespace of a leaf function.
+            self.assertIn(frame.function_name, (function_name, function), f"Unexpected frame: {frame.function_name}")
+            self.assertEqual(len(frame.locals), 1, f"Unexpected locals for {function_name}")
+            if struct_format.startswith("<"):
+                self.assert_variable(frame.locals[0], "reg_value", value, True, f"reg_value of {function_name}")
+            else:
+                # A const char* held in a callee-saved register: verify it points at the test string.
+                address = self.get_symbol_address(parsed_elf, struct_format)
+                self.assert_string_pointer(frame.locals[0], "reg_value", address, f"reg_value of {function_name}")
+
     @parameterized.expand(
         [
             ("abcd", "build/riscv-src/blackhole/callstack.debug.brisc.elf"),  # Invalid location string
@@ -1722,5 +1949,5 @@ class TestCallStack(unittest.TestCase):
         """Test invalid inputs for callstack function."""
 
         # Check for invalid location
-        with self.assertRaises((util.TTException, ValueError, FileNotFoundError)):
+        with self.assertRaises((TTException, ValueError, FileNotFoundError)):
             lib.callstack(location, elf_paths, offsets, risc_name, None, max_depth, True, device_id, self.context)

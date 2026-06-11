@@ -34,6 +34,7 @@ Examples:
 
 import traceback
 from ttexalens import util as util
+from ttexalens.exceptions import TTException
 from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.coordinate import VALID_COORDINATE_TYPES, OnChipCoordinate
@@ -168,7 +169,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                         coord_str = "N/A"
                     cell_contents_str.append(color_block(coord_str, block_type))
                 else:
-                    raise util.TTException(f"Invalid cell contents requested: '{ct}'")
+                    raise TTException(f"Invalid cell contents requested: '{ct}'")
             return ", ".join(cell_contents_str)
 
         print(

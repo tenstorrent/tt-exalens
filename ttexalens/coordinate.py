@@ -42,9 +42,8 @@ The following coordinate systems are available to represent a grid location on t
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
-from ttexalens.util import TTException
-from ttexalens.exceptions import CoordinateTranslationError, UnknownCoordinateSystemError
+from typing import TYPE_CHECKING, Any
+from ttexalens.exceptions import CoordinateTranslationError, TTException, UnknownCoordinateSystemError
 
 if TYPE_CHECKING:
     from ttexalens.context import Context
@@ -126,7 +125,7 @@ class OnChipCoordinate:
         return self.device.get_block(self)
 
     # This returns a tuple with the coordinates in the specified coordinate system.
-    def to(self, output_type):
+    def to(self, output_type) -> Any:
         """
         Returns a tuple with the coordinates in the specified coordinate system.
 
@@ -179,7 +178,7 @@ class OnChipCoordinate:
         """
         try:
             output_tuple = self.to(output_type)
-        except CoordinateTranslationError as e:
+        except CoordinateTranslationError:
             return "N/A"
 
         if output_type == "logical":
@@ -322,13 +321,13 @@ class OnChipCoordinate:
     def noc_read(
         self,
         address: int,
-        size_bytes: int,
+        buffer: bytearray | memoryview,
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
-    ) -> bytes:
-        return self.device.noc_read(self, address, size_bytes, noc_id, use_4B_mode, dma_threshold, safe_mode)
+    ) -> None:
+        self.device.noc_read(self, address, buffer, noc_id, use_4B_mode, dma_threshold, safe_mode)
 
     def noc_read32(self, address: int, noc_id: int | None = None, safe_mode: bool | None = None) -> int:
         return self.device.noc_read32(self, address, noc_id, safe_mode)
@@ -336,13 +335,13 @@ class OnChipCoordinate:
     def noc_write(
         self,
         address: int,
-        data: bytes,
+        data: bytes | bytearray | memoryview,
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
     ):
-        return self.device.noc_write(self, address, data, noc_id, use_4B_mode, dma_threshold, safe_mode)
+        self.device.noc_write(self, address, data, noc_id, use_4B_mode, dma_threshold, safe_mode)
 
     def noc_write32(self, address: int, data: int, noc_id: int | None = None, safe_mode: bool | None = None):
-        return self.device.noc_write32(self, address, data, noc_id, safe_mode)
+        self.device.noc_write32(self, address, data, noc_id, safe_mode)

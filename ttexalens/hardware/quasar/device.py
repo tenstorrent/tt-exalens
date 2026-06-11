@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cache
-import tt_umd
 from ttexalens import util
 from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate

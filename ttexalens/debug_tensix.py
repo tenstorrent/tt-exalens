@@ -1,21 +1,20 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from collections.abc import Sequence
 from enum import Enum
-import struct
 
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.context import Context
 from ttexalens.hardware.blackhole.functional_worker_block import BlackholeFunctionalWorkerBlock
-from ttexalens.util import WARN, TTException
-from ttexalens.device import Device
+from ttexalens.exceptions import TTException
+from ttexalens.util import WARN
 from ttexalens.pack_unpack_regfile import (
     unpack_data,
     unpack_data_direct_access,
     pack_data_direct_access,
     TensixDataFormat,
 )
-from ttexalens.memory_access import MemoryAccess
+from ttexalens.memory_access import create_memory_access
 
 
 def validate_thread_id(thread_id: int) -> None:
@@ -66,7 +65,7 @@ class TensixDebug:
 
         # Using TRISC0 debug hardware to read/write memory
         # Use restricted_access=False because the Tensix dest is outside L1/data_private, but we still need to read/write it via TRISC0 debug hardware.
-        self.mem_access = MemoryAccess.create(
+        self.mem_access = create_memory_access(
             self.noc_block.get_risc_debug(risc_name="trisc0"), restricted_access=False
         )
 
@@ -181,7 +180,8 @@ class TensixDebug:
         if size_bytes > dest_size:
             raise TTException(f"Size {size_bytes} bytes is out of bounds for destination memory block.")
 
-        bytes_data = self.mem_access.read(base_address, size_bytes)
+        bytes_data = bytearray(size_bytes)
+        self.mem_access.read(base_address, bytes_data)
         data.extend(int.from_bytes(bytes_data[i : i + 4], byteorder="little") for i in range(0, size_bytes, 4))
 
         return data
@@ -238,13 +238,13 @@ class TensixDebug:
                 self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
                 self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
                 self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
-            elif regfile == REGFILE.SRCB:
-                self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
-                self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
-                self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+            # elif regfile == REGFILE.SRCB:
+            #     self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
+            #     self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+            #     self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
+            #     self.inject_instruction(ops.TT_OP_SETDVALID(0b10), thread_id)
+            #     self.inject_instruction(ops.TT_OP_SHIFTXB(7, 0, row_addr), thread_id)
+            #     self.inject_instruction(ops.TT_OP_CLEARDVALID(0b10, 0), thread_id)
 
             base_cmd = row_addr + (regfile_id << 16)
             for i in range(8):
@@ -266,7 +266,7 @@ class TensixDebug:
 
     def read_regfile(
         self, regfile: int | str | REGFILE, num_tiles: int | None = None, signed=True
-    ) -> list[int | float] | list[str]:
+    ) -> Sequence[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
 
@@ -317,7 +317,7 @@ class TensixDebug:
         except ValueError as e:
             # If the data format is unsupported, return the raw data.
             WARN(e)
-            raw_data: list[str] = [hex(datum) for datum in data if isinstance(datum, int)]
+            raw_data: list[str] = [hex(datum) for datum in data]
             return raw_data
 
     def write_regfile_data(self, regfile: REGFILE, data: list[int], df: TensixDataFormat) -> None:

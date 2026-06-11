@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 from ttexalens import util as util
 import tt_umd
 
-from ttexalens.umd_device import UmdDevice
 
 if TYPE_CHECKING:
     from ttexalens.context import Context
@@ -22,6 +21,9 @@ if TYPE_CHECKING:
 
 @Pyro5.api.expose
 class FileAccessApi:
+    def is_local(self) -> bool:
+        return True
+
     def get_file(self, file_path: str) -> str:
         with open(file_path, "r") as f:
             return f.read()
@@ -138,7 +140,7 @@ class TTExaLensServer:
                         setter = Pyro5.api.expose(wrapper._create_umd_method_wrapper(None, fset=method.fset))  # type: ignore
                     if getattr(method, "fget", None):
                         getter = Pyro5.api.expose(wrapper._create_umd_method_wrapper(None, fget=method.fget))  # type: ignore
-                    new_property = property(getter, setter)
+                    new_property = property(getter, setter)  # pyright: ignore[reportArgumentType]
                     setattr(wrapper, method_name, new_property)
                     setattr(wrapper_type, method_name, new_property)
         return wrapper
@@ -228,7 +230,7 @@ Pyro5.api.register_class_to_dict(enum.Enum, umd_type_to_dict)
 for tt_umd_type in UMD_SERIALIZABLE_TYPES:
     Pyro5.api.register_class_to_dict(tt_umd_type, umd_type_to_dict)
     Pyro5.api.register_dict_to_class(f"{tt_umd_type.__module__}.{tt_umd_type.__name__}", umd_type_from_dict)
-Pyro5.configure.global_config.SERPENT_BYTES_REPR = True
+Pyro5.configure.global_config.SERPENT_BYTES_REPR = True  # pyright: ignore[reportAttributeAccessIssue]
 
 
 def start_server(port: int, context: Context):
@@ -242,6 +244,47 @@ def start_server(port: int, context: Context):
         raise util.TTFatalException("Could not start ttexalens-server.")
 
 
+class RemoteUmdDevice:
+    """
+    Client-side adapter around a Pyro5 UmdDevice proxy.
+    """
+
+    def __init__(self, proxy):
+        self._proxy = proxy
+
+    def noc_read(
+        self,
+        noc_id: int,
+        noc0_x: int,
+        noc0_y: int,
+        address: int,
+        buffer: bytearray | memoryview,
+        use_4B_mode: bool,
+        dma_threshold: int,
+    ) -> None:
+        data = self._proxy.noc_read_bytes(noc_id, noc0_x, noc0_y, address, len(buffer), use_4B_mode, dma_threshold)
+        # Pyro5/serpent returns bytes either as real bytes or as a base64-encoded dict.
+        buffer[:] = serpent.tobytes(data) if isinstance(data, dict) else data
+
+    def __getattr__(self, name):
+        return getattr(self._proxy, name)
+
+
+class RemoteUmdApiWrapper:
+    """
+    Client-side adapter around a Pyro5 UmdApi proxy.
+    """
+
+    def __init__(self, proxy):
+        self._proxy = proxy
+
+    def get_device(self, chip_id: int) -> RemoteUmdDevice:
+        return RemoteUmdDevice(self._proxy.get_device(chip_id))
+
+    def __getattr__(self, name):
+        return getattr(self._proxy, name)
+
+
 class FileAccessApiWrapper:
     """
     A wrapper around the Pyro5 proxy to convert base64-encoded bytes back to bytes.
@@ -253,6 +296,9 @@ class FileAccessApiWrapper:
     def __getattr__(self, name):
         function = getattr(self.proxy, name)
         return lambda *args, **kwargs: function(*args, **kwargs)
+
+    def is_local(self) -> bool:
+        return False
 
     def get_binary(self, binary_path: str) -> io.BufferedIOBase:
         """
@@ -272,7 +318,7 @@ def connect_to_server(server_host="localhost", port=5555) -> tuple[UmdApi, FileA
         # We are returning a wrapper around the Pyro5 proxy to provide UmdApi-like behavior.
         proxy = Pyro5.api.Proxy(pyro_umd_api_address)
         proxy._pyroSerializer = "serpent"
-        umd_api: UmdApi = proxy  # type: ignore
+        umd_api: UmdApi = RemoteUmdApiWrapper(proxy)  # type: ignore
 
         # Connect to FileAccessApi
         pyro_file_api_address = f"PYRO:file_api@{server_host}:{port}"

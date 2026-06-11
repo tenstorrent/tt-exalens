@@ -15,28 +15,14 @@ permissions:
   contents: write
 
 jobs:
-  prepare-release:
-    name: "Prepare Release"
-    strategy:
-      matrix:
-        ubuntu-version: [ "22.04" ]
-
+  get-version:
+    name: "Get version"
     runs-on: ubuntu-latest
-
-    container:
-      image: ghcr.io/tenstorrent/tt-exalens/tt-exalens-ci-ubuntu-${{ matrix.ubuntu-version }}:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-
     outputs:
       version: ${{ steps.get-version.outputs.version }}
-
     steps:
       - name: "Checkout repository"
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
 
       - name: "Get version"
         id: get-version
@@ -49,31 +35,34 @@ jobs:
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "Version is $version"
 
-      - name: "Build wheel"
-        run: |
-          make wheel
-
-      - name: "Upload wheel artifact"
-        uses: actions/upload-artifact@v4
-        with:
-          name: ttexalens_wheel
-          path: build/ttexalens_wheel/*.whl
+  # Build manylinux wheels for every supported (python, arch) combo. Each
+  # cell produces one wheel artifact named wheel-<arch>-cp3<minor>.
+  build-wheels:
+    uses: ./.github/workflows/build-wheels.yml
 
   release:
-    needs: prepare-release
+    needs:
+      - get-version
+      - build-wheels
     runs-on: ubuntu-latest
     name: "Release"
     steps:
       - name: "Download wheel artifacts"
         uses: actions/download-artifact@v4
+        with:
+          # Every artifact produced by build-wheels.yml is named wheel-*.
+          # Merge them into one directory for the release/upload step.
+          pattern: wheel-*
+          path: dist
+          merge-multiple: true
 
       - name: "List downloaded artifacts"
-        run: ls -R
+        run: ls -R dist
 
       - name: "Set release info"
         id: set-release-info
         run: |
-          VERSION="${{ needs.prepare-release.outputs.version }}"
+          VERSION="${{ needs.get-version.outputs.version }}"
           if [ "$VERSION" = "latest" ]; then
             echo "release-name=Latest Release - Development Build" >> $GITHUB_OUTPUT
             echo "release-tag=latest" >> $GITHUB_OUTPUT
@@ -92,4 +81,4 @@ jobs:
           generate_release_notes: ${{ steps.set-release-info.outputs.generate-notes }}
           prerelease: true
           files: |
-            */*.whl
+            dist/*.whl

@@ -30,6 +30,7 @@ from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
+from ttexalens.exceptions import TTException
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
@@ -94,22 +95,23 @@ def execute_safe_read(
         # Find memory block containing the address
         memory_block_info = location.noc_block.noc_memory_map.find_by_noc_address(address)
         if not memory_block_info:
-            raise util.TTException(f"Address 0x{address:08X} is not in a known memory block for location {location}")
+            raise TTException(f"Address 0x{address:08X} is not in a known memory block for location {location}")
         if memory_block_info.memory_block.address.noc_address is None:
-            raise util.TTException(f"Memory block '{memory_block_info.name}' does not have a NOC address")
+            raise TTException(f"Memory block '{memory_block_info.name}' does not have a NOC address")
         memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
         read_size = min(bytes_to_read, memory_block_end - address)
-        bytes = location.noc_read(address, read_size)
-        return bytes, memory_block_info.name
+        data = bytearray(read_size)
+        location.noc_read(address, data)
+        return bytes(data), memory_block_info.name
     else:
         risc_debug = location.noc_block.get_risc_debug(risc_name)
         memory_block_info = risc_debug.risc_info.memory_map.find_by_private_address(address)
         if not memory_block_info:
-            raise util.TTException(
+            raise TTException(
                 f"Address 0x{address:08X} is not in a known memory block for {risc_name} at location {location}"
             )
         if memory_block_info.memory_block.address.private_address is None:
-            raise util.TTException(f"Memory block '{memory_block_info.name}' does not have a private address")
+            raise TTException(f"Memory block '{memory_block_info.name}' does not have a private address")
         memory_block_end = memory_block_info.memory_block.address.private_address + memory_block_info.memory_block.size
         read_size = min(bytes_to_read, memory_block_end - address)
         if memory_block_info.memory_block.address.noc_address is not None:
@@ -117,10 +119,12 @@ def execute_safe_read(
             noc_address = memory_block_info.memory_block.address.noc_address + (
                 address - memory_block_info.memory_block.address.private_address
             )
-            bytes = location.noc_read(noc_address, read_size)
+            data = bytearray(read_size)
+            location.noc_read(noc_address, data)
         else:
-            bytes = risc_debug.read_memory_bytes(address, read_size)
-        return bytes, memory_block_info.name
+            data = bytearray(read_size)
+            risc_debug.read_memory_bytes(address, data)
+        return bytes(data), memory_block_info.name
 
 
 def execute_unsafe_read(
@@ -132,8 +136,9 @@ def execute_unsafe_read(
         if memory_block_info is not None and memory_block_info.memory_block.address.noc_address is not None:
             memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
             read_size = min(bytes_to_read, memory_block_end - address)
-            bytes = location.noc_read(address, read_size, safe_mode=False)
-            return bytes, memory_block_info.name
+            data = bytearray(read_size)
+            location.noc_read(address, data, safe_mode=False)
+            return bytes(data), memory_block_info.name
     else:
         risc_debug = location.noc_block.get_risc_debug(risc_name)
         memory_block_info = risc_debug.risc_info.memory_map.find_by_private_address(address)
@@ -147,10 +152,12 @@ def execute_unsafe_read(
                 noc_address = memory_block_info.memory_block.address.noc_address + (
                     address - memory_block_info.memory_block.address.private_address
                 )
-                bytes = location.noc_read(noc_address, read_size, safe_mode=False)
+                data = bytearray(read_size)
+                location.noc_read(noc_address, data, safe_mode=False)
             else:
-                bytes = risc_debug.read_memory_bytes(address, read_size)
-            return bytes, memory_block_info.name
+                data = bytearray(read_size)
+                risc_debug.read_memory_bytes(address, data)
+            return bytes(data), memory_block_info.name
 
     # Find end address of unknown block and limit read size to that
     if risc_debug is None:
@@ -165,9 +172,10 @@ def execute_unsafe_read(
             bytes_to_read = min(bytes_to_read, next_block_start - address)
 
     # Not found in known memory blocks, do direct read
+    data = bytearray(bytes_to_read)
     if risc_debug:
         with risc_debug.ensure_private_memory_access():
-            bytes = risc_debug.read_memory_bytes(address, bytes_to_read, safe_mode=False)
+            risc_debug.read_memory_bytes(address, data, safe_mode=False)
     else:
-        bytes = location.noc_read(address, bytes_to_read, safe_mode=False)
-    return bytes, "???"
+        location.noc_read(address, data, safe_mode=False)
+    return bytes(data), "???"

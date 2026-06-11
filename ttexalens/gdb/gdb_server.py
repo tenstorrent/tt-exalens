@@ -5,7 +5,7 @@ from io import StringIO
 import threading
 import traceback
 from typing import Callable, IO
-from xml.sax.saxutils import escape as xml_escape, unescape as xml_unescape
+from xml.sax.saxutils import escape as xml_escape
 
 from ttexalens.gdb.gdb_communication import (
     GDB_ASCII_COLON,
@@ -27,7 +27,7 @@ from ttexalens.memory_access import RestrictedMemoryAccessError
 # Helper class returns currently debugging list of threads to gdb client in paged manner
 class GdbThreadListPaged:
     def __init__(self, threads: dict[int, GdbThreadId]):
-        self.threads = [thread for thread in threads.values() if isinstance(thread, GdbThreadId)]
+        self.threads = list(threads.values())
         self.returned = 0
 
     def next(self, writer: GdbMessageWriter, max_length: int):
@@ -315,7 +315,7 @@ class GdbServer(threading.Thread):
             op = parser.read_char()
             thread_id = parser.parse_thread_id()
             util.VERBOSE(f"GDB: Set thread {thread_id} and prepare for op '{chr(op) if op else '[EOM]'}'")
-            if self.current_process is None or thread_id is None:
+            if self.current_process is None:
                 # Respond that we are not debugging anything at the moment
                 writer.append(b"E01")
             else:
@@ -377,7 +377,8 @@ class GdbServer(threading.Thread):
             else:
                 # Read memory bytes
                 try:
-                    buffer = self.current_process.mem_access.read(address, length)
+                    buffer = bytearray(length)
+                    self.current_process.mem_access.read(address, buffer)
                     writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
                 except RestrictedMemoryAccessError as e:
                     util.ERROR(str(e), file=self.error_stream)
@@ -664,12 +665,12 @@ class GdbServer(threading.Thread):
                     thread_action = "c"
                 elif action == 67:  # 'C' - continue with signal
                     thread_action = "c"
-                    signal = parser.parse_hex()  # ignore signal
+                    parser.parse_hex()  # ignore signal
                 elif action == 115:  # 's' - step
                     thread_action = "s"
                 elif action == 82:  # 'S' - step with signal
                     thread_action = "s"
-                    signal = parser.parse_hex()  # ignore signal
+                    parser.parse_hex()  # ignore signal
                 elif action == 116:  # 't' - stop
                     if not self.is_non_stop:
                         util.WARN(
@@ -692,15 +693,14 @@ class GdbServer(threading.Thread):
                 if parser.parse(b":"):
                     # Execute action on selected thread
                     thread_id = parser.parse_thread_id()
-                    if thread_id is not None:
-                        if thread_id.process_id == -1:
-                            thread_id = None
-                        elif thread_id.process_id not in self.debugging_threads:
-                            util.WARN(
-                                f"GDB: we are not debugging process id: {thread_id.process_id}", file=self.error_stream
-                            )
-                            writer.append(b"E01")
-                            return True
+                    if thread_id.process_id == -1:
+                        thread_id = None
+                    elif thread_id.process_id not in self.debugging_threads:
+                        util.WARN(
+                            f"GDB: we are not debugging process id: {thread_id.process_id}", file=self.error_stream
+                        )
+                        writer.append(b"E01")
+                        return True
                 else:
                     thread_id = None
 
@@ -944,7 +944,8 @@ class GdbServer(threading.Thread):
             else:
                 # Read memory bytes
                 try:
-                    buffer = self.current_process.mem_access.read(address, length)
+                    buffer = bytearray(length)
+                    self.current_process.mem_access.read(address, buffer)
                     writer.append(b"b")
                     writer.append(buffer)  # Reply with data should start with 'b'
                 except RestrictedMemoryAccessError as e:
@@ -980,7 +981,7 @@ class GdbServer(threading.Thread):
             # ‘z0,addr,kind’
             addr = parser.parse_hex()
             parser.parse(b",")
-            kind = parser.parse_hex()  # We ignore kind for now
+            parser.parse_hex()  # We ignore kind for now
             assert self.current_process is not None, "Current process should not be None when removing breakpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, len(watchpoints)):
@@ -994,13 +995,13 @@ class GdbServer(threading.Thread):
             # ‘z1,addr,kind’
             addr = parser.parse_hex()
             parser.parse(b",")
-            kind = parser.parse_hex()  # We ignore kind for now
+            parser.parse_hex()  # We ignore kind for now
             # TODO: We don't support hardware breakpoints
         elif parser.parse(b"z2,"):  # Remove a write watchpoint at address.
             # ‘z2,addr,kind’
             addr = parser.parse_hex()
             parser.parse(b",")
-            kind = parser.parse_hex()
+            parser.parse_hex()  # kind, ignored
             assert self.current_process is not None, "Current process should not be None when removing watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, len(watchpoints)):
@@ -1014,7 +1015,7 @@ class GdbServer(threading.Thread):
             # ‘z3,addr,kind’
             addr = parser.parse_hex()
             parser.parse(b",")
-            kind = parser.parse_hex()
+            parser.parse_hex()  # kind, ignored
             assert self.current_process is not None, "Current process should not be None when removing watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, len(watchpoints)):
@@ -1028,7 +1029,7 @@ class GdbServer(threading.Thread):
             # ‘z4,addr,kind’
             addr = parser.parse_hex()
             parser.parse(b",")
-            kind = parser.parse_hex()
+            parser.parse_hex()  # kind, ignored
             assert self.current_process is not None, "Current process should not be None when removing watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, len(watchpoints)):
@@ -1042,7 +1043,7 @@ class GdbServer(threading.Thread):
             # ‘Z0,addr,kind[;cond_list…][;cmds:persist,cmd_list…]’
             addr = parser.parse_hex()
             parser.parse(b",")
-            kind = parser.parse_hex()
+            parser.parse_hex()  # kind, ignored
             if addr is None:
                 util.ERROR(f"GDB: Something wrong with address of Z0: {parser.data!r}", file=self.error_stream)
                 writer.append(b"E01")
@@ -1074,7 +1075,7 @@ class GdbServer(threading.Thread):
             # ‘Z1,addr,kind[;cond_list…][;cmds:persist,cmd_list…]’
             addr = parser.parse_hex()
             parser.parse(b",")
-            kind = parser.parse_hex()
+            parser.parse_hex()  # kind, ignored
             # TODO: We don't support hardware breakpoints
         elif parser.parse(
             b"Z2,"
@@ -1082,7 +1083,7 @@ class GdbServer(threading.Thread):
             # ‘Z2,addr,kind’
             addr = parser.parse_hex()
             parser.parse(b",")
-            kind = parser.parse_hex()
+            parser.parse_hex()  # kind, ignored
             if addr is None:
                 util.ERROR(f"GDB: Something wrong with address of Z2: {parser.data!r}", file=self.error_stream)
                 writer.append(b"E01")
@@ -1116,7 +1117,7 @@ class GdbServer(threading.Thread):
             # ‘Z3,addr,kind’
             addr = parser.parse_hex()
             parser.parse(b",")
-            kind = parser.parse_hex()
+            parser.parse_hex()  # kind, ignored
             if addr is None:
                 util.ERROR(f"GDB: Something wrong with address of Z3: {parser.data!r}", file=self.error_stream)
                 writer.append(b"E01")
@@ -1150,7 +1151,7 @@ class GdbServer(threading.Thread):
             # ‘Z4,addr,kind’
             addr = parser.parse_hex()
             parser.parse(b",")
-            kind = parser.parse_hex()
+            parser.parse_hex()  # kind, ignored
             if addr is None:
                 util.ERROR(f"GDB: Something wrong with address of Z4: {parser.data!r}", file=self.error_stream)
                 writer.append(b"E01")
@@ -1209,7 +1210,7 @@ class GdbServer(threading.Thread):
                     "pid": pid,
                     "user": self.context.short_name,
                     "cores": process.virtual_core_id,
-                    "device": process.risc_debug.risc_location.location._device._id,
+                    "device": process.risc_debug.risc_location.location.device_id,
                     "core_type": process.core_type,
                     "core_location": process.risc_debug.risc_location.location.to_user_str(),
                     "risc": process.risc_debug.risc_location.risc_name,

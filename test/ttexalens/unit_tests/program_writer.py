@@ -13,6 +13,13 @@ class RiscvProgramWriter:
         self.start_address = core_simulator.program_base_address
         self.instructions: list[int] = []
 
+        # Wormhole/Blackhole have an ebreak hardware bug: the fetch pipeline prefetches (and on
+        # resume re-runs) the instructions following an ebreak, so those must be NOPs. The compiler
+        # emits this workaround via -mtt-fix-whbhebreak (8 trailing NOPs); hand-written programs must
+        # do the same. Other architectures don't need the padding.
+        device = core_simulator.device
+        self.ebreak_nop_padding = 8 if device.is_wormhole() or device.is_blackhole() else 0
+
     @property
     def current_address(self) -> int:
         return self.start_address + len(self.instructions) * 4
@@ -31,9 +38,11 @@ class RiscvProgramWriter:
         self.append(0x00000013)
 
     def append_ebreak(self):
-        """Append an EBREAK instruction."""
+        """Append an EBREAK instruction followed by the Wormhole/Blackhole ebreak NOP padding."""
         # https://riscv-software-src.github.io/riscv-unified-db/manual/html/isa/isa_20240411/insts/ebreak.html
         self.append(0x00100073)
+        for _ in range(self.ebreak_nop_padding):
+            self.append_nop()
 
     def append_lui(self, register: int, value: int):
         """Load the zero-extended value into register."""

@@ -51,12 +51,14 @@ class ClientSocket:
             self.socket = None
 
     def input_ready(self, timeout: float = 0):
+        if self.socket is None:
+            return False
         readable, _, _ = select.select([self.socket], [], [], timeout)
         if readable:
             return True
         return False
 
-    def peek(self, packet_size=1):
+    def peek(self, packet_size: int | None = None):
         assert self.socket is not None
         if packet_size is None:
             packet_size = self.packet_size
@@ -68,7 +70,7 @@ class ClientSocket:
             packet_size = self.packet_size
         return self.socket.recv(packet_size)
 
-    def write(self, data: bytes):
+    def write(self, data: bytes | bytearray):
         assert self.socket is not None
         self.socket.send(data)
 
@@ -269,7 +271,10 @@ class GdbMessageParser:
         number = 0
         shift = 0
         for _ in range(4):
-            number += self.read_hex(2) << shift
+            byte = self.read_hex(2)
+            if byte is None:
+                return None
+            number += byte << shift
             shift += 8
         return number
 
@@ -293,15 +298,16 @@ class GdbMessageParser:
         # It is an error to specify all processes but a specific thread, such as ‘p-1.tid’. Note that the ‘p’ prefix is not used for those packets and replies explicitly documented to
         # include a process ID, rather than a thread-id.
 
-        # Check if it includes process id
+        # Check if it includes process id. parse_hex returns None on malformed input;
+        # fall back to -1 (the protocol's "all" sentinel).
         if self.parse(b"p"):
-            process_id = self.parse_hex()
+            process_id = self.parse_hex() or -1
             if self.parse(b"."):
-                return GdbThreadId(process_id, self.parse_hex())
+                return GdbThreadId(process_id, self.parse_hex() or -1)
             else:
                 return GdbThreadId(process_id, -1)
         else:
-            return GdbThreadId(-1, self.parse_hex())
+            return GdbThreadId(-1, self.parse_hex() or -1)
 
     # Reads character from the message and return it as an ascii value or None if there are no more characters
     def read_char(self):
@@ -370,14 +376,14 @@ class GdbMessageWriter:
             self.data.append(char)
             self.checksum += char
 
-    def append(self, data: bytes):
+    def append(self, data: bytes | bytearray | memoryview):
         length = len(data)
         position = 0
         while position < length:
             self.append_char(data[position])
             position += 1
 
-    def append_unescaped(self, data: bytes):
+    def append_unescaped(self, data: bytes | bytearray | memoryview):
         self.data.extend(data)
         self.checksum += sum(data)
 

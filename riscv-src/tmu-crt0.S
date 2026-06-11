@@ -100,6 +100,23 @@ address_fix:
 /* set stack pointer */
   la sp, __stack_top
 
+  # Set the thread pointer to the base of the per-RISC thread_local region.
+  # A `thread_local` variable is accessed as tp + tprel_offset, and the linker
+  # places the TLS block at the region origin (__thread_local_start), so this
+  # makes those accesses resolve to the variable's slot in REGION_THREAD_LOCAL.
+  la tp, __thread_local_start
+
+  # Clear the thread_local .tbss span. The rest of .thread_local (initialized
+  # .tdata and the __attribute__((section(".thread_local"))) form) is written
+  # directly by the loader, so only the .tbss bytes need zeroing here.
+  la      t0, __thread_local_bss_start # Load the address of __thread_local_bss_start into t0
+  la      t1, __thread_local_bss_end   # Load the address of __thread_local_bss_end into t1
+11:beq    t0, t1, 12f                  # If t0 == t1, break out of loop
+  sw      zero, 0(t0)                  # Store 0 at address pointed by t0
+  addi    t0, t0, 4                    # Move to the next word (32-bit) address
+  j       11b                          # Jump back to label 11
+12:
+
   # Clear the bss segment
   la      t0, __ldm_bss_start          # Load the address of __ldm_bss_start into t0
   la      t1, __ldm_bss_end            # Load the address of __ldm_bss_end into t1

@@ -271,14 +271,15 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
 
         # Test reading initial data
-        data = self.core_sim.risc_debug.read_memory_bytes(addr, 8)
+        data = bytearray(8)
+        self.core_sim.risc_debug.read_memory_bytes(addr, data)
         self.assertEqual(data, b"\x44\x33\x22\x11\x88\x77\x66\x55", "Should read initial 8 bytes")
 
         # Test writing new data
         self.core_sim.risc_debug.write_memory_bytes(addr, b"\x78\x56\x34\x12\xdd\xcc\xbb\xaa")
 
         # Test reading back what we wrote
-        data = self.core_sim.risc_debug.read_memory_bytes(addr, 8)
+        self.core_sim.risc_debug.read_memory_bytes(addr, data)
         self.assertEqual(data, b"\x78\x56\x34\x12\xdd\xcc\xbb\xaa", "Should read/write 8 bytes correctly")
         self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertEqual(self.core_sim.read_data(noc_addr + 4), 0xAABBCCDD)
@@ -350,7 +351,8 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
 
         # Test unaligned read
-        data = self.core_sim.risc_debug.read_memory_bytes(addr + offset, size)
+        data = bytearray(size)
+        self.core_sim.risc_debug.read_memory_bytes(addr + offset, data)
         self.assertEqual(data, expected_read, f"Should read {size} bytes at offset {offset}")
 
         # Test unaligned write preserves surrounding data
@@ -358,7 +360,8 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.risc_debug.write_memory_bytes(addr + offset, write_data)
 
         # Verify the write by reading back and comparing
-        read_back = self.core_sim.risc_debug.read_memory_bytes(addr + offset, size)
+        read_back = bytearray(size)
+        self.core_sim.risc_debug.read_memory_bytes(addr + offset, read_back)
         self.assertEqual(read_back, write_data, f"Read back data should match written data at offset {offset}")
 
         # Verify all three words to ensure proper boundary handling
@@ -419,7 +422,7 @@ class TestDebugging(unittest.TestCase):
 
         # Since simulator is slow, we need to wait a bit by reading something
         if self.device.is_quasar():
-            for i in range(50):
+            for _ in range(50):
                 if self.core_sim.read_data(addr) == 0x87654000:
                     break
 
@@ -459,6 +462,12 @@ class TestDebugging(unittest.TestCase):
 
     def test_ebreak_and_step(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+
+        if self.core_sim.is_eth_block() and self.device.is_wormhole():
+            self.skipTest(
+                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
+            )
+
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
         assert noc_addr is not None, "Translated NOC address should not be None."
@@ -481,29 +490,45 @@ class TestDebugging(unittest.TestCase):
 
         self.core_sim.set_reset(False)
 
-        # On blackhole, we need to step one more time...
+        # Layout: ebreak@0, ebreak_nop_padding NOPs, LUI(addr), LUI(value), SW, while(true).
 
         # Verify value at address, value should not be changed and should stay the same since core is in halt
         self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
         self.assertPcEquals(4)
-        # Step and verify that pc is 8 and value is not changed
-        self.core_sim.step()
-        self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
-        self.assertPcEquals(8)
-        # Adding two steps since logic in hw automatically updates register and memory values
-        self.core_sim.step()
-        self.core_sim.step()
-        # Verify that pc is 16 and value has changed
-        self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
-        self.assertPcEquals(16)
-        # Since we are on endless loop, we should never go past 16
-        for i in range(10):
-            # Step and verify that pc is 16 and value has changed
+
+        # Go through NOPs
+        pc = 4
+        for _ in range(self.program_writer.ebreak_nop_padding):
             self.core_sim.step()
-            self.assertPcEquals(16)
+            pc += 4
+            self.assertEqual(self.core_sim.read_data(noc_addr), 0x12345678)
+            self.assertPcEquals(pc)
+
+        # 3 instructions for store
+        self.core_sim.step()
+        pc += 4
+        self.assertPcEquals(pc)
+        self.core_sim.step()
+        pc += 4
+        self.assertPcEquals(pc)
+        self.core_sim.step()
+        pc += 4
+        self.assertPcEquals(pc)
+        self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
+
+        # Do 10 steps in the infinite loop
+        for _ in range(10):
+            self.core_sim.step()
+            self.assertPcEquals(pc)
 
     def test_continue(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+
+        if self.core_sim.is_eth_block() and self.device.is_wormhole():
+            self.skipTest(
+                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
+            )
+
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
         assert noc_addr is not None, "Translated NOC address should not be None."
@@ -563,7 +588,7 @@ class TestDebugging(unittest.TestCase):
                 iteration = iteration + 1
                 if iteration > 1000:
                     break
-            except RiscHaltError as e:
+            except RiscHaltError:
                 # print pc
                 self.core_sim.set_reset(True)
                 return
@@ -573,6 +598,12 @@ class TestDebugging(unittest.TestCase):
 
     def test_halt_continue(self):
         """Test running 28 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+
+        if self.core_sim.is_eth_block() and self.device.is_wormhole():
+            self.skipTest(
+                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
+            )
+
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
         assert noc_addr is not None, "Translated NOC address should not be None."
@@ -611,7 +642,7 @@ class TestDebugging(unittest.TestCase):
         self.assertGreaterEqual(previous_value, 0x87654000)
 
         # Loop halt and continue
-        for i in range(10):
+        for _ in range(10):
             # Halt
             self.core_sim.halt()
 
@@ -628,6 +659,12 @@ class TestDebugging(unittest.TestCase):
 
     def test_halt_status(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
+
+        if self.core_sim.is_eth_block() and self.device.is_wormhole():
+            self.skipTest(
+                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
+            )
+
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
         assert noc_addr is not None, "Translated NOC address should not be None."
@@ -828,7 +865,7 @@ class TestDebugging(unittest.TestCase):
 
         # Since simulator is slow, we need to wait a bit by reading something
         if self.device.is_quasar():
-            for i in range(50):
+            for _ in range(50):
                 self.core_sim.read_data(0)
 
         # Value should not be changed and should stay the same since core is in halt
@@ -854,7 +891,7 @@ class TestDebugging(unittest.TestCase):
 
         # Since simulator is slow, we need to wait a bit by reading something
         if self.device.is_quasar():
-            for i in range(200):
+            for _ in range(200):
                 if self.core_sim.read_data(noc_addr) == 0x87654000:
                     break
 
@@ -887,7 +924,9 @@ class TestDebugging(unittest.TestCase):
             self.skipTest("Watchpoints are disabled for this RISC.")
 
         if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest("This test ND fails in CI. Issue: #770")
+            self.skipTest(
+                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
+            )
 
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
@@ -898,19 +937,11 @@ class TestDebugging(unittest.TestCase):
 
         # Write code for brisc core at address 0
         # C++:
-        #   asm volatile ("ebreak");
-        #   asm volatile ("nop");
-        #   asm volatile ("nop");
-        #   asm volatile ("nop");
-        #   asm volatile ("nop");
+        #   asm volatile ("ebreak");  // append_ebreak() also emits the WH/BH ebreak NOP padding
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
         self.program_writer.append_ebreak()
-        self.program_writer.append_nop()
-        self.program_writer.append_nop()
-        self.program_writer.append_nop()
-        self.program_writer.append_nop()
         self.program_writer.append_store_word_to_memory(
             0x10000, 0x87654000, 10, 11
         )  # Load address into x10, data into x11, store word
@@ -927,9 +958,11 @@ class TestDebugging(unittest.TestCase):
         self.assertFalse(self.core_sim.read_status().is_pc_watchpoint_hit, "PC watchpoint should not be the cause.")
         self.assertPcEquals(4)
 
-        # Set watchpoint on address 12 and 32
+        # Layout: ebreak@0, `padding` NOPs, LUI(addr), LUI(value), SW, while(true)@(16 + 4*padding).
+        # Watch a NOP within the padding and the final infinite loop.
+        loop_offset = 16 + 4 * self.program_writer.ebreak_nop_padding
         self.core_sim.debug_hardware.set_watchpoint_on_pc_address(0, self.core_sim.program_base_address + 12)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(1, self.core_sim.program_base_address + 32)
+        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(1, self.core_sim.program_base_address + loop_offset)
 
         # Continue and verify that we hit first watchpoint
         self.core_sim.continue_execution()
@@ -955,7 +988,7 @@ class TestDebugging(unittest.TestCase):
         )
         self.assertFalse(self.core_sim.read_status().watchpoints_hit[0], "Watchpoint 0 should not be hit.")
         self.assertTrue(self.core_sim.read_status().watchpoints_hit[1], "Watchpoint 1 should be hit.")
-        self.assertPcEquals(32)
+        self.assertPcEquals(loop_offset)
         self.assertEqual(self.core_sim.read_data(noc_addr), 0x87654000)
 
     def test_watchpoint_address(self):
@@ -963,6 +996,11 @@ class TestDebugging(unittest.TestCase):
 
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
+
+        if self.core_sim.is_eth_block() and self.device.is_wormhole():
+            self.skipTest(
+                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
+            )
 
         # Write code for brisc core at address 0
         # C++:
@@ -1096,6 +1134,8 @@ class TestDebugging(unittest.TestCase):
                     self.assertTrue(state.is_memory, f"Watchpoint {watchpoint_index} should be memory watchpoint.")
                     self.assertFalse(state.is_read, f"Watchpoint {watchpoint_index} should not watch for reads.")
                     self.assertTrue(state.is_write, f"Watchpoint {watchpoint_index} should watch for writes.")
+                case _:
+                    self.fail(f"Unknown watchpoint_type: {watchpoint_type}")
 
         addresses_to_set = [12, 32, 0x1234, 0x8654, 0x87654321, 0x12345678, 0, 0xFFFFFFFF]
         watchpoint_types = ["pc", "pc", "access", "access", "read", "read", "write", "write"]
@@ -1142,6 +1182,11 @@ class TestDebugging(unittest.TestCase):
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
 
+        if self.core_sim.is_eth_block() and self.device.is_wormhole():
+            self.skipTest(
+                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
+            )
+
         addresses = [0x10000, 0x11000, 0x12000, 0x13000]
         noc_addresses: list[int] = []
         for addr in addresses:
@@ -1156,11 +1201,7 @@ class TestDebugging(unittest.TestCase):
 
         # Write code for brisc core at address 0
         # C++:
-        #   asm volatile ("ebreak");
-        #   asm volatile ("nop");
-        #   asm volatile ("nop");
-        #   asm volatile ("nop");
-        #   asm volatile ("nop");
+        #   asm volatile ("ebreak");  // append_ebreak() also emits the WH/BH ebreak NOP padding
         #   int* a = (int*)0x10000;
         #   *a = 0x45678000;
         #   int* c = (int*)0x20000;
@@ -1171,10 +1212,6 @@ class TestDebugging(unittest.TestCase):
         #   d = *c;
         #   while (true);
         self.program_writer.append_ebreak()
-        self.program_writer.append_nop()
-        self.program_writer.append_nop()
-        self.program_writer.append_nop()
-        self.program_writer.append_nop()
         self.program_writer.append_store_word_to_memory(addresses[0], 0x45678000, 10, 11)  # First write
         self.program_writer.append_load_word_from_memory_to_register(12, addresses[1], 10)  # First read
         self.program_writer.append_store_word_to_memory(addresses[2], 0x87654000, 10, 11)  # Second write
@@ -1342,7 +1379,7 @@ class TestDebugging(unittest.TestCase):
 
         # Since simulator is slow, we need to wait a bit by reading something
         if self.device.is_quasar():
-            for i in range(20):
+            for _ in range(20):
                 self.core_sim.read_data(0)
 
         # We should pass for loop very fast and should be halted here already
@@ -1414,7 +1451,7 @@ class TestDebugging(unittest.TestCase):
 
         # Since simulator is slow, we need to wait a bit by reading something
         if self.device.is_quasar():
-            for i in range(20):
+            for _ in range(20):
                 self.core_sim.read_data(0)
 
         # We should pass for loop very fast and should be halted here already

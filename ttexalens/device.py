@@ -26,6 +26,9 @@ T = TypeVar("T")
 
 
 class TensixInstructions:
+    # These TT_OP_* declarations are stubs only — the real implementations are bound
+    # dynamically in __init__ by copying from a per-arch ops module via setattr.
+    # They exist so static type-checkers know the attribute names and return type.
     def __init__(self, ops):
         for func_name in dir(ops):
             func = getattr(ops, func_name)
@@ -34,36 +37,48 @@ class TensixInstructions:
                 setattr(self.__class__, func_name, static_method)
 
     @staticmethod
-    def TT_OP_SFPLOAD(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr):
-        pass
+    def TT_OP_SFPLOAD(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_STALLWAIT(stall_res, wait_res):
-        pass
+    def TT_OP_STALLWAIT(stall_res, wait_res) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_MOVDBGA2D(dest_32b_lo, src, addr_mode, instr_mod, dst):
-        pass
+    def TT_OP_MOVDBGA2D(dest_32b_lo, src, addr_mode, instr_mod, dst) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_SFPSTORE(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr):
-        pass
+    def TT_OP_SFPSTORE(lreg_ind, instr_mod0, sfpu_addr_mode, dest_reg_addr) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_SETRWC(clear_ab_vld, rwc_cr, rwc_d, rwc_b, rwc_a, BitMask):
-        pass
+    def TT_OP_SETRWC(clear_ab_vld, rwc_cr, rwc_d, rwc_b, rwc_a, BitMask) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_ZEROACC(clear_mode, AddrMode, dst):
-        pass
+    def TT_OP_ZEROACC(clear_mode, AddrMode, dst) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_SFPSHFT(Imm12, VC, VD, Mod1):
-        pass
+    def TT_OP_SFPSHFT(Imm12, VC, VD, Mod1) -> int:
+        raise NotImplementedError
 
     @staticmethod
-    def TT_OP_INCRWC(cr, DstInc, SrcBInc, SrcAInc):
-        pass
+    def TT_OP_INCRWC(cr, DstInc, SrcBInc, SrcAInc) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_SETDVALID(setvalid) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_CLEARDVALID(cleardvalid, reset) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_SHIFTXB(addr_mode, rot_shift, shift_row) -> int:
+        raise NotImplementedError
 
 
 #
@@ -165,6 +180,7 @@ class Device:
 
         noc_queue = self._noc_to_use  # reference, not a copy
         first_used = noc_queue[0]
+        selected_noc = first_used
 
         while True:
             try:
@@ -278,12 +294,12 @@ class Device:
         self,
         location: OnChipCoordinate,
         address: int,
-        size_bytes: int,
+        buffer: bytearray | memoryview,
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
-    ) -> bytes:
+    ) -> None:
         noc_x, noc_y = location._noc0_coord
 
         if use_4B_mode is None:
@@ -294,24 +310,25 @@ class Device:
             safe_mode = self._context.safe_mode
 
         if safe_mode:
-            self._validate_noc_access_is_safe(location, address, size_bytes, is_write=False)
+            self._validate_noc_access_is_safe(location, address, len(buffer), is_write=False)
 
-        def noc_operation(noc_id: int) -> bytes:
-            return self._umd_device.noc_read(noc_id, noc_x, noc_y, address, size_bytes, use_4B_mode, dma_threshold)
+        def noc_operation(noc_id: int) -> None:
+            self._umd_device.noc_read(noc_id, noc_x, noc_y, address, buffer, use_4B_mode, dma_threshold)
 
-        return self._with_noc_failover(noc_operation, noc_id)
+        self._with_noc_failover(noc_operation, noc_id)
 
     def noc_read32(
         self, location: OnChipCoordinate, address: int, noc_id: int | None = None, safe_mode: bool | None = None
     ) -> int:
-        result = self.noc_read(location, address, 4, noc_id, True, safe_mode=safe_mode)
-        return int.from_bytes(result, byteorder="little")
+        buffer = bytearray(4)
+        self.noc_read(location, address, buffer, noc_id, True, safe_mode=safe_mode)
+        return int.from_bytes(buffer, byteorder="little")
 
     def noc_write(
         self,
         location: OnChipCoordinate,
         address: int,
-        data: bytes,
+        data: bytes | bytearray | memoryview,
         noc_id: int | None = None,
         use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
@@ -332,7 +349,7 @@ class Device:
         def noc_operation(noc_id: int) -> None:
             self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
 
-        return self._with_noc_failover(noc_operation, noc_id)
+        self._with_noc_failover(noc_operation, noc_id)
 
     def noc_write32(
         self,
@@ -342,9 +359,7 @@ class Device:
         noc_id: int | None = None,
         safe_mode: bool | None = None,
     ):
-        return self.noc_write(
-            location, address, data.to_bytes(4, byteorder="little"), noc_id, True, safe_mode=safe_mode
-        )
+        self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True, safe_mode=safe_mode)
 
     def bar0_read32(self, address: int) -> int:
         return self._umd_device.bar0_read32(address)
@@ -470,8 +485,8 @@ class Device:
     @cached_property
     def active_eth_block_locations(self) -> list[OnChipCoordinate]:
         active_channels: list[int] = []
-        for src_chip, channels in self._context.cluster_descriptor.get_ethernet_connections().items():
-            for src_chan, dest in channels.items():
+        for _, channels in self._context.cluster_descriptor.get_ethernet_connections().items():
+            for _, dest in channels.items():
                 dest_chip, dest_chan = dest
                 if dest_chip == self.id:
                     active_channels.append(dest_chan)

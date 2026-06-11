@@ -1,33 +1,39 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from contextlib import contextmanager
+from __future__ import annotations
 import datetime
 import os
 import threading
 import time
 import traceback
-from typing import Sequence
+from typing import TYPE_CHECKING, Sequence
 import tt_umd
 from ttexalens import util
 from ttexalens.context import NocId
 from ttexalens.exceptions import TimeoutDeviceRegisterError
 
+if TYPE_CHECKING:
+    from ttexalens.umd_api import UmdApi
+
 
 class UmdDevice:
     def __init__(
         self,
+        api: UmdApi,
         device: tt_umd.TTDevice,
         device_id: int,
         unique_id: int,
         active_eth_coords_on_mmio_chip: list[tuple[int, int]] = [],
         soc_descriptor: tt_umd.SocDescriptor | None = None,
+        cluster_descriptor: tt_umd.ClusterDescriptor | None = None,
         is_simulation: bool = False,
     ):
         # IMPORTANT:
         # This class is a wrapper around tt_umd.TTDevice that allows us to use it over tt-exalens server.
         # It cannot have public members (value attributes) because they won't be serialized by Pyro5.
         # Instead, all public members must be properties with getter/setter methods.
+        self.__api = api
         self.__device = device
         self._arch = device.get_arch()
         self._is_mmio_capable = not device.is_remote()
@@ -37,10 +43,52 @@ class UmdDevice:
         self._unique_id = unique_id
         self._active_eth_coords_on_mmio_chip = active_eth_coords_on_mmio_chip  # in translated coords
         self._is_simulation = is_simulation
+        self.__device_coords = UmdDevice.initialize_device_coords_cache(self._soc_descriptor, self._arch)
 
         # TODO: Until UMD implements timeout exception, we measure time here
         self.__write_timeout_lock = threading.Lock()
         self.__write_timeout_events: list[TimeoutDeviceRegisterError] = []
+
+        # On T3K we observed slower communication over default active ETH, so we try to switch to another active ETH if available.
+        if (
+            device.is_remote()
+            and cluster_descriptor is not None
+            and cluster_descriptor.get_board_type(device_id) == tt_umd.BoardType.N300
+        ):
+            if len(active_eth_coords_on_mmio_chip) > 1:
+                self._active_eth_coords_on_mmio_chip = (
+                    active_eth_coords_on_mmio_chip[1:] + active_eth_coords_on_mmio_chip[:1]
+                )
+            self.__configure_working_active_eth()
+
+    @staticmethod
+    def initialize_device_coords_cache(
+        soc_descriptor: tt_umd.SocDescriptor, arch: tt_umd.ARCH
+    ) -> list[list[list[tt_umd.CoreCoord | None]]]:
+        all_cores = soc_descriptor.get_all_cores(
+            coord_system=tt_umd.CoordSystem.NOC0
+        ) + soc_descriptor.get_all_harvested_cores(coord_system=tt_umd.CoordSystem.NOC0)
+        from ttexalens.umd_api import UmdApi
+
+        max_x = max(core.x for core in all_cores) + 1
+        max_y = max(core.y for core in all_cores) + 1
+        result = []
+        for noc_id in range(2):
+            UmdApi.select_noc_id(noc_id, arch)
+            noc_result: list[list[tt_umd.CoreCoord | None]] = []
+            for x in range(max_x):
+                row: list[tt_umd.CoreCoord | None] = []
+                for y in range(max_y):
+                    try:
+                        coords = soc_descriptor.translate_chip_coord_to_translated_coord(
+                            soc_descriptor.get_coord_at(tt_umd.tt_xy_pair(x, y), tt_umd.CoordSystem.NOC0)
+                        )
+                        row.append(coords)
+                    except Exception:
+                        row.append(None)
+                noc_result.append(row)
+            result.append(noc_result)
+        return result
 
     @property
     def device_id(self) -> int:
@@ -82,40 +130,43 @@ class UmdDevice:
     def __configure_working_active_eth(self):
         tensix_coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
         tensix_translated_coord = self._soc_descriptor.translate_chip_coord_to_translated_coord(tensix_coord)
+        buffer = bytearray(4)
         for translated_coord in self._active_eth_coords_on_mmio_chip:
             self.__device.get_remote_communication().set_remote_transfer_ethernet_cores([translated_coord])
             try:
-                self.__read_from_device_reg(tensix_translated_coord, 0, 4, 8)
+                self.__read_from_device_reg(tensix_translated_coord, 0, buffer, 8)
                 return
             except Exception:
                 util.DEBUG(f"Active ETH core {translated_coord} not working, trying next:\n{traceback.format_exc()}")
                 continue
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
-    def __convert_noc0_to_device_coords(self, noc0_x: int, noc0_y: int):
-        return self._soc_descriptor.translate_chip_coord_to_translated_coord(
-            self._soc_descriptor.get_coord_at(tt_umd.tt_xy_pair(noc0_x, noc0_y), tt_umd.CoordSystem.NOC0)
-        )
+    def __convert_noc0_to_device_coords(self, noc_id: int, noc0_x: int, noc0_y: int):
+        return self.__device_coords[noc_id][noc0_x][noc0_y]
 
     READ_TIMEOUT = float(os.environ.get("TT_EXALENS_READ_TIMEOUT_MS", 2)) / 1_000  # seconds
     WRITE_TIMEOUT = float(os.environ.get("TT_EXALENS_WRITE_TIMEOUT_MS", 2)) / 1_000  # seconds
     NUM_OF_CONSECUTIVE_TIMEOUTS = int(os.environ.get("TT_EXALENS_NUM_OF_CONSECUTIVE_TIMEOUTS", 5))
 
-    def __read_from_device_reg(self, coord: tt_umd.CoreCoord, address: int, size: int, dma_threshold: int) -> bytes:
+    def __read_from_device_reg(
+        self, coord: tt_umd.CoreCoord, address: int, buffer: bytearray | memoryview, dma_threshold: int
+    ) -> None:
         # Check if we can use DMA read
-        if size >= dma_threshold and self.can_use_dma:
-            return self.__device.dma_read_from_device(coord.x, coord.y, address, size)
+        if len(buffer) >= dma_threshold and self.can_use_dma:
+            self.__device.dma_read_from_device(0, coord.x, coord.y, address, buffer)
+            return
 
         # TODO: Until UMD implements timeout exception, we measure time here
         start_time = time.time()
-        result = self.__device.noc_read(coord.x, coord.y, address, size)
+        self.__device.noc_read(0, coord.x, coord.y, address, buffer)
         end_time = time.time()
         elapsed_time = end_time - start_time  # seconds
         if (
             self._is_mmio_capable
             and not self._is_simulation
             and elapsed_time > UmdDevice.READ_TIMEOUT
-            and result[-4:] == b"\xFF\xFF\xFF\xFF"
+            and len(buffer) >= 4
+            and buffer[-4] == buffer[-3] == buffer[-2] == buffer[-1] == 0xFF
         ):
             try:
                 translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.LOGICAL)
@@ -124,10 +175,11 @@ class UmdDevice:
                     translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.NOC0)
                 except Exception:
                     translated_coord = coord
-            raise TimeoutDeviceRegisterError(self.device_id, translated_coord, address, size, True, elapsed_time)
-        return result
+            raise TimeoutDeviceRegisterError(self.device_id, translated_coord, address, len(buffer), True, elapsed_time)
 
-    def __write_to_device_reg(self, coord: tt_umd.CoreCoord, address: int, data: bytes, dma_threshold: int):
+    def __write_to_device_reg(
+        self, coord: tt_umd.CoreCoord, address: int, data: bytes | bytearray | memoryview, dma_threshold: int
+    ):
         # Check if we can use DMA write
         if len(data) >= dma_threshold and self.can_use_dma:
             return self.__device.dma_write_to_device(coord.x, coord.y, address, data)
@@ -162,44 +214,61 @@ class UmdDevice:
                 self.__write_timeout_events.clear()
 
     def __read_from_device_reg_unaligned_helper(
-        self, coord: tt_umd.CoreCoord, address: int, size: int, use_4B_mode: bool, dma_threshold: int
-    ) -> bytes:
+        self,
+        coord: tt_umd.CoreCoord,
+        address: int,
+        buffer: bytearray | memoryview,
+        use_4B_mode: bool,
+        dma_threshold: int,
+    ) -> None:
         # Read first unaligned word
         first_unaligned_index = address % 4
+        size = len(buffer)
+        offset = 0
         if first_unaligned_index != 0:
-            temp = self.__read_from_device_reg(coord, address - first_unaligned_index, 4, dma_threshold)
+            temp = bytearray(4)
+            self.__read_from_device_reg(coord, address - first_unaligned_index, temp, dma_threshold)
             if first_unaligned_index + size <= 4:
-                return temp[first_unaligned_index : first_unaligned_index + size]
-            data = bytearray()
-            data.extend(temp[first_unaligned_index:4])
-            address += 4 - first_unaligned_index
-            size -= 4 - first_unaligned_index
-        else:
-            data = bytearray()
+                buffer[:size] = temp[first_unaligned_index : first_unaligned_index + size]
+                return
+            buffer[: 4 - first_unaligned_index] = temp[first_unaligned_index:4]
+            offset += 4 - first_unaligned_index
+            address += offset
+            size -= offset
 
-        # Read aligned bytes
+        # Read aligned bytes. Wrap in a memoryview so that slicing yields a view into the
+        # original buffer instead of a temporary copy (slicing a bytearray copies).
+        view = memoryview(buffer)
         aligned_size = size - (size % 4)
         block_size = 4 if use_4B_mode and self._is_mmio_capable and not self._is_simulation else aligned_size
         while aligned_size > 0:
-            data.extend(self.__read_from_device_reg(coord, address, block_size, dma_threshold))
+            self.__read_from_device_reg(coord, address, view[offset : offset + block_size], dma_threshold)
             aligned_size -= block_size
+            offset += block_size
             address += block_size
             size -= block_size
 
         # Read last unaligned word
         last_unaligned_size = size
         if last_unaligned_size != 0:
-            temp = self.__read_from_device_reg(coord, address, 4, dma_threshold)
-            data.extend(temp[:last_unaligned_size])
-
-        return bytes(data)
+            temp = bytearray(4)
+            self.__read_from_device_reg(coord, address, temp, dma_threshold)
+            buffer[offset : offset + last_unaligned_size] = temp[:last_unaligned_size]
 
     def __read_from_device_reg_unaligned(
-        self, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool, dma_threshold: int
-    ) -> bytes:
-        coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        self,
+        noc_id: int,
+        noc0_x: int,
+        noc0_y: int,
+        address: int,
+        buffer: bytearray | memoryview,
+        use_4B_mode: bool,
+        dma_threshold: int,
+    ) -> None:
+        coord = self.__convert_noc0_to_device_coords(noc_id, noc0_x, noc0_y)
+        assert coord is not None, f"Invalid NoC0 coordinates: ({noc0_x}, {noc0_y})"
         try:
-            return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode, dma_threshold)
+            self.__read_from_device_reg_unaligned_helper(coord, address, buffer, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
             raise
         except Exception:
@@ -207,10 +276,15 @@ class UmdDevice:
                 raise
             util.DEBUG(f"Read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
             self.__configure_working_active_eth()
-            return self.__read_from_device_reg_unaligned_helper(coord, address, size, use_4B_mode, dma_threshold)
+            self.__read_from_device_reg_unaligned_helper(coord, address, buffer, use_4B_mode, dma_threshold)
 
     def __write_to_device_reg_unaligned_helper(
-        self, coord: tt_umd.CoreCoord, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
+        self,
+        coord: tt_umd.CoreCoord,
+        address: int,
+        data: bytes | bytearray | memoryview,
+        use_4B_mode: bool,
+        dma_threshold: int,
     ):
         size_in_bytes = len(data)
 
@@ -218,7 +292,8 @@ class UmdDevice:
         first_unaligned_index = address % 4
         if first_unaligned_index != 0:
             aligned_address = address - first_unaligned_index
-            temp = self.__read_from_device_reg(coord, aligned_address, 4, dma_threshold)
+            temp = bytearray(4)
+            self.__read_from_device_reg(coord, aligned_address, temp, dma_threshold)
             if first_unaligned_index + size_in_bytes <= 4:
                 temp = (
                     temp[0:first_unaligned_index]
@@ -248,14 +323,23 @@ class UmdDevice:
         # Read/Write last unaligned word
         last_unaligned_size = size_in_bytes
         if last_unaligned_size != 0:
-            temp = self.__read_from_device_reg(coord, address, 4, dma_threshold)
-            temp = data[0:last_unaligned_size] + temp[last_unaligned_size:4]
+            temp = bytearray(4)
+            self.__read_from_device_reg(coord, address, temp, dma_threshold)
+            temp[0:last_unaligned_size] = data[0:last_unaligned_size]
             self.__write_to_device_reg(coord, address, temp, dma_threshold)
 
     def __write_to_device_reg_unaligned(
-        self, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
+        self,
+        noc_id: int,
+        noc0_x: int,
+        noc0_y: int,
+        address: int,
+        data: bytes | bytearray | memoryview,
+        use_4B_mode: bool,
+        dma_threshold: int,
     ):
-        coord = self.__convert_noc0_to_device_coords(noc0_x, noc0_y)
+        coord = self.__convert_noc0_to_device_coords(noc_id, noc0_x, noc0_y)
+        assert coord is not None, f"Invalid NoC0 coordinates: ({noc0_x}, {noc0_y})"
         try:
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
         except TimeoutDeviceRegisterError:
@@ -267,31 +351,89 @@ class UmdDevice:
             self.__configure_working_active_eth()
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
 
+    def _update_device_after_sigbus(self, new_device: tt_umd.TTDevice):
+        # Device was reset, we did new topology discovery, but we want to reuse the same UmdDevice instance to make it easier for users.
+        self.__device = new_device
+        self._soc_descriptor = tt_umd.SocDescriptor(new_device)
+
+    def __reinit_device_after_sigbus(self):
+        # Device was reset, so we need to reinitialize it. Since this probably hit all devices, we do topology discovery again to be safe.
+        self.__api._reinit_devices_after_sigbus()
+
     def noc_read(
-        self, noc_id: int, noc0_x: int, noc0_y: int, address: int, size: int, use_4B_mode: bool, dma_threshold: int
+        self,
+        noc_id: int,
+        noc0_x: int,
+        noc0_y: int,
+        address: int,
+        buffer: bytearray | memoryview,
+        use_4B_mode: bool,
+        dma_threshold: int,
+    ) -> None:
+        try:
+            """Reads data from address"""
+            self.__select_noc_id(noc_id)
+            self.__read_from_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, buffer, use_4B_mode, dma_threshold)
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during noc_read, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            self.noc_read(noc_id, noc0_x, noc0_y, address, buffer, use_4B_mode, dma_threshold)
+
+    def noc_read_bytes(
+        self,
+        noc_id: int,
+        noc0_x: int,
+        noc0_y: int,
+        address: int,
+        size: int,
+        use_4B_mode: bool,
+        dma_threshold: int,
     ) -> bytes:
-        """Reads data from address"""
-        self.__select_noc_id(noc_id)
-        return self.__read_from_device_reg_unaligned(noc0_x, noc0_y, address, size, use_4B_mode, dma_threshold)
+        """Reads 'size' bytes from address and returns them. Avoid using this method if caller can provide buffer, to save extra copy."""
+        buffer = bytearray(size)
+        self.noc_read(noc_id, noc0_x, noc0_y, address, buffer, use_4B_mode, dma_threshold)
+        return bytes(buffer)
 
     def noc_write(
-        self, noc_id: int, noc0_x: int, noc0_y: int, address: int, data: bytes, use_4B_mode: bool, dma_threshold: int
+        self,
+        noc_id: int,
+        noc0_x: int,
+        noc0_y: int,
+        address: int,
+        data: bytes | bytearray | memoryview,
+        use_4B_mode: bool,
+        dma_threshold: int,
     ):
-        """Writes data to address"""
-        self.__select_noc_id(noc_id)
-        self.__write_to_device_reg_unaligned(noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
+        try:
+            """Writes data to address"""
+            self.__select_noc_id(noc_id)
+            self.__write_to_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during noc_write, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            self.noc_write(noc_id, noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
 
     def bar0_read32(self, address: int) -> int:
         """Reads 4 bytes from PCI address"""
         if not self._is_mmio_capable:
             raise RuntimeError("Device is not mmio capable.")
-        return self.__device.bar_read32(address)
+        try:
+            return self.__device.bar_read32(address)
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during bar0_read32, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            return self.__device.bar_read32(address)
 
     def bar0_write32(self, address: int, data: int):
         """Writes 4 bytes to PCI address"""
         if not self._is_mmio_capable:
             raise RuntimeError("Device is not mmio capable.")
-        self.__device.bar_write32(address, data)
+        try:
+            self.__device.bar_write32(address, data)
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during bar0_write32, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            self.__device.bar_write32(address, data)
 
     def convert_from_noc0(self, noc_x: int, noc_y: int, core_type: str, coord_system: str) -> tuple[int, int]:
         """Convert noc0 coordinate into specified coordinate system"""
@@ -312,10 +454,15 @@ class UmdDevice:
         args: Sequence[int],
         timeout: datetime.timedelta | float,
     ) -> tuple[int, int, int]:
-        """Send ARC message"""
-        self.__select_noc_id(noc_id)
-        timeout_ms = timeout.total_seconds() * 1000 if isinstance(timeout, datetime.timedelta) else timeout * 1000
-        return self.__device.arc_msg(msg_code, wait_for_done, args, int(timeout_ms))
+        try:
+            """Send ARC message"""
+            self.__select_noc_id(noc_id)
+            timeout_ms = timeout.total_seconds() * 1000 if isinstance(timeout, datetime.timedelta) else timeout * 1000
+            return self.__device.arc_msg(msg_code, wait_for_done, args, int(timeout_ms))
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during arc_msg, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            return self.arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
 
     def read_arc_telemetry_entry(self, noc_id: int, telemetry_tag: int) -> int:
         """Read ARC telemetry entry"""
@@ -329,13 +476,22 @@ class UmdDevice:
 
         try:
             return do_read(telemetry_tag)
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during read_arc_telemetry_entry, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            return self.read_arc_telemetry_entry(noc_id, telemetry_tag)
         except Exception:
             if not self._is_mmio_capable:
                 raise
-            util.DEBUG(f"Telemetry read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
-            # TODO: We should retry only if it was remote read error
-            self.__configure_working_active_eth()
-            return do_read(telemetry_tag)
+            try:
+                util.DEBUG(f"Telemetry read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
+                # TODO: We should retry only if it was remote read error
+                self.__configure_working_active_eth()
+                return do_read(telemetry_tag)
+            except tt_umd.SigbusError:
+                util.DEBUG("Reset detected during read_arc_telemetry_entry, reinitializing device and retrying...")
+                self.__reinit_device_after_sigbus()
+                return self.read_arc_telemetry_entry(noc_id, telemetry_tag)
 
     def get_firmware_version(self, noc_id: int) -> tt_umd.FirmwareBundleVersion:
         """Returns firmware version"""
@@ -347,19 +503,30 @@ class UmdDevice:
 
         try:
             firmware_version = do_read()
+        except tt_umd.SigbusError:
+            util.DEBUG("Reset detected during get_firmware_version, reinitializing device and retrying...")
+            self.__reinit_device_after_sigbus()
+            return self.get_firmware_version(noc_id)
         except Exception:
             if not self._is_mmio_capable:
                 raise
-            util.DEBUG(f"Firmware version read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
-            # TODO: We should retry only if it was remote read error
-            self.__configure_working_active_eth()
-            firmware_version = do_read()
+            try:
+                util.DEBUG(f"Firmware version read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
+                # TODO: We should retry only if it was remote read error
+                self.__configure_working_active_eth()
+                firmware_version = do_read()
+            except tt_umd.SigbusError:
+                util.DEBUG("Reset detected during get_firmware_version, reinitializing device and retrying...")
+                self.__reinit_device_after_sigbus()
+                return self.get_firmware_version(noc_id)
         return firmware_version
 
     def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
         """Returns currently active Ethernet core in logical coordinates"""
         remote_communication = self.__device.get_remote_communication()
-        if remote_communication is None:
+        if (
+            remote_communication is None
+        ):  # pyright: ignore[reportUnnecessaryComparison]  # tt_umd stub claims non-Optional but runtime may return None
             return None
         translated_coord = remote_communication.get_remote_transfer_ethernet_core()
         local_device = remote_communication.get_local_device()

@@ -54,6 +54,13 @@ class TestRemoteCommunication(unittest.TestCase):
 
         self.assertTrue(risc_debug.is_halted(), "RISC debug is not halted")
 
+        # TODO: Mitigation for UMD bug #2774: Trigger remote transfer again and check that we can still read back the same data
+        ret = read_word_from_device(self.tensix_loc, address, self.remote_device_id)
+        self.assertEqual(ret, data)
+
+        # Change data as we can read back stale data
+        data = 0x87654321
+
         # Test writing to/reading from remote device again (after halting default eth core)
         write_words_to_device(self.tensix_loc, address, data, self.remote_device_id)
         ret = read_word_from_device(self.tensix_loc, address, self.remote_device_id)

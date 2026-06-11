@@ -1,7 +1,18 @@
-set(SFPI_DOWNLOAD_URL "https://github.com/tenstorrent/sfpi/releases/download/7.7.0/sfpi_7.7.0_x86_64_debian.txz")
-set(SFPI_MD5_HASH "56ce59c0945264abc4e89159d0f6d4e8")
-set(SFPI_LOCAL_FILE "${TTEXALENS_HOME}/build/sfpi_7.7.0_x86_64_debian.txz")
-set(SFPI_RELEASE_PATH "${TTEXALENS_HOME}/build/sfpi")
+set(SFPI_VERSION "7.49.0")
+
+if(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "aarch64")
+    set(SFPI_ARCH "aarch64_debian")
+    set(SFPI_MD5_HASH "fa69ef53c42326e6a7b50b70985e0cae")
+elseif(CMAKE_HOST_SYSTEM_PROCESSOR STREQUAL "x86_64")
+    set(SFPI_ARCH "x86_64_debian")
+    set(SFPI_MD5_HASH "a403963d7cb4c5d46f0595b751a3b185")
+else()
+    message(FATAL_ERROR "Unsupported host architecture for sfpi: ${CMAKE_HOST_SYSTEM_PROCESSOR}")
+endif()
+
+set(SFPI_DOWNLOAD_URL "https://github.com/tenstorrent/sfpi/releases/download/${SFPI_VERSION}/sfpi_${SFPI_VERSION}_${SFPI_ARCH}.txz")
+set(SFPI_LOCAL_FILE "${TTEXALENS_HOME}/build_riscv/sfpi_${SFPI_VERSION}_${SFPI_ARCH}.txz")
+set(SFPI_RELEASE_PATH "${TTEXALENS_HOME}/build_riscv/sfpi")
 
 if(NOT EXISTS "${SFPI_LOCAL_FILE}")
     message(STATUS "Downloading sfpi release")

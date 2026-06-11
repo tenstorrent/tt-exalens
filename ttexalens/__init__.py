@@ -9,6 +9,8 @@ from .tt_exalens_lib import (
     check_context,
     convert_coordinate,
     coverage,
+    get_global,
+    get_tensix_state,
     load_elf,
     parse_elf,
     read_arc_telemetry_entry,
@@ -25,15 +27,26 @@ from .tt_exalens_lib import (
     write_words_to_device,
     TensixState,
 )
+from .perf_counters import (
+    list_perf_counters,
+    read_perf_counters,
+    reset_perf_counters,
+    start_perf_counters,
+    stop_perf_counters,
+    PerfCounterBlockDescription,
+    TensixPerfCounters,
+)
 from .coordinate import OnChipCoordinate
 from .context import Context, NocId
 from .device import Device
-from .util import TTException, TTFatalException, Verbosity
+from .util import Verbosity
 from .exceptions import (
     CoordinateTranslationError,
     RestrictedMemoryAccessError,
-    UnsafeAccessException,
     TimeoutDeviceRegisterError,
+    TTException,
+    TTFatalException,
+    UnsafeAccessException,
 )
 
 
@@ -42,10 +55,14 @@ __all__ = [
     "Context",
     "NocId",
     # coordinate.py
-    "CoordinateTranslationError",
     "OnChipCoordinate",
     # device.py
     "Device",
+    # exceptions.py
+    "CoordinateTranslationError",
+    "RestrictedMemoryAccessError",
+    "TimeoutDeviceRegisterError",
+    "UnsafeAccessException",
     # tt_exalens_init.py
     "init_ttexalens",
     "init_ttexalens_remote",
@@ -56,6 +73,8 @@ __all__ = [
     "check_context",
     "convert_coordinate",
     "coverage",
+    "get_global",
+    "get_tensix_state",
     "load_elf",
     "parse_elf",
     "read_arc_telemetry_entry",
@@ -71,11 +90,16 @@ __all__ = [
     "write_riscv_memory",
     "write_to_device",
     "write_words_to_device",
+    # perf_counters.py
+    "list_perf_counters",
+    "PerfCounterBlockDescription",
+    "read_perf_counters",
+    "reset_perf_counters",
+    "start_perf_counters",
+    "stop_perf_counters",
+    "TensixPerfCounters",
     # util.py
     "TTException",
     "TTFatalException",
     "Verbosity",
-    "RestrictedMemoryAccessError",
-    "UnsafeAccessException",
-    "TimeoutDeviceRegisterError",
 ]

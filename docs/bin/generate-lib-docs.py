@@ -37,7 +37,6 @@ Notes:
 """
 
 import ast
-import importlib
 import os, sys
 import re
 
@@ -182,7 +181,7 @@ class FileParser:
         ast.FloorDiv: "//",
     }
 
-    def parse(self, file: os.PathLike):
+    def parse(self, file: str | os.PathLike[str]):
         if not os.path.exists(file):
             ERROR(f"File {file} not found.")
 
@@ -220,6 +219,7 @@ class FileParser:
             elif isinstance(node, ast.ClassDef):
                 # Get class docstring
                 class_docstring = ast.get_docstring(node)
+                parsed_doc = None
                 if class_docstring:
                     INFO(f"Class {node.name} docstring found.")
                     # parse with your docstring_parser
@@ -488,7 +488,6 @@ def parse_directory(path: os.PathLike, parser: FileParser, interactive: bool = F
             parser (FileParser): Parser object to use for parsing the files.
             interactive (bool, optional): If True, the user will be prompted before parsing each file.
     """
-    from collections import OrderedDict
 
     exported_items = None
 
@@ -553,6 +552,7 @@ def filter_exported_items(parsed_result: dict, exported_items: set) -> dict:
 
 
 if __name__ == "__main__":
+    assert __doc__ is not None
     args = docopt(__doc__)
     isfile = os.path.isfile(args["<input>"])
     isdir = os.path.isdir(args["<input>"])
@@ -565,7 +565,7 @@ if __name__ == "__main__":
         sys.exit(1)
     elif isfile:
         parser_result = [(os.path.basename(args["<input>"]), fp.parse(args["<input>"]))]
-    elif isdir:
+    else:
         parser_result = parse_directory(args["<input>"], fp, interactive=args["--interactive"])
 
     output = ""

@@ -59,7 +59,7 @@ class TestNOCLocations(unittest.TestCase):
     def test_noc_locations(self):
         for device in self.context.devices.values():
             # TODO (944): Remove this check once UMD bug is fixed.
-            if device.is_blackhole:
+            if device.is_blackhole():
                 continue
             for block_type in device.block_types:
                 for block in device.get_blocks(block_type):
@@ -76,5 +76,5 @@ class TestNOCLocations(unittest.TestCase):
                         noc1_location, noc1_id, f"NOC1 location mismatch for block at {block.location.to_user_str()}"
                     )
                     # Check that it doesn't raise exception when it reads logical IDs
-                    noc0_logical_id = TestNOCLocations._read_noc_location(noc0_register_store, "NOC_ID_LOGICAL")
-                    noc1_logical_id = TestNOCLocations._read_noc_location(noc1_register_store, "NOC_ID_LOGICAL")
+                    TestNOCLocations._read_noc_location(noc0_register_store, "NOC_ID_LOGICAL")
+                    TestNOCLocations._read_noc_location(noc1_register_store, "NOC_ID_LOGICAL")

@@ -3,107 +3,26 @@
 # SPDX-License-Identifier: Apache-2.0
 from dataclasses import dataclass
 import datetime
-from functools import wraps
-import inspect
 import os
 import struct
-from typing import TypeVar, Callable, Any, cast
+from typing import Callable
 
 from ttexalens import util
-from ttexalens.device import Device
-from ttexalens.tt_exalens_init import init_ttexalens
+from ttexalens._lib_helpers import (
+    check_4B_mode,
+    check_context,
+    check_noc_id,
+    convert_coordinate,
+    trace_api,
+    validate_addr,
+    validate_device_id,
+)
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.elf import read_elf, ParsedElfFile
+from ttexalens.elf import read_elf, ElfFile, ElfVariable
 from ttexalens.hardware.risc_debug import CallstackEntry
-from ttexalens.util import TTException, Verbosity, TRACE
-from ttexalens.memory_access import MemoryAccess
-
-# Parameter name to formatter function mapping for trace_api decorator
-_TRACE_FORMATTERS = {
-    "addr": hex,
-}
-
-F = TypeVar("F", bound=Callable[..., Any])
-
-
-def trace_api(func: F) -> F:
-    """Decorator to log API calls when verbosity is set to TRACE."""
-
-    @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
-        if Verbosity.supports(Verbosity.TRACE):
-            sig = inspect.signature(func)
-            bound_args = sig.bind(*args, **kwargs)
-            bound_args.apply_defaults()
-
-            formatted_args = []
-            for k, v in bound_args.arguments.items():
-                formatter = _TRACE_FORMATTERS.get(k, repr)
-                formatted_args.append(f"{k}={formatter(v)}")
-            TRACE(f"[API] {func.__name__}({', '.join(formatted_args)})")
-        return func(*args, **kwargs)
-
-    return cast(F, wrapper)
-
-
-def check_context(context: Context | None = None) -> Context:
-    """Function to initialize context if not provided. By default, it starts a local
-    TTExaLens session with no output folder and caching disabled and sets GLOBAL_CONTEXT variable so
-    that the context can be reused in calls to other functions.
-    """
-    if context is not None:
-        return context
-
-    import ttexalens.tt_exalens_init as init
-
-    if not init.GLOBAL_CONTEXT:
-        init.GLOBAL_CONTEXT = init_ttexalens()
-    return init.GLOBAL_CONTEXT
-
-
-def check_noc_id(noc_id: int | None, context: Context) -> int:
-    if noc_id is None:
-        return int(context.noc_id)
-    assert noc_id in (0, 1, 2), f"Invalid NOC ID {noc_id}. Expected 0, 1, or 2."
-    return noc_id
-
-
-def check_4B_mode(use_4B_mode: bool | None, context: Context) -> bool:
-    if use_4B_mode is None:
-        return context.use_4B_mode
-    return use_4B_mode
-
-
-def validate_addr(addr: int) -> None:
-    if addr < 0:
-        raise TTException("addr must be greater than or equal to 0.")
-
-
-def validate_device_id(device_id: int, context: Context) -> Device:
-    return context.find_device_by_id(device_id)
-
-
-def convert_coordinate(
-    location: str | OnChipCoordinate, device_id: int = 0, context: Context | None = None
-) -> OnChipCoordinate:
-    """
-    Converts a string location to an OnChipCoordinate object.
-    If location is already OnChipCoordinate, it is returned as-is.
-
-    Args:
-        location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
-        device_id (int, default 0): ID number of device to convert to.
-        context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-
-    Returns:
-        OnChipCoordinate: Converted coordinate.
-    """
-    if not isinstance(location, OnChipCoordinate):
-        context = check_context(context)
-        device = validate_device_id(device_id, context)
-        return OnChipCoordinate.create(location, device)
-    return location
+from ttexalens.exceptions import TTException
+from ttexalens.memory_access import NO_MEMORY_ACCESS, create_memory_access
 
 
 @trace_api
@@ -173,8 +92,9 @@ def read_words_from_device(
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
-    bytes_data = coordinate.noc_read(addr, 4 * word_count, noc_id, use_4B_mode, safe_mode=safe_mode)
-    data = list(struct.unpack(f"<{word_count}I", bytes_data))
+    buffer = bytearray(4 * word_count)
+    coordinate.noc_read(addr, buffer, noc_id, use_4B_mode, safe_mode=safe_mode)
+    data = list(struct.unpack(f"<{word_count}I", buffer))
     return data
 
 
@@ -212,7 +132,9 @@ def read_from_device(
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
-    return coordinate.noc_read(addr, num_bytes, noc_id, use_4B_mode, safe_mode=safe_mode)
+    buffer = bytearray(num_bytes)
+    coordinate.noc_read(addr, buffer, noc_id, use_4B_mode, safe_mode=safe_mode)
+    return bytes(buffer)
 
 
 @trace_api
@@ -293,7 +215,7 @@ def write_to_device(
 
 @trace_api
 def load_elf(
-    elf_file: str | ParsedElfFile,
+    elf_file: str | ElfFile,
     location: str | OnChipCoordinate | list[str | OnChipCoordinate],
     risc_name: str,
     neo_id: int | None = None,
@@ -306,7 +228,7 @@ def load_elf(
     Loads the given ELF file into the specified RISC core. RISC core must be in reset before loading the ELF.
 
     Args:
-        elf_file (str | ParsedElfFile): ELF file to be loaded.
+        elf_file (str | ElfFile): ELF file to be loaded.
         location (str | OnChipCoordinate | list[str | OnChipCoordinate]): One of the following:
             1. "all" to run the ELF on all cores;
             2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -364,7 +286,7 @@ def load_elf(
 
 @trace_api
 def run_elf(
-    elf_file: str | ParsedElfFile,
+    elf_file: str | ElfFile,
     location: str | OnChipCoordinate | list[str | OnChipCoordinate],
     risc_name: str,
     neo_id: int | None = None,
@@ -376,7 +298,7 @@ def run_elf(
     Loads the given ELF file into the specified RISC core and executes it. Similar to load_elf, but RISC core is taken out of reset after load.
 
     Args:
-        elf_file (str | ParsedElfFile): ELF file to be run.
+        elf_file (str | ElfFile): ELF file to be run.
         location (str | OnChipCoordinate | list[str | OnChipCoordinate]): One of the following:
             1. "all" to run the ELF on all cores;
             2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -484,12 +406,10 @@ def read_arc_telemetry_entry(
         telemetry_tag_id = arc.get_telemetry_tag_id(telemetry_tag)
         if telemetry_tag_id is None:
             raise TTException(f"Telemetry tag {telemetry_tag} does not exist.")
-    elif isinstance(telemetry_tag, int):
+    else:
         if not arc.has_telemetry_tag_id(telemetry_tag):
             raise TTException(f"Telemetry tag ID {telemetry_tag} does not exist.")
         telemetry_tag_id = telemetry_tag
-    else:
-        raise TTException(f"Invalid telemetry_tag type. Must be an int or str, but got {type(telemetry_tag)}")
 
     return device.read_arc_telemetry_entry(noc_id, telemetry_tag_id)
 
@@ -572,9 +492,9 @@ def write_register(
 
 
 @trace_api
-def parse_elf(elf_path: str, context: Context | None = None, require_debug_symbols: bool = True) -> ParsedElfFile:
+def parse_elf(elf_path: str, context: Context | None = None, require_debug_symbols: bool = True) -> ElfFile:
     """
-    Reads the ELF file and returns a ParsedElfFile object.
+    Reads the ELF file and returns a ElfFile object.
     Args:
         elf_path (str): Path to the ELF file.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None
@@ -585,9 +505,46 @@ def parse_elf(elf_path: str, context: Context | None = None, require_debug_symbo
 
 
 @trace_api
+def get_global(
+    location: str | OnChipCoordinate,
+    elf: str | ElfFile,
+    name: str,
+    risc_name: str,
+    neo_id: int | None = None,
+    device_id: int = 0,
+    context: Context | None = None,
+    safe_mode: bool | None = None,
+) -> ElfVariable:
+    """
+    Resolves a global (or static) variable by name from the given ELF and binds it to
+    the specified RISC-V core, returning an ElfVariable that reads/writes the variable
+    through its type. This wraps the construction of the underlying memory access so a
+    typed read is as simple as a raw read_word_from_device call.
+
+    Args:
+        location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+        elf (str | ElfFile): ELF file (path or already-parsed) that defines the variable.
+        name (str): Name of the variable to resolve.
+        risc_name (str): RISC-V core name (e.g. "brisc", "trisc0", etc.).
+        neo_id (int | None, optional): NEO ID of the RISC-V core.
+        device_id (int, optional): ID of the device to access. Default 0.
+        context (Context | None, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        safe_mode (bool | None, optional): Whether to use safe mode for memory access. If None, it is decided based on context.
+
+    Returns:
+        ElfVariable: The resolved variable, bound to the core's memory for reading/writing.
+    """
+    coordinate = convert_coordinate(location, device_id, context)
+    parsed_elf = parse_elf(elf, coordinate.context) if isinstance(elf, str) else elf
+    risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
+    memory_access = create_memory_access(risc_debug, safe_mode=safe_mode)
+    return parsed_elf.get_global(name, memory_access)
+
+
+@trace_api
 def top_callstack(
     pc: int,
-    elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile,
+    elfs: list[str] | str | list[ElfFile] | ElfFile,
     offsets: int | None | list[int | None] = None,
     context: Context | None = None,
 ) -> list[CallstackEntry]:
@@ -598,7 +555,7 @@ def top_callstack(
 
     Args:
         pc (int): Program counter to be used for the callstack.
-        elfs (list[str] | str | list[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
+        elfs (list[str] | str | list[ElfFile] | ElfFile): ELF files to be used for the callstack.
         offsets (list[int], int, optional): List of offsets for each ELF file. Default: None.
         context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
 
@@ -606,16 +563,16 @@ def top_callstack(
         List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
     """
 
-    from ttexalens.hardware.risc_debug import RiscDebug
+    from ttexalens.hardware.risc_debug import RiscDebug, ExtendedFrameSnapshot
 
     context = check_context(context)
 
     # If given a single string, convert to list
     if isinstance(elfs, str):
         elfs = [parse_elf(elfs, context)]
-    elif isinstance(elfs, ParsedElfFile):
+    elif isinstance(elfs, ElfFile):
         elfs = [elfs]
-    elif isinstance(elfs, list):
+    else:
         elfs = [parse_elf(elf, context) if isinstance(elf, str) else elf for elf in elfs]
 
     offsets = offsets if offsets is not None else [None for _ in range(len(elfs))]
@@ -626,16 +583,18 @@ def top_callstack(
         raise TTException("Number of offsets must match the number of elf files")
 
     elfs_loaded = RiscDebug._read_elfs(elfs, offsets)
-    elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs_loaded, pc, None)
+    elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs_loaded, pc, NO_MEMORY_ACCESS)
     if frame_description is None or elf is None:
         return []
-    return RiscDebug.get_frame_callstack(elf, pc)[0]
+    return RiscDebug.get_frame_callstack(
+        elf, ExtendedFrameSnapshot(pc=pc, fde=frame_description, cfa=0, reported_pc=pc)
+    )[0]
 
 
 @trace_api
 def callstack(
     location: str | OnChipCoordinate,
-    elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile,
+    elfs: list[str] | str | list[ElfFile] | ElfFile,
     offsets: int | None | list[int | None] = None,
     risc_name: str = "brisc",
     neo_id: int | None = None,
@@ -649,7 +608,7 @@ def callstack(
 
     Args:
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
-        elfs (list[str] | str | list[ParsedElfFile] | ParsedElfFile): ELF files to be used for the callstack.
+        elfs (list[str] | str | list[ElfFile] | ElfFile): ELF files to be used for the callstack.
         offsets (list[int], int, optional): List of offsets for each ELF file. Default: None.
         risc_name (str): RISC-V core name (e.g. "brisc", "trisc0", etc.).
         neo_id (int | None, optional): NEO ID of the RISC-V core.
@@ -668,9 +627,9 @@ def callstack(
     # If given a single string, convert to list
     if isinstance(elfs, str):
         elfs = [parse_elf(elfs, context)]
-    elif isinstance(elfs, ParsedElfFile):
+    elif isinstance(elfs, ElfFile):
         elfs = [elfs]
-    elif isinstance(elfs, list):
+    else:
         elfs = [parse_elf(elf, context) if isinstance(elf, str) else elf for elf in elfs]
 
     offsets = offsets if offsets is not None else [None for _ in range(len(elfs))]
@@ -692,7 +651,7 @@ def callstack(
 @trace_api
 def coverage(
     location: str | OnChipCoordinate,
-    elf: str | ParsedElfFile,
+    elf: str | ElfFile,
     gcda_path: str,
     gcno_copy_path: str | None = None,
     device_id: int = 0,
@@ -703,7 +662,7 @@ def coverage(
 
     Args:
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
-        elf (str | ParsedElfFile): ELF file whose coverage should be extracted.
+        elf (str | ElfFile): ELF file whose coverage should be extracted.
         gcda_path (str): The path where the gcda file will be written.
         gcno_copy_path (str | None, optional): The path where the gcno will be written, if specified.
         device_id (int, optional): ID of the device to read from. Default 0.
@@ -712,7 +671,7 @@ def coverage(
 
     coordinate = convert_coordinate(location, device_id, context)
     context = coordinate.context
-    parsed_elf: ParsedElfFile
+    parsed_elf: ElfFile
     if isinstance(elf, str):
         parsed_elf = parse_elf(elf, context)
     else:
@@ -767,7 +726,9 @@ def read_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    return MemoryAccess.create(risc_debug, safe_mode=safe_mode).read_word(addr)
+    buffer = bytearray(4)
+    create_memory_access(risc_debug, safe_mode=safe_mode).read(addr, buffer)
+    return int.from_bytes(buffer, byteorder="little")
 
 
 @trace_api
@@ -815,7 +776,7 @@ def write_riscv_memory(
             f"Invalid address {hex(addr)}. Address must be between {hex(base_address)} and {hex(base_address + size - 1)}."
         )
 
-    MemoryAccess.create(risc_debug, safe_mode=safe_mode).write_word(addr, value)
+    create_memory_access(risc_debug, safe_mode=safe_mode).write(addr, value.to_bytes(4, byteorder="little"))
 
 
 @dataclass
@@ -834,6 +795,7 @@ class TensixState:
     address_counters: dict[str, int]
 
 
+@trace_api
 def get_tensix_state(
     location: str | OnChipCoordinate,
     l1_address: int | None = None,
