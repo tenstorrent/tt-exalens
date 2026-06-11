@@ -923,11 +923,6 @@ class TestDebugging(unittest.TestCase):
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
 
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
-
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
         assert noc_addr is not None, "Translated NOC address should not be None."
@@ -996,11 +991,6 @@ class TestDebugging(unittest.TestCase):
 
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
-
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
 
         # Write code for brisc core at address 0
         # C++:
@@ -1093,11 +1083,6 @@ class TestDebugging(unittest.TestCase):
 
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
-
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
 
         # Write code for brisc core at address 0
         # C++:
