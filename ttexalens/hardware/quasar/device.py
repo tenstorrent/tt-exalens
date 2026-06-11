@@ -4,7 +4,7 @@
 
 from functools import cache
 from ttexalens import util
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.noc_block import NocBlock
@@ -29,6 +29,9 @@ class QuasarDevice(Device):
 
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         super().__init__(id, umd_device, context)
+        self._noc_to_use = (
+            [int(NocId.NOC0), int(NocId.SMN)] if context.noc_id == NocId.NOC0 else [NocId.SMN, int(NocId.NOC0)]
+        )
 
     def is_quasar(self) -> bool:
         return True
