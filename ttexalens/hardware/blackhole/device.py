@@ -2,8 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from functools import cache
-from ttexalens import context
-from ttexalens.context import Context, NocId
+from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.blackhole.arc_block import BlackholeArcBlock
 from ttexalens.hardware.blackhole.dram_block import BlackholeDramBlock, BlackholeDramBlockSim
