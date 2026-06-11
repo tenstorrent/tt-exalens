@@ -62,7 +62,6 @@ from ttexalens.server import start_server
 from ttexalens import util as util
 from ttexalens.context import Context, NocId
 from ttexalens.exceptions import TTException
-from ttexalens.context import Context
 from ttexalens.uistate import UIState
 from ttexalens.command_parser import tt_docopt, CommandMetadata, CommandParsingException
 from ttexalens.gdb.gdb_client import get_gdb_client_path

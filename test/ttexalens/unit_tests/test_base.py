@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 import os
 from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device, NocId
-from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device
 from ttexalens.elf import ElfFile, read_elf
 from ttexalens.server import FileAccessApi
 

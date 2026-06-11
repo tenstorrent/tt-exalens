@@ -74,7 +74,7 @@ class UmdDevice:
         max_y = max(core.y for core in all_cores) + 1
         result = []
         for noc_id in range(2):
-            UmdApi.select_noc_id(noc_id, arch)
+            UmdApi.select_noc_id(NocId(noc_id), arch)
             noc_result: list[list[tt_umd.CoreCoord | None]] = []
             for x in range(max_x):
                 row: list[tt_umd.CoreCoord | None] = []

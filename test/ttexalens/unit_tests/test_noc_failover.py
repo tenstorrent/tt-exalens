@@ -145,7 +145,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
     def test_noc_read_success_no_failover_triggered(self, _name, noc_id, primary_noc):
         """Test successful read doesn't trigger failover."""
         device = self._create_device(noc_id)
-        self.mock_umd_device.noc_read.return_value = b"\x00\x01\x02\x03"
+        self.mock_umd_device.noc_read.side_effect = noc_read_outcomes(b"\x00\x01\x02\x03")
 
         buffer = bytearray(4)
         device.noc_read(self.test_location, 0x1000, buffer)
