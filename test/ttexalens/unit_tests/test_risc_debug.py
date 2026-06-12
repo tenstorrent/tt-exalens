@@ -10,7 +10,6 @@ from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from ttexalens import Context, write_to_device
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebugWatchpointState, get_register_index
-from ttexalens.elf_loader import ElfLoader
 from ttexalens.exceptions import RiscHaltError
 
 
@@ -89,20 +88,18 @@ class TestDebugging(unittest.TestCase):
 
     def assertPcEquals(self, expected):
         """Assert PC register equals to expected value."""
-        offset = self.core_sim.program_start_offset or 0
         self.assertEqual(
             self.core_sim.get_pc(),
-            self.core_sim.code_start_address + expected + offset,
-            f"Pc should be {expected} + program_base_addres + program_start_offset ({self.core_sim.code_start_address + expected + offset}).",
+            self.core_sim.program_base_address + expected,
+            f"Pc should be {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
         )
 
     def assertPcLess(self, expected):
         """Assert PC register is less than expected value."""
-        offset = self.core_sim.program_start_offset or 0
         self.assertLess(
             self.core_sim.get_pc(),
-            self.core_sim.code_start_address + expected + offset,
-            f"Pc should be less than {expected} + program_base_addres + program_start_offset ({self.core_sim.code_start_address + expected + offset}).",
+            self.core_sim.program_base_address + expected,
+            f"Pc should be less than {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
         )
 
     def test_default_start_address(self):
@@ -838,9 +835,14 @@ class TestDebugging(unittest.TestCase):
         #   asm volatile ("nop");
         #  jump_addr:
         #   goto start;
-        self.core_sim.write_program(0, [0x00000013] * (jump_addr // 4))
-        self.core_sim.write_program(break_addr, 0x00100073)
-        self.core_sim.write_program(jump_addr, ElfLoader.get_jump_to_offset_instruction(-jump_addr))
+        self.program_writer = RiscvProgramWriter(self.core_sim)
+        for _ in range(break_addr // 4):
+            self.program_writer.append_nop()
+        self.program_writer.append_ebreak()
+        for _ in range((jump_addr - break_addr) // 4 - 1):
+            self.program_writer.append_nop()
+        self.program_writer.append_loop(0)
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -861,6 +863,7 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
+        self.program_writer.clear_instructions()
         self.program_writer.append_store_word_to_memory(
             0x10000, 0x87654000, 10, 11
         )  # Load address into x10, data into x11, store word
@@ -938,11 +941,8 @@ class TestDebugging(unittest.TestCase):
         # Layout: ebreak@0, `padding` NOPs, LUI(addr), LUI(value), SW, while(true)@(16 + 4*padding).
         # Watch a NOP within the padding and the final infinite loop.
         loop_offset = 16 + 4 * self.program_writer.ebreak_nop_padding
-        offset = self.core_sim.program_start_offset or 0
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(0, self.core_sim.code_start_address + 12 + offset)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(
-            1, self.core_sim.code_start_address + loop_offset + offset
-        )
+        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(0, self.core_sim.program_base_address + 12)
+        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(1, self.core_sim.program_base_address + loop_offset)
 
         # Continue and verify that we hit first watchpoint
         self.core_sim.continue_execution()
