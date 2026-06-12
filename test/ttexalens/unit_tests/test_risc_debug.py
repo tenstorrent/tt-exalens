@@ -1157,11 +1157,6 @@ class TestDebugging(unittest.TestCase):
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
 
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
-
         addresses = [0x10000, 0x11000, 0x12000, 0x13000]
         noc_addresses: list[int] = []
         for addr in addresses:

@@ -26,7 +26,8 @@ class WormholeBabyRiscDebug(BabyRiscDebug):
                 self.assert_not_in_reset()
             self.assert_debug_hardware()
             assert self.debug_hardware is not None, "Debug hardware is not initialized"
-            self.debug_hardware.continue_without_debug()
+            self.debug_hardware.flush(self.get_pc())
+            super().cont()
 
     def step(self):
         # We need to disable branch prediction as a hardware workaround, if there is an option to do so
