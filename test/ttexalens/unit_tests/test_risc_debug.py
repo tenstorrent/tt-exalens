@@ -841,7 +841,7 @@ class TestDebugging(unittest.TestCase):
         self.program_writer.append_ebreak()
         for _ in range((jump_addr - break_addr) // 4 - 1):
             self.program_writer.append_nop()
-        self.program_writer.append_loop(0)
+        self.program_writer.append_loop(self.core_sim.program_base_address)
         self.program_writer.write_program()
 
         # Take risc out of reset
