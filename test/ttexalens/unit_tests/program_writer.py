@@ -10,7 +10,7 @@ class RiscvProgramWriter:
 
     def __init__(self, core_simulator: RiscvCoreSimulator):
         self.core_simulator = core_simulator
-        self.start_address = core_simulator.program_base_address
+        self.start_address = core_simulator.code_start_address
         self.instructions: list[int] = []
 
         # Wormhole/Blackhole have an ebreak hardware bug: the fetch pipeline prefetches (and on
@@ -28,12 +28,12 @@ class RiscvProgramWriter:
         # Mitigation for firmware corrupting L1 in ETH block on wormhole
         # Since we can't change code start address for erisc we always
         # start program with jump to code start address we want
-        if self.core_simulator.risc_name.lower() == "erisc":
-            self.append_jal(self.core_simulator.program_base_address)
-            self.core_simulator.write_program(-self.core_simulator.program_base_address, self.instructions[-1])
-            self.instructions = self.instructions[:-1]
+        offset = 0
+        if self.core_simulator.program_start_offset is not None:
+            offset = self.core_simulator.program_start_offset
+            self.core_simulator.write_program(0, self.generate_jal(offset))
         for i, instruction in enumerate(self.instructions):
-            self.core_simulator.write_program(i * 4, instruction)
+            self.core_simulator.write_program(i * 4 + offset, instruction)
 
     def append(self, instruction: int):
         # Ensure instruction is 32 bits
@@ -152,7 +152,7 @@ class RiscvProgramWriter:
             | 0b1100011
         )
 
-    def append_jal(self, offset: int, return_register: int = 0):
+    def generate_jal(self, offset: int, return_register: int = 0) -> int:
         """Jump to a PC-relative offset and store the return address in return_register."""
         # https://riscv-software-src.github.io/riscv-unified-db/manual/html/isa/isa_20240411/insts/jal.html
         assert -1048576 <= offset < 1048576, "Offset must be between -1048576 and 1048575"
@@ -161,7 +161,7 @@ class RiscvProgramWriter:
         offset10_1 = (offset >> 1) & 0x3FF
         offset11 = (offset >> 11) & 0x1
         offset19_12 = (offset >> 12) & 0xFF
-        self.append(
+        return (
             (offset20 << 31)
             | (offset10_1 << 21)
             | (offset11 << 20)
@@ -169,6 +169,10 @@ class RiscvProgramWriter:
             | (return_register << 7)
             | (0b1101111)
         )
+
+    def append_jal(self, offset: int, return_register: int = 0):
+        """Append a JAL instruction to jump to a PC-relative offset and store the return address in return_register."""
+        self.append(self.generate_jal(offset, return_register))
 
     def append_while_true(self):
         """Append an infinite loop (jal 0)."""

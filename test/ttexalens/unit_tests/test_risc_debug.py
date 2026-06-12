@@ -89,18 +89,20 @@ class TestDebugging(unittest.TestCase):
 
     def assertPcEquals(self, expected):
         """Assert PC register equals to expected value."""
+        offset = self.core_sim.program_start_offset or 0
         self.assertEqual(
             self.core_sim.get_pc(),
-            self.core_sim.program_base_address + expected,
-            f"Pc should be {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
+            self.core_sim.code_start_address + expected + offset,
+            f"Pc should be {expected} + program_base_addres + program_start_offset ({self.core_sim.code_start_address + expected + offset}).",
         )
 
     def assertPcLess(self, expected):
         """Assert PC register is less than expected value."""
+        offset = self.core_sim.program_start_offset or 0
         self.assertLess(
             self.core_sim.get_pc(),
-            self.core_sim.program_base_address + expected,
-            f"Pc should be less than {expected} + program_base_addres ({self.core_sim.program_base_address + expected}).",
+            self.core_sim.code_start_address + expected + offset,
+            f"Pc should be less than {expected} + program_base_addres + program_start_offset ({self.core_sim.code_start_address + expected + offset}).",
         )
 
     def test_default_start_address(self):
@@ -463,11 +465,6 @@ class TestDebugging(unittest.TestCase):
     def test_ebreak_and_step(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
-
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
         assert noc_addr is not None, "Translated NOC address should not be None."
@@ -523,11 +520,6 @@ class TestDebugging(unittest.TestCase):
 
     def test_continue(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
-
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
 
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
@@ -599,11 +591,6 @@ class TestDebugging(unittest.TestCase):
     def test_halt_continue(self):
         """Test running 28 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
-
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
         assert noc_addr is not None, "Translated NOC address should not be None."
@@ -659,11 +646,6 @@ class TestDebugging(unittest.TestCase):
 
     def test_halt_status(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
-
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
 
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
@@ -956,8 +938,11 @@ class TestDebugging(unittest.TestCase):
         # Layout: ebreak@0, `padding` NOPs, LUI(addr), LUI(value), SW, while(true)@(16 + 4*padding).
         # Watch a NOP within the padding and the final infinite loop.
         loop_offset = 16 + 4 * self.program_writer.ebreak_nop_padding
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(0, self.core_sim.program_base_address + 12)
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(1, self.core_sim.program_base_address + loop_offset)
+        offset = self.core_sim.program_start_offset or 0
+        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(0, self.core_sim.code_start_address + 12 + offset)
+        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(
+            1, self.core_sim.code_start_address + loop_offset + offset
+        )
 
         # Continue and verify that we hit first watchpoint
         self.core_sim.continue_execution()

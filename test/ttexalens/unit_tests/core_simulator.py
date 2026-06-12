@@ -17,7 +17,8 @@ from ttexalens.hardware.baby_risc_debug import (
 class RiscvCoreSimulator:
     """Class to simulate and control a RISC-V core for testing purposes."""
 
-    program_base_address: int = 0
+    code_start_address: int = 0
+    program_start_offset: int | None = None
 
     def __init__(self, context: Context, core_desc: str, risc_name: str, neo_id: int | None = None):
         """Initialize RISC-V core simulator.
@@ -39,12 +40,10 @@ class RiscvCoreSimulator:
         risc_debug = self.noc_block.get_risc_debug(self.risc_name, self.neo_id)
         assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug instance, got {type(risc_debug)}"
         self.risc_debug: BabyRiscDebug = risc_debug
-        self.program_base_address = self.risc_debug.baby_risc_info.get_code_start_address(
-            self.risc_debug.register_store
-        )
+        self.code_start_address = self.risc_debug.baby_risc_info.get_code_start_address(self.risc_debug.register_store)
         # Mitigation for firmware corrupting L1 in ETH block on wormhole
-        if self.risc_name.lower() == "erisc":
-            self.program_base_address = 0x1000
+        if self.is_eth_block() and self.device.is_wormhole():
+            self.program_start_offset = 0x1000
         self.loader = ElfLoader(self.risc_debug)
 
         # Initialize core in reset state
@@ -72,12 +71,12 @@ class RiscvCoreSimulator:
     def set_code_start_address(self, address: int):
         """Set the code start address for the core."""
         self.risc_debug.set_code_start_address(address)
-        self.program_base_address = address
+        self.code_start_address = address
 
     def write_program(self, addr: int, data: int | list[int]):
         """Write program code data at specified address offset."""
         program_base_address_on_noc = self.risc_debug.baby_risc_info.l1.translate_to_noc_address(
-            self.program_base_address
+            self.code_start_address
         )
         assert program_base_address_on_noc is not None
         self.write_data_checked(program_base_address_on_noc + addr, data)
@@ -157,7 +156,7 @@ class RiscvCoreSimulator:
 
     def get_pc_relative(self) -> int:
         """Get PC value relative to program base address."""
-        return self.get_pc() - self.program_base_address
+        return self.get_pc() - self.code_start_address
 
     def get_pc_and_print(self) -> int:
         """Get PC value and print it for debugging."""
