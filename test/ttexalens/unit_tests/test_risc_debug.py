@@ -10,7 +10,6 @@ from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from ttexalens import Context, write_to_device
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebugWatchpointState, get_register_index
-from ttexalens.elf_loader import ElfLoader
 from ttexalens.exceptions import RiscHaltError
 
 
@@ -463,11 +462,6 @@ class TestDebugging(unittest.TestCase):
     def test_ebreak_and_step(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
-
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
         assert noc_addr is not None, "Translated NOC address should not be None."
@@ -523,11 +517,6 @@ class TestDebugging(unittest.TestCase):
 
     def test_continue(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
-
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
 
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
@@ -599,11 +588,6 @@ class TestDebugging(unittest.TestCase):
     def test_halt_continue(self):
         """Test running 28 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
 
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
-
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
         assert noc_addr is not None, "Translated NOC address should not be None."
@@ -659,11 +643,6 @@ class TestDebugging(unittest.TestCase):
 
     def test_halt_status(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
-
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
 
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
@@ -856,9 +835,14 @@ class TestDebugging(unittest.TestCase):
         #   asm volatile ("nop");
         #  jump_addr:
         #   goto start;
-        self.core_sim.write_program(0, [0x00000013] * (jump_addr // 4))
-        self.core_sim.write_program(break_addr, 0x00100073)
-        self.core_sim.write_program(jump_addr, ElfLoader.get_jump_to_offset_instruction(-jump_addr))
+        self.program_writer = RiscvProgramWriter(self.core_sim)
+        for _ in range(break_addr // 4):
+            self.program_writer.append_nop()
+        self.program_writer.append_ebreak()
+        for _ in range((jump_addr - break_addr) // 4 - 1):
+            self.program_writer.append_nop()
+        self.program_writer.append_loop(self.core_sim.program_base_address)
+        self.program_writer.write_program()
 
         # Take risc out of reset
         self.core_sim.set_reset(False)
@@ -879,6 +863,7 @@ class TestDebugging(unittest.TestCase):
         #   int* a = (int*)0x10000;
         #   *a = 0x87654000;
         #   while (true);
+        self.program_writer.clear_instructions()
         self.program_writer.append_store_word_to_memory(
             0x10000, 0x87654000, 10, 11
         )  # Load address into x10, data into x11, store word
@@ -922,11 +907,6 @@ class TestDebugging(unittest.TestCase):
 
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
-
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
 
         addr = 0x10000
         noc_addr = self.core_sim.risc_debug.baby_risc_info.l1.translate_to_noc_address(addr)
@@ -996,11 +976,6 @@ class TestDebugging(unittest.TestCase):
 
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
-
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
 
         # Write code for brisc core at address 0
         # C++:
@@ -1094,11 +1069,6 @@ class TestDebugging(unittest.TestCase):
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
 
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
-
         # Write code for brisc core at address 0
         # C++:
         #   asm volatile ("ebreak");
@@ -1186,11 +1156,6 @@ class TestDebugging(unittest.TestCase):
 
         if self.core_sim.risc_debug.baby_risc_info.max_watchpoints == 0:
             self.skipTest("Watchpoints are disabled for this RISC.")
-
-        if self.core_sim.is_eth_block() and self.device.is_wormhole():
-            self.skipTest(
-                "Resuming/stepping past an ebreak is unreliable on the Wormhole erisc (cannot disable branch prediction). See #762."
-            )
 
         addresses = [0x10000, 0x11000, 0x12000, 0x13000]
         noc_addresses: list[int] = []
