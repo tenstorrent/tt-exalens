@@ -8,6 +8,7 @@ nanobind_add_module(
     STABLE_ABI
     NB_STATIC
     bindings.cpp
+    bind_callstack.cpp
     bind_dwarf_attribute.cpp
     bind_dwarf_die.cpp
     bind_dwarf_frame.cpp

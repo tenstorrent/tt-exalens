@@ -19,10 +19,9 @@ from ttexalens._lib_helpers import (
 )
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.elf import read_elf, ElfFile, ElfVariable
-from ttexalens.hardware.risc_debug import CallstackEntry
+from ttexalens.elf import read_elf, CallstackEntry, ElfFile, ElfVariable, get_callstack, get_frame_callstack
 from ttexalens.exceptions import TTException
-from ttexalens.memory_access import NO_MEMORY_ACCESS, create_memory_access
+from ttexalens.memory_access import create_memory_access
 
 
 @trace_api
@@ -505,6 +504,46 @@ def parse_elf(elf_path: str, context: Context | None = None, require_debug_symbo
 
 
 @trace_api
+def parse_elfs(
+    elfs: list[str] | str | list[ElfFile] | ElfFile,
+    offsets: int | None | list[int | None],
+    context: Context,
+) -> list[ElfFile]:
+    """
+    Parses the given ELF file(s) and anchors each to its live load address.
+    Args:
+        elfs (list[str] | str | list[ElfFile] | ElfFile): ELF file(s) to parse, given as path(s), already-parsed
+            ElfFile object(s), or a list mixing the two.
+        offsets (int | None | list[int | None]): Load address offset for each ELF. May be None (no offset for any
+            ELF), a single int, or a per-ELF list whose length must match the number of ELFs.
+        context (Context): TTExaLens context object used for interaction with the device.
+    """
+    # If given a single path / ElfFile, convert to a list; parse any paths.
+    if isinstance(elfs, str):
+        elfs = [parse_elf(elfs, context)]
+    elif isinstance(elfs, ElfFile):
+        elfs = [elfs]
+    else:
+        elfs = [parse_elf(elf, context) if isinstance(elf, str) else elf for elf in elfs]
+
+    offsets = offsets if offsets is not None else [None for _ in range(len(elfs))]
+    if isinstance(offsets, int):
+        offsets = [offsets]
+
+    if len(offsets) != len(elfs):
+        raise TTException("Number of offsets must match the number of elf files")
+
+    loaded_elfs: list[ElfFile] = []
+    for parsed_elf, offset in zip(elfs, offsets):
+        offset = None if offset == 0 else offset
+        if offset is not None:
+            loaded_elfs.append(parsed_elf.with_load_address(offset))
+        else:
+            loaded_elfs.append(parsed_elf)
+    return loaded_elfs
+
+
+@trace_api
 def get_global(
     location: str | OnChipCoordinate,
     elf: str | ElfFile,
@@ -547,6 +586,7 @@ def top_callstack(
     elfs: list[str] | str | list[ElfFile] | ElfFile,
     offsets: int | None | list[int | None] = None,
     context: Context | None = None,
+    extract_variables: bool = True,
 ) -> list[CallstackEntry]:
 
     """
@@ -558,37 +598,15 @@ def top_callstack(
         elfs (list[str] | str | list[ElfFile] | ElfFile): ELF files to be used for the callstack.
         offsets (list[int], int, optional): List of offsets for each ELF file. Default: None.
         context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+        extract_variables (bool): If True, collect each frame's arguments, locals and template parameters. Default: True.
 
     Returns:
         List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
     """
 
-    from ttexalens.hardware.risc_debug import RiscDebug, ExtendedFrameSnapshot
-
     context = check_context(context)
-
-    # If given a single string, convert to list
-    if isinstance(elfs, str):
-        elfs = [parse_elf(elfs, context)]
-    elif isinstance(elfs, ElfFile):
-        elfs = [elfs]
-    else:
-        elfs = [parse_elf(elf, context) if isinstance(elf, str) else elf for elf in elfs]
-
-    offsets = offsets if offsets is not None else [None for _ in range(len(elfs))]
-    if isinstance(offsets, int):
-        offsets = [offsets]
-
-    if len(offsets) != len(elfs):
-        raise TTException("Number of offsets must match the number of elf files")
-
-    elfs_loaded = RiscDebug._read_elfs(elfs, offsets)
-    elf, frame_description = RiscDebug._find_elf_and_frame_description(elfs_loaded, pc, NO_MEMORY_ACCESS)
-    if frame_description is None or elf is None:
-        return []
-    return RiscDebug.get_frame_callstack(
-        elf, ExtendedFrameSnapshot(pc=pc, fde=frame_description, cfa=0, reported_pc=pc)
-    )[0]
+    elfs_loaded = parse_elfs(elfs, offsets, context)
+    return get_frame_callstack(elfs_loaded, pc, extract_variables)
 
 
 @trace_api
@@ -602,6 +620,7 @@ def callstack(
     stop_on_main: bool = True,
     device_id: int = 0,
     context: Context | None = None,
+    extract_variables: bool = True,
 ) -> list[CallstackEntry]:
     """
     Retrieves the callstack of the specified RISC core for a given ELF.
@@ -616,6 +635,7 @@ def callstack(
         stop_on_main (bool): If True, stops at the main function. Default: True.
         device_id (int): ID of the device on which the kernel is run. Default: 0.
         context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+        extract_variables (bool): If True, collect each frame's arguments, locals and template parameters. Default: True.
 
     Returns:
         List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
@@ -624,28 +644,29 @@ def callstack(
     coordinate = convert_coordinate(location, device_id, context)
     context = coordinate.context
 
-    # If given a single string, convert to list
-    if isinstance(elfs, str):
-        elfs = [parse_elf(elfs, context)]
-    elif isinstance(elfs, ElfFile):
-        elfs = [elfs]
-    else:
-        elfs = [parse_elf(elf, context) if isinstance(elf, str) else elf for elf in elfs]
-
-    offsets = offsets if offsets is not None else [None for _ in range(len(elfs))]
-    if isinstance(offsets, int):
-        offsets = [offsets]
-
-    if len(offsets) != len(elfs):
-        raise TTException("Number of offsets must match the number of elf files")
-
     if max_depth <= 0:
         raise ValueError("Max depth must be greater than 0.")
+
+    elfs_loaded = parse_elfs(elfs, offsets, context)
 
     risc_debug = coordinate.noc_block.get_risc_debug(risc_name, neo_id)
     if risc_debug.is_in_reset():
         raise TTException(f"RiscV core {risc_debug.risc_location} is in reset")
-    return risc_debug.get_callstack(elfs, offsets, max_depth, stop_on_main)
+
+    with risc_debug.ensure_halted():
+        # Reading the program counter from risc register
+        pc = risc_debug.read_gpr(32)
+
+        # If ebreak was hit, pc will point to the instruction after it
+        if risc_debug.is_ebreak_hit():
+            # Rewind pc to unwind callstack from the ebreak instruction
+            pc -= 4
+
+        mem_access = create_memory_access(risc_debug)
+
+        # Walk the frames natively. The live-PC read and ebreak fix-up stay here
+        # because they need the RiscDebug instance.
+        return get_callstack(elfs_loaded, pc, mem_access, max_depth, "main" if stop_on_main else "", extract_variables)
 
 
 @trace_api

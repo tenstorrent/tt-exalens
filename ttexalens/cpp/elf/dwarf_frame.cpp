@@ -132,6 +132,27 @@ uint16_t FrameDescription::get_pointer_size() const {
     return info_ptr ? info_ptr->pointer_size : uint16_t{0};
 }
 
+std::optional<uint16_t> FrameDescription::get_return_address_register() const {
+    auto info_ptr = info.lock();
+    if (!info_ptr) {
+        return std::nullopt;
+    }
+    DwarfErrorHandle error(info_ptr->dbg);
+    Dwarf_Cie cie = nullptr;
+    if (dwarf_get_cie_of_fde(fde, &cie, &error) != DW_DLV_OK) {
+        return std::nullopt;
+    }
+    // Only the return-address register column is of interest; the rest of the
+    // CIE fields are required out-params we discard.
+    Dwarf_Unsigned bytes_in_cie = 0;
+    Dwarf_Half return_address_register = 0;
+    if (dwarf_get_cie_info_b(cie, &bytes_in_cie, nullptr, nullptr, nullptr, nullptr, &return_address_register, nullptr,
+                             nullptr, nullptr, &error) != DW_DLV_OK) {
+        return std::nullopt;
+    }
+    return static_cast<uint16_t>(return_address_register);
+}
+
 std::optional<uint64_t> FrameDescription::compute_cfa(std::optional<uint64_t> inner_cfa) const {
     auto info_ptr = info.lock();
     if (!info_ptr) {

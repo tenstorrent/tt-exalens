@@ -26,10 +26,12 @@ void bind_dwarf_frame(nb::module_& m) {
     // the building block for FrameInspection — both for the
     // inspected frame and for each frame in the inner chain.
     nb::class_<FrameSnapshot>(m, "FrameSnapshot")
-        .def(nb::init<FrameDescription, uint64_t, uint64_t>(), nb::arg("fde"), nb::arg("cfa"), nb::arg("pc"))
+        .def(nb::init<FrameDescription, uint64_t, uint64_t, uint64_t>(), nb::arg("fde"), nb::arg("cfa"),
+             nb::arg("compute_pc"), nb::arg("reported_pc") = 0)
         .def_rw("fde", &FrameSnapshot::fde)
         .def_rw("cfa", &FrameSnapshot::cfa)
-        .def_rw("pc", &FrameSnapshot::pc);
+        .def_rw("compute_pc", &FrameSnapshot::compute_pc)
+        .def_rw("reported_pc", &FrameSnapshot::reported_pc);
 
     // Per-frame context for DwarfDie::read_value. Construct with the
     // active MemoryAccess, the inspected frame's snapshot, and the chain
