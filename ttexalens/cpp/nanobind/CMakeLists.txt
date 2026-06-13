@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: © 2026 Tenstorrent AI ULC
 # SPDX-License-Identifier: Apache-2.0
 
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/nanobind.cmake)
+
 # Nanobind wrapper exposing ttexalens' native code to Python.
 
 nanobind_add_module(
