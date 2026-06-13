@@ -15,6 +15,7 @@ add_library(ttexalens_elf STATIC
     dwarf_frame.cpp
     dwarf_location.cpp
     variable.cpp
+    callstack.cpp
 )
 target_compile_features(ttexalens_elf PUBLIC cxx_std_20)
 target_include_directories(ttexalens_elf PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
