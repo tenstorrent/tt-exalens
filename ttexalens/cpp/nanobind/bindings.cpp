@@ -67,4 +67,5 @@ NB_MODULE(_native_ttexalens, m) {
     bind_dwarf_info(m);
     bind_dwarf_frame(m);
     bind_variable(m);
+    bind_callstack(m);
 }

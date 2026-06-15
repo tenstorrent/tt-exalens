@@ -6,6 +6,8 @@ import os
 
 # Re-export the C++ types from the `_native_ttexalens` extension module.
 from ttexalens._native_ttexalens import (
+    CallstackEntry,
+    CallstackEntryVariable,
     DwarfAttribute,
     DwarfAttributeForm,
     DwarfAttributeTag,
@@ -22,6 +24,8 @@ from ttexalens._native_ttexalens import (
     FrameDescription,
     FrameInspection,
     FrameSnapshot,
+    get_callstack,
+    get_frame_callstack,
 )
 from ttexalens.server import FileAccessApi
 
@@ -45,6 +49,8 @@ def read_elf(
 
 
 __all__ = [
+    "CallstackEntry",
+    "CallstackEntryVariable",
     "DwarfAttribute",
     "DwarfAttributeForm",
     "DwarfAttributeTag",
@@ -61,5 +67,7 @@ __all__ = [
     "FrameDescription",
     "FrameInspection",
     "FrameSnapshot",
+    "get_callstack",
+    "get_frame_callstack",
     "read_elf",
 ]

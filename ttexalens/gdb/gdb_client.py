@@ -10,8 +10,7 @@ from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.gdb.gdb_communication import ServerSocket
 from ttexalens.gdb.gdb_server import GdbServer
-from ttexalens.elf import DwarfFileLine
-from ttexalens.hardware.risc_debug import CallstackEntry
+from ttexalens.elf import CallstackEntry, DwarfFileLine
 from ttexalens.tt_exalens_lib import check_context
 from ttexalens.util import DEBUG, TRACE
 
@@ -117,7 +116,9 @@ def get_callstack_entry(line: str) -> CallstackEntry:
     entry = CallstackEntry()
     match = pattern.match(line)
     if match:
-        entry.pc = int(match.groupdict()["pc"], 16) if match.groupdict()["pc"] is not None else None
+        pc = match.groupdict()["pc"]
+        if pc is not None:
+            entry.pc = int(pc, 16)
         entry.function_name = match.groupdict()["function_name"]
         file_path = match.groupdict()["file_path"]
         line_no = int(match.groupdict()["line"]) if match.groupdict()["line"] is not None else None

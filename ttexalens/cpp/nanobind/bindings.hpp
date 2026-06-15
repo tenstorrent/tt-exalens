@@ -11,6 +11,7 @@ namespace ttexalens::native_elf::bindings {
 // nanobind module. They are invoked from the single NB_MODULE block in
 // bindings.cpp; splitting them keeps that file from ballooning past the
 // readable limit and pairs each binding with the cpp/elf header it wraps.
+void bind_callstack(nanobind::module_& m);
 void bind_dwarf_attribute(nanobind::module_& m);
 void bind_dwarf_die(nanobind::module_& m);
 void bind_dwarf_frame(nanobind::module_& m);
