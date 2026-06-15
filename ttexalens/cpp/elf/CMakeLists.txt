@@ -1,8 +1,7 @@
 # SPDX-FileCopyrightText: © 2026 Tenstorrent AI ULC
 # SPDX-License-Identifier: Apache-2.0
 
-# Pure C++ ELF reader library — no Python / nanobind dependency. Wrapped for
-# Python in the sibling `native_elf` subproject.
+include(${CMAKE_CURRENT_SOURCE_DIR}/../../../cmake/native_elf.cmake)
 
 add_library(ttexalens_elf STATIC
     private/elf_file_impl.cpp
@@ -22,3 +21,5 @@ target_link_libraries(ttexalens_elf
     PUBLIC elfio libdwarf::dwarf-static
 )
 set_target_properties(ttexalens_elf PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+add_library(ttexalens::elf ALIAS ttexalens_elf)
