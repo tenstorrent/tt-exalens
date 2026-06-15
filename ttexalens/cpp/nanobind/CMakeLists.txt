@@ -19,7 +19,7 @@ nanobind_add_module(
     bind_variable.cpp
 )
 
-target_link_libraries(_native_ttexalens PRIVATE ttexalens_elf libdwarf::dwarf-static)
+target_link_libraries(_native_ttexalens PRIVATE ttexalens::elf libdwarf::dwarf-static)
 
 # scikit-build-core prepends `wheel.install-dir` (= "ttexalens") to DESTINATION,
 # so DESTINATION "." installs the .so at ttexalens/_native_ttexalens*.so inside the wheel.

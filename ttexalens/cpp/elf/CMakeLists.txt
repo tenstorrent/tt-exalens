@@ -21,3 +21,5 @@ target_link_libraries(ttexalens_elf
     PUBLIC elfio libdwarf::dwarf-static
 )
 set_target_properties(ttexalens_elf PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+add_library(ttexalens::elf ALIAS ttexalens_elf)
