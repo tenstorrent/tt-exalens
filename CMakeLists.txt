@@ -62,7 +62,5 @@ if(NOT BUILD_PYTHON_WHEEL)
     add_subdirectory(${PROJECT_SOURCE_DIR}/riscv-src)
 endif()
 
-# Dependencies for the _native_ttexalens Python extension module, and the module itself.
-include(${PROJECT_SOURCE_DIR}/cmake/native_elf.cmake)
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens/cpp/elf)
 add_subdirectory(${PROJECT_SOURCE_DIR}/ttexalens/cpp/nanobind)

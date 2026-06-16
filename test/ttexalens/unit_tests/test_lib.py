@@ -24,7 +24,8 @@ from ttexalens.device import Device, UnsafeAccessException
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.memory_access import create_l1_memory_access, create_memory_access
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
-from ttexalens.hardware.risc_debug import CallstackEntry, CallstackEntryVariable, RiscDebug
+from ttexalens.elf import CallstackEntry, CallstackEntryVariable
+from ttexalens.hardware.risc_debug import RiscDebug
 
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.elf_loader import ElfLoader

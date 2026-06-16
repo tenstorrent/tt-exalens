@@ -49,6 +49,10 @@ class FrameDescription {
     uint64_t get_pc() const { return pc; }
     uint16_t get_pointer_size() const;
 
+    // DWARF register number of the return-address register, read from the CIE
+    // this FDE belongs to. Returns nullopt if the CIE can't be read.
+    std::optional<uint16_t> get_return_address_register() const;
+
     std::optional<uint64_t> read_register(uint16_t register_index, uint64_t cfa) const;
     std::optional<uint64_t> try_read_register(uint16_t register_index, std::optional<uint64_t> cfa) const;
 
@@ -74,13 +78,23 @@ class FrameDescription {
 
 // Snapshot of one frame on the callstack at the PC where execution was
 // when we walked through it. `fde` is the FDE whose address range covers
-// `pc`; `cfa` is the Canonical Frame Address at that PC computed via
+// the frame; `cfa` is the Canonical Frame Address computed via
 // `fde.compute_cfa(...)`. Used both for the inspected frame and for each
 // frame in the inner chain that FrameInspection carries.
+//
+// Two PCs are tracked because they serve different purposes:
+//   * compute_pc — the DWARF-space (load-offset-adjusted) PC used for every
+//     DWARF lookup: FDE row selection, function/line lookup, location
+//     evaluation. This is what FrameInspection exposes via get_pc().
+//   * reported_pc — the PC surfaced to callers / displayed (live PC for the
+//     live frame, return address for outer frames, matching GDB). Carried
+//     here so callstack walking needs only this one frame type; FrameInspection
+//     itself ignores it.
 struct FrameSnapshot {
     FrameDescription fde;
     uint64_t cfa = 0;
-    uint64_t pc = 0;
+    uint64_t compute_pc = 0;
+    uint64_t reported_pc = 0;
 };
 
 // Per-frame context the DWARF location-expression evaluator reads through.
@@ -114,7 +128,7 @@ class FrameInspection {
     std::optional<uint64_t> get_cfa() const {
         return inspected.has_value() ? std::optional{inspected->cfa} : std::nullopt;
     }
-    uint64_t get_pc() const { return inspected.has_value() ? inspected->pc : 0; }
+    uint64_t get_pc() const { return inspected.has_value() ? inspected->compute_pc : 0; }
     const std::shared_ptr<MemoryAccess>& get_memory_access() const { return memory_access; }
 
    private:

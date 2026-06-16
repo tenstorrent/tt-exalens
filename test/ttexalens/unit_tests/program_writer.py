@@ -10,7 +10,7 @@ class RiscvProgramWriter:
 
     def __init__(self, core_simulator: RiscvCoreSimulator):
         self.core_simulator = core_simulator
-        self.start_address = core_simulator.program_base_address
+        self.start_address = core_simulator.code_start_address
         self.instructions: list[int] = []
 
         # Wormhole/Blackhole have an ebreak hardware bug: the fetch pipeline prefetches (and on
@@ -25,8 +25,22 @@ class RiscvProgramWriter:
         return self.start_address + len(self.instructions) * 4
 
     def write_program(self):
-        for i, instruction in enumerate(self.instructions):
-            self.core_simulator.write_program(i * 4, instruction)
+        # Mitigation for firmware corrupting L1 in ETH block on wormhole
+        # Since we can't change code start address for erisc we always
+        # start program with jump to code start address we want
+        l1 = self.core_simulator.risc_debug.baby_risc_info.l1
+        if self.core_simulator.program_start_offset is not None:
+            noc_code_start_address = l1.translate_to_noc_address(self.core_simulator.code_start_address)
+            assert noc_code_start_address is not None
+            self.core_simulator.write_data_checked(
+                noc_code_start_address, self.generate_jal(self.core_simulator.program_start_offset)
+            )
+        noc_program_base_address = l1.translate_to_noc_address(self.core_simulator.program_base_address)
+        assert noc_program_base_address is not None
+        self.core_simulator.write_data_checked(noc_program_base_address, self.instructions)
+
+    def clear_instructions(self):
+        self.instructions.clear()
 
     def append(self, instruction: int):
         # Ensure instruction is 32 bits
@@ -59,6 +73,16 @@ class RiscvProgramWriter:
         assert -2048 <= value < 2048, "Immediate value must be between -2048 and 2047"
         value = value & 0xFFF  # Ensure value is 12 bits signed integer
         self.append((value << 20) | (source_register << 15) | (destination_register << 7) | 0b0010011)
+
+    def append_slli(self, destination_register: int, source_register: int, shift_amount: int):
+        """Shift the value in source_register left by shift_amount bits, and store the result in destination_register."""
+        # https://riscv-software-src.github.io/riscv-unified-db/manual/html/isa/isa_20240411/insts/slli.html
+        assert 0 < destination_register < 32, "Destination register must be between 1 and 31"
+        assert 0 <= source_register < 32, "Source register must be between 0 and 31"
+        assert 0 <= shift_amount < 32, "Shift amount must be between 0 and 31"
+        self.append(
+            (shift_amount << 20) | (source_register << 15) | (0b001 << 12) | (destination_register << 7) | 0b0010011
+        )
 
     def append_sb(self, data_register: int, address_register: int, offset: int):
         """Store 8 bits of data from data_register to an address formed by adding address_register to a signed offset."""
@@ -145,7 +169,7 @@ class RiscvProgramWriter:
             | 0b1100011
         )
 
-    def append_jal(self, offset: int, return_register: int = 0):
+    def generate_jal(self, offset: int, return_register: int = 0) -> int:
         """Jump to a PC-relative offset and store the return address in return_register."""
         # https://riscv-software-src.github.io/riscv-unified-db/manual/html/isa/isa_20240411/insts/jal.html
         assert -1048576 <= offset < 1048576, "Offset must be between -1048576 and 1048575"
@@ -154,7 +178,7 @@ class RiscvProgramWriter:
         offset10_1 = (offset >> 1) & 0x3FF
         offset11 = (offset >> 11) & 0x1
         offset19_12 = (offset >> 12) & 0xFF
-        self.append(
+        return (
             (offset20 << 31)
             | (offset10_1 << 21)
             | (offset11 << 20)
@@ -162,6 +186,10 @@ class RiscvProgramWriter:
             | (return_register << 7)
             | (0b1101111)
         )
+
+    def append_jal(self, offset: int, return_register: int = 0):
+        """Append a JAL instruction to jump to a PC-relative offset and store the return address in return_register."""
+        self.append(self.generate_jal(offset, return_register))
 
     def append_while_true(self):
         """Append an infinite loop (jal 0)."""
