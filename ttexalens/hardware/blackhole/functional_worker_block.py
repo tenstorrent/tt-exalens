@@ -235,7 +235,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         raise ValueError(f"RISC debug for {risc_name} is not supported in Blackhole functional worker block.")
 
     def _update_memory_maps(self):
-        self.noc_memory_map.add_blocks(
+        self.noc_memory_map.initialize_blocks(
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
@@ -252,7 +252,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             ]
         )
 
-        self.brisc.memory_map.add_blocks(
+        self.brisc.memory_map.initialize_blocks(
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.brisc.data_private_memory, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
@@ -326,7 +326,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             ]
         )
 
-        self.trisc0.memory_map.add_blocks(
+        self.trisc0.memory_map.initialize_blocks(
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc0.data_private_memory, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore
@@ -389,7 +389,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             ]
         )
 
-        self.trisc1.memory_map.add_blocks(
+        self.trisc1.memory_map.initialize_blocks(
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc1.data_private_memory, access_check=lambda: not self.get_risc_debug("trisc1").is_in_reset()),  # type: ignore
@@ -452,7 +452,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             ]
         )
 
-        self.trisc2.memory_map.add_blocks(
+        self.trisc2.memory_map.initialize_blocks(
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
@@ -515,7 +515,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             ]
         )
 
-        self.ncrisc.memory_map.add_blocks(
+        self.ncrisc.memory_map.initialize_blocks(
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
                 MemoryMapBlockInfo("data_private_memory", self.ncrisc.data_private_memory, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
