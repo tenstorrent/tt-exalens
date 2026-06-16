@@ -17,7 +17,8 @@ from ttexalens.hardware.baby_risc_debug import (
 class RiscvCoreSimulator:
     """Class to simulate and control a RISC-V core for testing purposes."""
 
-    program_base_address: int = 0
+    code_start_address: int = 0
+    program_start_offset: int | None = None
 
     def __init__(self, context: Context, core_desc: str, risc_name: str, neo_id: int | None = None):
         """Initialize RISC-V core simulator.
@@ -39,13 +40,19 @@ class RiscvCoreSimulator:
         risc_debug = self.noc_block.get_risc_debug(self.risc_name, self.neo_id)
         assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug instance, got {type(risc_debug)}"
         self.risc_debug: BabyRiscDebug = risc_debug
-        self.program_base_address = self.risc_debug.baby_risc_info.get_code_start_address(
-            self.risc_debug.register_store
-        )
+        self.code_start_address = self.risc_debug.baby_risc_info.get_code_start_address(self.risc_debug.register_store)
+        # Mitigation for firmware corrupting L1 in ETH block on wormhole
+        if self.is_eth_block() and self.device.is_wormhole():
+            self.program_start_offset = 0x1000
         self.loader = ElfLoader(self.risc_debug)
 
         # Initialize core in reset state
         self.set_reset(True)
+
+    @property
+    def program_base_address(self) -> int:
+        """Get the base address for program code."""
+        return self.code_start_address + (self.program_start_offset or 0)
 
     @cached_property
     def debug_hardware(self) -> BabyRiscDebugHardware:
@@ -69,26 +76,21 @@ class RiscvCoreSimulator:
     def set_code_start_address(self, address: int):
         """Set the code start address for the core."""
         self.risc_debug.set_code_start_address(address)
-        self.program_base_address = address
-
-    def write_program(self, addr: int, data: int | list[int]):
-        """Write program code data at specified address offset."""
-        program_base_address_on_noc = self.risc_debug.baby_risc_info.l1.translate_to_noc_address(
-            self.program_base_address
-        )
-        assert program_base_address_on_noc is not None
-        self.write_data_checked(program_base_address_on_noc + addr, data)
+        self.code_start_address = address
 
     def write_data_checked(self, addr: int, data: int | list[int]):
         """Write data to memory and verify it was written correctly."""
         if isinstance(data, int):
             write_words_to_device(self.location, addr, data)
-            assert self.read_data(addr) == data, f"Data verification failed at address {addr:x}"
+            rd = self.read_data(addr)
+            assert rd == data, f"Data verification failed at address {addr:x}, got {rd:x}, expected {data:x}"
         else:
             byte_data = b"".join(x.to_bytes(4, "little") for x in data)
             write_to_device(self.location, addr, byte_data)
             read_data = read_from_device(self.location, addr, num_bytes=len(byte_data))
-            assert read_data == byte_data, f"Data verification failed at address {addr:x}"
+            assert (
+                read_data == byte_data
+            ), f"Data verification failed at address {addr:x}, got {read_data.hex()}, expected {byte_data.hex()}"
 
     def read_data(self, addr: int) -> int:
         """Read data from memory at specified address."""
@@ -151,7 +153,7 @@ class RiscvCoreSimulator:
 
     def get_pc_relative(self) -> int:
         """Get PC value relative to program base address."""
-        return self.get_pc() - self.program_base_address
+        return self.get_pc() - self.code_start_address
 
     def get_pc_and_print(self) -> int:
         """Get PC value and print it for debugging."""
