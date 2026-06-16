@@ -99,6 +99,7 @@ class RiscvCoreSimulator:
     def set_reset(self, reset: bool):
         """Set or clear reset signal."""
         self.risc_debug.set_reset_signal(reset)
+        assert self.risc_debug.is_in_reset() == reset
 
     def is_in_reset(self) -> bool:
         """Check if core is in reset state."""
