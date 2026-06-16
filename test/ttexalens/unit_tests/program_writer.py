@@ -69,6 +69,16 @@ class RiscvProgramWriter:
         value = value & 0xFFF  # Ensure value is 12 bits signed integer
         self.append((value << 20) | (source_register << 15) | (destination_register << 7) | 0b0010011)
 
+    def append_slli(self, destination_register: int, source_register: int, shift_amount: int):
+        """Shift the value in source_register left by shift_amount bits, and store the result in destination_register."""
+        # https://riscv-software-src.github.io/riscv-unified-db/manual/html/isa/isa_20240411/insts/slli.html
+        assert 0 < destination_register < 32, "Destination register must be between 1 and 31"
+        assert 0 <= source_register < 32, "Source register must be between 0 and 31"
+        assert 0 <= shift_amount < 32, "Shift amount must be between 0 and 31"
+        self.append(
+            (shift_amount << 20) | (source_register << 15) | (0b001 << 12) | (destination_register << 7) | 0b0010011
+        )
+
     def append_sb(self, data_register: int, address_register: int, offset: int):
         """Store 8 bits of data from data_register to an address formed by adding address_register to a signed offset."""
         # https://riscv-software-src.github.io/riscv-unified-db/manual/html/isa/isa_20240411/insts/sb.html
