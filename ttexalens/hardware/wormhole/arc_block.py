@@ -85,14 +85,8 @@ class WormholeArcBlock(ArcBlock):
         if self.device.is_local:
             self.register_store_noc0 = RegisterStore(register_store_noc0_initialization_local, self.location)
             self.register_store_noc1 = RegisterStore(register_store_noc1_initialization_local, self.location)
-            self.noc0_bar_regs = MemoryBlock(size=0x10000, address=DeviceAddress(bar0_address=0x1FF50000))
-            self.noc1_bar_regs = MemoryBlock(size=0x10000, address=DeviceAddress(bar0_address=0x1FF58000))
-            self.noc_memory_map.add_blocks(
-                [
-                    MemoryMapBlockInfo("noc0_bar_regs", self.noc0_bar_regs),
-                    MemoryMapBlockInfo("noc1_bar_regs", self.noc1_bar_regs),
-                ]
-            )
+            self.noc0_bar_regs = MemoryBlock(size=0x8000, address=DeviceAddress(bar0_address=0x1FF50000))
+            self.noc1_bar_regs = MemoryBlock(size=0x8000, address=DeviceAddress(bar0_address=0x1FF58000))
         else:
             self.register_store_noc0 = RegisterStore(register_store_noc0_initialization_remote, self.location)
             self.register_store_noc1 = RegisterStore(register_store_noc1_initialization_remote, self.location)
@@ -104,15 +98,23 @@ class WormholeArcBlock(ArcBlock):
         self.noc_regs = MemoryBlock(
             size=0x10000, address=DeviceAddress(private_address=0xFFFB20000, noc_address=0xFFFB20000)
         )
-        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
-            WormholeArcBlock,
-            "noc_memory_map",
-            block_list_lambda=lambda: [
+
+        def build_blocks() -> list[MemoryMapBlockInfo]:
+            blocks = [
                 MemoryMapBlockInfo("arc_reset_regs", self.arc_reset_regs, safe_to_write=True),
                 MemoryMapBlockInfo("arc_csm", self.arc_csm, safe_to_write=True),
                 MemoryMapBlockInfo("arc_rom", self.arc_rom, safe_to_write=True),
                 MemoryMapBlockInfo("noc_regs", self.noc_regs),
-            ],
+            ]
+            if self.device.is_local:
+                blocks.append(MemoryMapBlockInfo("noc0_bar_regs", self.noc0_bar_regs))
+                blocks.append(MemoryMapBlockInfo("noc1_bar_regs", self.noc1_bar_regs))
+            return blocks
+
+        self.noc_memory_map = MemoryMap.get_memory_map_from_cache(
+            WormholeArcBlock,
+            "noc_memory_map_local" if self.device.is_local else "noc_memory_map_remote",
+            block_list_lambda=build_blocks,
         )
 
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
