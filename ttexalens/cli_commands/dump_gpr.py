@@ -26,7 +26,8 @@ from ttexalens.device import Device
 from ttexalens.exceptions import RiscHaltError
 import ttexalens.tt_exalens_lib as lib
 from ttexalens.hardware.baby_risc_debug import get_register_index, get_register_name
-from ttexalens.hardware.risc_debug import CallstackEntry, RiscLocation
+from ttexalens.elf import CallstackEntry
+from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.uistate import UIState
 
 from ttexalens import util as util
