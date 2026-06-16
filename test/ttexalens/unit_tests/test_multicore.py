@@ -49,6 +49,9 @@ class TestMulticore(unittest.TestCase):
             - Writes counter to mailbox
             - Jumps back to increment
         """
+        if not self.context.devices[0].is_wormhole():
+            self.skipTest("Multi-core tests are only applicable for Wormhole devices.")
+
         # Register numbers (RISC-V ABI): t0 = x5, t1 = x6, t3 = x28
         t0, t1, t3 = 5, 6, 28
         MAILBOX_READ_ADDRESS = 0xFFEC1000
@@ -91,9 +94,6 @@ class TestMulticore(unittest.TestCase):
 
         except RiscHaltError as he:
             print(f"\nCore was locked up. {he}")
-            self._verify_core_states()
-        except Exception as e:
-            print(f"\nExpected exception occurred: {e}")
             self._verify_core_states()
 
 
