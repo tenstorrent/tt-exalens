@@ -92,9 +92,6 @@ class TestMulticore(unittest.TestCase):
         except RiscHaltError as he:
             print(f"\nCore was locked up. {he}")
             self._verify_core_states()
-        except Exception as e:
-            print(f"\nExpected exception occurred: {e}")
-            self._verify_core_states()
 
 
 if __name__ == "__main__":
