@@ -98,7 +98,8 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
                     elf = lib.parse_elf(elf_path, context)
                     callstack_value[risc_name] = lib.top_callstack(risc.get_pc(), elf, None, context)
             except Exception:
-                util.DEBUG(f"Unable to load ELF file for RISC {risc_name}:\n{traceback.format_exc()}")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG(f"Unable to load ELF file for RISC {risc_name}:\n{traceback.format_exc()}")
         else:
             util.ERROR(f"Core {risc_name} cannot be halted.")
 

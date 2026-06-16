@@ -206,5 +206,6 @@ class UmdApi:
 
 def local_init(init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None):
     communicator = UmdApi(init_jtag, initialize_with_noc1, simulation_directory)
-    util.VERBOSE("Device opened successfully.")
+    if util.VERBOSE_ENABLED:
+        util.VERBOSE("Device opened successfully.")
     return communicator

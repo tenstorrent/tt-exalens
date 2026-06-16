@@ -135,7 +135,8 @@ def import_commands(reload: bool = False) -> list[CommandMetadata]:
         # Make the module name the default 'long' invocation string
         if not command_metadata.long_name:
             command_metadata.long_name = cmd_module.__name__
-        util.VERBOSE(f"Importing command {command_metadata.long_name} from '{cmd_module.__name__}'")
+        if util.VERBOSE_ENABLED:
+            util.VERBOSE(f"Importing command {command_metadata.long_name} from '{cmd_module.__name__}'")
 
         if reload:
             importlib.reload(cmd_module)
@@ -342,11 +343,13 @@ def main_loop(args, context: Context):
         try:
             ui_state.stop_server()
         except Exception:
-            util.DEBUG(f"Exception during server shutdown:\n{traceback.format_exc()}")
+            if util.DEBUG_ENABLED:
+                util.DEBUG(f"Exception during server shutdown:\n{traceback.format_exc()}")
         try:
             ui_state.stop_gdb()
         except Exception:
-            util.DEBUG(f"Exception during GDB shutdown:\n{traceback.format_exc()}")
+            if util.DEBUG_ENABLED:
+                util.DEBUG(f"Exception during GDB shutdown:\n{traceback.format_exc()}")
 
 
 def main():
@@ -384,8 +387,10 @@ def main():
     except (TypeError, ValueError):
         util.WARN("Verbosity level must be an integer. Falling back to default value.")
     except Exception:
-        util.DEBUG(f"Failed to set verbosity level:\n{traceback.format_exc()}")
-    util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
+        if util.DEBUG_ENABLED:
+            util.DEBUG(f"Failed to set verbosity level:\n{traceback.format_exc()}")
+    if util.VERBOSE_ENABLED:
+        util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 
     use_4B_mode = False if args["--disable-4B-mode"] else True
     safe_mode = False if args["--unsafe-mode"] else True
@@ -447,7 +452,8 @@ def main():
     # Main function
     exit_code = main_loop(args, context)
 
-    util.VERBOSE(f"Exiting with code {exit_code} ")
+    if util.VERBOSE_ENABLED:
+        util.VERBOSE(f"Exiting with code {exit_code} ")
     sys.exit(exit_code)
 
 

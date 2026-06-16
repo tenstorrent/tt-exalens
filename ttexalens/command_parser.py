@@ -115,7 +115,8 @@ class tt_docopt:
                 for risc in riscs:
                     yield risc.risc_location.risc_name
             except Exception:
-                util.DEBUG(f"Could not enumerate RISC names for location {location}:\n{traceback.format_exc()}")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG(f"Could not enumerate RISC names for location {location}:\n{traceback.format_exc()}")
         else:
             for name in risc_name.split(","):
                 yield name
