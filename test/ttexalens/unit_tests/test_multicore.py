@@ -14,6 +14,8 @@ class TestMulticore(unittest.TestCase):
 
     def setUp(self):
         self.context = init_cached_test_context()
+        if not self.context.devices[0].is_wormhole():
+            self.skipTest("Multi-core tests are only applicable for Wormhole devices.")
         self.brisc = RiscvCoreSimulator(self.context, "FW0", "BRISC")
         self.trisc0 = RiscvCoreSimulator(self.context, "FW0", "TRISC0")
 
