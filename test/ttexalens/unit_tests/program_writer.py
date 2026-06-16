@@ -28,11 +28,16 @@ class RiscvProgramWriter:
         # Mitigation for firmware corrupting L1 in ETH block on wormhole
         # Since we can't change code start address for erisc we always
         # start program with jump to code start address we want
+        l1 = self.core_simulator.risc_debug.baby_risc_info.l1
         if self.core_simulator.program_start_offset is not None:
+            noc_code_start_address = l1.translate_to_noc_address(self.core_simulator.code_start_address)
+            assert noc_code_start_address is not None
             self.core_simulator.write_data_checked(
-                self.core_simulator.code_start_address, self.generate_jal(self.core_simulator.program_start_offset)
+                noc_code_start_address, self.generate_jal(self.core_simulator.program_start_offset)
             )
-        self.core_simulator.write_data_checked(self.core_simulator.program_base_address, self.instructions)
+        noc_program_base_address = l1.translate_to_noc_address(self.core_simulator.program_base_address)
+        assert noc_program_base_address is not None
+        self.core_simulator.write_data_checked(noc_program_base_address, self.instructions)
 
     def clear_instructions(self):
         self.instructions.clear()
