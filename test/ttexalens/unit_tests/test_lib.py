@@ -1492,7 +1492,7 @@ class TestCallStack(unittest.TestCase):
         cls.device = cls.context.devices[0]
         server = ServerSocket()
         server.start()
-        cls.gdb_server = GdbServer(cls.context, server)
+        cls.gdb_server = GdbServer(cls.context, server, skip_detach=True, debug_only_with_elfs=True)
         cls.gdb_server.start()
 
     @classmethod
