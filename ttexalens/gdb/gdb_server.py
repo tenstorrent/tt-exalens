@@ -54,7 +54,14 @@ class GdbThreadListPaged:
 # Class that serves gdb client requests
 # Gdb remote protocol documentation: https://sourceware.org/gdb/current/onlinedocs/gdb.html/Remote-Protocol.html
 class GdbServer(threading.Thread):
-    def __init__(self, context: Context, server: ServerSocket, error_stream: IO[str] | None = None):
+    def __init__(
+        self,
+        context: Context,
+        server: ServerSocket,
+        error_stream: IO[str] | None = None,
+        skip_detach: bool = False,
+        debug_only_with_elfs: bool = False,
+    ):
         super().__init__(daemon=True)  # Spawn as daemon, so we don't block exit
         self.context = context  # TTExaLens context
         self.server = server  # server socket used for listening to incoming connections
@@ -92,6 +99,10 @@ class GdbServer(threading.Thread):
             RiscLocation, GdbProcess
         ] = {}  # Dictionary of last executed available processes that can be debugged (key: pid)
         self.error_stream: IO[str] | None = error_stream
+        self.skip_detach = (
+            skip_detach  # If True, we will not detach from the process when gdb client disconnects. Used by tests.
+        )
+        self.debug_only_with_elfs = debug_only_with_elfs  # If True, we will only allow debugging processes that have an ELF file loaded. Used by tests.
 
     @property
     def available_processes(self):
@@ -102,16 +113,16 @@ class GdbServer(threading.Thread):
         for device_id in self.context.device_ids:
             device = self.context.find_device_by_id(device_id)
             for risc_debug in device.debuggable_cores:
-                if not risc_debug.is_in_reset():
-                    try:
-                        elf_path = self.context.get_risc_elf_path(risc_debug.risc_location)
-                    except Exception:
-                        if util.DEBUG_ENABLED:
-                            util.DEBUG(
-                                f"Could not get ELF path for {risc_debug.risc_location}, running without it:\n{traceback.format_exc()}"
-                            )
-                        elf_path = None
-
+                # Try to get elf path for the risc core
+                try:
+                    elf_path = self.context.get_risc_elf_path(risc_debug.risc_location)
+                except Exception:
+                    if util.DEBUG_ENABLED:
+                        util.DEBUG(
+                            f"Could not get ELF path for {risc_debug.risc_location}, running without it:\n{traceback.format_exc()}"
+                        )
+                    elf_path = None
+                if (not self.debug_only_with_elfs or elf_path is not None) and not risc_debug.is_in_reset():
                     # Check if process is in self._last_available_processes and reuse it if it is
                     # TODO: In ideal world, we would have "start time" for a core (time when core was taken out of reset) and use that as a key for reusing process id; for now, we can just check if elf path is the same
                     last_process = self._last_available_processes.get(risc_debug.risc_location)
@@ -262,14 +273,15 @@ class GdbServer(threading.Thread):
                     thread_id = self.debugging_threads.pop(pid)
                     process = self.available_processes.get(pid)
                     if process is not None:
-                        # Remove all break points from the process
-                        watchpoints_state = process.risc_debug.read_watchpoints_state()
-                        for bid in range(0, len(watchpoints_state)):
-                            process.risc_debug.disable_watchpoint(bid)
+                        if not self.skip_detach:
+                            # Remove all break points from the process
+                            watchpoints_state = process.risc_debug.read_watchpoints_state()
+                            for bid in range(0, len(watchpoints_state)):
+                                process.risc_debug.disable_watchpoint(bid)
 
-                        # Continue process if it is halted
-                        if process.risc_debug.is_halted():
-                            process.risc_debug.cont()
+                            # Continue process if it is halted
+                            if process.risc_debug.is_halted():
+                                process.risc_debug.cont()
                     writer.append(b"OK")
                 else:
                     writer.append(b"E01")
@@ -278,14 +290,15 @@ class GdbServer(threading.Thread):
                 for pid in self.debugging_threads.keys():
                     process = self.available_processes.get(pid)
                     if process is not None:
-                        # Remove all break points from the process
-                        watchpoints_state = process.risc_debug.read_watchpoints_state()
-                        for bid in range(0, len(watchpoints_state)):
-                            process.risc_debug.disable_watchpoint(bid)
+                        if not self.skip_detach:
+                            # Remove all break points from the process
+                            watchpoints_state = process.risc_debug.read_watchpoints_state()
+                            for bid in range(0, len(watchpoints_state)):
+                                process.risc_debug.disable_watchpoint(bid)
 
-                        # Continue process if it is halted
-                        if process.risc_debug.is_halted():
-                            process.risc_debug.cont()
+                            # Continue process if it is halted
+                            if process.risc_debug.is_halted():
+                                process.risc_debug.cont()
                 self.debugging_threads.clear()
                 writer.append(b"OK")
         elif parser.parse(b"g"):  # Read general registers.
