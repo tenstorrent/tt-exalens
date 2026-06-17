@@ -314,7 +314,8 @@ def connect_to_server(server_host="localhost", port=5555) -> tuple[UmdApi, FileA
     try:
         # Connect to UmdApi
         pyro_umd_api_address = f"PYRO:umd_api@{server_host}:{port}"
-        util.VERBOSE(f"Connecting UMD API to ttexalens-server at {pyro_umd_api_address}...")
+        if util.VERBOSE_ENABLED:
+            util.VERBOSE(f"Connecting UMD API to ttexalens-server at {pyro_umd_api_address}...")
         # We are returning a wrapper around the Pyro5 proxy to provide UmdApi-like behavior.
         proxy = Pyro5.api.Proxy(pyro_umd_api_address)
         proxy._pyroSerializer = "serpent"
@@ -322,7 +323,8 @@ def connect_to_server(server_host="localhost", port=5555) -> tuple[UmdApi, FileA
 
         # Connect to FileAccessApi
         pyro_file_api_address = f"PYRO:file_api@{server_host}:{port}"
-        util.VERBOSE(f"Connecting FileAccess API to ttexalens-server at {pyro_file_api_address}...")
+        if util.VERBOSE_ENABLED:
+            util.VERBOSE(f"Connecting FileAccess API to ttexalens-server at {pyro_file_api_address}...")
 
         # We are returning a wrapper around the Pyro5 proxy to provide FileAccessApi-like behavior.
         # Since this is not a direct instance of FileAccessApi, mypy will warn; hence the ignore.

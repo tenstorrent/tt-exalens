@@ -74,7 +74,8 @@ def get_riscv_run_status(device: Device, loc: OnChipCoordinate) -> str:
                 status_str += "-" if risc.is_in_reset() else "R"
             return status_str
     except Exception:
-        util.DEBUG(f"Unexpected exception getting risc status:\n{traceback.format_exc()}")
+        if util.DEBUG_ENABLED:
+            util.DEBUG(f"Unexpected exception getting risc status:\n{traceback.format_exc()}")
     return device.get_block_type(loc)
 
 

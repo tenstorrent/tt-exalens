@@ -252,46 +252,55 @@ class BabyRiscDebugHardware:
             return f"Unknown register {address}"
 
     def __write(self, address: int, data: int):
-        util.TRACE(f"{self._get_reg_name_for_address(address)} <- WR   0x{data:08x}")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"{self._get_reg_name_for_address(address)} <- WR   0x{data:08x}")
         self.risc_info.noc_block.location.noc_write32(address, data)
 
     def __read(self, address: int) -> int:
         data = self.risc_info.noc_block.location.noc_read32(address)
-        util.TRACE(f"{self._get_reg_name_for_address(address)} -> RD == 0x{data:08x}")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"{self._get_reg_name_for_address(address)} -> RD == 0x{data:08x}")
         return data
 
     def __trigger_write(self, reg_addr):
-        util.TRACE(f"      __trigger_write({reg_addr})")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"      __trigger_write({reg_addr})")
         self.__write(self.RISC_DBG_CNTL0, self.CONTROL0_WRITE + reg_addr)
         self.__write(self.RISC_DBG_CNTL0, 0)
 
     def __trigger_read(self, reg_addr):
-        util.TRACE(f"      __trigger_read({reg_addr})")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"      __trigger_read({reg_addr})")
         self.__write(self.RISC_DBG_CNTL0, self.CONTROL0_READ + reg_addr)
         self.__write(self.RISC_DBG_CNTL0, 0)
 
     def __riscv_write(self, reg_addr, value):
-        util.TRACE(f"    __riscv_write({reg_addr}, 0x{value:08x})")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"    __riscv_write({reg_addr}, 0x{value:08x})")
         # set wrdata
         self.__write(self.RISC_DBG_CNTL1, value)
         self.__trigger_write(reg_addr)
 
     def __is_read_valid(self):
-        util.TRACE("  __is_read_valid()")
+        if util.TRACE_ENABLED:
+            util.TRACE("  __is_read_valid()")
         status0 = self.__read(self.RISC_DBG_STATUS0)
         return (status0 & self.risc_info.status_read_valid_mask) == self.risc_info.status_read_valid_mask
 
     def __riscv_read(self, reg_addr) -> int:
-        util.TRACE(f"  __riscv_read({reg_addr})")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"  __riscv_read({reg_addr})")
         self.__trigger_read(reg_addr)
 
         if self.enable_asserts:
             if not self.__is_read_valid():
-                util.DEBUG(f"Reading from RiscV debug registers failed (debug read valid bit is set to 0).")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG(f"Reading from RiscV debug registers failed (debug read valid bit is set to 0).")
         return self.__read(self.RISC_DBG_STATUS1)
 
     def enable_debug(self):
-        util.TRACE("  enable_debug()")
+        if util.TRACE_ENABLED:
+            util.TRACE("  enable_debug()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE)
 
     def _halt_command(self):
@@ -299,9 +308,13 @@ class BabyRiscDebugHardware:
 
     def halt(self):
         if self.is_halted():
-            util.WARN(f"Halt: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already halted")
+            if util.WARN_ENABLED:
+                util.WARN(
+                    f"Halt: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already halted"
+                )
             return
-        util.TRACE("  halt()")
+        if util.TRACE_ENABLED:
+            util.TRACE("  halt()")
         self._halt_command()
         if not self.is_halted():
             raise RiscHaltError(self.risc_info.risc_name, self.risc_info.noc_block.location)
@@ -313,7 +326,8 @@ class BabyRiscDebugHardware:
         Args:
             pc_address (int): The address to set the PC to after flushing
         """
-        util.TRACE(f"  flush(0x{pc_address:08x})")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"  flush(0x{pc_address:08x})")
 
         # Set the PC address in COMMAND_ARG_1
         self.__riscv_write(REG_COMMAND_ARG_1, pc_address)
@@ -336,16 +350,19 @@ class BabyRiscDebugHardware:
                 self.cont()
 
     def step(self):
-        util.TRACE("  step()")
+        if util.TRACE_ENABLED:
+            util.TRACE("  step()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_STEP)
 
     def cont(self):
         if not self.is_halted():
-            util.WARN(
-                f"Continue: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already running"
-            )
+            if util.WARN_ENABLED:
+                util.WARN(
+                    f"Continue: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already running"
+                )
             return
-        util.TRACE("  cont()")
+        if util.TRACE_ENABLED:
+            util.TRACE("  cont()")
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_CONTINUE)
 
     def continue_without_debug(self):
@@ -361,24 +378,29 @@ class BabyRiscDebugHardware:
             - Writes to RISC-V command register
         """
         if not self.is_halted():
-            util.WARN(
-                f"Continue: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already running"
-            )
+            if util.WARN_ENABLED:
+                util.WARN(
+                    f"Continue: {self.risc_info.risc_name} core at {self.risc_info.noc_block.location} is already running"
+                )
             return
-        util.TRACE("  continue_without_debug()")
+        if util.TRACE_ENABLED:
+            util.TRACE("  continue_without_debug()")
         self.__riscv_write(REG_COMMAND, COMMAND_CONTINUE)
 
     def read_status(self) -> BabyRiscDebugStatus:
-        util.TRACE("  read_status()")
+        if util.TRACE_ENABLED:
+            util.TRACE("  read_status()")
         status = self.__riscv_read(REG_STATUS)
         return BabyRiscDebugStatus.from_register(status, self.risc_info.max_watchpoints)
 
     def is_halted(self) -> bool:
-        util.TRACE("  is_halted()")
+        if util.TRACE_ENABLED:
+            util.TRACE("  is_halted()")
         return self.read_status().is_halted
 
     def is_pc_watchpoint_hit(self) -> bool:
-        util.TRACE("  is_pc_watchpoint_hit()")
+        if util.TRACE_ENABLED:
+            util.TRACE("  is_pc_watchpoint_hit()")
         return self.read_status().is_pc_watchpoint_hit
 
     def assert_halted(self, message=""):
@@ -392,19 +414,22 @@ class BabyRiscDebugHardware:
             raise ValueError(exception_message)
 
     def is_memory_watchpoint_hit(self):
-        util.TRACE("  is_memory_watchpoint_hit()")
+        if util.TRACE_ENABLED:
+            util.TRACE("  is_memory_watchpoint_hit()")
         return self.read_status().is_memory_watchpoint_hit
 
     def read_gpr(self, reg_index) -> int:
         if not 0 <= reg_index <= 32:
             raise ValueError(f"Invalid register index {reg_index}. Must be between 0 and 32.")
-        util.TRACE(f"  read_gpr({reg_index})")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"  read_gpr({reg_index})")
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_REGISTER)
         return self.__riscv_read(REG_COMMAND_RETURN_VALUE)
 
     def write_gpr(self, reg_index, value):
-        util.TRACE(f"  write_gpr({reg_index}, 0x{value:08x})")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"  write_gpr({reg_index}, 0x{value:08x})")
         self.__riscv_write(REG_COMMAND_ARG_1, value)
         self.__riscv_write(REG_COMMAND_ARG_0, reg_index)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_REGISTER)
@@ -412,17 +437,20 @@ class BabyRiscDebugHardware:
     def read_memory(self, addr) -> int:
         if self.enable_asserts:
             self.assert_halted()
-        util.TRACE(f"  read_memory(0x{addr:08x})")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"  read_memory(0x{addr:08x})")
         self.__riscv_write(REG_COMMAND_ARG_0, addr)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_READ_MEMORY)
         data = self.__riscv_read(REG_COMMAND_RETURN_VALUE)
-        util.TRACE(f"                             read -> 0x{data:08x}")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"                             read -> 0x{data:08x}")
         return data
 
     def write_memory(self, addr, value):
         if self.enable_asserts:
             self.assert_halted()
-        util.TRACE(f"  write_memory(0x{addr:08x}, 0x{value:08x})")
+        if util.TRACE_ENABLED:
+            util.TRACE(f"  write_memory(0x{addr:08x}, 0x{value:08x})")
         self.__riscv_write(REG_COMMAND_ARG_1, value)
         self.__riscv_write(REG_COMMAND_ARG_0, addr)
         self.__riscv_write(REG_COMMAND, COMMAND_DEBUG_MODE + COMMAND_WRITE_MEMORY)
@@ -677,7 +705,8 @@ class BabyRiscDebug(RiscDebug):
             if self.risc_info.noc_block.debug_bus is not None:
                 return self.risc_info.noc_block.debug_bus.get_signal_description(self.risc_info.risc_name + "_pc")
         except Exception:
-            util.DEBUG(f"Unexpected exception getting debug bus PC signal:\n{traceback.format_exc()}")
+            if util.DEBUG_ENABLED:
+                util.DEBUG(f"Unexpected exception getting debug bus PC signal:\n{traceback.format_exc()}")
         return None
 
     def get_pc(self) -> int:

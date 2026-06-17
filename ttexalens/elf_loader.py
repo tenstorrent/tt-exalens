@@ -183,9 +183,10 @@ class ElfLoader:
                     if section.name == ".init":
                         init_section_address = address
 
-                    util.VERBOSE(
-                        f"Writing section {section.name} to address 0x{address:08x}. Size: {len(section.data)} bytes"
-                    )
+                    if util.VERBOSE_ENABLED:
+                        util.VERBOSE(
+                            f"Writing section {section.name} to address 0x{address:08x}. Size: {len(section.data)} bytes"
+                        )
                     self.write_block(address, section.data)
 
                     # Check that what we have written is correct
@@ -196,9 +197,10 @@ class ElfLoader:
                             util.ERROR(f"Error writing section {section.name} to address 0x{address:08x}.")
                             continue
                         else:
-                            util.VERBOSE(
-                                f"Section {section.name} loaded successfully to address 0x{address:08x}. Size: {len(section.data)} bytes"
-                            )
+                            if util.VERBOSE_ENABLED:
+                                util.VERBOSE(
+                                    f"Section {section.name} loaded successfully to address 0x{address:08x}. Size: {len(section.data)} bytes"
+                                )
         except Exception as e:
             util.ERROR(e)
             raise TTException(f"Error loading elf file {elf_path}")

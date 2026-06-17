@@ -75,7 +75,8 @@ class Context:
         device_ids = self.device_ids
         devices: dict[int, Device] = dict()
         for device_id in device_ids:
-            util.DEBUG(f"Loading device {device_id}")
+            if util.DEBUG_ENABLED:
+                util.DEBUG(f"Loading device {device_id}")
             devices[device_id] = Device.create(device_id, self)
         return devices
 
@@ -89,7 +90,8 @@ class Context:
         try:
             device_ids = self.cluster_descriptor.get_all_chips()
         except Exception:
-            util.DEBUG(f"Could not get device IDs from cluster descriptor:\n{traceback.format_exc()}")
+            if util.DEBUG_ENABLED:
+                util.DEBUG(f"Could not get device IDs from cluster descriptor:\n{traceback.format_exc()}")
             device_ids = []
         return SortedSet(d for d in device_ids)
 

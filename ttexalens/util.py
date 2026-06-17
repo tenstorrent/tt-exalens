@@ -42,9 +42,16 @@ class Verbosity(Enum):
                 5: DEBUG
                 6: TRACE
         """
-        global VERBOSITY_VALUE
+        global VERBOSITY_VALUE, VERBOSITY_LEVEL, ERROR_ENABLED, WARN_ENABLED, INFO_ENABLED, VERBOSE_ENABLED, DEBUG_ENABLED, TRACE_ENABLED
 
         VERBOSITY_VALUE = Verbosity(verbosity)
+        VERBOSITY_LEVEL = VERBOSITY_VALUE.value
+        ERROR_ENABLED = Verbosity.ERROR.value <= VERBOSITY_LEVEL
+        WARN_ENABLED = Verbosity.WARN.value <= VERBOSITY_LEVEL
+        INFO_ENABLED = Verbosity.INFO.value <= VERBOSITY_LEVEL
+        VERBOSE_ENABLED = Verbosity.VERBOSE.value <= VERBOSITY_LEVEL
+        DEBUG_ENABLED = Verbosity.DEBUG.value <= VERBOSITY_LEVEL
+        TRACE_ENABLED = Verbosity.TRACE.value <= VERBOSITY_LEVEL
 
     @staticmethod
     def get() -> "Verbosity":
@@ -70,12 +77,17 @@ class Verbosity(Enum):
         Returns:
             bool: True if supported, False otherwise.
         """
-        global VERBOSITY_VALUE
-
-        return VERBOSITY_VALUE.value >= verbosity.value
+        return VERBOSITY_LEVEL >= verbosity.value
 
 
 VERBOSITY_VALUE: Verbosity = Verbosity.ERROR
+VERBOSITY_LEVEL: int = VERBOSITY_VALUE.value
+ERROR_ENABLED: bool = True
+WARN_ENABLED: bool = False
+INFO_ENABLED: bool = False
+VERBOSE_ENABLED: bool = False
+DEBUG_ENABLED: bool = False
+TRACE_ENABLED: bool = False
 
 # Pretty print exceptions (traceback)
 def notify_exception(exc_type, exc_value, tb):
@@ -192,32 +204,32 @@ def FATAL(s, **kwargs):
 
 
 def ERROR(s, **kwargs):
-    if Verbosity.supports(Verbosity.ERROR):
+    if ERROR_ENABLED:
         print(f"{CLR_ERR}{s}{CLR_END}", **kwargs)
 
 
 def WARN(s, **kwargs):
-    if Verbosity.supports(Verbosity.WARN):
+    if WARN_ENABLED:
         print(f"{CLR_WARN}{s}{CLR_END}", **kwargs)
 
 
 def DEBUG(s, **kwargs):
-    if Verbosity.supports(Verbosity.DEBUG):
+    if DEBUG_ENABLED:
         print(f"{CLR_DEBUG}{s}{CLR_END}", **kwargs)
 
 
 def TRACE(s, **kwargs):
-    if Verbosity.supports(Verbosity.TRACE):
+    if TRACE_ENABLED:
         print(f"{CLR_TRACE}{s}{CLR_END}", **kwargs)
 
 
 def INFO(s, **kwargs):
-    if Verbosity.supports(Verbosity.INFO):
+    if INFO_ENABLED:
         print(f"{CLR_INFO}{s}{CLR_END}", **kwargs)
 
 
 def VERBOSE(s, **kwargs):
-    if Verbosity.supports(Verbosity.VERBOSE):
+    if VERBOSE_ENABLED:
         print(f"{CLR_VERBOSE}{s}{CLR_END}", **kwargs)
 
 

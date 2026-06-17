@@ -136,7 +136,10 @@ class UmdDevice:
                 self.__read_from_device_reg(tensix_translated_coord, 0, buffer, 8)
                 return
             except Exception:
-                util.DEBUG(f"Active ETH core {translated_coord} not working, trying next:\n{traceback.format_exc()}")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG(
+                        f"Active ETH core {translated_coord} not working, trying next:\n{traceback.format_exc()}"
+                    )
                 continue
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
@@ -273,7 +276,8 @@ class UmdDevice:
         except Exception:
             if self._is_simulation or self._is_mmio_capable:
                 raise
-            util.DEBUG(f"Read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
+            if util.DEBUG_ENABLED:
+                util.DEBUG(f"Read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
             self.__configure_working_active_eth()
             self.__read_from_device_reg_unaligned_helper(coord, address, buffer, use_4B_mode, dma_threshold)
 
@@ -346,7 +350,8 @@ class UmdDevice:
         except Exception:
             if self._is_simulation or self._is_mmio_capable:
                 raise
-            util.DEBUG(f"Write failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
+            if util.DEBUG_ENABLED:
+                util.DEBUG(f"Write failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
             self.__configure_working_active_eth()
             self.__write_to_device_reg_unaligned_helper(coord, address, data, use_4B_mode, dma_threshold)
 
@@ -374,7 +379,8 @@ class UmdDevice:
             self.__select_noc_id(noc_id)
             self.__read_from_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, buffer, use_4B_mode, dma_threshold)
         except tt_umd.SigbusError:
-            util.DEBUG("Reset detected during noc_read, reinitializing device and retrying...")
+            if util.DEBUG_ENABLED:
+                util.DEBUG("Reset detected during noc_read, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
             self.noc_read(noc_id, noc0_x, noc0_y, address, buffer, use_4B_mode, dma_threshold)
 
@@ -408,7 +414,8 @@ class UmdDevice:
             self.__select_noc_id(noc_id)
             self.__write_to_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
         except tt_umd.SigbusError:
-            util.DEBUG("Reset detected during noc_write, reinitializing device and retrying...")
+            if util.DEBUG_ENABLED:
+                util.DEBUG("Reset detected during noc_write, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
             self.noc_write(noc_id, noc0_x, noc0_y, address, data, use_4B_mode, dma_threshold)
 
@@ -419,7 +426,8 @@ class UmdDevice:
         try:
             return self.__device.bar_read32(address)
         except tt_umd.SigbusError:
-            util.DEBUG("Reset detected during bar0_read32, reinitializing device and retrying...")
+            if util.DEBUG_ENABLED:
+                util.DEBUG("Reset detected during bar0_read32, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
             return self.__device.bar_read32(address)
 
@@ -430,7 +438,8 @@ class UmdDevice:
         try:
             self.__device.bar_write32(address, data)
         except tt_umd.SigbusError:
-            util.DEBUG("Reset detected during bar0_write32, reinitializing device and retrying...")
+            if util.DEBUG_ENABLED:
+                util.DEBUG("Reset detected during bar0_write32, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
             self.__device.bar_write32(address, data)
 
@@ -459,7 +468,8 @@ class UmdDevice:
             timeout_ms = timeout.total_seconds() * 1000 if isinstance(timeout, datetime.timedelta) else timeout * 1000
             return self.__device.arc_msg(msg_code, wait_for_done, args, int(timeout_ms))
         except tt_umd.SigbusError:
-            util.DEBUG("Reset detected during arc_msg, reinitializing device and retrying...")
+            if util.DEBUG_ENABLED:
+                util.DEBUG("Reset detected during arc_msg, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
             return self.arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
 
@@ -476,19 +486,22 @@ class UmdDevice:
         try:
             return do_read(telemetry_tag)
         except tt_umd.SigbusError:
-            util.DEBUG("Reset detected during read_arc_telemetry_entry, reinitializing device and retrying...")
+            if util.DEBUG_ENABLED:
+                util.DEBUG("Reset detected during read_arc_telemetry_entry, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
             return self.read_arc_telemetry_entry(noc_id, telemetry_tag)
         except Exception:
             if not self._is_mmio_capable:
                 raise
             try:
-                util.DEBUG(f"Telemetry read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG(f"Telemetry read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
                 # TODO: We should retry only if it was remote read error
                 self.__configure_working_active_eth()
                 return do_read(telemetry_tag)
             except tt_umd.SigbusError:
-                util.DEBUG("Reset detected during read_arc_telemetry_entry, reinitializing device and retrying...")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG("Reset detected during read_arc_telemetry_entry, reinitializing device and retrying...")
                 self.__reinit_device_after_sigbus()
                 return self.read_arc_telemetry_entry(noc_id, telemetry_tag)
 
@@ -503,19 +516,24 @@ class UmdDevice:
         try:
             firmware_version = do_read()
         except tt_umd.SigbusError:
-            util.DEBUG("Reset detected during get_firmware_version, reinitializing device and retrying...")
+            if util.DEBUG_ENABLED:
+                util.DEBUG("Reset detected during get_firmware_version, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
             return self.get_firmware_version(noc_id)
         except Exception:
             if not self._is_mmio_capable:
                 raise
             try:
-                util.DEBUG(f"Firmware version read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG(
+                        f"Firmware version read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}"
+                    )
                 # TODO: We should retry only if it was remote read error
                 self.__configure_working_active_eth()
                 firmware_version = do_read()
             except tt_umd.SigbusError:
-                util.DEBUG("Reset detected during get_firmware_version, reinitializing device and retrying...")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG("Reset detected during get_firmware_version, reinitializing device and retrying...")
                 self.__reinit_device_after_sigbus()
                 return self.get_firmware_version(noc_id)
         return firmware_version
