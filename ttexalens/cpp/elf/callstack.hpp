@@ -56,9 +56,19 @@ std::vector<CallstackEntry> get_frame_callstack(const std::vector<ElfFile>& elfs
 // CFA chain ends, or — when `stop_function_name` is set — once the specified
 // function is reported. `limit` == 0 means no limit. When `extract_variables` is
 // false, per-frame argument / local / template-parameter lists are skipped for a
-// faster name-only backtrace. Returns an empty vector when no ELF covers `pc`.
+// faster name-only backtrace.
+//
+// When `expand_tail_call_inline_frames` is set, a reconstructed tail-call frame
+// is expanded into its full inlined-function chain (one entry per enclosing
+// inlined subroutine, name + source line only) instead of the single innermost
+// entry GDB emits. The extra entries carry no PC or variables — a tail-called
+// frame has no live state — but reproduce the source-level call chain exactly.
+// Off by default to stay byte-for-byte comparable with GDB's output.
+//
+// Returns an empty vector when no ELF covers `pc`.
 std::vector<CallstackEntry> get_callstack(const std::vector<ElfFile>& elfs, uint64_t pc,
                                           std::shared_ptr<MemoryAccess> memory_access, size_t limit,
-                                          std::string_view stop_function_name, bool extract_variables);
+                                          std::string_view stop_function_name, bool extract_variables,
+                                          bool expand_tail_call_inline_frames = false);
 
 }  // namespace ttexalens::native_elf

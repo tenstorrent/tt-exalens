@@ -1634,6 +1634,116 @@ class TestCallStack(unittest.TestCase):
         )
         self.compare_callstacks(callstack, gdb_callstack)
 
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_tail_call(self, elf_name):
+        # 0xFFFFFFFA selects the tail_call_test chain in callstack.cc. In the optimized build ra1
+        # tail-calls pc1 (the call becomes a jump), so the ra1 frame - with its inlined ra2/ra3 -
+        # leaves no return address on the stack and is only recoverable from the DWARF call-site
+        # (tail-call) information. In the -O0 (debug / coverage) build the same logical stack is
+        # produced through ordinary unwinding. GDB reconstructs the tail-called frame in both cases,
+        # so it is the ground truth our walker must match regardless of optimization level.
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0xFFFFFFFA)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        # The inlined leaf chain (halt inlined into pc3/pc2/pc1) is reconstructed from the PC alone,
+        # so it appears the same way on every build; run() and main() anchor the bottom of the walk.
+        # The tail-called ra* frames in between differ by optimization level, so they are validated
+        # through the GDB comparison rather than pinned here.
+        leading = ["halt", "tail_call_test::pc3", "tail_call_test::pc2", "tail_call_test::pc1"]
+        for index, expected in enumerate(leading):
+            # As elsewhere, an optimized clone of a leaf can lose its namespace qualification.
+            self.assertIn(callstack[index].function_name, (expected, expected.split("::")[-1]))
+        self.assertIn(callstack[-2].function_name, ("tail_call_test::run", "run"))
+        self.assertEqual(callstack[-1].function_name, "main")
+
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
+
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_tail_call_expand_inline_frames(self, elf_name):
+        # With expand_tail_call_inline_frames=True a reconstructed tail-call frame is expanded into
+        # its full inlined-function chain (ra3 <- ra2 <- ra1) instead of GDB's single innermost frame.
+        # The inline structure is read straight from the call-site PC, so the result is identical on
+        # every build: the optimized build reconstructs ra2/ra1 from the tail-call info, while the -O0
+        # builds get them from ordinary inline expansion. The whole source-level chain is therefore
+        # pinned exactly here (this mode intentionally diverges from GDB, so there is no GDB compare).
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0xFFFFFFFA)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True, expand_tail_call_inline_frames=True
+        )
+
+        expected = [
+            "halt",
+            "tail_call_test::pc3",
+            "tail_call_test::pc2",
+            "tail_call_test::pc1",
+            "tail_call_test::ra3",
+            "tail_call_test::ra2",
+            "tail_call_test::ra1",
+            "tail_call_test::run",
+            "main",
+        ]
+        self.assertEqual(len(callstack), len(expected))
+        for entry, name in zip(callstack, expected):
+            # As elsewhere, an optimized clone of a leaf can lose its namespace qualification.
+            self.assertIn(entry.function_name, (name, name.split("::")[-1]))
+
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_tail_call_chain(self, elf_name):
+        # 0xFFFFFFF9 selects the tail_chain_test chain in callstack.cc: tc_a tail-calls tc_b, tc_b
+        # tail-calls tc_c, tc_c tail-calls tc_d - three separate tail-call edges in a row. In the
+        # optimized build only run() and tc_d() remain as physical frames, so the tc_a/tc_b/tc_c
+        # frames are recovered by following the multi-edge DWARF tail-call chain (exercising the
+        # chain length > 1 path). GDB reconstructs the same frames, so it is the ground truth.
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0xFFFFFFF9)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        # tc_a/tc_b/tc_c are not inlined, so the whole chain appears the same on every build: the
+        # optimized build reconstructs them from the tail-call info, the -O0 builds from ordinary
+        # unwinding. halt() is the (inlined) leaf of tc_d; run() and main() anchor the bottom.
+        expected = [
+            "halt",
+            "tail_chain_test::tc_d",
+            "tail_chain_test::tc_c",
+            "tail_chain_test::tc_b",
+            "tail_chain_test::tc_a",
+            "tail_chain_test::run",
+            "main",
+        ]
+        self.assertEqual(len(callstack), len(expected))
+        for entry, name in zip(callstack, expected):
+            # As elsewhere, an optimized clone of a leaf can lose its namespace qualification.
+            self.assertIn(entry.function_name, (name, name.split("::")[-1]))
+
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
+
     @parameterized.expand([(x,) for x in RECURSION_COUNT])
     def test_top_callstack_with_parsing(self, recursion_count: int):
         elf_path = self.get_elf_path("callstack.debug")
