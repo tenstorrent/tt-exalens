@@ -117,9 +117,10 @@ class GdbServer(threading.Thread):
                 try:
                     elf_path = self.context.get_risc_elf_path(risc_debug.risc_location)
                 except Exception:
-                    util.DEBUG(
-                        f"Could not get ELF path for {risc_debug.risc_location}, running without it:\n{traceback.format_exc()}"
-                    )
+                    if util.DEBUG_ENABLED:
+                        util.DEBUG(
+                            f"Could not get ELF path for {risc_debug.risc_location}, running without it:\n{traceback.format_exc()}"
+                        )
                     elf_path = None
                 if (not self.debug_only_with_elfs or elf_path is not None) and not risc_debug.is_in_reset():
                     # Check if process is in self._last_available_processes and reuse it if it is
@@ -174,7 +175,8 @@ class GdbServer(threading.Thread):
                 self.file_server.close_all()
 
     def process_client(self, client: ClientSocket):
-        util.VERBOSE("GDB client connected")
+        if util.VERBOSE_ENABLED:
+            util.VERBOSE("GDB client connected")
         self.current_process = None
         self.debugging_threads.clear()
         input_stream = GdbInputStream(client, self.error_stream)
@@ -188,18 +190,22 @@ class GdbServer(threading.Thread):
                 if self.process_message(parser, writer):
                     if should_ack:
                         client.write(b"+")
-                        util.VERBOSE(f"sent response to GDB: +")
+                        if util.VERBOSE_ENABLED:
+                            util.VERBOSE(f"sent response to GDB: +")
                     try:
-                        util.VERBOSE(f"sent response to GDB: {writer.data.decode()}")
+                        if util.VERBOSE_ENABLED:
+                            util.VERBOSE(f"sent response to GDB: {writer.data.decode()}")
                     except UnicodeDecodeError:
                         # We ignore error if we cannot decode message
                         pass
                     writer.send()
             except Exception as e:
                 client.write(b"-")
-                util.VERBOSE(f"sent response to GDB: -")
+                if util.VERBOSE_ENABLED:
+                    util.VERBOSE(f"sent response to GDB: -")
                 util.ERROR(f"GDB exception: {e}", file=self.error_stream)
-        util.VERBOSE("GDB client closed")
+        if util.VERBOSE_ENABLED:
+            util.VERBOSE("GDB client closed")
 
     def process_message(self, parser: GdbMessageParser, writer: GdbMessageWriter):
         if parser.is_ack_ok:
@@ -212,7 +218,8 @@ class GdbServer(threading.Thread):
             return False
 
         try:
-            util.VERBOSE(f"processing GDB message: {parser.data.decode()}")
+            if util.VERBOSE_ENABLED:
+                util.VERBOSE(f"processing GDB message: {parser.data.decode()}")
         except UnicodeDecodeError:
             # We ignore error if we cannot decode message
             pass
@@ -327,7 +334,8 @@ class GdbServer(threading.Thread):
             # ‘H op thread-id’
             op = parser.read_char()
             thread_id = parser.parse_thread_id()
-            util.VERBOSE(f"GDB: Set thread {thread_id} and prepare for op '{chr(op) if op else '[EOM]'}'")
+            if util.VERBOSE_ENABLED:
+                util.VERBOSE(f"GDB: Set thread {thread_id} and prepare for op '{chr(op) if op else '[EOM]'}'")
             if self.current_process is None:
                 # Respond that we are not debugging anything at the moment
                 writer.append(b"E01")
@@ -456,7 +464,8 @@ class GdbServer(threading.Thread):
         ):  # Tell the remote stub about features supported by GDB, and query the stub for features it supports.
             # Read supported gdb client features
             if parser.parse(b":"):
-                util.VERBOSE("GDB: client features:")
+                if util.VERBOSE_ENABLED:
+                    util.VERBOSE("GDB: client features:")
                 while True:
                     feature = parser.read_until(GDB_ASCII_SEMICOLON)
                     if not feature:
@@ -466,11 +475,13 @@ class GdbServer(threading.Thread):
                         value = feature.endswith("+")
                         feature = feature[:-1]
                         self.client_features[feature] = value
-                        util.VERBOSE(f"     - {feature} = {value}")
+                        if util.VERBOSE_ENABLED:
+                            util.VERBOSE(f"     - {feature} = {value}")
                     else:
                         feature, value = feature.split("=")
                         self.client_features[feature] = value
-                        util.VERBOSE(f"     - {feature} = {value}")
+                        if util.VERBOSE_ENABLED:
+                            util.VERBOSE(f"     - {feature} = {value}")
 
             # Return supported features
             writer.append(b"PacketSize=")
@@ -988,7 +999,8 @@ class GdbServer(threading.Thread):
                         util.ERROR(str(e), file=self.error_stream)
                         writer.append(b"E04")  # restricted memory access
             except Exception:
-                util.DEBUG(f"Unexpected exception handling GDB memory write:\n{traceback.format_exc()}")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG(f"Unexpected exception handling GDB memory write:\n{traceback.format_exc()}")
                 writer.append(b"E03")
         elif parser.parse(b"z0,"):  # Remove a software breakpoint at address of type kind.
             # ‘z0,addr,kind’

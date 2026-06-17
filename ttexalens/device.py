@@ -414,9 +414,10 @@ class Device:
                     if coord_system in unique_coordinates:
                         self._to_noc0[(converted_location, coord_system, "any")] = noc0_location
                 except Exception:
-                    util.DEBUG(
-                        f"Could not convert noc0 {noc0_location} to {coord_system}/{core_type}:\n{traceback.format_exc()}"
-                    )
+                    if util.DEBUG_ENABLED:
+                        util.DEBUG(
+                            f"Could not convert noc0 {noc0_location} to {coord_system}/{core_type}:\n{traceback.format_exc()}"
+                        )
 
             # Add coordinate systems that UMD does not support
 
@@ -613,7 +614,8 @@ class Device:
                     )
                     all_block_locs[(ui_hor, ui_ver)] = loc
                 except Exception:
-                    util.DEBUG(f"Could not compute grid location for display:\n{traceback.format_exc()}")
+                    if util.DEBUG_ENABLED:
+                        util.DEBUG(f"Could not compute grid location for display:\n{traceback.format_exc()}")
 
         screen_row_y = 0
         C = util.CLR_INFO

@@ -48,7 +48,8 @@ class GdbFileServer:
             except OSError:
                 return "-1, Exception while reading."
             except Exception:
-                util.DEBUG(f"Unexpected exception in pread:\n{traceback.format_exc()}")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG(f"Unexpected exception in pread:\n{traceback.format_exc()}")
                 return "-1, Exception while reading."
         else:
             return "-1"
@@ -62,7 +63,8 @@ class GdbFileServer:
             except OSError:
                 return "-2,Error while writing."
             except Exception:
-                util.DEBUG(f"Unexpected exception in pwrite:\n{traceback.format_exc()}")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG(f"Unexpected exception in pwrite:\n{traceback.format_exc()}")
                 return "-2,Error while writing."
         else:
             return "-1"

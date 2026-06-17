@@ -194,7 +194,8 @@ def _search_in_range(
             else:
                 data, _ = execute_safe_read(location, current_addr, chunk_size, risc_name)
         except TTException as e:
-            util.DEBUG(f"search: skipping 0x{current_addr:08x}: {e}")
+            if util.DEBUG_ENABLED:
+                util.DEBUG(f"search: skipping 0x{current_addr:08x}: {e}")
             break
 
         if not data:

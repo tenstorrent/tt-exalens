@@ -52,10 +52,13 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             try:
                 dump_coverage(elf, loc, gcda_path, gcno_path)
-                util.VERBOSE(f"Coverage data dumped for device {device.id} loc {loc}:")
+                if util.VERBOSE_ENABLED:
+                    util.VERBOSE(f"Coverage data dumped for device {device.id} loc {loc}:")
                 if gcno_path:
-                    util.VERBOSE(gcno_path)
-                util.VERBOSE(gcda_path)
+                    if util.VERBOSE_ENABLED:
+                        util.VERBOSE(gcno_path)
+                if util.VERBOSE_ENABLED:
+                    util.VERBOSE(gcda_path)
             except Exception as e:
                 util.ERROR(f"dump-coverage: {e}")
 

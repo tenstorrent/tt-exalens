@@ -47,7 +47,8 @@ class ClientSocket:
             except OSError:
                 pass
             except Exception:
-                util.DEBUG(f"Unexpected exception closing client socket:\n{traceback.format_exc()}")
+                if util.DEBUG_ENABLED:
+                    util.DEBUG(f"Unexpected exception closing client socket:\n{traceback.format_exc()}")
             self.socket = None
 
     def input_ready(self, timeout: float = 0):
@@ -104,7 +105,8 @@ class ServerSocket:
         except OSError:
             return None
         except Exception:
-            util.DEBUG(f"Unexpected exception in server socket accept:\n{traceback.format_exc()}")
+            if util.DEBUG_ENABLED:
+                util.DEBUG(f"Unexpected exception in server socket accept:\n{traceback.format_exc()}")
             return None
 
     def close(self):

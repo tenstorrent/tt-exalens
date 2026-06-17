@@ -37,16 +37,20 @@ def get_gdb_client_path() -> str:
     for sfpi_root in sfpi_roots:
         gdb_client_path = os.path.abspath(os.path.join(sfpi_root, GDB_CLIENT_SFPI_RELATIVE_PATH))
         searched.append(gdb_client_path)
-        TRACE(f"Looking for gdb client at {gdb_client_path}")
+        if util.TRACE_ENABLED:
+            TRACE(f"Looking for gdb client at {gdb_client_path}")
         if os.path.isfile(gdb_client_path):
-            DEBUG(f"Found gdb client at {gdb_client_path}")
+            if util.DEBUG_ENABLED:
+                DEBUG(f"Found gdb client at {gdb_client_path}")
             return gdb_client_path
 
     # Finally, fall back to whatever gdb client is found on PATH.
-    TRACE(f"Looking for gdb client on PATH")
+    if util.TRACE_ENABLED:
+        TRACE(f"Looking for gdb client on PATH")
     gdb_client_path = shutil.which(GDB_CLIENT_BINARY_NAME)
     if gdb_client_path is not None:
-        DEBUG(f"Found gdb client at {gdb_client_path}")
+        if util.DEBUG_ENABLED:
+            DEBUG(f"Found gdb client at {gdb_client_path}")
         return gdb_client_path
 
     raise FileNotFoundError(
