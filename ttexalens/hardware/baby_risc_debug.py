@@ -217,12 +217,16 @@ class BabyRiscDebugWatchpointState(RiscDebugWatchpointState):
 
 
 class BabyRiscDebugHardware:
+    ENABLE_ASSERTS: bool = True
+
     def __init__(
         self,
         register_store: RegisterStore,
         risc_info: BabyRiscInfo,
-        enable_asserts: bool = True,
+        enable_asserts: bool | None = None,
     ):
+        if enable_asserts is None:
+            enable_asserts = BabyRiscDebugHardware.ENABLE_ASSERTS
         self.register_store = register_store
         self.risc_info = risc_info
         self.enable_asserts = enable_asserts
@@ -495,7 +499,7 @@ class BabyRiscDebugHardware:
 
 
 class BabyRiscDebug(RiscDebug):
-    def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool = True):
+    def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool | None = None):
         super().__init__(RiscLocation(risc_info.noc_block.location, risc_info.neo_id, risc_info.risc_name), risc_info)
         register_store = risc_info.noc_block.get_register_store(neo_id=risc_info.neo_id)
         self.baby_risc_info = risc_info
