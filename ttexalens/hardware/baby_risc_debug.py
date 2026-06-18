@@ -509,7 +509,7 @@ class BabyRiscDebug(RiscDebug):
             if risc_info.debug_hardware_present
             else None
         )
-        self.enable_asserts = enable_asserts
+        self.enable_asserts = self.debug_hardware.enable_asserts if self.debug_hardware is not None else True
 
         self.RISC_DBG_SOFT_RESET0 = register_store.get_register_noc_address("RISCV_DEBUG_REG_SOFT_RESET_0")
 
