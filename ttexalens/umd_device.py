@@ -1,19 +1,16 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from __future__ import annotations
 import datetime
 import os
 import threading
 import time
 import traceback
-from typing import TYPE_CHECKING, Sequence
+from typing import Sequence
 import tt_umd
 from ttexalens import util
 from ttexalens.exceptions import TimeoutDeviceRegisterError
-
-if TYPE_CHECKING:
-    from ttexalens.umd_api import UmdApi
+from ttexalens.umd_api import UmdApi
 
 
 class UmdDevice:
@@ -67,7 +64,6 @@ class UmdDevice:
         all_cores = soc_descriptor.get_all_cores(
             coord_system=tt_umd.CoordSystem.NOC0
         ) + soc_descriptor.get_all_harvested_cores(coord_system=tt_umd.CoordSystem.NOC0)
-        from ttexalens.umd_api import UmdApi
 
         max_x = max(core.x for core in all_cores) + 1
         max_y = max(core.y for core in all_cores) + 1
@@ -122,8 +118,6 @@ class UmdDevice:
         return self._arch != tt_umd.ARCH.BLACKHOLE and self._is_mmio_capable and not self._is_simulation
 
     def __select_noc_id(self, noc_id: int):
-        from ttexalens.umd_api import UmdApi
-
         UmdApi.select_noc_id(noc_id, self._arch)
 
     def __configure_working_active_eth(self):
@@ -149,6 +143,15 @@ class UmdDevice:
     READ_TIMEOUT = float(os.environ.get("TT_EXALENS_READ_TIMEOUT_MS", 2)) / 1_000  # seconds
     WRITE_TIMEOUT = float(os.environ.get("TT_EXALENS_WRITE_TIMEOUT_MS", 2)) / 1_000  # seconds
     NUM_OF_CONSECUTIVE_TIMEOUTS = int(os.environ.get("TT_EXALENS_NUM_OF_CONSECUTIVE_TIMEOUTS", 5))
+
+    def __read_from_device_reg_no_timeout(
+        self, coord: tt_umd.CoreCoord, address: int, buffer: bytearray | memoryview, dma_threshold: int
+    ) -> None:
+        # Check if we can use DMA read
+        if len(buffer) >= dma_threshold and self.can_use_dma:
+            self.__device.dma_read_from_device(0, coord.x, coord.y, address, buffer)
+        else:
+            self.__device.noc_read(0, coord.x, coord.y, address, buffer)
 
     def __read_from_device_reg(
         self, coord: tt_umd.CoreCoord, address: int, buffer: bytearray | memoryview, dma_threshold: int
@@ -178,6 +181,15 @@ class UmdDevice:
                 except Exception:
                     translated_coord = coord
             raise TimeoutDeviceRegisterError(self.device_id, translated_coord, address, len(buffer), True, elapsed_time)
+
+    def __write_to_device_reg_no_timeout(
+        self, coord: tt_umd.CoreCoord, address: int, data: bytes | bytearray | memoryview, dma_threshold: int
+    ):
+        # Check if we can use DMA write
+        if len(data) >= dma_threshold and self.can_use_dma:
+            self.__device.dma_write_to_device(coord.x, coord.y, address, data)
+        else:
+            self.__device.noc_write(coord.x, coord.y, address, data)
 
     def __write_to_device_reg(
         self, coord: tt_umd.CoreCoord, address: int, data: bytes | bytearray | memoryview, dma_threshold: int
@@ -223,13 +235,14 @@ class UmdDevice:
         use_4B_mode: bool,
         dma_threshold: int,
     ) -> None:
+        do_read = self.__read_from_device_reg_no_timeout if use_4B_mode else self.__read_from_device_reg
         # Read first unaligned word
         first_unaligned_index = address % 4
         size = len(buffer)
         offset = 0
         if first_unaligned_index != 0:
             temp = bytearray(4)
-            self.__read_from_device_reg(coord, address - first_unaligned_index, temp, dma_threshold)
+            do_read(coord, address - first_unaligned_index, temp, dma_threshold)
             if first_unaligned_index + size <= 4:
                 buffer[:size] = temp[first_unaligned_index : first_unaligned_index + size]
                 return
@@ -244,7 +257,7 @@ class UmdDevice:
         aligned_size = size - (size % 4)
         block_size = 4 if use_4B_mode and self._is_mmio_capable and not self._is_simulation else aligned_size
         while aligned_size > 0:
-            self.__read_from_device_reg(coord, address, view[offset : offset + block_size], dma_threshold)
+            do_read(coord, address, view[offset : offset + block_size], dma_threshold)
             aligned_size -= block_size
             offset += block_size
             address += block_size
@@ -254,7 +267,7 @@ class UmdDevice:
         last_unaligned_size = size
         if last_unaligned_size != 0:
             temp = bytearray(4)
-            self.__read_from_device_reg(coord, address, temp, dma_threshold)
+            do_read(coord, address, temp, dma_threshold)
             buffer[offset : offset + last_unaligned_size] = temp[:last_unaligned_size]
 
     def __read_from_device_reg_unaligned(
@@ -290,23 +303,25 @@ class UmdDevice:
         dma_threshold: int,
     ):
         size_in_bytes = len(data)
+        do_write = self.__write_to_device_reg_no_timeout if use_4B_mode else self.__write_to_device_reg
+        do_read = self.__read_from_device_reg_no_timeout if use_4B_mode else self.__read_from_device_reg
 
         # Read/Write first unaligned word
         first_unaligned_index = address % 4
         if first_unaligned_index != 0:
             aligned_address = address - first_unaligned_index
             temp = bytearray(4)
-            self.__read_from_device_reg(coord, aligned_address, temp, dma_threshold)
+            do_read(coord, aligned_address, temp, dma_threshold)
             if first_unaligned_index + size_in_bytes <= 4:
                 temp = (
                     temp[0:first_unaligned_index]
                     + data[0:size_in_bytes]
                     + temp[first_unaligned_index + size_in_bytes : 4]
                 )
-                self.__write_to_device_reg(coord, aligned_address, temp, dma_threshold)
+                do_write(coord, aligned_address, temp, dma_threshold)
                 return
             temp = temp[0:first_unaligned_index] + data[0 : 4 - first_unaligned_index]
-            self.__write_to_device_reg(coord, aligned_address, temp, dma_threshold)
+            do_write(coord, aligned_address, temp, dma_threshold)
             data = data[4 - first_unaligned_index :]
             address += 4 - first_unaligned_index
             size_in_bytes -= 4 - first_unaligned_index
@@ -316,7 +331,7 @@ class UmdDevice:
         block_size = 4 if use_4B_mode and self._is_mmio_capable and not self._is_simulation else aligned_size
         offset = 0
         while aligned_size > 0:
-            self.__write_to_device_reg(coord, address, data[offset : offset + block_size], dma_threshold)
+            do_write(coord, address, data[offset : offset + block_size], dma_threshold)
             aligned_size -= block_size
             offset += block_size
             address += block_size
@@ -327,9 +342,9 @@ class UmdDevice:
         last_unaligned_size = size_in_bytes
         if last_unaligned_size != 0:
             temp = bytearray(4)
-            self.__read_from_device_reg(coord, address, temp, dma_threshold)
+            do_read(coord, address, temp, dma_threshold)
             temp[0:last_unaligned_size] = data[0:last_unaligned_size]
-            self.__write_to_device_reg(coord, address, temp, dma_threshold)
+            do_write(coord, address, temp, dma_threshold)
 
     def __write_to_device_reg_unaligned(
         self,
