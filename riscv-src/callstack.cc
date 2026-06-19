@@ -442,10 +442,87 @@ __attribute__((noinline)) void run() {
 }
 }  // namespace tail_chain_test
 
+namespace tail_branch_test {
+// A function whose tail call sits in both arms of an if/else: each arm tail-calls
+// tb_leaf() (with a different argument), so tb_dispatch has two tail-call sites
+// that share the same origin. Once tb_dispatch's frame is gone, which arm ran is
+// not recoverable from PC/RA, so this probes how the reconstruction - and GDB -
+// handle a function with several tail-call sites to the same target. The argument
+// is a host-written runtime value so the compiler keeps both arms instead of
+// folding the branch.
+volatile int tb_marker;
+
+// The asm barrier keeps halt() out of tail position so tb_leaf stays a real frame.
+__attribute__((noinline)) int tb_leaf(int a) {
+    tb_marker = a;
+    halt();
+    asm volatile("" ::: "memory");
+    return a;
+}
+
+__attribute__((noinline)) int tb_dispatch(int a) {
+    if (a >= 0) {
+        return tb_leaf(a);
+    } else {
+        return tb_leaf(-a);
+    }
+}
+
+// tb_dispatch() is not in tail position here (its result is used after the call),
+// so run() stays a real frame anchoring the walk back to main().
+__attribute__((noinline)) int run(int a) {
+    int r = tb_dispatch(a);
+    asm volatile("" ::: "memory");
+    return r;
+}
+}  // namespace tail_branch_test
+
+namespace tail_multi_test {
+// Two *distinct* tail-call sites in one function: each arm of the if tail-calls a
+// different leaf. Because the two tail jumps have different targets, cross-jumping
+// can't merge them (it only merges identical tails), so both survive as separate
+// DW_TAG_call_site entries - unlike tail_branch_test, where the same-target arms
+// fold into one site. At the halt point only one leaf is physically on the stack,
+// so the reconstruction must pick the one of tm_dispatch's two tail-call sites
+// whose origin is the function we stopped in: the halt target disambiguates which
+// arm ran, and (unlike the cross-jumped case) the reported line is then correct
+// per branch even in the optimized build. The distinct marker stores also keep
+// the two leaves from being merged by identical-code folding.
+volatile int tm_marker;
+
+__attribute__((noinline)) int leaf_pos(int a) {
+    tm_marker = 1;
+    halt();
+    asm volatile("" ::: "memory");
+    return a;
+}
+__attribute__((noinline)) int leaf_neg(int a) {
+    tm_marker = 2;
+    halt();
+    asm volatile("" ::: "memory");
+    return a;
+}
+
+__attribute__((noinline)) int tm_dispatch(int a) {
+    if (a >= 0) {
+        return leaf_pos(a);
+    } else {
+        return leaf_neg(-a);
+    }
+}
+
+// tm_dispatch() is not in tail position here, so run() stays a real frame.
+__attribute__((noinline)) int run(int a) {
+    int r = tm_dispatch(a);
+    asm volatile("" ::: "memory");
+    return r;
+}
+}  // namespace tail_multi_test
+
 int main() {
     if (*g_MAILBOX != 0xFFFFFFFF && *g_MAILBOX != 0xFFFFFFFE && *g_MAILBOX != 0xFFFFFFFD && *g_MAILBOX != 0xFFFFFFFC &&
-        *g_MAILBOX != 0xFFFFFFFB && *g_MAILBOX != 0xFFFFFFFA && *g_MAILBOX != 0xFFFFFFF9 &&
-        (*g_MAILBOX & 0xFFFFFF00) != 0xFFFFFE00 && (*g_MAILBOX < 0 || *g_MAILBOX > 1000)) {
+        *g_MAILBOX != 0xFFFFFFFB && *g_MAILBOX != 0xFFFFFFFA && *g_MAILBOX != 0xFFFFFFF9 && *g_MAILBOX != 0xFFFFFFF8 &&
+        *g_MAILBOX != 0xFFFFFFF7 && (*g_MAILBOX & 0xFFFFFF00) != 0xFFFFFE00 && (*g_MAILBOX < 0 || *g_MAILBOX > 1000)) {
         *g_MAILBOX = 10;
     }
 
@@ -467,6 +544,10 @@ int main() {
         tail_call_test::run();
     } else if (*g_MAILBOX == 0xFFFFFFF9) {
         tail_chain_test::run();
+    } else if (*g_MAILBOX == 0xFFFFFFF8) {
+        tail_branch_test::run(host_value<int>(0));
+    } else if (*g_MAILBOX == 0xFFFFFFF7) {
+        tail_multi_test::run(host_value<int>(0));
     } else {
         int sum = recurse(*g_MAILBOX);
         *g_MAILBOX = sum;

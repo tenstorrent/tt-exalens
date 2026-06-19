@@ -1744,6 +1744,86 @@ class TestCallStack(unittest.TestCase):
         )
         self.compare_callstacks(callstack, gdb_callstack)
 
+    @parameterized.expand(itertools.product(CALLSTACK_ELFS, [5, -5]))
+    def test_callstack_tail_call_branch(self, elf_name: str, arg: int):
+        # 0xFFFFFFF8 selects tail_branch_test: tb_dispatch tail-calls tb_leaf from both arms of an
+        # if/else (with a host-written runtime argument selecting the arm). In the optimized build
+        # GCC cross-jumps the two arms into a single tail-call site, so the reconstructed tb_dispatch
+        # frame reports that one site's line for *both* arms - the taken branch is not recoverable
+        # once the frame is gone. The -O0 builds keep both arms as real call sites, so they report the
+        # per-branch line. GDB has the exact same behaviour in both cases, so it is the ground truth:
+        # this test mainly guards that a tail call out of a branching function is reconstructed and
+        # stays GDB-equivalent regardless of which arm ran.
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0xFFFFFFF8)
+        # tb_dispatch's argument (offset 0 of the host-written value buffer) picks the if/else arm.
+        self.l1_mem_access.write(self.get_mailbox_value_address(parsed_elf), struct.pack("<i", arg))
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        expected = [
+            "halt",
+            "tail_branch_test::tb_leaf",
+            "tail_branch_test::tb_dispatch",
+            "tail_branch_test::run",
+            "main",
+        ]
+        self.assertEqual(len(callstack), len(expected))
+        for entry, name in zip(callstack, expected):
+            # As elsewhere, an optimized clone of a leaf can lose its namespace qualification.
+            self.assertIn(entry.function_name, (name, name.split("::")[-1]))
+
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
+
+    @parameterized.expand(itertools.product(CALLSTACK_ELFS, [5, -5]))
+    def test_callstack_tail_call_multiple_sites(self, elf_name: str, arg: int):
+        # 0xFFFFFFF7 selects tail_multi_test: tm_dispatch tail-calls a *different* leaf in each arm of
+        # the if (leaf_pos for a >= 0, leaf_neg otherwise), chosen by a host-written runtime argument.
+        # Because the two tail jumps have different targets they cannot be cross-jumped, so tm_dispatch
+        # keeps two distinct tail-call sites. Only one leaf is on the stack at the halt point, and the
+        # reconstruction must pick the site whose origin is that leaf: the halt target disambiguates
+        # which arm ran, so - unlike the same-target case in test_callstack_tail_call_branch, where the
+        # arms fold into one site - the reported tm_dispatch line is correct per branch even when
+        # optimized. GDB behaves identically, so it is the ground truth.
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0xFFFFFFF7)
+        # tm_dispatch's argument (offset 0 of the host-written value buffer) picks the if/else arm.
+        self.l1_mem_access.write(self.get_mailbox_value_address(parsed_elf), struct.pack("<i", arg))
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        expected = [
+            "halt",
+            "tail_multi_test::leaf_pos" if arg >= 0 else "tail_multi_test::leaf_neg",
+            "tail_multi_test::tm_dispatch",
+            "tail_multi_test::run",
+            "main",
+        ]
+        self.assertEqual(len(callstack), len(expected))
+        for entry, name in zip(callstack, expected):
+            # As elsewhere, an optimized clone of a leaf can lose its namespace qualification.
+            self.assertIn(entry.function_name, (name, name.split("::")[-1]))
+
+        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+            self.location, self.risc_name, [elf_path], [None], self.gdb_server
+        )
+        self.compare_callstacks(callstack, gdb_callstack)
+
     @parameterized.expand([(x,) for x in RECURSION_COUNT])
     def test_top_callstack_with_parsing(self, recursion_count: int):
         elf_path = self.get_elf_path("callstack.debug")

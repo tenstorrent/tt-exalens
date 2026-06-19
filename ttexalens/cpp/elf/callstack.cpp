@@ -373,21 +373,10 @@ void append_tail_call_frame(const ElfFile& elf, const DwarfInfo& dwarf, const Dw
     }
 }
 
-// Bridges the gap a tail call leaves in the physical stack. After the frame for
-// `callee_subprogram` has been appended, its return address points back at the
-// function that the *original* caller invoked - skipping every function that was
-// reached by a tail jump. When the call site that returns to `return_address`
-// names a different function than `callee_subprogram`, the functions in between
-// were tail-called; this synthesizes a frame for each, innermost first, so the
-// reconstructed stack matches a non-optimized (or GDB) walk.
-//
-// Precondition: `return_address` (a live address) lies within `elf`, and
-// `callee_subprogram` belongs to `elf`'s DWARF. The caller guarantees this by
-// only invoking us once the next-frame lookup has resolved the caller to the
-// same ELF, so the load-offset translation and the DIE-offset comparisons below
-// are all within one image.
+}  // namespace
+
 void append_tail_call_frames(const ElfFile& elf, const DwarfDiePtr& callee_subprogram, uint64_t return_address,
-                             bool expand_inline_frames, std::vector<CallstackEntry>& callstack) {
+                             std::vector<CallstackEntry>& callstack, bool expand_inline_frames) {
     if (!callee_subprogram || callee_subprogram->get_tag() != DwarfDieTag::subprogram) {
         return;
     }
@@ -425,8 +414,6 @@ void append_tail_call_frames(const ElfFile& elf, const DwarfDiePtr& callee_subpr
         append_tail_call_frame(elf, *dwarf, *it, expand_inline_frames, callstack);
     }
 }
-
-}  // namespace
 
 std::vector<CallstackEntry> get_frame_callstack(const std::vector<ElfFile>& elfs, uint64_t pc, bool extract_variables) {
     // Static top-frame lookup: no live state, so resolve the FDE with
@@ -502,7 +489,7 @@ std::vector<CallstackEntry> get_callstack(const std::vector<ElfFile>& elfs, uint
         // the caller. The call-site info lives in the caller's image, so this is
         // only valid when the caller resolved to the same ELF as the callee.
         if (located.has_value() && located->elf == elf) {
-            append_tail_call_frames(*elf, function_die, *return_address, expand_tail_call_inline_frames, callstack);
+            append_tail_call_frames(*elf, function_die, *return_address, callstack, expand_tail_call_inline_frames);
         }
     }
 
