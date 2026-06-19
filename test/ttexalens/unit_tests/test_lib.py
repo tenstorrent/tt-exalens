@@ -586,7 +586,7 @@ class TestReadWrite(unittest.TestCase):
         """Testing read_memory and write_memory through debugging interface on private core memory range."""
 
         loc = OnChipCoordinate.create(location, device=self.context.devices[0])
-        risc_debug = loc._device.get_block(loc).get_risc_debug(risc_name)
+        risc_debug = loc.device.get_block(loc).get_risc_debug(risc_name)
 
         private_memory = risc_debug.get_data_private_memory()
         assert private_memory is not None, "Private memory is not available."
@@ -649,7 +649,7 @@ class TestReadWrite(unittest.TestCase):
             self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
 
         location = OnChipCoordinate.create(loc_str, device)
-        risc_debug = location._device.get_block(location).get_risc_debug(risc_name)
+        risc_debug = location.device.get_block(location).get_risc_debug(risc_name)
         with risc_debug.ensure_private_memory_access():
             private_memory = risc_debug.get_data_private_memory()
             assert private_memory is not None, "Private memory is not available."
@@ -705,7 +705,7 @@ class TestReadWrite(unittest.TestCase):
             self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
 
         location = OnChipCoordinate.create(loc_str, device)
-        risc_debug = location._device.get_block(location).get_risc_debug(risc_name)
+        risc_debug = location.device.get_block(location).get_risc_debug(risc_name)
         with risc_debug.ensure_private_memory_access():
             private_memory = risc_debug.get_data_private_memory()
             assert private_memory is not None, "Private memory is not available."
@@ -1240,7 +1240,7 @@ class TestRunElf(unittest.TestCase):
 
         # Testing
         loc = OnChipCoordinate.create(location, device=self.device)
-        device = loc._device
+        device = loc.device
         noc_block = device.get_block(loc)
         risc_debug = noc_block.get_risc_debug(risc_name)
         assert isinstance(risc_debug, BabyRiscDebug), f"Expected BabyRiscDebug, got {type(risc_debug)}"
@@ -1506,7 +1506,7 @@ class TestCallStack(unittest.TestCase):
             # If not found, we should skip the test
             self.skipTest("Location is not available on this platform")
 
-        noc_block = self.location._device.get_block(self.location)
+        noc_block = self.location.device.get_block(self.location)
         try:
             self.risc_debug = noc_block.get_risc_debug(self.risc_name)
             self.risc_name = self.risc_debug.risc_location.risc_name

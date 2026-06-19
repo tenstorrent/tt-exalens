@@ -177,7 +177,7 @@ class RegisterStore:
 
     @property
     def device(self) -> Device:
-        return self.location._device
+        return self.location.device
 
     @property
     def context(self) -> Context:

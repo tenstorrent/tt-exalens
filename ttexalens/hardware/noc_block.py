@@ -35,7 +35,7 @@ class NocBlock:
 
     @property
     def device(self) -> Device:
-        return self.location._device
+        return self.location.device
 
     @abstractmethod
     def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:

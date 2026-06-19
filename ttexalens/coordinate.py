@@ -42,6 +42,7 @@ The following coordinate systems are available to represent a grid location on t
 """
 
 from __future__ import annotations
+from functools import cached_property
 from typing import TYPE_CHECKING, Any
 from ttexalens.exceptions import CoordinateTranslationError, TTException, UnknownCoordinateSystemError
 
@@ -68,9 +69,6 @@ class OnChipCoordinate:
     coordinate systems we use.
     """
 
-    _noc0_coord: tuple[int, int]  # This uses noc0 coordinates: (X,Y)
-    _device: Device  # Used for conversions
-
     def __init__(self, x: int, y: int, input_type: str, device: Device, core_type: str = "any"):
         """
         Constructor for the Coordinate class.
@@ -94,33 +92,29 @@ class OnChipCoordinate:
             - If the device is not specified, coordinate conversion to other systems will not be possible.
         """
         assert device is not None
-        self._device = device
+        self.device = device
         if input_type == "noc0" or input_type == "physical":
             self._noc0_coord = (x, y)
         elif input_type == "noc1":
-            self._noc0_coord = self._device.to_noc0((x, y), "noc1", core_type)
+            self._noc0_coord = self.device.to_noc0((x, y), "noc1", core_type)
         elif input_type == "die":
-            self._noc0_coord = self._device.to_noc0((x, y), "die", core_type)
+            self._noc0_coord = self.device.to_noc0((x, y), "die", core_type)
         elif input_type == "logical":
-            self._noc0_coord = self._device.to_noc0((x, y), "logical", core_type)
+            self._noc0_coord = self.device.to_noc0((x, y), "logical", core_type)
         elif input_type == "translated":
-            self._noc0_coord = self._device.to_noc0((x, y), "translated", core_type)
+            self._noc0_coord = self.device.to_noc0((x, y), "translated", core_type)
         else:
             raise UnknownCoordinateSystemError(input_type)
 
     @property
     def context(self) -> Context:
-        return self._device._context
-
-    @property
-    def device(self) -> Device:
-        return self._device
+        return self.device._context
 
     @property
     def device_id(self) -> int:
-        return self._device.id
+        return self.device.id
 
-    @property
+    @cached_property
     def noc_block(self) -> NocBlock:
         return self.device.get_block(self)
 
@@ -141,16 +135,16 @@ class OnChipCoordinate:
         if output_type == "noc0" or output_type == "physical":
             return self._noc0_coord
         elif output_type == "noc1":
-            return self._device.from_noc0(self._noc0_coord, "noc1")[0]
+            return self.device.from_noc0(self._noc0_coord, "noc1")[0]
         elif output_type == "die":
-            return self._device.from_noc0(self._noc0_coord, "die")[0]
+            return self.device.from_noc0(self._noc0_coord, "die")[0]
         elif output_type == "logical":
-            return self._device.from_noc0(self._noc0_coord, "logical")
+            return self.device.from_noc0(self._noc0_coord, "logical")
         elif output_type == "translated":
-            return self._device.from_noc0(self._noc0_coord, "translated")[0]
+            return self.device.from_noc0(self._noc0_coord, "translated")[0]
         elif output_type.startswith("logical-"):
             core_type = output_type.split("-")[1]
-            coord = self._device.from_noc0(self._noc0_coord, "logical")
+            coord = self.device.from_noc0(self._noc0_coord, "logical")
             if coord[1] == core_type:
                 return coord[0]
             else:
@@ -212,7 +206,7 @@ class OnChipCoordinate:
             OnChipCoordinate: The new coordinate object for the specified device.
         """
         # If the device is the same, return the same object
-        if device == self._device:
+        if device == self.device:
             return self
 
         # Try to convert to logical coordinates. If that fails, fallback to translated coordinates.
@@ -230,7 +224,7 @@ class OnChipCoordinate:
         return self.to_str("logical")
 
     def __hash__(self):
-        return hash((self._noc0_coord, self._device.id))
+        return hash((self._noc0_coord, self.device.id))
 
     # The debug string representation also has the translated coordinate.
     def __repr__(self) -> str:
@@ -242,13 +236,13 @@ class OnChipCoordinate:
     # == operator
     def __eq__(self, other):
         # util.DEBUG("Comparing coordinates: " + str(self) + " ?= " + str(other))
-        return (self._noc0_coord == other._noc0_coord) and (self._device == other._device)
+        return (self._noc0_coord == other._noc0_coord) and (self.device == other.device)
 
     def __lt__(self, other):
-        if self._device.id == other._device.id:
+        if self.device.id == other.device.id:
             return self._noc0_coord < other._noc0_coord
         else:
-            return self._device.id < other._device.id
+            return self.device.id < other.device.id
 
     @staticmethod
     def create(coord_str, device, coord_type=None) -> OnChipCoordinate:

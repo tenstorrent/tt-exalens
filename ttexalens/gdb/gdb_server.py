@@ -21,7 +21,7 @@ from ttexalens.gdb.gdb_data import GdbProcess, GdbThreadId
 from ttexalens.gdb.gdb_file_server import GdbFileServer
 from ttexalens.context import Context
 from ttexalens import util as util
-from ttexalens.hardware.risc_debug import RiscLocation
+from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation
 from ttexalens.memory_access import RestrictedMemoryAccessError
 
 # Helper class returns currently debugging list of threads to gdb client in paged manner
@@ -110,37 +110,47 @@ class GdbServer(threading.Thread):
             int, GdbProcess
         ] = {}  # Dictionary of available processes that can be debugged (key: pid)
         last_available_processes: dict[RiscLocation, GdbProcess] = {}
-        for device_id in self.context.device_ids:
-            device = self.context.find_device_by_id(device_id)
-            for risc_debug in device.debuggable_cores:
-                # Try to get elf path for the risc core
-                try:
-                    elf_path = self.context.get_risc_elf_path(risc_debug.risc_location)
-                except Exception:
-                    if util.DEBUG_ENABLED:
-                        util.DEBUG(
-                            f"Could not get ELF path for {risc_debug.risc_location}, running without it:\n{traceback.format_exc()}"
-                        )
-                    elf_path = None
-                if (not self.debug_only_with_elfs or elf_path is not None) and not risc_debug.is_in_reset():
-                    # Check if process is in self._last_available_processes and reuse it if it is
-                    # TODO: In ideal world, we would have "start time" for a core (time when core was taken out of reset) and use that as a key for reusing process id; for now, we can just check if elf path is the same
-                    last_process = self._last_available_processes.get(risc_debug.risc_location)
-                    if last_process is None or last_process.elf_path != elf_path:
-                        block_type = device.get_block_type(risc_debug.risc_location.location)
-                        # Shorten long core type for cleaner output
-                        if block_type == "functional_workers":
-                            block_type = "worker"
-                        pid = self.next_pid
-                        self.next_pid += 1
-                        virtual_core = (
-                            pid  # TODO: Maybe we should actually have some mapping from RiscLoc to virtual core
-                        )
-                        process = GdbProcess(pid, elf_path, risc_debug, virtual_core, block_type)
-                    else:
-                        process = last_process
-                    available_processes[process.process_id] = process
-                    last_available_processes[risc_debug.risc_location] = process
+
+        def add_process(risc_debug: RiscDebug, elf_path: str | None):
+            # Check if process is in self._last_available_processes and reuse it if it is
+            # TODO: In ideal world, we would have "start time" for a core (time when core was taken out of reset) and use that as a key for reusing process id; for now, we can just check if elf path is the same
+            last_process = self._last_available_processes.get(risc_debug.risc_location)
+            if last_process is None or last_process.elf_path != elf_path:
+                block_type = risc_debug.risc_location.location.device.get_block_type(risc_debug.risc_location.location)
+                # Shorten long core type for cleaner output
+                if block_type == "functional_workers":
+                    block_type = "worker"
+                pid = self.next_pid
+                self.next_pid += 1
+                virtual_core = pid  # TODO: Maybe we should actually have some mapping from RiscLoc to virtual core
+                process = GdbProcess(pid, elf_path, risc_debug, virtual_core, block_type)
+            else:
+                process = last_process
+            available_processes[process.process_id] = process
+            last_available_processes[risc_debug.risc_location] = process
+
+        if self.debug_only_with_elfs:
+            for risc_location, elf_path in self.context.get_loaded_elfs():
+                risc_debug = risc_location.location.noc_block.get_risc_debug(
+                    risc_location.risc_name, risc_location.neo_id
+                )
+                if not risc_debug.is_in_reset():
+                    add_process(risc_debug, elf_path)
+        else:
+            for device_id in self.context.device_ids:
+                device = self.context.find_device_by_id(device_id)
+                for risc_debug in device.debuggable_cores:
+                    # Try to get elf path for the risc core
+                    try:
+                        elf_path = self.context.get_risc_elf_path(risc_debug.risc_location)
+                    except Exception:
+                        if util.DEBUG_ENABLED:
+                            util.DEBUG(
+                                f"Could not get ELF path for {risc_debug.risc_location}, running without it:\n{traceback.format_exc()}"
+                            )
+                        elf_path = None
+                    if elf_path is not None and not risc_debug.is_in_reset():
+                        add_process(risc_debug, elf_path)
         self._last_available_processes = last_available_processes
         return available_processes
 
@@ -271,9 +281,9 @@ class GdbServer(threading.Thread):
                 pid = parser.parse_hex()
                 if pid in self.debugging_threads:
                     thread_id = self.debugging_threads.pop(pid)
-                    process = self.available_processes.get(pid)
-                    if process is not None:
-                        if not self.skip_detach:
+                    if not self.skip_detach:
+                        process = self.available_processes.get(pid)
+                        if process is not None:
                             # Remove all break points from the process
                             watchpoints_state = process.risc_debug.read_watchpoints_state()
                             for bid in range(0, len(watchpoints_state)):
@@ -287,10 +297,10 @@ class GdbServer(threading.Thread):
                     writer.append(b"E01")
             else:
                 # We should detach all processes that we are debugging
-                for pid in self.debugging_threads.keys():
-                    process = self.available_processes.get(pid)
-                    if process is not None:
-                        if not self.skip_detach:
+                if not self.skip_detach:
+                    for pid in self.debugging_threads.keys():
+                        process = self.available_processes.get(pid)
+                        if process is not None:
                             # Remove all break points from the process
                             watchpoints_state = process.risc_debug.read_watchpoints_state()
                             for bid in range(0, len(watchpoints_state)):

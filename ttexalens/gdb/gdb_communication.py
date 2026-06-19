@@ -243,7 +243,7 @@ class GdbMessageParser:
     # Verifies next characters in the message and advances position if they match
     def parse(self, value: bytes):
         length = len(value)
-        if self.position + len(value) > len(self.data):
+        if self.position + length > len(self.data):
             return False
         value_position = 0
         data_position = self.position

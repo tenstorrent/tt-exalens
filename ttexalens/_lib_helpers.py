@@ -10,7 +10,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.tt_exalens_init import init_ttexalens
 from ttexalens.exceptions import TTException
-from ttexalens.util import Verbosity, TRACE
+from ttexalens import util
 
 # Parameter name to formatter function mapping for trace_api decorator
 _TRACE_FORMATTERS = {
@@ -25,7 +25,7 @@ def trace_api(func: F) -> F:
 
     @wraps(func)
     def wrapper(*args: Any, **kwargs: Any) -> Any:
-        if Verbosity.supports(Verbosity.TRACE):
+        if util.TRACE_ENABLED:
             sig = inspect.signature(func)
             bound_args = sig.bind(*args, **kwargs)
             bound_args.apply_defaults()
@@ -34,7 +34,7 @@ def trace_api(func: F) -> F:
             for k, v in bound_args.arguments.items():
                 formatter = _TRACE_FORMATTERS.get(k, repr)
                 formatted_args.append(f"{k}={formatter(v)}")
-            TRACE(f"[API] {func.__name__}({', '.join(formatted_args)})")
+            util.TRACE(f"[API] {func.__name__}({', '.join(formatted_args)})")
         return func(*args, **kwargs)
 
     return cast(F, wrapper)
