@@ -100,7 +100,7 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
         # Start GdbServer on a free port
         cls.server_socket = ServerSocket(port=None)
         cls.server_socket.start()
-        cls.gdb_server = GdbServer(cls.context, cls.server_socket)
+        cls.gdb_server = GdbServer(cls.context, cls.server_socket, skip_detach=True, debug_only_with_elfs=True)
         cls.gdb_server.start()
 
         # Small delay to ensure the server is listening
