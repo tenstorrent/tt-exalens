@@ -55,6 +55,7 @@ class TTExaLensServer:
         self.thread: threading.Thread | None = None
         self.umd_registered_objects: dict[int, TTExaLensServer.UmdRegisteredObject] = {}
         self.umd_registered_objects_lock = threading.Lock()
+        self._wrapper_classes: dict[type, type] = {}
 
     def start(self):
         if self.daemon or self.thread:
@@ -80,70 +81,87 @@ class TTExaLensServer:
         self.daemon = None
         self.thread = None
 
+    def _wrap_result(self, result):
+        """Prepares a method/property result for transport over Pyro5.
+
+        Native types and known serializable types are returned as-is so Pyro5/serpent
+        forwards them directly. Any other object is wrapped, registered with the daemon
+        (once per object), and returned as a proxy.
+        """
+        result_type = type(result)
+        # Check if result_type is simple type
+        if result_type in (int, float, str, bool, type(None), list, dict, set, tuple, bytes):
+            return result
+        # Check if result_type is in known serializable types
+        if result_type in UMD_SERIALIZABLE_TYPES:
+            return result
+        # For complex types, register them and return a proxy
+        with self.umd_registered_objects_lock:
+            object_id = id(result)
+            if object_id not in self.umd_registered_objects:
+                assert self.daemon is not None
+                wrapped_result = self._wrap_object(result)
+                pyro5_id = f"umd_obj_{object_id}"
+                self.daemon.register(wrapped_result, objectId=pyro5_id)
+                proxy = Pyro5.api.Proxy(f"PYRO:{pyro5_id}@localhost:{self.port}")
+                proxy._pyroSerializer = "serpent"
+                self.umd_registered_objects[object_id] = TTExaLensServer.UmdRegisteredObject(
+                    pyro5_id, wrapped_result, proxy
+                )
+            return self.umd_registered_objects[object_id].proxy
+
     def _wrap_object(self, obj: object):
+        """Wraps an object so its public API can be exposed over Pyro5.
+
+        The wrapper *type* is built once per wrapped object type and cached; each object of
+        that type is then wrapped by simply constructing the cached wrapper class around it.
+        """
+        wrapper_class = self._get_wrapper_class(type(obj))
+        return wrapper_class(obj, self)
+
+    def _get_wrapper_class(self, obj_type: type) -> type:
+        cached = self._wrapper_classes.get(obj_type)
+        if cached is not None:
+            return cached
+
         @Pyro5.api.expose
         class UmdApiWrapper:
             def __init__(self, obj, server: TTExaLensServer):
                 self.obj = obj
                 self.server = server
 
-            def _create_umd_method_wrapper(self, method, fget=None, fset=None):
-                def wrapper_method(*args, **kwargs):
-                    if fget is not None:
-                        result = fget(self.obj)
-                    elif fset is not None:
-                        result = fset(self.obj, *args[1:], **kwargs)
-                    else:
-                        result = method(*args, **kwargs)
-                    result_type = type(result)
-                    # Check if result_type is simple type
-                    if result_type in (int, float, str, bool, type(None), list, dict, set, tuple, bytes):
-                        return result
-                    # Check if result_type is in known serializable types
-                    global UMD_SERIALIZABLE_TYPES
-                    if result_type in UMD_SERIALIZABLE_TYPES:
-                        return result
-                    # For complex types, register them and return a proxy
-                    with self.server.umd_registered_objects_lock:
-                        object_id = id(result)
-                        if object_id not in self.server.umd_registered_objects:
-                            assert self.server.daemon is not None
-                            wrapped_result = self.server._wrap_object(result)
-                            pyro5_id = f"umd_obj_{object_id}"
-                            self.server.daemon.register(wrapped_result, objectId=pyro5_id)
-                            proxy = Pyro5.api.Proxy(f"PYRO:{pyro5_id}@localhost:{self.server.port}")
-                            proxy._pyroSerializer = "serpent"
-                            self.server.umd_registered_objects[object_id] = TTExaLensServer.UmdRegisteredObject(
-                                pyro5_id, wrapped_result, proxy
-                            )
-                        return self.server.umd_registered_objects[object_id].proxy
+        def create_method_wrapper(method_name: str | None = None, fget=None, fset=None):
+            def wrapper_method(self, *args, **kwargs):
+                if fget is not None:
+                    result = fget(self.obj)
+                elif fset is not None:
+                    return fset(self.obj, *args, **kwargs)
+                else:
+                    assert method_name is not None
+                    result = getattr(self.obj, method_name)(*args, **kwargs)
+                return self.server._wrap_result(result)
 
-                return wrapper_method
+            return wrapper_method
 
-        wrapper = UmdApiWrapper(obj, self)
-        wrapper_type = type(wrapper)
-        obj_type = type(obj)
         for method_name in obj_type.__dict__:
             if method_name.startswith("_"):
                 continue
-            method = getattr(obj, method_name)
-            if callable(method):
-                new_method = Pyro5.api.expose(wrapper._create_umd_method_wrapper(method))
-                setattr(wrapper, method_name, new_method)
-                setattr(wrapper_type, method_name, new_method)
-            else:
-                method = getattr(obj_type, method_name)
-                if inspect.isdatadescriptor(method):
-                    getter = None
-                    setter = None
-                    if getattr(method, "fset", None):
-                        setter = Pyro5.api.expose(wrapper._create_umd_method_wrapper(None, fset=method.fset))  # type: ignore
-                    if getattr(method, "fget", None):
-                        getter = Pyro5.api.expose(wrapper._create_umd_method_wrapper(None, fget=method.fget))  # type: ignore
-                    new_property = property(getter, setter)  # pyright: ignore[reportArgumentType]
-                    setattr(wrapper, method_name, new_property)
-                    setattr(wrapper_type, method_name, new_property)
-        return wrapper
+            attribute = getattr(obj_type, method_name)
+            if inspect.isdatadescriptor(attribute):
+                getter = None
+                setter = None
+                if getattr(attribute, "fset", None):
+                    setter = Pyro5.api.expose(create_method_wrapper(fset=attribute.fset))  # type: ignore
+                if getattr(attribute, "fget", None):
+                    getter = Pyro5.api.expose(create_method_wrapper(fget=attribute.fget))  # type: ignore
+                new_property = property(getter, setter)  # pyright: ignore[reportArgumentType]
+                setattr(UmdApiWrapper, method_name, new_property)
+            elif callable(attribute):
+                new_method = Pyro5.api.expose(create_method_wrapper(method_name=method_name))
+                setattr(UmdApiWrapper, method_name, new_method)
+
+        self._wrapper_classes[obj_type] = UmdApiWrapper
+        return UmdApiWrapper
 
 
 UMD_SERIALIZABLE_TYPES = {
