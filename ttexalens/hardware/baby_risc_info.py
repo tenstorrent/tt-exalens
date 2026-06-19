@@ -73,19 +73,24 @@ class BabyRiscInfo(RiscInfo):
         elif address is not None:
             if self.code_start_address_enable_register is not None and self.code_start_address_enable_bit is not None:
                 enabled_register_value = register_store.read_register(self.code_start_address_enable_register)
-                register_store.write_register(
-                    self.code_start_address_enable_register, enabled_register_value | self.code_start_address_enable_bit
-                )
+                if (enabled_register_value & self.code_start_address_enable_bit) == 0:
+                    register_store.write_register(
+                        self.code_start_address_enable_register,
+                        enabled_register_value | self.code_start_address_enable_bit,
+                    )
             assert self.code_start_address_register is not None
-            register_store.write_register(self.code_start_address_register, address)
+            if address != register_store.read_register(self.code_start_address_register):
+                register_store.write_register(self.code_start_address_register, address)
         else:
             assert (
                 self.code_start_address_enable_register is not None and self.code_start_address_enable_bit is not None
             )
             enabled_register_value = register_store.read_register(self.code_start_address_enable_register)
-            register_store.write_register(
-                self.code_start_address_enable_register, enabled_register_value & ~self.code_start_address_enable_bit
-            )
+            if (enabled_register_value & self.code_start_address_enable_bit) != 0:
+                register_store.write_register(
+                    self.code_start_address_enable_register,
+                    enabled_register_value & ~self.code_start_address_enable_bit,
+                )
 
     def translate_to_noc_address(self, addr: int) -> int | None:
         # Try data-private, then L1
