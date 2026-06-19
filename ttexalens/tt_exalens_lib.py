@@ -621,6 +621,7 @@ def callstack(
     device_id: int = 0,
     context: Context | None = None,
     extract_variables: bool = True,
+    expand_tail_call_inline_frames: bool = False,
 ) -> list[CallstackEntry]:
     """
     Retrieves the callstack of the specified RISC core for a given ELF.
@@ -636,6 +637,7 @@ def callstack(
         device_id (int): ID of the device on which the kernel is run. Default: 0.
         context (Context): TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
         extract_variables (bool): If True, collect each frame's arguments, locals and template parameters. Default: True.
+        expand_tail_call_inline_frames (bool): If True, a reconstructed tail-call frame is expanded into its full inlined-function chain (name and source line only) instead of the single innermost frame GDB reports. Default: False.
 
     Returns:
         List: Callstack (list of functions and information about them) of the specified RISC core for the given ELF.
@@ -666,7 +668,15 @@ def callstack(
 
         # Walk the frames natively. The live-PC read and ebreak fix-up stay here
         # because they need the RiscDebug instance.
-        return get_callstack(elfs_loaded, pc, mem_access, max_depth, "main" if stop_on_main else "", extract_variables)
+        return get_callstack(
+            elfs_loaded,
+            pc,
+            mem_access,
+            max_depth,
+            "main" if stop_on_main else "",
+            extract_variables,
+            expand_tail_call_inline_frames,
+        )
 
 
 @trace_api

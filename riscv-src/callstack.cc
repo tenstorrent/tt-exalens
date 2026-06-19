@@ -364,9 +364,165 @@ __attribute__((noinline, noclone)) void value_test_charptr() {
 #undef DECLARE_CALLEE_SAVED_VALUE
 #undef USE_CALLEE_SAVED_VALUE
 
+namespace tail_call_test {
+// Exercises tail-call frame reconstruction. In the optimized build the call to
+// pc1() in ra1 is in tail position, so the compiler turns it into a jump: ra1
+// reuses run()'s return address and leaves no frame of its own. At the halt
+// point the physical frames are therefore run -> pc1 -> halt, and the ra1 frame
+// (with its inlined ra2/ra3) only exists in the DWARF call-site (tail-call)
+// information. A plain CFI walk that follows return addresses loses it; a walker
+// that consults the tail-call info recovers it. In the -O0 (debug / coverage)
+// build no tail call happens, so the same logical stack appears through ordinary
+// unwinding - giving us a ground truth to compare the optimized build against.
+
+// Inlined leaf chain: pc2/pc3 are always inlined into pc1, so at the halt point
+// pc1 is the only physical frame and the pc2/pc3 virtual frames are recovered
+// from the PC alone via the inline tables. The asm barrier keeps halt() out of
+// tail position so pc1 stays a real frame with halt() as its callee.
+__attribute__((always_inline)) inline void pc3() {
+    halt();
+    asm volatile("" ::: "memory");
+}
+__attribute__((always_inline)) inline void pc2() { pc3(); }
+__attribute__((noinline)) void pc1() { pc2(); }
+
+// Tail-call chain: ra2/ra3 are always inlined into ra1, whose only action is to
+// call pc1() in tail position.
+__attribute__((always_inline)) inline void ra3() { pc1(); }
+__attribute__((always_inline)) inline void ra2() { ra3(); }
+__attribute__((noinline)) void ra1() { ra2(); }
+
+// The asm barrier keeps ra1() out of tail position so run() remains a real frame
+// anchoring the walk back to main().
+__attribute__((noinline)) void run() {
+    ra1();
+    asm volatile("" ::: "memory");
+}
+}  // namespace tail_call_test
+
+namespace tail_chain_test {
+// Exercises a *multi-edge* tail-call chain: tc_a tail-calls tc_b, tc_b tail-calls
+// tc_c, tc_c tail-calls tc_d - three separate tail calls in a row (unlike
+// tail_call_test, which has a single tail-call edge). In the optimized build each
+// call becomes a jump, so only run() and tc_d() survive as physical frames and
+// the tc_a/tc_b/tc_c frames must be recovered by following the DWARF tail-call
+// chain across all three edges. The volatile-store side effect gives each
+// function a distinct, non-foldable body (so identical-code folding can't merge
+// them and jump-threading can't collapse the chain) while still leaving the inner
+// call in tail position. As before, the -O0 build produces the same logical stack
+// through ordinary unwinding, so it is a ground truth for the optimized build.
+volatile int tc_marker;
+
+// The marker store also keeps tc_d's body distinct from other ebreak-only leaves
+// (e.g. tail_call_test::pc1) so identical-code folding can't merge them; the asm
+// barrier keeps halt() out of tail position so tc_d stays a real frame.
+__attribute__((noinline)) void tc_d() {
+    tc_marker = 4;
+    halt();
+    asm volatile("" ::: "memory");
+}
+__attribute__((noinline)) void tc_c() {
+    tc_marker = 3;
+    tc_d();
+}
+__attribute__((noinline)) void tc_b() {
+    tc_marker = 2;
+    tc_c();
+}
+__attribute__((noinline)) void tc_a() {
+    tc_marker = 1;
+    tc_b();
+}
+
+// The asm barrier keeps tc_a() out of tail position so run() remains a real
+// frame anchoring the walk back to main().
+__attribute__((noinline)) void run() {
+    tc_a();
+    asm volatile("" ::: "memory");
+}
+}  // namespace tail_chain_test
+
+namespace tail_branch_test {
+// A function whose tail call sits in both arms of an if/else: each arm tail-calls
+// tb_leaf() (with a different argument), so tb_dispatch has two tail-call sites
+// that share the same origin. Once tb_dispatch's frame is gone, which arm ran is
+// not recoverable from PC/RA, so this probes how the reconstruction - and GDB -
+// handle a function with several tail-call sites to the same target. The argument
+// is a host-written runtime value so the compiler keeps both arms instead of
+// folding the branch.
+volatile int tb_marker;
+
+// The asm barrier keeps halt() out of tail position so tb_leaf stays a real frame.
+__attribute__((noinline)) int tb_leaf(int a) {
+    tb_marker = a;
+    halt();
+    asm volatile("" ::: "memory");
+    return a;
+}
+
+__attribute__((noinline)) int tb_dispatch(int a) {
+    if (a >= 0) {
+        return tb_leaf(a);
+    } else {
+        return tb_leaf(-a);
+    }
+}
+
+// tb_dispatch() is not in tail position here (its result is used after the call),
+// so run() stays a real frame anchoring the walk back to main().
+__attribute__((noinline)) int run(int a) {
+    int r = tb_dispatch(a);
+    asm volatile("" ::: "memory");
+    return r;
+}
+}  // namespace tail_branch_test
+
+namespace tail_multi_test {
+// Two *distinct* tail-call sites in one function: each arm of the if tail-calls a
+// different leaf. Because the two tail jumps have different targets, cross-jumping
+// can't merge them (it only merges identical tails), so both survive as separate
+// DW_TAG_call_site entries - unlike tail_branch_test, where the same-target arms
+// fold into one site. At the halt point only one leaf is physically on the stack,
+// so the reconstruction must pick the one of tm_dispatch's two tail-call sites
+// whose origin is the function we stopped in: the halt target disambiguates which
+// arm ran, and (unlike the cross-jumped case) the reported line is then correct
+// per branch even in the optimized build. The distinct marker stores also keep
+// the two leaves from being merged by identical-code folding.
+volatile int tm_marker;
+
+__attribute__((noinline)) int leaf_pos(int a) {
+    tm_marker = 1;
+    halt();
+    asm volatile("" ::: "memory");
+    return a;
+}
+__attribute__((noinline)) int leaf_neg(int a) {
+    tm_marker = 2;
+    halt();
+    asm volatile("" ::: "memory");
+    return a;
+}
+
+__attribute__((noinline)) int tm_dispatch(int a) {
+    if (a >= 0) {
+        return leaf_pos(a);
+    } else {
+        return leaf_neg(-a);
+    }
+}
+
+// tm_dispatch() is not in tail position here, so run() stays a real frame.
+__attribute__((noinline)) int run(int a) {
+    int r = tm_dispatch(a);
+    asm volatile("" ::: "memory");
+    return r;
+}
+}  // namespace tail_multi_test
+
 int main() {
     if (*g_MAILBOX != 0xFFFFFFFF && *g_MAILBOX != 0xFFFFFFFE && *g_MAILBOX != 0xFFFFFFFD && *g_MAILBOX != 0xFFFFFFFC &&
-        *g_MAILBOX != 0xFFFFFFFB && (*g_MAILBOX & 0xFFFFFF00) != 0xFFFFFE00 && (*g_MAILBOX < 0 || *g_MAILBOX > 1000)) {
+        *g_MAILBOX != 0xFFFFFFFB && *g_MAILBOX != 0xFFFFFFFA && *g_MAILBOX != 0xFFFFFFF9 && *g_MAILBOX != 0xFFFFFFF8 &&
+        *g_MAILBOX != 0xFFFFFFF7 && (*g_MAILBOX & 0xFFFFFF00) != 0xFFFFFE00 && (*g_MAILBOX < 0 || *g_MAILBOX > 1000)) {
         *g_MAILBOX = 10;
     }
 
@@ -384,6 +540,14 @@ int main() {
         single_frame_value_test::dispatch(*g_MAILBOX & 0xFF);
     } else if (*g_MAILBOX == 0xFFFFFFFB) {
         callee_saved_test::value_test_charptr();
+    } else if (*g_MAILBOX == 0xFFFFFFFA) {
+        tail_call_test::run();
+    } else if (*g_MAILBOX == 0xFFFFFFF9) {
+        tail_chain_test::run();
+    } else if (*g_MAILBOX == 0xFFFFFFF8) {
+        tail_branch_test::run(host_value<int>(0));
+    } else if (*g_MAILBOX == 0xFFFFFFF7) {
+        tail_multi_test::run(host_value<int>(0));
     } else {
         int sum = recurse(*g_MAILBOX);
         *g_MAILBOX = sum;

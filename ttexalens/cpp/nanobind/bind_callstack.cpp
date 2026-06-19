@@ -66,7 +66,8 @@ void bind_callstack(nb::module_& m) {
     // GIL is held throughout: the MemoryAccess trampoline reacquires it per
     // callback, so holding it here is correct (nested acquire is a no-op).
     m.def("get_callstack", &get_callstack, nb::arg("elfs"), nb::arg("pc"), nb::arg("memory_access"),
-          nb::arg("limit") = 100, nb::arg("stop_function_name") = "main", nb::arg("extract_variables") = true);
+          nb::arg("limit") = 100, nb::arg("stop_function_name") = "main", nb::arg("extract_variables") = true,
+          nb::arg("expand_tail_call_inline_frames") = false);
 
     // Builds the entries for the single frame at `pc` (plus its inlined virtual
     // frames), locating the covering ELF / FDE across `elfs` itself. Static

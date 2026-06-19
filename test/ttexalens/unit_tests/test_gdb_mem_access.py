@@ -24,16 +24,16 @@ from ttexalens.gdb.gdb_server import GdbServer
 from ttexalens.gdb.gdb_communication import (
     ServerSocket,
 )
-from ttexalens.tt_exalens_lib import run_elf
+from ttexalens.tt_exalens_lib import parse_elf, run_elf
 
 
-_MAINTENANCE_CASES: list[tuple[str, str, int, bool]] = [
+_MAINTENANCE_CASES: list[tuple[str, str, int | None, bool]] = [
     # Wormhole L1: [0x00000000, 0x0016E000)
-    ("wormhole_inside", "wormhole", 0x00010000, False),
+    ("wormhole_inside", "wormhole", None, False),
     ("wormhole_partial", "wormhole", 0x0016DFF8, True),
     ("wormhole_outside", "wormhole", 0x0016E000, True),
     # Blackhole L1: [0x00000000, 0x00180000)
-    ("blackhole_inside", "blackhole", 0x00010000, False),
+    ("blackhole_inside", "blackhole", None, False),
     ("blackhole_partial", "blackhole", 0x0017FFF8, True),
     ("blackhole_outside", "blackhole", 0x00180000, True),
 ]
@@ -54,6 +54,7 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
     elf_path: str
     gdb_edge_symbol: str
     edge_addr: int
+    inside_addr: int
     server_socket: ServerSocket
     gdb_server: GdbServer
     gdb_bin: str
@@ -76,7 +77,7 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
         cls.location = get_core_location("FW0", cls.device)
         cls.location_str = cls.location.to_str()
 
-        # Edge ELF that defines g_p_* and g_in_l1_* symbols
+        # Edge ELF that defines g_p_* symbols and the g_scratch thread-local window
         cls.elf_path = os.path.join(
             "build",
             "riscv-src",
@@ -85,6 +86,11 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
         )
         if not os.path.exists(cls.elf_path):
             raise unittest.SkipTest(f"{cls.elf_path} does not exist; build edge_mem_test first.")
+
+        # Resolve the kernel's thread-local scratch window as the "inside L1" probe address.
+        tls_symbol = parse_elf(cls.elf_path, cls.context).find_symbol_by_name("__thread_local_start")
+        assert tls_symbol is not None, "edge_mem_test ELF is missing __thread_local_start"
+        cls.inside_addr = int(tls_symbol.value)
 
         # Arch-specific pointer symbol and edge address for the x/16xb test
         if cls.arch == "wormhole":
@@ -261,7 +267,7 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
         self,
         _label: str,
         arch: str,
-        addr: int,
+        addr: int | None,
         expect_e04: bool,
     ) -> None:
         """
@@ -270,9 +276,16 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
           - if arch != current device arch, skip.
           - send maintenance packet m/M/x/X for that addr/size.
           - assert that replies either all succeed or all E04.
+
+        addr is None for the "inside L1" case; it is resolved to the kernel's
+        thread-local scratch window (see setUpClass) so the write cannot corrupt
+        code or data.
         """
         if arch != self.arch:
             self.skipTest(f"Case for arch={arch}, current arch={self.arch}")
+
+        if addr is None:
+            addr = self.inside_addr
 
         port = self.server_socket.port
         assert port is not None
