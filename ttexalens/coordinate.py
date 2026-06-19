@@ -42,6 +42,7 @@ The following coordinate systems are available to represent a grid location on t
 """
 
 from __future__ import annotations
+from functools import cached_property
 from typing import TYPE_CHECKING, Any
 from ttexalens.exceptions import CoordinateTranslationError, TTException, UnknownCoordinateSystemError
 
@@ -120,7 +121,7 @@ class OnChipCoordinate:
     def device_id(self) -> int:
         return self._device.id
 
-    @property
+    @cached_property
     def noc_block(self) -> NocBlock:
         return self.device.get_block(self)
 
