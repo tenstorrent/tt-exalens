@@ -88,9 +88,11 @@ class TTExaLensServer:
         forwards them directly. Any other object is wrapped, registered with the daemon
         (once per object), and returned as a proxy.
         """
+        global SIMPLE_TYPES, UMD_SERIALIZABLE_TYPES
+
         result_type = type(result)
         # Check if result_type is simple type
-        if result_type in (int, float, str, bool, type(None), list, dict, set, tuple, bytes):
+        if result_type in SIMPLE_TYPES:
             return result
         # Check if result_type is in known serializable types
         if result_type in UMD_SERIALIZABLE_TYPES:
@@ -164,6 +166,7 @@ class TTExaLensServer:
         return UmdApiWrapper
 
 
+SIMPLE_TYPES = (int, float, str, bool, type(None), list, dict, set, tuple, bytes)
 UMD_SERIALIZABLE_TYPES = {
     tt_umd.ARCH,
     tt_umd.BoardType,
