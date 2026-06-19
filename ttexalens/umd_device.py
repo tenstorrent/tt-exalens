@@ -235,7 +235,7 @@ class UmdDevice:
         use_4B_mode: bool,
         dma_threshold: int,
     ) -> None:
-        do_read = self.__read_from_device_reg_no_timeout if use_4B_mode else self.__read_from_device_reg
+        do_read = self.__read_from_device_reg_no_timeout if not use_4B_mode else self.__read_from_device_reg
         # Read first unaligned word
         first_unaligned_index = address % 4
         size = len(buffer)
@@ -303,8 +303,8 @@ class UmdDevice:
         dma_threshold: int,
     ):
         size_in_bytes = len(data)
-        do_write = self.__write_to_device_reg_no_timeout if use_4B_mode else self.__write_to_device_reg
-        do_read = self.__read_from_device_reg_no_timeout if use_4B_mode else self.__read_from_device_reg
+        do_write = self.__write_to_device_reg_no_timeout if not use_4B_mode else self.__write_to_device_reg
+        do_read = self.__read_from_device_reg_no_timeout if not use_4B_mode else self.__read_from_device_reg
 
         # Read/Write first unaligned word
         first_unaligned_index = address % 4
