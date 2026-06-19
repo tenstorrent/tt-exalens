@@ -5,7 +5,9 @@ import os
 from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device
 from ttexalens.elf import ElfFile, read_elf
 from ttexalens.server import FileAccessApi
+from ttexalens.hardware.baby_risc_debug import BabyRiscDebugHardware
 
+BabyRiscDebugHardware.ENABLE_ASSERTS = os.getenv("TTEXALENS_TESTS_ENABLE_DEBUG_HARDWARE_ASSERTS", "0") == "1"
 
 # Global cache for simulator context to ensure only one simulator process
 # is created when TTEXALENS_SIMULATOR is set, preventing conflicts between
