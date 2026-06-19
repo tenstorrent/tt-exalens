@@ -123,10 +123,11 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
         """
         proc = subprocess.run(
             [self.gdb_bin, "-q", "-x", script_path],
+            stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=False,  # capture raw bytes
-            timeout=60,
+            timeout=2,
         )
         output = proc.stdout.decode("utf-8", errors="replace")
         return proc.returncode, output
