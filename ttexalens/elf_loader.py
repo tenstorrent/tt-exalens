@@ -165,15 +165,19 @@ class ElfLoader:
             loader_code_address = loader_code if isinstance(loader_code, int) else None
 
             # Try to find address mapping for loader_data and loader_code
-            for section in elf.iter_sections():
-                if section.name == loader_data:
+            if isinstance(loader_data, str):
+                section = elf.get_section_by_name(loader_data)
+                if section:
                     loader_data_address = section.address
-                elif section.name == loader_code:
+            if isinstance(loader_code, str):
+                section = elf.get_section_by_name(loader_code)
+                if section:
                     loader_code_address = section.address
 
             # Load section into memory
-            for section in elf.iter_sections():
-                if section.name in self.SECTIONS_TO_LOAD and section.data:
+            for section_name in ElfLoader.SECTIONS_TO_LOAD:
+                section = elf.get_section_by_name(section_name)
+                if section and section.data:
                     if section.address % 4 != 0:
                         raise ValueError(
                             f"{elf_path}: section {section.name} (0x{section.address:08x}) is not 32-bit aligned"
