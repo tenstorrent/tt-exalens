@@ -110,6 +110,9 @@ class Context:
     def get_risc_elf_path(self, risc_location: RiscLocation) -> str | None:
         return self.loaded_elfs.get(risc_location)
 
+    def get_loaded_elfs(self):
+        return self.loaded_elfs.items()
+
     def elf_loaded(self, risc_location: RiscLocation, elf_path: str):
         self.loaded_elfs[risc_location] = elf_path
 
