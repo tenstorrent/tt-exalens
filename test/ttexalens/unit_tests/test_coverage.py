@@ -117,10 +117,10 @@ class TestCoverage(unittest.TestCase):
                 self.skipTest("ETH core is not available on this platform")
         elif self.core_desc.startswith("FW"):
             # Ask device for all ETH cores and get first one
-            eth_cores = self.device.get_block_locations(block_type="functional_workers")
+            fw_cores = self.device.get_block_locations(block_type="functional_workers")
             core_index = int(self.core_desc[2:])
-            if len(eth_cores) > core_index:
-                self.core_loc = eth_cores[core_index].to_str()
+            if len(fw_cores) > core_index:
+                self.core_loc = fw_cores[core_index].to_str()
             else:
                 # If not found, we should skip the test
                 self.skipTest("FW core is not available on this platform")
@@ -128,7 +128,7 @@ class TestCoverage(unittest.TestCase):
             self.fail(f"Unknown core description {self.core_desc}")
 
         self.location = OnChipCoordinate.create(self.core_loc, device=self.device)
-        noc_block = self.location._device.get_block(self.location)
+        noc_block = self.location.device.get_block(self.location)
         try:
             self.risc_debug = noc_block.get_risc_debug(self.risc_name)
         except ValueError:
