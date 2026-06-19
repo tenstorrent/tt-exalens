@@ -217,12 +217,16 @@ class BabyRiscDebugWatchpointState(RiscDebugWatchpointState):
 
 
 class BabyRiscDebugHardware:
+    ENABLE_ASSERTS: bool = True
+
     def __init__(
         self,
         register_store: RegisterStore,
         risc_info: BabyRiscInfo,
-        enable_asserts: bool = True,
+        enable_asserts: bool | None = None,
     ):
+        if enable_asserts is None:
+            enable_asserts = BabyRiscDebugHardware.ENABLE_ASSERTS
         self.register_store = register_store
         self.risc_info = risc_info
         self.enable_asserts = enable_asserts
@@ -495,7 +499,7 @@ class BabyRiscDebugHardware:
 
 
 class BabyRiscDebug(RiscDebug):
-    def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool = True):
+    def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool | None = None):
         super().__init__(RiscLocation(risc_info.noc_block.location, risc_info.neo_id, risc_info.risc_name), risc_info)
         register_store = risc_info.noc_block.get_register_store(neo_id=risc_info.neo_id)
         self.baby_risc_info = risc_info
@@ -505,7 +509,7 @@ class BabyRiscDebug(RiscDebug):
             if risc_info.debug_hardware_present
             else None
         )
-        self.enable_asserts = enable_asserts
+        self.enable_asserts = self.debug_hardware.enable_asserts if self.debug_hardware is not None else True
 
         self.RISC_DBG_SOFT_RESET0 = register_store.get_register_noc_address("RISCV_DEBUG_REG_SOFT_RESET_0")
 

@@ -8,7 +8,7 @@ from ttexalens.exceptions import TTException
 
 
 class BlackholeBabyRiscDebug(BabyRiscDebug):
-    def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool = True):
+    def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool | None = None):
         super().__init__(risc_info, enable_asserts)
 
     def step(self):
