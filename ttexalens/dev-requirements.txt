@@ -1,4 +1,4 @@
-mypy>=1.16.0
+mypy==2.1.0
 basedpyright
 diagrams
 pre-commit
