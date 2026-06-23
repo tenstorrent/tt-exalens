@@ -192,10 +192,10 @@ class QuasarFunctionalNeoBlock:
         )
 
         self.noc_memory_list: list[MemoryMapBlockInfo] = [
-            MemoryMapBlockInfo(f"neo{neo_id}.trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[arg-type]
-            MemoryMapBlockInfo(f"neo{neo_id}.trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[arg-type]
-            MemoryMapBlockInfo(f"neo{neo_id}.trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[arg-type]
-            MemoryMapBlockInfo(f"neo{neo_id}.trisc3.data_private_memory", self.trisc3.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[arg-type]
+            MemoryMapBlockInfo(f"neo{neo_id}.trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[union-attr]
+            MemoryMapBlockInfo(f"neo{neo_id}.trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[union-attr]
+            MemoryMapBlockInfo(f"neo{neo_id}.trisc2.data_private_memory", self.trisc2.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[union-attr]
+            MemoryMapBlockInfo(f"neo{neo_id}.trisc3.data_private_memory", self.trisc3.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[union-attr]
             MemoryMapBlockInfo(f"neo{neo_id}.debug_regs", self.debug_regs.just_noc_address(), safe_to_write=True),
             MemoryMapBlockInfo(f"neo{neo_id}.pic_regs", self.pic_regs.just_noc_address()),
         ]
