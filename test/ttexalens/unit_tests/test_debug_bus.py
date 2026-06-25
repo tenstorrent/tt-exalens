@@ -255,8 +255,6 @@ class TestDebugBus(unittest.TestCase):
 
     def test_debug_bus_signal_store_pc(self):
         """Validate reading of PC signal for all RISCs on this core."""
-        # TODO: Need to verify whether the test for reading debug-bus signals execute deterministically Issue: #730
-        self.skipTest("Need to verify whether the test for reading debug-bus signals execute deterministically.")
 
         if self.device.is_quasar():
             self.skipTest("This test does not work on quasar.")
@@ -298,8 +296,6 @@ class TestDebugBus(unittest.TestCase):
     )
     def test_debug_bus_signal_store_sample_signal_group(self, samples, sampling_interval):
         """Validate signal group readings for all groups on this core."""
-        # TODO: Need to verify whether the test for reading debug-bus signals execute deterministically Issue: #730
-        self.skipTest("Need to verify whether the test for reading debug-bus signals execute deterministically.")
 
         if self.device.is_quasar():
             self.skipTest("This test does not work on quasar.")
@@ -325,8 +321,6 @@ class TestDebugBus(unittest.TestCase):
                     continue
 
                 sampled_group = self.debug_bus._read_signal_group_samples(group, l1_addr, samples, sampling_interval)
-                if not isinstance(sampled_group, list):
-                    sampled_group = [sampled_group]
 
                 # check number of samples taken
                 self.assertEqual(len(sampled_group), samples, f"Expected {samples} samples, got {len(sampled_group)}")
