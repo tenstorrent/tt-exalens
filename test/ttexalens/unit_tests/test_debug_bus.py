@@ -321,8 +321,6 @@ class TestDebugBus(unittest.TestCase):
                     continue
 
                 sampled_group = self.debug_bus._read_signal_group_samples(group, l1_addr, samples, sampling_interval)
-                if not isinstance(sampled_group, list):
-                    sampled_group = [sampled_group]
 
                 # check number of samples taken
                 self.assertEqual(len(sampled_group), samples, f"Expected {samples} samples, got {len(sampled_group)}")
