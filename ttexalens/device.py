@@ -155,7 +155,7 @@ class Device:
         # NOC queue used for failover, initialized based on context preference
         # When an operation is attempted, the first NOC in the list is used. If it fails, it is moved to the back of the list
         # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
-        self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
+        self._noc_to_use: list[int] = [0, 1] if context.use_noc0 else [1, 0]
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
 
     @property

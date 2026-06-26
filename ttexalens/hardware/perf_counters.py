@@ -175,7 +175,7 @@ class TensixPerfCounters:
             # Pick up the active NOC from the device's TTExaLens context so
             # callers reaching directly through ``noc_block.perf_counters``
             # don't have to re-resolve it themselves.
-            noc_id = 1 if self._noc_block.location.context.use_noc1 else 0
+            noc_id = 0 if self._noc_block.location.context.use_noc0 else 1
         return self._noc_block.get_register_store(noc_id=noc_id, neo_id=self._neo_id)
 
     def _resolve_counter(self, block: PerfCounterBlockDescription, counter: int | str) -> int:

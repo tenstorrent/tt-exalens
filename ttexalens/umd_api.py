@@ -69,7 +69,7 @@ class UmdApi:
     def __init__(
         self,
         init_jtag=False,
-        initialize_with_noc1=False,
+        initialize_with_noc0=False,
         simulation_directory: str | None = None,
     ):
         from ttexalens.umd_device import UmdDevice
@@ -91,7 +91,7 @@ class UmdApi:
             else:
                 tt_umd.logging.set_level(tt_umd.logging.Level.Error)
 
-        UmdApi.select_noc_id(1 if initialize_with_noc1 else 0)
+        UmdApi.select_noc_id(0 if initialize_with_noc0 else 1)
         if simulation_directory is not None:
             tt_device: tt_umd.TTDevice
             if simulation_directory.endswith(".so"):
@@ -217,8 +217,8 @@ class UmdApi:
             tt_umd.WarmReset.warm_reset()
 
 
-def local_init(init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None):
-    communicator = UmdApi(init_jtag, initialize_with_noc1, simulation_directory)
+def local_init(init_jtag=False, initialize_with_noc0=False, simulation_directory: str | None = None):
+    communicator = UmdApi(init_jtag, initialize_with_noc0, simulation_directory)
     if util.VERBOSE_ENABLED:
         util.VERBOSE("Device opened successfully.")
     return communicator

@@ -45,7 +45,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         if noc not in [0, 1]:
             util.ERROR("NOC must be 0 or 1")
             return
-        ui_state.context.use_noc1 = noc == 1
+        ui_state.context.use_noc0 = noc == 0
 
     if args["-m"] is not None:
         use_4B_mode = int(args["-m"])

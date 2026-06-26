@@ -28,7 +28,7 @@ class Context:
         umd_api: UmdApi,
         file_api: FileAccessApi,
         short_name: str = "default",
-        use_noc1=False,
+        use_noc0=False,
         use_4B_mode=True,
         dma_read_threshold: int = 24,  # Measured thresholds for DMA vs NOC transfers on WH
         dma_write_threshold: int = 56,  # Measured thresholds for DMA vs NOC transfers on WH
@@ -43,24 +43,24 @@ class Context:
         self.dma_write_threshold: int = dma_write_threshold
 
         self.noc_failover = noc_failover
-        self._use_noc1 = use_noc1
+        self._use_noc0 = use_noc0
         self.safe_mode = safe_mode
 
         self.commands: list[CommandMetadata] = []
         self.loaded_elfs: dict[RiscLocation, str] = {}
 
     @property
-    def use_noc1(self):
-        return self._use_noc1
+    def use_noc0(self):
+        return self._use_noc0
 
-    @use_noc1.setter
-    def use_noc1(self, value: bool):
-        if value == self._use_noc1:
+    @use_noc0.setter
+    def use_noc0(self, value: bool):
+        if value == self._use_noc0:
             return
 
-        self._use_noc1 = value
+        self._use_noc0 = value
         for device in self.devices.values():
-            device.switch_noc(int(value))
+            device.switch_noc(0 if value else 1)
 
     def assign_commands(self, commands: list[CommandMetadata]):
         self.commands = []

@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--disable-4B-mode] [--unsafe-mode] [--disable-noc-failover]
-  tt-exalens --server [--port=<port>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1] [--verbosity=<verbosity>]
+  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc0] [--disable-4B-mode] [--unsafe-mode] [--disable-noc-failover]
+  tt-exalens --server [--port=<port>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc0] [--verbosity=<verbosity>]
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--disable-4B-mode]
   tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help
@@ -26,7 +26,7 @@ Options:
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
-  --use-noc1                      Initialize with NOC1 and use NOC1 for communication with the device.
+  --use-noc0                      Initialize with NOC0 and use NOC0 for communication with the device. If not set, NOC1 is used by default.
   --disable-4B-mode               Disable 4-byte mode for communication with the device.
   --gdb                           Start RISC-V gdb client with the specified arguments.
   --unsafe-mode                   Disable safe mode to allow potentially unsafe operations (e.g., writing to certain memory regions) without explicit overrides. Use with caution.
@@ -394,7 +394,7 @@ def main():
 
     use_4B_mode = False if args["--disable-4B-mode"] else True
     safe_mode = False if args["--unsafe-mode"] else True
-    use_noc1 = args["--use-noc1"]
+    use_noc0 = args["--use-noc0"]
     simulation_directory = args["-s"]
     init_jtag = args["--jtag"]
     noc_failover: bool = False if args["--disable-noc-failover"] else True
@@ -404,7 +404,7 @@ def main():
         if args["--background"]:
             context = init_ttexalens(
                 init_jtag=init_jtag,
-                use_noc1=use_noc1,
+                use_noc0=use_noc0,
                 use_4B_mode=use_4B_mode,
                 safe_mode=safe_mode,
                 simulation_directory=simulation_directory,
@@ -442,7 +442,7 @@ def main():
     else:
         context = init_ttexalens(
             init_jtag=init_jtag,
-            use_noc1=use_noc1,
+            use_noc0=use_noc0,
             use_4B_mode=use_4B_mode,
             safe_mode=safe_mode,
             simulation_directory=simulation_directory,
