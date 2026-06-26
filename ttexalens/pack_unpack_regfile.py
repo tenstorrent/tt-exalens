@@ -46,24 +46,24 @@ def flip_fp16_bits(value):
     return result
 
 
-def unpack_fp16(data):
-    return [
-        struct.unpack(
-            ">e", int.to_bytes(flip_fp16_bits(int.from_bytes(data[i : i + 2], byteorder="big")), 2, byteorder="big")
-        )[0]
-        for i in range(0, len(data), 2)
-    ]
+def unpack_fp16(data, reorder: bool = True):
+    result = []
+    for i in range(0, len(data), 2):
+        value = int.from_bytes(data[i : i + 2], byteorder="big")
+        if reorder:
+            value = flip_fp16_bits(value)
+        result.append(struct.unpack(">e", value.to_bytes(2, byteorder="big"))[0])
+    return result
 
 
-def unpack_bfp16(data):
-    return [
-        struct.unpack(
-            ">f",
-            int.to_bytes(flip_bfp16_bits(int.from_bytes(data[i : i + 2], byteorder="big")), 2, byteorder="big")
-            + b"\x00\x00",
-        )[0]
-        for i in range(0, len(data), 2)
-    ]
+def unpack_bfp16(data, reorder: bool = True):
+    result = []
+    for i in range(0, len(data), 2):
+        value = int.from_bytes(data[i : i + 2], byteorder="big")
+        if reorder:
+            value = flip_bfp16_bits(value)
+        result.append(struct.unpack(">f", value.to_bytes(2, byteorder="big") + b"\x00\x00")[0])
+    return result
 
 
 def bfp8_to_float_block(exponent, bfp8_mantissas):
@@ -91,7 +91,7 @@ def bfp8_to_float_block(exponent, bfp8_mantissas):
     return bfloat16_values
 
 
-def unpack_bfp8_b(data):
+def unpack_bfp8_b(data, reorder: bool = True):
     exponents = data[:64]
     mantissas = data[64:]
 
@@ -99,13 +99,15 @@ def unpack_bfp8_b(data):
     for i in range(len(exponents)):
         exponent = exponents[i]
         bfp8_mantissas = mantissas[i * 16 : (i + 1) * 16]
-        reversed_chunks = []
-        for j in range(0, len(bfp8_mantissas), 4):
-            chunk = bfp8_mantissas[j : j + 4]  # Get the next chunk of 4 elements
-            reversed_chunk = chunk[::-1]  # Reverse the chunk
-            reversed_chunks.extend(reversed_chunk)  # Add the reversed chunk to the list
+        if reorder:
+            reversed_chunks = []
+            for j in range(0, len(bfp8_mantissas), 4):
+                chunk = bfp8_mantissas[j : j + 4]  # Get the next chunk of 4 elements
+                reversed_chunk = chunk[::-1]  # Reverse the chunk
+                reversed_chunks.extend(reversed_chunk)  # Add the reversed chunk to the list
+            bfp8_mantissas = reversed_chunks
 
-        block_bfloat16_values = bfp8_to_float_block(exponent, reversed_chunks)
+        block_bfloat16_values = bfp8_to_float_block(exponent, bfp8_mantissas)
         bfloat16_values.extend(block_bfloat16_values)
 
     return bfloat16_values
@@ -119,7 +121,7 @@ def reorder_fp32(datum: int) -> int:
     return (datum & 0x8000) | ((datum & 0x7F00) >> 8) | ((datum & 0xFF) << 7)
 
 
-def unpack_fp32(data) -> list[float]:
+def unpack_fp32(data, reorder: bool = True) -> list[float]:
     floats: list[float] = []
     half = len(data) // 2
     hi_bytes = data[:half]
@@ -128,48 +130,47 @@ def unpack_fp32(data) -> list[float]:
     for i in range(0, half, 2):
         upper = int.from_bytes(hi_bytes[i : i + 2], byteorder="big")
         lower = int.from_bytes(lo_bytes[i : i + 2], byteorder="big")
-        # Both parts are shuffled.
-        upper_reordered = reorder_fp32(upper)
-        lower_reordered = reorder_fp32(lower)
-        result = (upper_reordered << 16) | lower_reordered
+        if reorder:
+            # Both parts are shuffled.
+            upper = reorder_fp32(upper)
+            lower = reorder_fp32(lower)
+        result = (upper << 16) | lower
         floats.append(struct.unpack(">f", result.to_bytes(4, "big"))[0])
 
-    for i in range(0, len(floats) - 1, 2):
-        floats[i], floats[i + 1] = floats[i + 1], floats[i]
+    if reorder:
+        for i in range(0, len(floats) - 1, 2):
+            floats[i], floats[i + 1] = floats[i + 1], floats[i]
 
     return floats
 
 
-def unpack_uint16(data: list[int]) -> list[int]:
+def unpack_uint16(data: list[int], reorder: bool = True) -> list[int]:
     byte_data = bytes(data)
-    unpacked_data = struct.unpack(f">{len(byte_data)//2}H", byte_data)
+    result = list(struct.unpack(f">{len(byte_data)//2}H", byte_data))
 
-    # Reorder in pairs
-    result = []
-    for i in range(0, len(unpacked_data), 2):
-        if i + 1 < len(unpacked_data):
+    if reorder:
+        # Reorder in pairs
+        for i in range(0, len(result) - 1, 2):
             # Here we swap values in pair
-            result.extend([unpacked_data[i + 1], unpacked_data[i]])
-        else:
-            result.append(unpacked_data[i])
+            result[i], result[i + 1] = result[i + 1], result[i]
 
     return result
 
 
-def unpack_data(data, df: int | TensixDataFormat, signed: bool):
+def unpack_data(data, df: int | TensixDataFormat, signed: bool, reorder: bool = True):
     if isinstance(df, int):
         df = TensixDataFormat(df)
 
     if df == TensixDataFormat.Float32:
-        return unpack_fp32(data)
+        return unpack_fp32(data, reorder)
     if df == TensixDataFormat.Float16:
-        return unpack_fp16(data)
+        return unpack_fp16(data, reorder)
     elif df == TensixDataFormat.Float16_b:
-        return unpack_bfp16(data)
+        return unpack_bfp16(data, reorder)
     elif df == TensixDataFormat.Bfp8_b:
-        return unpack_bfp8_b(data)
+        return unpack_bfp8_b(data, reorder)
     elif df == TensixDataFormat.UInt16:
-        return unpack_uint16(data)
+        return unpack_uint16(data, reorder)
     else:
         raise ValueError(f"Unsupported data format {df} for unpacking.")
 
