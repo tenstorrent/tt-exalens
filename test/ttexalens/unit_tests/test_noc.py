@@ -57,9 +57,6 @@ class TestNOCLocations(unittest.TestCase):
 
     def test_noc_locations(self):
         for device in self.context.devices.values():
-            # TODO (944): Remove this check once UMD bug is fixed.
-            if device.is_blackhole():
-                continue
             for block_type in device.block_types:
                 for block in device.get_blocks(block_type):
                     noc0_register_store = block.get_register_store(noc_id=0)
