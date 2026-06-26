@@ -26,7 +26,7 @@ class QuasarNocBlock(NocBlock):
         self.register_store_noc = RegisterStore(default_niu_register_store_initialization_noc, self.location)
         self.register_store_smn = RegisterStore(default_niu_register_store_initialization_smn, self.location)
 
-    def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
+    def get_register_store(self, noc_id: int = 1, neo_id: int | None = None) -> RegisterStore:
         assert neo_id is None, "Default NOC block does not support neo_id"
         if noc_id == 0:
             return self.register_store_noc

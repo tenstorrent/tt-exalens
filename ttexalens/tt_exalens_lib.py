@@ -417,7 +417,7 @@ def read_arc_telemetry_entry(
 def read_register(
     location: str | OnChipCoordinate,
     register,
-    noc_id: int = 0,
+    noc_id: int = 1,
     neo_id: int | None = None,
     device_id: int = 0,
     context: Context | None = None,
@@ -456,7 +456,7 @@ def write_register(
     location: str | OnChipCoordinate,
     register,
     value: int,
-    noc_id: int = 0,
+    noc_id: int = 1,
     neo_id: int | None = None,
     device_id: int = 0,
     context: Context | None = None,
