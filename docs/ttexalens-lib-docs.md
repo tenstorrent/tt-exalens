@@ -339,7 +339,7 @@ Reads an ARC telemetry entry from the device.
 ## read_register
 
 ```
-read_register(location: str | OnChipCoordinate, register, noc_id: int = 0, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None) -> int
+read_register(location: str | OnChipCoordinate, register, noc_id: int = 1, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None) -> int
 ```
 
 
@@ -369,7 +369,7 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 ## write_register
 
 ```
-write_register(location: str | OnChipCoordinate, register, value: int, noc_id: int = 0, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None)
+write_register(location: str | OnChipCoordinate, register, value: int, noc_id: int = 1, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None)
 ```
 
 
