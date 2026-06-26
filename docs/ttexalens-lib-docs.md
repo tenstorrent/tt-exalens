@@ -3,7 +3,7 @@
 ## init_ttexalens
 
 ```
-init_ttexalens(init_jtag: bool = False, use_noc1: bool = False, use_4B_mode: bool = True, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True) -> Context
+init_ttexalens(init_jtag: bool = False, use_noc0: bool = False, use_4B_mode: bool = True, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True) -> Context
 ```
 
 
@@ -16,7 +16,7 @@ Interfacing device is local, through pybind.
 ### Args
 
 - `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
-- `use_noc1` *(bool)*: Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
+- `use_noc0` *(bool)*: Whether to initialize with NOC0 and use NOC0 for communication with the device. If False, NOC1 is used. Default is False.
 - `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
 - `simulation_directory` *(str, optional)*: If specified, starts the simulator from the given build output directory.
 - `safe_mode` *(bool)*: Whether to enable safe mode for memory access. Default is True.
@@ -82,48 +82,6 @@ Set the active TTExaLens context object.
 
 
 # tt_exalens_lib
-
-## check_context
-
-```
-check_context(context: Context | None = None) -> Context
-```
-
-
-### Description
-
-Function to initialize context if not provided. By default, it starts a local
-TTExaLens session with no output folder and caching disabled and sets GLOBAL_CONTEXT variable so
-that the context can be reused in calls to other functions.
-
-
-
-
-## convert_coordinate
-
-```
-convert_coordinate(location: str | OnChipCoordinate, device_id: int = 0, context: Context | None = None) -> OnChipCoordinate
-```
-
-
-### Description
-
-Converts a string location to an OnChipCoordinate object.
-If location is already OnChipCoordinate, it is returned as-is.
-
-
-### Args
-
-- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
-- `device_id` *(int, default 0)*: ID number of device to convert to.
-- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-
-
-### Returns
-
- *(OnChipCoordinate)*: Converted coordinate.
-
-
 
 ## read_word_from_device
 
@@ -268,7 +226,7 @@ Writes data to address 'addr' at specified location using specified noc.
 ## load_elf
 
 ```
-load_elf(elf_file: str | ParsedElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, return_start_address: bool = False, verify_write: bool = True) -> None | int | list[int]
+load_elf(elf_file: str | ElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, return_start_address: bool = False, verify_write: bool = True) -> None | int | list[int]
 ```
 
 
@@ -279,7 +237,7 @@ Loads the given ELF file into the specified RISC core. RISC core must be in rese
 
 ### Args
 
-- `elf_file` *(str | ParsedElfFile)*: ELF file to be loaded.
+- `elf_file` *(str | ElfFile)*: ELF file to be loaded.
 - `location` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
 1. "all" to run the ELF on all cores;
 2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -298,7 +256,7 @@ Loads the given ELF file into the specified RISC core. RISC core must be in rese
 ## run_elf
 
 ```
-run_elf(elf_file: str | ParsedElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, verify_write: bool = True)
+run_elf(elf_file: str | ElfFile, location: str | OnChipCoordinate | list[str | OnChipCoordinate], risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, verify_write: bool = True)
 ```
 
 
@@ -309,7 +267,7 @@ Loads the given ELF file into the specified RISC core and executes it. Similar t
 
 ### Args
 
-- `elf_file` *(str | ParsedElfFile)*: ELF file to be run.
+- `elf_file` *(str | ElfFile)*: ELF file to be run.
 - `location` *(str | OnChipCoordinate | list[str | OnChipCoordinate])*: One of the following:
 1. "all" to run the ELF on all cores;
 2. an X-Y (noc0/translated) or X,Y (logical) location of a core in string format;
@@ -438,13 +396,13 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 ## parse_elf
 
 ```
-parse_elf(elf_path: str, context: Context | None = None, require_debug_symbols: bool = True) -> ParsedElfFile
+parse_elf(elf_path: str, context: Context | None = None, require_debug_symbols: bool = True) -> ElfFile
 ```
 
 
 ### Description
 
-Reads the ELF file and returns a ParsedElfFile object.
+Reads the ELF file and returns a ElfFile object.
 Args:
 elf_path (str): Path to the ELF file.
 context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized. Default: None
@@ -453,10 +411,43 @@ require_debug_symbols (bool, optional): Whether to require debug symbols in the 
 
 
 
+## get_global
+
+```
+get_global(location: str | OnChipCoordinate, elf: str | ElfFile, name: str, risc_name: str, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None) -> ElfVariable
+```
+
+
+### Description
+
+Resolves a global (or static) variable by name from the given ELF and binds it to
+the specified RISC-V core, returning an ElfVariable that reads/writes the variable
+through its type. This wraps the construction of the underlying memory access so a
+typed read is as simple as a raw read_word_from_device call.
+
+
+### Args
+
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+- `elf` *(str | ElfFile)*: ELF file (path or already-parsed) that defines the variable.
+- `name` *(str)*: Name of the variable to resolve.
+- `risc_name` *(str)*: RISC-V core name (e.g. "brisc", "trisc0", etc.).
+- `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
+- `device_id` *(int, optional)*: ID of the device to access. Default 0.
+- `context` *(Context | None, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+- `safe_mode` *(bool | None, optional)*: Whether to use safe mode for memory access. If None, it is decided based on context.
+
+
+### Returns
+
+ *(ElfVariable)*: The resolved variable, bound to the core's memory for reading/writing.
+
+
+
 ## top_callstack
 
 ```
-top_callstack(pc: int, elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile, offsets: int | None | list[int | None] = None, context: Context | None = None) -> list[CallstackEntry]
+top_callstack(pc: int, elfs: list[str] | str | list[ElfFile] | ElfFile, offsets: int | None | list[int | None] = None, context: Context | None = None, extract_variables: bool = True) -> list[CallstackEntry]
 ```
 
 
@@ -469,9 +460,10 @@ There is no stack walking, so the function will return the function at the given
 ### Args
 
 - `pc` *(int)*: Program counter to be used for the callstack.
-- `elfs` *(list[str] | str | list[ParsedElfFile] | ParsedElfFile)*: ELF files to be used for the callstack.
+- `elfs` *(list[str] | str | list[ElfFile] | ElfFile)*: ELF files to be used for the callstack.
 - `offsets` *(list[int], int, optional)*: List of offsets for each ELF file. Default: None.
 - `context` *(Context)*: TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+- `extract_variables` *(bool)*: If True, collect each frame's arguments, locals and template parameters. Default: True.
 
 
 ### Returns
@@ -483,7 +475,7 @@ There is no stack walking, so the function will return the function at the given
 ## callstack
 
 ```
-callstack(location: str | OnChipCoordinate, elfs: list[str] | str | list[ParsedElfFile] | ParsedElfFile, offsets: int | None | list[int | None] = None, risc_name: str = brisc, neo_id: int | None = None, max_depth: int = 100, stop_on_main: bool = True, device_id: int = 0, context: Context | None = None) -> list[CallstackEntry]
+callstack(location: str | OnChipCoordinate, elfs: list[str] | str | list[ElfFile] | ElfFile, offsets: int | None | list[int | None] = None, risc_name: str = brisc, neo_id: int | None = None, max_depth: int = 100, stop_on_main: bool = True, device_id: int = 0, context: Context | None = None, extract_variables: bool = True, expand_tail_call_inline_frames: bool = False) -> list[CallstackEntry]
 ```
 
 
@@ -495,7 +487,7 @@ Retrieves the callstack of the specified RISC core for a given ELF.
 ### Args
 
 - `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
-- `elfs` *(list[str] | str | list[ParsedElfFile] | ParsedElfFile)*: ELF files to be used for the callstack.
+- `elfs` *(list[str] | str | list[ElfFile] | ElfFile)*: ELF files to be used for the callstack.
 - `offsets` *(list[int], int, optional)*: List of offsets for each ELF file. Default: None.
 - `risc_name` *(str)*: RISC-V core name (e.g. "brisc", "trisc0", etc.).
 - `neo_id` *(int | None, optional)*: NEO ID of the RISC-V core.
@@ -503,6 +495,8 @@ Retrieves the callstack of the specified RISC core for a given ELF.
 - `stop_on_main` *(bool)*: If True, stops at the main function. Default: True.
 - `device_id` *(int)*: ID of the device on which the kernel is run. Default: 0.
 - `context` *(Context)*: TTExaLens context object used for interaction with the device. If None, the global context is used and potentially initialized. Default: None
+- `extract_variables` *(bool)*: If True, collect each frame's arguments, locals and template parameters. Default: True.
+- `expand_tail_call_inline_frames` *(bool)*: If True, a reconstructed tail-call frame is expanded into its full inlined-function chain (name and source line only) instead of the single innermost frame GDB reports. Default: False.
 
 
 ### Returns
@@ -514,7 +508,7 @@ Retrieves the callstack of the specified RISC core for a given ELF.
 ## coverage
 
 ```
-coverage(location: str | OnChipCoordinate, elf: str | ParsedElfFile, gcda_path: str, gcno_copy_path: str | None = None, device_id: int = 0, context: Context | None = None)
+coverage(location: str | OnChipCoordinate, elf: str | ElfFile, gcda_path: str, gcno_copy_path: str | None = None, device_id: int = 0, context: Context | None = None)
 ```
 
 
@@ -526,7 +520,7 @@ Extract coverage data from the device.
 ### Args
 
 - `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
-- `elf` *(str | ParsedElfFile)*: ELF file whose coverage should be extracted.
+- `elf` *(str | ElfFile)*: ELF file whose coverage should be extracted.
 - `gcda_path` *(str)*: The path where the gcda file will be written.
 - `gcno_copy_path` *(str | None, optional)*: The path where the gcno will be written, if specified.
 - `device_id` *(int, optional)*: ID of the device to read from. Default 0.
@@ -590,7 +584,109 @@ Writes a 32-bit word to the specified RISC-V core's private memory.
 
 
 
+## get_tensix_state
+
+```
+get_tensix_state(location: str | OnChipCoordinate, l1_address: int | None = None, device_id: int = 0, context: Context | None = None) -> TensixState
+```
+
+
+### Description
+
+Gets the tensix state for the given device and location.
+Args:
+location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
+l1_address (int, optional): L1 address to use for reading debug bus signals atomically. If None, debug bus signals are read unsafely.
+device_id (int, default 0):     ID number of device to read from.
+context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
+Returns:
+TensixState: Tensix state for the given device and location.
+
+
+
+
 ## TensixState
+
+
+
+
+
+# perf_counters
+
+## reset_perf_counters
+
+```
+reset_perf_counters(location: OnChipCoordinate, block_name: str | None = None)
+```
+
+
+### Description
+
+Reset Tensix perf counters on this core. Raises if perf counters are not wired here.
+
+
+
+
+## start_perf_counters
+
+```
+start_perf_counters(location: OnChipCoordinate, block_name: str | None = None)
+```
+
+
+### Description
+
+Start Tensix perf counters on this core. Raises if perf counters are not wired here.
+
+
+
+
+## stop_perf_counters
+
+```
+stop_perf_counters(location: OnChipCoordinate, block_name: str | None = None)
+```
+
+
+### Description
+
+Stop Tensix perf counters on this core. Raises if perf counters are not wired here.
+
+
+
+
+## read_perf_counters
+
+```
+read_perf_counters(location: OnChipCoordinate, block_name: str | None = None) -> Unknown | Unknown
+```
+
+
+### Description
+
+Read every named counter on this core (or only those in ``block_name``).
+Returns a dict keyed by ``(block_name, counter_id, counter_name)`` with
+values ``(value, ref_cnt)``. Counter values are unsigned 32-bit; mask
+deltas with ``& 0xFFFFFFFF``. Raises ``TTException`` if perf counters
+are not wired here.
+
+
+
+
+## list_perf_counters
+
+```
+list_perf_counters(location: OnChipCoordinate) -> str | Unknown
+```
+
+
+### Description
+
+Return the perf-counter schema at this core as
+``{block_name: [(counter_id, counter_name), ...]}``, sorted by counter
+id. Empty-counter blocks are omitted. Returns ``{}`` if perf counters
+are not wired here.
+
 
 
 
@@ -609,7 +705,7 @@ coordinate systems we use.
 
 
 ```
-to(self, output_type)
+to(self, output_type) -> Any
 ```
 Returns a tuple with the coordinates in the specified coordinate system.
 - `output_type` *(str)*: The desired output coordinate system.
@@ -649,10 +745,15 @@ Creates a coordinate object from a string. The string can be in any of the suppo
 - `coord_str` *(str)*: The string representation of the coordinate.
 - `device` *(Device)*: The device object representing the chip.
 - `coord_type` *(str, optional)*: The type of coordinate system used in the string.
-If not specified, it will be determined based on the separators used in the string.
- *(OnChipCoordinate)*: The created coordinate object.- If the coordinate format is X-Y or R,C, the coordinates will be converted to integers.
-- If the coordinate format is DRAM channel, the corresponding NOC0 coordinates will be used.
-
+- `If not specified, it will be inferred from the format`
+- `- X-Y format`: "translated" if the coordinate is a valid translated coordinate,
+otherwise "noc0". This inference only works on Wormhole, where translated
+coordinates occupy a higher address range distinct from noc0. On Blackhole,
+translated and noc0 coordinates overlap, so the type cannot be inferred
+and must be specified explicitly.
+- `- R,C format`: defaults to "logical".
+- `- DRAM channel format`: always "logical".
+ *(OnChipCoordinate)*: The created coordinate object.
 
 # context
 
