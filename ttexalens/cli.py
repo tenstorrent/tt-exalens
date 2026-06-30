@@ -4,9 +4,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--disable-4B-mode] [--unsafe-mode] [--disable-noc-failover]
+  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--use-noc1] [--unsafe-mode] [--disable-noc-failover]
   tt-exalens --server [--port=<port>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--use-noc1] [--verbosity=<verbosity>]
-  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test] [--disable-4B-mode]
+  tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-exalens --gdb [gdb_args...]
   tt-exalens -h | --help
   tt-exalens --version
@@ -27,7 +27,6 @@ Options:
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
   --use-noc1                      Initialize with NOC1 and use NOC1 for communication with the device.
-  --disable-4B-mode               Disable 4-byte mode for communication with the device.
   --gdb                           Start RISC-V gdb client with the specified arguments.
   --unsafe-mode                   Disable safe mode to allow potentially unsafe operations (e.g., writing to certain memory regions) without explicit overrides. Use with caution.
   --disable-noc-failover          Disable automatic NOC failover if communication fails on it (NOC0->NOC1 and vice versa).
@@ -243,8 +242,6 @@ def main_loop(args, context: Context):
                             if ui_state.gdb_server.is_connected:
                                 gdb_status += "(connected)"
                             my_prompt += f"gdb:{gdb_status} "
-                        if ui_state.context.use_4B_mode:
-                            my_prompt += f"{util.CLR_PROMPT}[4B MODE] {util.CLR_PROMPT_END}"
                         noc_prompt = f"{ui_state.current_device.active_noc}"
                         if ui_state.current_device.is_blackhole() or ui_state.current_device.is_wormhole():
                             my_prompt += f"noc:{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
@@ -392,7 +389,6 @@ def main():
     if util.VERBOSE_ENABLED:
         util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 
-    use_4B_mode = False if args["--disable-4B-mode"] else True
     safe_mode = False if args["--unsafe-mode"] else True
     use_noc1 = args["--use-noc1"]
     simulation_directory = args["-s"]
@@ -405,7 +401,6 @@ def main():
             context = init_ttexalens(
                 init_jtag=init_jtag,
                 use_noc1=use_noc1,
-                use_4B_mode=use_4B_mode,
                 safe_mode=safe_mode,
                 simulation_directory=simulation_directory,
                 noc_failover=noc_failover,
@@ -436,14 +431,11 @@ def main():
         server_ip = address[0] if address[0] != "" else "localhost"
         server_port = address[-1]
         util.INFO(f"Connecting to TTExaLens server at {server_ip}:{server_port}")
-        context = init_ttexalens_remote(
-            server_ip, int(server_port), use_4B_mode, safe_mode=safe_mode, noc_failover=noc_failover
-        )
+        context = init_ttexalens_remote(server_ip, int(server_port), safe_mode=safe_mode, noc_failover=noc_failover)
     else:
         context = init_ttexalens(
             init_jtag=init_jtag,
             use_noc1=use_noc1,
-            use_4B_mode=use_4B_mode,
             safe_mode=safe_mode,
             simulation_directory=simulation_directory,
             noc_failover=noc_failover,

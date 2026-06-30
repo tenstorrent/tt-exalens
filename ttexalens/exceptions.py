@@ -73,20 +73,28 @@ class RiscHaltError(TTException):
 
 
 class TimeoutDeviceRegisterError(HardwareError):
-    def __init__(self, chip_id: int, coord: tt_umd.CoreCoord, address: int, size: int, is_read: bool, duration: float):
+    def __init__(
+        self,
+        chip_id: int,
+        coord: tt_umd.CoreCoord,
+        address: int,
+        size: int,
+        is_read: bool,
+        umd_error: tt_umd.error.DeviceTimeoutError | None,
+    ):
         self.chip_id = chip_id
         self.coord = coord
         self.address = address
         self.size = size
         self.is_read = is_read
-        self.duration = duration
+        self.umd_error = umd_error
 
     def __str__(self):
         operation = "read" if self.is_read else "write"
         return (
             f"TimeoutDeviceRegisterError: Timeout during {operation} operation on device {self.chip_id}, "
             f"coord ({self.coord.x}, {self.coord.y}, {self.coord.core_type}), address {hex(self.address)}, "
-            f"size {self.size} bytes after {self.duration:.4f} seconds."
+            f"size {self.size} bytes.  UMD error: {self.umd_error}"
         )
 
 
