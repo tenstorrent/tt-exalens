@@ -51,7 +51,7 @@ def read_word_from_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.context)
+    noc_id = check_noc_id(noc_id, coordinate.device)
 
     return coordinate.noc_read32(addr, noc_id, safe_mode)
 
@@ -86,7 +86,7 @@ def read_words_from_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.context)
+    noc_id = check_noc_id(noc_id, coordinate.device)
     use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
@@ -126,7 +126,7 @@ def read_from_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.context)
+    noc_id = check_noc_id(noc_id, coordinate.device)
     use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
@@ -163,7 +163,7 @@ def write_words_to_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.context)
+    noc_id = check_noc_id(noc_id, coordinate.device)
     use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
 
     if isinstance(data, int):
@@ -200,7 +200,7 @@ def write_to_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.context)
+    noc_id = check_noc_id(noc_id, coordinate.device)
     use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
 
     if isinstance(data, list):
@@ -367,8 +367,8 @@ def arc_msg(
         list[int]: return code, reply0, reply1.
     """
     context = check_context(context)
-    noc_id = check_noc_id(noc_id, context)
     device = validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, device)
     if timeout < datetime.timedelta(0):
         raise TTException("Timeout must be greater than or equal to 0.")
 
@@ -394,6 +394,7 @@ def read_arc_telemetry_entry(
 
     context = check_context(context)
     device = validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, device)
     arc = device.arc_block
 
     if device.firmware_version < CUTOFF_FIRMWARE_VERSION:
@@ -417,7 +418,7 @@ def read_arc_telemetry_entry(
 def read_register(
     location: str | OnChipCoordinate,
     register,
-    noc_id: int = 1,
+    noc_id: int | None = None,
     neo_id: int | None = None,
     device_id: int = 0,
     context: Context | None = None,
@@ -430,7 +431,7 @@ def read_register(
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
         register (str | RegisterDescription): Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
                                               ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
-        noc_id (int, default 0): NOC ID to use.
+        noc_id (int, optional): NOC ID to use. If None, the architecture default is used (NOC1 on Wormhole/Blackhole, NOC0 on Quasar).
         neo_id (int | None, optional): NEO ID of the register store.
         device_id (int, default 0):	ID number of device to read from.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
@@ -442,6 +443,7 @@ def read_register(
     from ttexalens.register_store import RegisterDescription
 
     coordinate = convert_coordinate(location, device_id, context)
+    noc_id = check_noc_id(noc_id, coordinate.device)
 
     if not isinstance(register, RegisterDescription) and not isinstance(register, str):
         raise TTException(
@@ -456,7 +458,7 @@ def write_register(
     location: str | OnChipCoordinate,
     register,
     value: int,
-    noc_id: int = 1,
+    noc_id: int | None = None,
     neo_id: int | None = None,
     device_id: int = 0,
     context: Context | None = None,
@@ -470,7 +472,7 @@ def write_register(
         register (str | TensixRegisterDescription): Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
                                                     ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
         value (int): Value to write to the register.
-        noc_id (int, default 0): NOC ID to use.
+        noc_id (int, optional): NOC ID to use. If None, the architecture default is used (NOC1 on Wormhole/Blackhole, NOC0 on Quasar).
         neo_id (int | None, optional): NEO ID of the register store.
         device_id (int, default 0):	ID number of device to read from.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
@@ -480,6 +482,7 @@ def write_register(
     from ttexalens.register_store import RegisterDescription
 
     coordinate = convert_coordinate(location, device_id, context)
+    noc_id = check_noc_id(noc_id, coordinate.device)
 
     if not isinstance(register, RegisterDescription) and not isinstance(register, str):
         raise TTException(

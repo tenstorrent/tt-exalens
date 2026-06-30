@@ -5,24 +5,24 @@
 import unittest
 from parameterized import parameterized_class
 from test.ttexalens.unit_tests.test_base import init_test_context
-from ttexalens import OnChipCoordinate, write_words_to_device
+from ttexalens import OnChipCoordinate, write_words_to_device, NocId
 from ttexalens.register_store import RegisterStore
 
 
 @parameterized_class(
     [
-        {"use_noc0": True, "noc_id": 0},
-        {"use_noc0": True, "noc_id": 1},
-        {"use_noc0": False, "noc_id": 0},
-        {"use_noc0": False, "noc_id": 1},
+        {"init_noc_id": NocId.NOC0, "noc_id": 0},
+        {"init_noc_id": NocId.NOC0, "noc_id": 1},
+        {"init_noc_id": NocId.NOC1, "noc_id": 0},
+        {"init_noc_id": NocId.NOC1, "noc_id": 1},
     ]
 )
 class TestNOC(unittest.TestCase):
-    use_noc0: bool
+    init_noc_id: NocId
     noc_id: int
 
     def setUp(self):
-        self.context = init_test_context(use_noc0=self.use_noc0)
+        self.context = init_test_context(noc_id=self.init_noc_id)
         self.device = self.context.devices[0]
         self.loc = OnChipCoordinate(1, 0, "logical", self.device, core_type="tensix")
         self.register_store = self.device.get_block(self.loc).get_register_store(self.noc_id)
@@ -38,15 +38,15 @@ class TestNOC(unittest.TestCase):
 
 @parameterized_class(
     [
-        {"use_noc0": True},
-        {"use_noc0": False},
+        {"init_noc_id": NocId.NOC0},
+        {"init_noc_id": NocId.NOC1},
     ]
 )
 class TestNOCLocations(unittest.TestCase):
-    use_noc0: bool
+    init_noc_id: NocId
 
     def setUp(self):
-        self.context = init_test_context(use_noc0=self.use_noc0)
+        self.context = init_test_context(noc_id=self.init_noc_id)
 
     @staticmethod
     def _read_noc_location(register_store: RegisterStore, register_name: str):

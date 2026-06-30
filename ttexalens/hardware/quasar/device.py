@@ -4,7 +4,7 @@
 
 from functools import cache
 from ttexalens import util
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.noc_block import NocBlock
@@ -26,6 +26,10 @@ class QuasarDevice(Device):
     NOC_0_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_0_Y)
     NOC_1_X_TO_DIE_X = util.reverse_mapping_list(DIE_X_TO_NOC_1_X)
     NOC_1_Y_TO_DIE_Y = util.reverse_mapping_list(DIE_Y_TO_NOC_1_Y)
+
+    # Quasar communicates over NOC0 and the System Management NOC (SMN); it defaults to NOC0.
+    SUPPORTED_NOCS = [NocId.NOC0, NocId.SMN]
+    DEFAULT_NOC = NocId.NOC0
 
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         super().__init__(id, umd_device, context)

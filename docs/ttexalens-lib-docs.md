@@ -3,7 +3,7 @@
 ## init_ttexalens
 
 ```
-init_ttexalens(init_jtag: bool = False, use_noc0: bool = False, use_4B_mode: bool = True, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True) -> Context
+init_ttexalens(init_jtag: bool = False, noc_id: NocId | None = None, use_4B_mode: bool = True, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True) -> Context
 ```
 
 
@@ -16,7 +16,8 @@ Interfacing device is local, through pybind.
 ### Args
 
 - `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
-- `use_noc0` *(bool)*: Whether to initialize with NOC0 and use NOC0 for communication with the device. If False, NOC1 is used. Default is False.
+- `noc_id` *(NocId, optional)*: NOC to use for communication with the device (NocId.NOC0, NocId.NOC1, or NocId.SMN).
+If None, the architecture default is used (NOC1 on Wormhole/Blackhole, NOC0 on Quasar). Default is None.
 - `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
 - `simulation_directory` *(str, optional)*: If specified, starts the simulator from the given build output directory.
 - `safe_mode` *(bool)*: Whether to enable safe mode for memory access. Default is True.
@@ -339,7 +340,7 @@ Reads an ARC telemetry entry from the device.
 ## read_register
 
 ```
-read_register(location: str | OnChipCoordinate, register, noc_id: int = 1, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None) -> int
+read_register(location: str | OnChipCoordinate, register, noc_id: int | None = None, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None) -> int
 ```
 
 
@@ -353,7 +354,7 @@ Reads the value of a register from the noc location.
 - `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
 - `register` *(str | RegisterDescription)*: Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
 ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
-- `noc_id` *(int, default 0)*: NOC ID to use.
+- `noc_id` *(int, optional)*: NOC ID to use. If None, the architecture default is used (NOC1 on Wormhole/Blackhole, NOC0 on Quasar).
 - `neo_id` *(int | None, optional)*: NEO ID of the register store.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
@@ -369,7 +370,7 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 ## write_register
 
 ```
-write_register(location: str | OnChipCoordinate, register, value: int, noc_id: int = 1, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None)
+write_register(location: str | OnChipCoordinate, register, value: int, noc_id: int | None = None, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None)
 ```
 
 
@@ -384,7 +385,7 @@ Writes value to a register on the noc location.
 - `register` *(str | TensixRegisterDescription)*: Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
 ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
 - `value` *(int)*: Value to write to the register.
-- `noc_id` *(int, default 0)*: NOC ID to use.
+- `noc_id` *(int, optional)*: NOC ID to use. If None, the architecture default is used (NOC1 on Wormhole/Blackhole, NOC0 on Quasar).
 - `neo_id` *(int | None, optional)*: NEO ID of the register store.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
@@ -756,6 +757,10 @@ and must be specified explicitly.
  *(OnChipCoordinate)*: The created coordinate object.
 
 # context
+
+## NocId
+
+
 
 ## Context
 

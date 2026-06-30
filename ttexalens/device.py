@@ -12,9 +12,9 @@ import tt_umd
 from typing import Callable, Iterable, Sequence, TypeVar
 
 from tabulate import tabulate
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.exceptions import CoordinateTranslationError, UnsafeAccessException
+from ttexalens.exceptions import CoordinateTranslationError, TTException, UnsafeAccessException
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
@@ -93,6 +93,11 @@ class Device:
     NOC_0_X_TO_DIE_X: list[int] = []
     NOC_0_Y_TO_DIE_Y: list[int] = []
 
+    # NOCs available on this architecture and the one used by default when the context doesn't
+    # request a specific NOC. Wormhole/Blackhole default to NOC1; Quasar overrides these.
+    SUPPORTED_NOCS: list[NocId] = [NocId.NOC0, NocId.NOC1]
+    DEFAULT_NOC: NocId = NocId.NOC1
+
     # NOC reg type
     class RegType:
         Cmd = 0
@@ -152,11 +157,22 @@ class Device:
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 
-        # NOC queue used for failover, initialized based on context preference
-        # When an operation is attempted, the first NOC in the list is used. If it fails, it is moved to the back of the list
-        # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
-        self._noc_to_use: list[int] = [0, 1] if context.use_noc0 else [1, 0]
+        # NOC queue used for failover; the first NOC is the active one. If an operation times out, the
+        # NOC is moved to the back of the list and the next is tried. When all NOCs are exhausted, an
+        # exception is raised. The primary NOC is the context's explicit choice, or this architecture's
+        # default (see SUPPORTED_NOCS / DEFAULT_NOC, overridden per arch).
+        self._noc_to_use: list[int] = self._build_noc_queue(context)
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
+
+    def _build_noc_queue(self, context: Context) -> list[int]:
+        primary = context.noc_id if context.noc_id is not None else self.DEFAULT_NOC
+        if primary not in self.SUPPORTED_NOCS:
+            supported = ", ".join(n.name for n in self.SUPPORTED_NOCS)
+            raise TTException(
+                f"NOC {NocId(primary).name} is not supported on {self._arch}. Supported NOCs: {supported}."
+            )
+        ordered = [primary] + [noc for noc in self.SUPPORTED_NOCS if noc != primary]
+        return [int(noc) for noc in ordered]
 
     @property
     def active_noc(self) -> int:

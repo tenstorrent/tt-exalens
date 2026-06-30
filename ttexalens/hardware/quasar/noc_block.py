@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from ttexalens.context import NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.noc_block import NocBlock
@@ -26,11 +27,11 @@ class QuasarNocBlock(NocBlock):
         self.register_store_noc = RegisterStore(default_niu_register_store_initialization_noc, self.location)
         self.register_store_smn = RegisterStore(default_niu_register_store_initialization_smn, self.location)
 
-    def get_register_store(self, noc_id: int = 1, neo_id: int | None = None) -> RegisterStore:
+    def get_register_store(self, noc_id: int = int(NocId.NOC0), neo_id: int | None = None) -> RegisterStore:
         assert neo_id is None, "Default NOC block does not support neo_id"
-        if noc_id == 0:
+        if noc_id == NocId.NOC0:
             return self.register_store_noc
-        elif noc_id == 1:
+        elif noc_id == NocId.SMN:
             return self.register_store_smn
         else:
-            raise ValueError(f"Invalid NOC ID: {noc_id}")
+            raise ValueError(f"Invalid NOC ID for Quasar: {noc_id}. Quasar supports NOC0 and SMN.")
