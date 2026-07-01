@@ -5,7 +5,7 @@ from functools import wraps
 import inspect
 from typing import TypeVar, Callable, Any, cast
 
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.tt_exalens_init import init_ttexalens
@@ -55,11 +55,11 @@ def check_context(context: Context | None = None) -> Context:
     return init.GLOBAL_CONTEXT
 
 
-def check_noc_id(noc_id: int | None, context: Context) -> int:
+def check_noc_id(noc_id: NocId | int | None, context: Context) -> int:
+    """Resolve a NOC id to a concrete value. An explicit ``noc_id`` wins; otherwise the context's NOC is used."""
     if noc_id is None:
-        return 1 if context.use_noc1 else 0
-    assert noc_id in (0, 1), f"Invalid NOC ID {noc_id}. Expected 0 or 1."
-    return noc_id
+        noc_id = context.noc_id
+    return int(NocId(noc_id))
 
 
 def check_4B_mode(use_4B_mode: bool | None, context: Context) -> bool:

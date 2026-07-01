@@ -12,7 +12,7 @@ import tt_umd
 from typing import Callable, Iterable, Sequence, TypeVar
 
 from tabulate import tabulate
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.exceptions import CoordinateTranslationError, UnsafeAccessException
 from ttexalens.hardware.arc_block import ArcBlock
@@ -93,6 +93,9 @@ class Device:
     NOC_0_X_TO_DIE_X: list[int] = []
     NOC_0_Y_TO_DIE_Y: list[int] = []
 
+    # NOC failover queue (active NOC first); defined by each architecture subclass in its __init__.
+    _noc_to_use: list[int]
+
     # NOC reg type
     class RegType:
         Cmd = 0
@@ -152,11 +155,18 @@ class Device:
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 
-        # NOC queue used for failover, initialized based on context preference
-        # When an operation is attempted, the first NOC in the list is used. If it fails, it is moved to the back of the list
-        # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
-        self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
+        # NOC failover queue (active NOC first). Each architecture subclass defines its own in __init__;
+
+    @staticmethod
+    def _order_noc_to_use(context: Context, available: list[NocId]) -> list[int]:
+        """Order an architecture's available NOCs into a failover queue.
+        The context's NOC (the same one used for topology discovery) becomes the active NOC; the remaining
+        NOCs follow as failover targets.
+        """
+        primary = context.noc_id
+        ordered = [primary] + [noc for noc in available if noc != primary]
+        return [int(noc) for noc in ordered]
 
     @property
     def active_noc(self) -> int:
@@ -377,6 +387,12 @@ class Device:
 
     def read_arc_telemetry_entry(self, noc_id: int | None, telemetry_tag: int) -> int:
         def noc_operation(noc_id: int) -> int:
+            # We have to use the context's noc_id here until #1102 is resolved.
+            if noc_id != self._context.noc_id:
+                util.WARN(
+                    f"Due to #1102, reading arc telemetry entries only works with the context's noc_id. Using {self._context.noc_id} instead of {noc_id}."
+                )
+                noc_id = self._context.noc_id.value
             return self._umd_device.read_arc_telemetry_entry(noc_id, telemetry_tag)
 
         return self._with_noc_failover(noc_operation, noc_id)

@@ -5,8 +5,18 @@ import unittest
 from unittest.mock import Mock, patch
 from parameterized import parameterized
 import tt_umd
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.device import Device
+
+
+class FailoverTestDevice(Device):
+    """Concrete Device for failover tests; uses a Wormhole/Blackhole-style NOC0/NOC1 pair."""
+
+    def __init__(self, id, umd_device, context):
+        super().__init__(id, umd_device, context)
+        self._noc_to_use = self._order_noc_to_use(context, [NocId.NOC0, NocId.NOC1])
+
+
 from ttexalens.umd_device import TimeoutDeviceRegisterError
 from ttexalens.coordinate import OnChipCoordinate
 
@@ -60,7 +70,7 @@ class TestNocFailoverDisabled(unittest.TestCase):
         """Set up mock objects once for all tests."""
         # Create mock context with failover disabled
         cls.mock_context = Mock(spec=Context)
-        cls.mock_context.use_noc1 = False
+        cls.mock_context.noc_id = NocId.NOC1
         cls.mock_context.noc_failover = False
         cls.mock_context.use_4B_mode = True
         cls.mock_context.dma_read_threshold = 24
@@ -98,7 +108,7 @@ class TestNocFailoverDisabled(unittest.TestCase):
         with patch.object(Device, "_init_coordinate_systems"), patch.object(Device, "get_block"), patch.object(
             Device, "get_tensix_registers_description"
         ), patch.object(Device, "get_tensix_debug_bus_description"):
-            device = Device(0, self.mock_umd_device, self.mock_context)  # type: ignore[abstract]
+            device = FailoverTestDevice(0, self.mock_umd_device, self.mock_context)  # type: ignore[abstract]
             return device
 
     def test_noc_read_timeout_no_failover(self):
@@ -138,13 +148,13 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("noc0", False, 0),
-            ("noc1", True, 1),
+            ("noc0", NocId.NOC0, 0),
+            ("noc1", NocId.NOC1, 1),
         ]
     )
-    def test_noc_read_success_no_failover_triggered(self, _name, use_noc1, primary_noc):
+    def test_noc_read_success_no_failover_triggered(self, _name, noc_id, primary_noc):
         """Test successful read doesn't trigger failover."""
-        device = self._create_device(use_noc1)
+        device = self._create_device(noc_id)
         self.mock_umd_device.noc_read.side_effect = noc_read_outcomes(b"\x00\x01\x02\x03")
 
         buffer = bytearray(4)
@@ -157,13 +167,13 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("noc0_to_noc1", False, 0, 1),
-            ("noc1_to_noc0", True, 1, 0),
+            ("noc0_to_noc1", NocId.NOC0, 0, 1),
+            ("noc1_to_noc0", NocId.NOC1, 1, 0),
         ]
     )
-    def test_noc_read_timeout_fails_over(self, _name, use_noc1, primary_noc, other_noc):
+    def test_noc_read_timeout_fails_over(self, _name, noc_id, primary_noc, other_noc):
         """Test that timeout on primary NOC triggers failover to other NOC."""
-        device = self._create_device(use_noc1)
+        device = self._create_device(noc_id)
 
         # First call (primary) times out, second call (other) succeeds
         self.mock_umd_device.noc_read.side_effect = noc_read_outcomes(
@@ -187,13 +197,13 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("noc0", False),
-            ("noc1", True),
+            ("noc0", NocId.NOC0),
+            ("noc1", NocId.NOC1),
         ]
     )
-    def test_noc_read_both_nocs_timeout(self, _name, use_noc1):
+    def test_noc_read_both_nocs_timeout(self, _name, noc_id):
         """Test that both NOCs timing out raises TimeoutDeviceRegisterError."""
-        device = self._create_device(use_noc1)
+        device = self._create_device(noc_id)
 
         # Both NOCs timeout
         self.mock_umd_device.noc_read.side_effect = [
@@ -209,13 +219,13 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("noc0", False, 0, 1),
-            ("noc1", True, 1, 0),
+            ("noc0", NocId.NOC0, 0, 1),
+            ("noc1", NocId.NOC1, 1, 0),
         ]
     )
-    def test_noc_write_timeout_fails_over(self, _name, use_noc1, primary_noc, other_noc):
+    def test_noc_write_timeout_fails_over(self, _name, noc_id, primary_noc, other_noc):
         """Test that write timeout triggers failover."""
-        device = self._create_device(use_noc1)
+        device = self._create_device(noc_id)
 
         # First call (primary) times out, second call (other) succeeds
         self.mock_umd_device.noc_write.side_effect = [create_timeout_error(is_read=False), None]
@@ -229,13 +239,13 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("noc0", False, 0),
-            ("noc1", True, 1),
+            ("noc0", NocId.NOC0, 0),
+            ("noc1", NocId.NOC1, 1),
         ]
     )
-    def test_explicit_noc_id_no_failover(self, _name, use_noc1, expected_noc):
+    def test_explicit_noc_id_no_failover(self, _name, noc_id, expected_noc):
         """Test that explicit noc_id doesn't trigger failover."""
-        device = self._create_device(use_noc1)
+        device = self._create_device(noc_id)
         initial_noc_order = device._noc_to_use.copy()
         self.mock_umd_device.noc_read.side_effect = create_timeout_error()
 
@@ -249,13 +259,13 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("noc0", False, 0, 1),
-            ("noc1", True, 1, 0),
+            ("noc0", NocId.NOC0, 0, 1),
+            ("noc1", NocId.NOC1, 1, 0),
         ]
     )
-    def test_subsequent_reads_use_active_noc(self, _name, use_noc1, _primary_noc, other_noc):
+    def test_subsequent_reads_use_active_noc(self, _name, noc_id, _primary_noc, other_noc):
         """Test that after failover, subsequent reads use the new active NOC."""
-        device = self._create_device(use_noc1)
+        device = self._create_device(noc_id)
 
         # First call fails (primary), second succeeds (other)
         self.mock_umd_device.noc_read.side_effect = noc_read_outcomes(
@@ -310,10 +320,10 @@ class TestNocFailoverEnabled(unittest.TestCase):
         self.mock_umd_device.noc_write.side_effect = None
         self.mock_umd_device.noc_write.return_value = None
 
-    def _create_device(self, use_noc1):
+    def _create_device(self, noc_id):
         """Helper to create a test device with specified NOC configuration."""
         mock_context = Mock(spec=Context)
-        mock_context.use_noc1 = use_noc1
+        mock_context.noc_id = noc_id
         mock_context.noc_failover = True
         mock_context.use_4B_mode = True
         mock_context.dma_read_threshold = 24
@@ -323,7 +333,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
         with patch.object(Device, "_init_coordinate_systems"), patch.object(Device, "get_block"), patch.object(
             Device, "get_tensix_registers_description"
         ), patch.object(Device, "get_tensix_debug_bus_description"):
-            return Device(0, self.mock_umd_device, mock_context)  # type: ignore[abstract]
+            return FailoverTestDevice(0, self.mock_umd_device, mock_context)  # type: ignore[abstract]
 
 
 if __name__ == "__main__":

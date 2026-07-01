@@ -72,7 +72,7 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             return self.neo3.debug_bus
         return super().get_debug_bus(neo_id)
 
-    def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
+    def get_register_store(self, noc_id: int = 1, neo_id: int | None = None) -> RegisterStore:
         if neo_id == 0:
             return self.neo0.register_store
         elif neo_id == 1:

@@ -134,8 +134,9 @@ jobs:
           # Run tt-exalens in the background to mitigate #999.
           python3 tt-exalens.py > /dev/null 2>&1 &
 
-      - name: Run Python tests for ttexalens library (using NOC0)
+      - name: Run Python tests for ttexalens library (using NOC1)
         run: |
+          export TTEXALENS_TESTS_NOC_ID=1
           python3 -X faulthandler -m xmlrunner discover -v -t . -s test/ttexalens -p '*test*.py' \
           --output-file ${{ steps.strings.outputs.test_report_path }}
 
@@ -146,18 +147,19 @@ jobs:
           name: test-reports-${{ inputs.ubuntu-version }}-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.board }}
           path: ${{ steps.strings.outputs.test_report_path }}
 
-      - name: Run Python tests for TTExaLens app (using NOC0)
-        run: |
-          python3 -X faulthandler -m unittest discover -v -t . -s test/app -p *test*.py
-
-      - name: Run Python tests for ttexalens library (using NOC1)
-        run: |
-          export TTEXALENS_TESTS_USE_NOC1=1
-          python3 -X faulthandler -m unittest discover -v -t . -s test/ttexalens -p *test*.py
-
       - name: Run Python tests for TTExaLens app (using NOC1)
         run: |
-          export TTEXALENS_TESTS_USE_NOC1=1
+          export TTEXALENS_TESTS_NOC_ID=1
+          python3 -X faulthandler -m unittest discover -v -t . -s test/app -p *test*.py
+
+      - name: Run Python tests for ttexalens library (using NOC0)
+        run: |
+          export TTEXALENS_TESTS_NOC_ID=0
+          python3 -X faulthandler -m unittest discover -v -t . -s test/ttexalens -p *test*.py
+
+      - name: Run Python tests for TTExaLens app (using NOC0)
+        run: |
+          export TTEXALENS_TESTS_NOC_ID=0
           python3 -X faulthandler -m unittest discover -v -t . -s test/app -p *test*.py
 
       - name: Install wheel

@@ -106,7 +106,7 @@ class BlackholeArcBlock(ArcBlock):
             ],
         )
 
-    def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
+    def get_register_store(self, noc_id: int = 1, neo_id: int | None = None) -> RegisterStore:
         if noc_id == 0:
             return self.register_store_noc0
         elif noc_id == 1:

@@ -38,7 +38,7 @@ class NocBlock:
         return self.location.device
 
     @abstractmethod
-    def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
+    def get_register_store(self, noc_id: int = 1, neo_id: int | None = None) -> RegisterStore:
         pass
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
