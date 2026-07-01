@@ -51,7 +51,7 @@ def read_word_from_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.device)
+    noc_id = check_noc_id(noc_id, coordinate.context)
 
     return coordinate.noc_read32(addr, noc_id, safe_mode)
 
@@ -86,7 +86,7 @@ def read_words_from_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.device)
+    noc_id = check_noc_id(noc_id, coordinate.context)
     use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
@@ -126,7 +126,7 @@ def read_from_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.device)
+    noc_id = check_noc_id(noc_id, coordinate.context)
     use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
@@ -163,7 +163,7 @@ def write_words_to_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.device)
+    noc_id = check_noc_id(noc_id, coordinate.context)
     use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
 
     if isinstance(data, int):
@@ -200,7 +200,7 @@ def write_to_device(
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
-    noc_id = check_noc_id(noc_id, coordinate.device)
+    noc_id = check_noc_id(noc_id, coordinate.context)
     use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
 
     if isinstance(data, list):
@@ -368,7 +368,7 @@ def arc_msg(
     """
     context = check_context(context)
     device = validate_device_id(device_id, context)
-    noc_id = check_noc_id(noc_id, device)
+    noc_id = check_noc_id(noc_id, context)
     if timeout < datetime.timedelta(0):
         raise TTException("Timeout must be greater than or equal to 0.")
 
@@ -394,7 +394,7 @@ def read_arc_telemetry_entry(
 
     context = check_context(context)
     device = validate_device_id(device_id, context)
-    noc_id = check_noc_id(noc_id, device)
+    noc_id = check_noc_id(noc_id, context)
     arc = device.arc_block
 
     if device.firmware_version < CUTOFF_FIRMWARE_VERSION:
@@ -443,7 +443,7 @@ def read_register(
     from ttexalens.register_store import RegisterDescription
 
     coordinate = convert_coordinate(location, device_id, context)
-    noc_id = check_noc_id(noc_id, coordinate.device)
+    noc_id = check_noc_id(noc_id, coordinate.context)
 
     if not isinstance(register, RegisterDescription) and not isinstance(register, str):
         raise TTException(
@@ -482,7 +482,7 @@ def write_register(
     from ttexalens.register_store import RegisterDescription
 
     coordinate = convert_coordinate(location, device_id, context)
-    noc_id = check_noc_id(noc_id, coordinate.device)
+    noc_id = check_noc_id(noc_id, coordinate.context)
 
     if not isinstance(register, RegisterDescription) and not isinstance(register, str):
         raise TTException(

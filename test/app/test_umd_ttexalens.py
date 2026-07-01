@@ -93,7 +93,6 @@ class TTExaLensTestRunner:
         if not args is None:
             if not type(args) == list:
                 args = [args]
-        # Select a specific NOC for the launched app when requested; otherwise the architecture default is used.
         noc_id_env = os.getenv("TTEXALENS_TESTS_NOC_ID")
         if noc_id_env is not None:
             program_args += ["--noc-id", noc_id_env]

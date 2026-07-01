@@ -67,8 +67,6 @@ class UmdDevice:
 
         max_x = max(core.x for core in all_cores) + 1
         max_y = max(core.y for core in all_cores) + 1
-        # Cache is keyed by NocId value. Quasar's second NOC is the System Management NOC (SMN=2);
-        # all other architectures use NOC0 and NOC1.
         supported_noc_ids = [0, 2] if arch == tt_umd.ARCH.QUASAR else [0, 1]
         result: dict[int, list[list[tt_umd.CoreCoord | None]]] = {}
         for noc_id in supported_noc_ids:

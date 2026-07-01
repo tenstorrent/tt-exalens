@@ -55,10 +55,10 @@ def check_context(context: Context | None = None) -> Context:
     return init.GLOBAL_CONTEXT
 
 
-def check_noc_id(noc_id: NocId | int | None, device: Device) -> int:
+def check_noc_id(noc_id: NocId | int | None, context: Context) -> int:
     """Resolve a NOC id to a concrete value. An explicit ``noc_id`` wins; otherwise the context's NOC is used."""
     if noc_id is None:
-        noc_id = device._context.noc_id
+        noc_id = context.noc_id
     return int(NocId(noc_id))
 
 

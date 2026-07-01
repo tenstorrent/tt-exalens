@@ -157,14 +157,12 @@ class Device:
 
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
         # NOC failover queue (active NOC first). Each architecture subclass defines its own in __init__;
-        # see _order_noc_to_use for the shared ordering helper.
 
     @staticmethod
     def _order_noc_to_use(context: Context, available: list[NocId]) -> list[int]:
         """Order an architecture's available NOCs into a failover queue.
-
         The context's NOC (the same one used for topology discovery) becomes the active NOC; the remaining
-        NOCs follow as failover targets. Called by each architecture subclass to define its ``_noc_to_use``.
+        NOCs follow as failover targets.
         """
         primary = context.noc_id
         ordered = [primary] + [noc for noc in available if noc != primary]

@@ -63,7 +63,7 @@ def init_cached_test_context():
 
 
 def init_test_context(noc_id: NocId | None = None, safe_mode: bool = False):
-    if noc_id is not None:
+    if noc_id == NocId.NOC1 or noc_id == NocId.SMN:
         assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing with an explicit NOC is not supported"
         return init_ttexalens(noc_id=noc_id, use_4B_mode=False, noc_failover=False, safe_mode=safe_mode)
     else:

@@ -51,7 +51,7 @@ def reset_perf_counters(
 ) -> None:
     """Reset Tensix perf counters on this core. Raises if perf counters are not wired here."""
     perf = _check_and_get_perf_counters(location, neo_id)
-    noc_id = _lib_helpers.check_noc_id(noc_id, location.device)
+    noc_id = _lib_helpers.check_noc_id(noc_id, location.context)
     if block_name is None:
         for block_name in perf.block_names:
             perf.reset_block(block_name, noc_id=noc_id, neo_id=neo_id, safe_mode=safe_mode)
@@ -70,7 +70,7 @@ def start_perf_counters(
 ) -> None:
     """Start Tensix perf counters on this core. Raises if perf counters are not wired here."""
     perf = _check_and_get_perf_counters(location, neo_id)
-    noc_id = _lib_helpers.check_noc_id(noc_id, location.device)
+    noc_id = _lib_helpers.check_noc_id(noc_id, location.context)
     if block_name is None:
         for block_name in perf.block_names:
             perf.start_block(block_name, noc_id=noc_id, neo_id=neo_id, safe_mode=safe_mode)
@@ -89,7 +89,7 @@ def stop_perf_counters(
 ) -> None:
     """Stop Tensix perf counters on this core. Raises if perf counters are not wired here."""
     perf = _check_and_get_perf_counters(location, neo_id)
-    noc_id = _lib_helpers.check_noc_id(noc_id, location.device)
+    noc_id = _lib_helpers.check_noc_id(noc_id, location.context)
     if block_name is None:
         for block_name in perf.block_names:
             perf.stop_block(block_name, noc_id=noc_id, neo_id=neo_id, safe_mode=safe_mode)
@@ -118,7 +118,7 @@ def read_perf_counters(
             f"Performance counters are not available on {location.to_user_str()} "
             f"(block_type={location.noc_block.block_type})."
         )
-    resolved_noc = _lib_helpers.check_noc_id(noc_id, location.device)
+    resolved_noc = _lib_helpers.check_noc_id(noc_id, location.context)
     out: dict[tuple[str, int, str], tuple[int, int]] = {}
     block_names = [block_name] if block_name is not None else perf.block_names
     for bname in block_names:
