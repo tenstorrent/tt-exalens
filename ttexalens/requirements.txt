@@ -1,4 +1,4 @@
-tt-umd==0.9.7
+tt-umd==0.9.8
 docopt==0.6.2
 fastnumbers==5.1.1
 prompt-toolkit==3.0.52

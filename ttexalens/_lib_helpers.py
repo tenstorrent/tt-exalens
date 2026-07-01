@@ -62,12 +62,6 @@ def check_noc_id(noc_id: int | None, context: Context) -> int:
     return noc_id
 
 
-def check_4B_mode(use_4B_mode: bool | None, context: Context) -> bool:
-    if use_4B_mode is None:
-        return context.use_4B_mode
-    return use_4B_mode
-
-
 def validate_addr(addr: int) -> None:
     if addr < 0:
         raise TTException("addr must be greater than or equal to 0.")

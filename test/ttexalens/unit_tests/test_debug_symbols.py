@@ -61,16 +61,16 @@ class TimeoutMemoryAccess(MemoryAccess):
     _coord = tt_umd.CoreCoord(0, 0, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.LOGICAL)
 
     def read(self, address: int, buffer: memoryview | bytearray) -> None:
-        raise TimeoutDeviceRegisterError(0, self._coord, address, len(buffer), True, 0.0)
+        raise TimeoutDeviceRegisterError(0, self._coord, address, len(buffer), True, None)
 
     def write(self, address: int, data: bytes | bytearray | memoryview) -> None:
-        raise TimeoutDeviceRegisterError(0, self._coord, address, len(data), False, 0.0)
+        raise TimeoutDeviceRegisterError(0, self._coord, address, len(data), False, None)
 
     def read_register(self, register_index: int) -> int:
-        raise TimeoutDeviceRegisterError(0, self._coord, register_index, 0, True, 0.0)
+        raise TimeoutDeviceRegisterError(0, self._coord, register_index, 0, True, None)
 
     def write_register(self, register_index: int, value: int) -> None:
-        raise TimeoutDeviceRegisterError(0, self._coord, register_index, 0, False, 0.0)
+        raise TimeoutDeviceRegisterError(0, self._coord, register_index, 0, False, None)
 
 
 class RiscHaltErrorMemoryAccess(MemoryAccess):

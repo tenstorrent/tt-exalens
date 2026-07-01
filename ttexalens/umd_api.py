@@ -176,6 +176,7 @@ class UmdApi:
                 assert wrapped_device.is_mmio_capable == self.cluster_descriptor.is_chip_mmio_capable(chip_id)
                 self.devices[chip_id] = wrapped_device
                 self.devices[unique_id] = wrapped_device
+            tt_umd.MmioTimeoutConfig.set_op_timeout(0.002)  # 2ms timeout for MMIO operations
 
     def _reinit_devices_after_sigbus(self):
         with self.reset_lock:
