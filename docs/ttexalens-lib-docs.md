@@ -3,7 +3,7 @@
 ## init_ttexalens
 
 ```
-init_ttexalens(init_jtag: bool = False, noc_id: NocId | None = None, use_4B_mode: bool = True, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True) -> Context
+init_ttexalens(init_jtag: bool = False, noc_id: NocId = NocId.NOC1, use_4B_mode: bool = True, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True) -> Context
 ```
 
 
@@ -16,8 +16,8 @@ Interfacing device is local, through pybind.
 ### Args
 
 - `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
-- `noc_id` *(NocId, optional)*: NOC to use for communication with the device (NocId.NOC0, NocId.NOC1, or NocId.SMN).
-If None, the architecture default is used (NOC1 on Wormhole/Blackhole, NOC0 on Quasar). Default is None.
+- `noc_id` *(NocId)*: NOC used for all communication with the device, including topology discovery
+(NocId.NOC0, NocId.NOC1, or NocId.SMN). Default is NocId.NOC1.
 - `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
 - `simulation_directory` *(str, optional)*: If specified, starts the simulator from the given build output directory.
 - `safe_mode` *(bool)*: Whether to enable safe mode for memory access. Default is True.

@@ -30,8 +30,7 @@ def init_default_test_context(noc_id: NocId | None = None):
 
     if noc_id is None:
         env_noc_id = os.getenv("TTEXALENS_TESTS_NOC_ID")
-        if env_noc_id is not None:
-            noc_id = NocId(int(env_noc_id))
+        noc_id = NocId(int(env_noc_id)) if env_noc_id is not None else NocId.NOC1
 
     if os.getenv("TTEXALENS_TESTS_REMOTE"):
         ip_address = os.getenv("TTEXALENS_TESTS_REMOTE_ADDRESS", "localhost")

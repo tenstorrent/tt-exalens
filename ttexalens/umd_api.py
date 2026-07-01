@@ -9,9 +9,9 @@ import tt_umd
 from typing import TYPE_CHECKING
 
 from ttexalens import util as util
+from ttexalens.context import NocId
 
 if TYPE_CHECKING:
-    from ttexalens.context import NocId
     from ttexalens.umd_device import UmdDevice
 
 
@@ -72,7 +72,7 @@ class UmdApi:
     def __init__(
         self,
         init_jtag=False,
-        noc_id: NocId | None = None,
+        noc_id: NocId = NocId.NOC1,
         simulation_directory: str | None = None,
     ):
         from ttexalens.umd_device import UmdDevice
@@ -94,9 +94,8 @@ class UmdApi:
             else:
                 tt_umd.logging.set_level(tt_umd.logging.Level.Error)
 
-        # The device architecture is unknown until discovery; use NOC0 as the safe initial thread NOC
-        # when the caller didn't request a specific one. Per-device NOC selection happens later.
-        UmdApi.select_noc_id(noc_id if noc_id is not None else 0)
+        # Topology discovery and all subsequent communication use the same NOC.
+        UmdApi.select_noc_id(noc_id)
         if simulation_directory is not None:
             tt_device: tt_umd.TTDevice
             if simulation_directory.endswith(".so"):
@@ -222,7 +221,7 @@ class UmdApi:
             tt_umd.WarmReset.warm_reset()
 
 
-def local_init(init_jtag=False, noc_id: NocId | None = None, simulation_directory: str | None = None):
+def local_init(init_jtag=False, noc_id: NocId = NocId.NOC1, simulation_directory: str | None = None):
     communicator = UmdApi(init_jtag, noc_id, simulation_directory)
     if util.VERBOSE_ENABLED:
         util.VERBOSE("Device opened successfully.")

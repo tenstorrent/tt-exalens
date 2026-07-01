@@ -56,15 +56,9 @@ def check_context(context: Context | None = None) -> Context:
 
 
 def check_noc_id(noc_id: NocId | int | None, device: Device) -> int:
-    """Resolve a NOC id to a concrete value for a device.
-
-    An explicit ``noc_id`` wins; otherwise the context's NOC override is used; otherwise the device's
-    architecture default is used (``device.active_noc`` — NOC1 on Wormhole/Blackhole, NOC0 on Quasar).
-    """
+    """Resolve a NOC id to a concrete value. An explicit ``noc_id`` wins; otherwise the context's NOC is used."""
     if noc_id is None:
         noc_id = device._context.noc_id
-    if noc_id is None:
-        noc_id = device.active_noc
     return int(NocId(noc_id))
 
 

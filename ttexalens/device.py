@@ -14,7 +14,7 @@ from typing import Callable, Iterable, Sequence, TypeVar
 from tabulate import tabulate
 from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.exceptions import CoordinateTranslationError, TTException, UnsafeAccessException
+from ttexalens.exceptions import CoordinateTranslationError, UnsafeAccessException
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
@@ -93,10 +93,8 @@ class Device:
     NOC_0_X_TO_DIE_X: list[int] = []
     NOC_0_Y_TO_DIE_Y: list[int] = []
 
-    # NOCs available on this architecture and the one used by default when the context doesn't
-    # request a specific NOC. Wormhole/Blackhole default to NOC1; Quasar overrides these.
-    SUPPORTED_NOCS: list[NocId] = [NocId.NOC0, NocId.NOC1]
-    DEFAULT_NOC: NocId = NocId.NOC1
+    # NOC failover queue (active NOC first); defined by each architecture subclass in its __init__.
+    _noc_to_use: list[int]
 
     # NOC reg type
     class RegType:
@@ -157,21 +155,19 @@ class Device:
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 
-        # NOC queue used for failover; the first NOC is the active one. If an operation times out, the
-        # NOC is moved to the back of the list and the next is tried. When all NOCs are exhausted, an
-        # exception is raised. The primary NOC is the context's explicit choice, or this architecture's
-        # default (see SUPPORTED_NOCS / DEFAULT_NOC, overridden per arch).
-        self._noc_to_use: list[int] = self._build_noc_queue(context)
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
+        # NOC failover queue (active NOC first). Each architecture subclass defines its own in __init__;
+        # see _order_noc_to_use for the shared ordering helper.
 
-    def _build_noc_queue(self, context: Context) -> list[int]:
-        primary = context.noc_id if context.noc_id is not None else self.DEFAULT_NOC
-        if primary not in self.SUPPORTED_NOCS:
-            supported = ", ".join(n.name for n in self.SUPPORTED_NOCS)
-            raise TTException(
-                f"NOC {NocId(primary).name} is not supported on {self._arch}. Supported NOCs: {supported}."
-            )
-        ordered = [primary] + [noc for noc in self.SUPPORTED_NOCS if noc != primary]
+    @staticmethod
+    def _order_noc_to_use(context: Context, available: list[NocId]) -> list[int]:
+        """Order an architecture's available NOCs into a failover queue.
+
+        The context's NOC (the same one used for topology discovery) becomes the active NOC; the remaining
+        NOCs follow as failover targets. Called by each architecture subclass to define its ``_noc_to_use``.
+        """
+        primary = context.noc_id
+        ordered = [primary] + [noc for noc in available if noc != primary]
         return [int(noc) for noc in ordered]
 
     @property
@@ -393,6 +389,12 @@ class Device:
 
     def read_arc_telemetry_entry(self, noc_id: int | None, telemetry_tag: int) -> int:
         def noc_operation(noc_id: int) -> int:
+            # We have to use the context's noc_id here until #1102 is resolved.
+            if noc_id != self._context.noc_id:
+                util.WARN(
+                    f"Due to #1102, reading arc telemetry entries only works with the context's noc_id. Using {self._context.noc_id} instead of {noc_id}."
+                )
+                noc_id = self._context.noc_id.value
             return self._umd_device.read_arc_telemetry_entry(noc_id, telemetry_tag)
 
         return self._with_noc_failover(noc_operation, noc_id)

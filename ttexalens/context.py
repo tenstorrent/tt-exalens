@@ -36,7 +36,7 @@ class Context:
         umd_api: UmdApi,
         file_api: FileAccessApi,
         short_name: str = "default",
-        noc_id: NocId | None = None,
+        noc_id: NocId = NocId.NOC1,
         use_4B_mode=True,
         dma_read_threshold: int = 24,  # Measured thresholds for DMA vs NOC transfers on WH
         dma_write_threshold: int = 56,  # Measured thresholds for DMA vs NOC transfers on WH
@@ -51,8 +51,6 @@ class Context:
         self.dma_write_threshold: int = dma_write_threshold
 
         self.noc_failover = noc_failover
-        # None means "use the architecture default" (NOC1 on Wormhole/Blackhole, NOC0 on Quasar),
-        # resolved per-device. An explicit NocId overrides the default for all devices.
         self._noc_id = noc_id
         self.safe_mode = safe_mode
 
@@ -60,7 +58,7 @@ class Context:
         self.loaded_elfs: dict[RiscLocation, str] = {}
 
     @property
-    def noc_id(self) -> NocId | None:
+    def noc_id(self) -> NocId:
         return self._noc_id
 
     @noc_id.setter
