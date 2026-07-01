@@ -136,6 +136,7 @@ jobs:
 
       - name: Run Python tests for ttexalens library (using NOC1)
         run: |
+          export TTEXALENS_TESTS_NOC_ID=1
           python3 -X faulthandler -m xmlrunner discover -v -t . -s test/ttexalens -p '*test*.py' \
           --output-file ${{ steps.strings.outputs.test_report_path }}
 
@@ -148,16 +149,17 @@ jobs:
 
       - name: Run Python tests for TTExaLens app (using NOC1)
         run: |
+          export TTEXALENS_TESTS_NOC_ID=1
           python3 -X faulthandler -m unittest discover -v -t . -s test/app -p *test*.py
 
       - name: Run Python tests for ttexalens library (using NOC0)
         run: |
-          export TTEXALENS_TESTS_USE_NOC0=1
+          export TTEXALENS_TESTS_NOC_ID=0
           python3 -X faulthandler -m unittest discover -v -t . -s test/ttexalens -p *test*.py
 
       - name: Run Python tests for TTExaLens app (using NOC0)
         run: |
-          export TTEXALENS_TESTS_USE_NOC0=1
+          export TTEXALENS_TESTS_NOC_ID=0
           python3 -X faulthandler -m unittest discover -v -t . -s test/app -p *test*.py
 
       - name: Install wheel
