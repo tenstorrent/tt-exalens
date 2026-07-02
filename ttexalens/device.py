@@ -93,7 +93,7 @@ class Device:
     NOC_0_X_TO_DIE_X: list[int] = []
     NOC_0_Y_TO_DIE_Y: list[int] = []
 
-    # NOC failover queue (active NOC first); defined by each architecture subclass in its __init__.
+    # NOC failover queue (active NOC first); defined by each architecture-specific device class
     _noc_to_use: list[NocId]
 
     # NOC reg type
@@ -156,9 +156,6 @@ class Device:
         self._init_coordinate_systems()
 
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
-        # NOC failover queue (active NOC first). The active NOC is always the context's NOC (the context is the
-        # single source of truth); the failover partner is architecture-specific, so each architecture subclass
-        # defines self._noc_to_use in its __init__.
 
     @property
     def active_noc(self) -> NocId:

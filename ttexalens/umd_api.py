@@ -94,7 +94,6 @@ class UmdApi:
             else:
                 tt_umd.logging.set_level(tt_umd.logging.Level.Error)
 
-        # Topology discovery and all subsequent communication use the same NOC.
         UmdApi.select_noc_id(noc_id)
         if simulation_directory is not None:
             tt_device: tt_umd.TTDevice
@@ -223,6 +222,10 @@ class UmdApi:
 
 
 def local_init(init_jtag=False, noc_id: NocId = NocId.NOC1, simulation_directory: str | None = None):
+    if simulation_directory is not None:
+        noc_id = (
+            NocId.NOC0
+        )  # Quasar is only available through simulation and does not have NOC1, so we switch to NOC0 as a workaround.
     communicator = UmdApi(init_jtag, noc_id, simulation_directory)
     if util.VERBOSE_ENABLED:
         util.VERBOSE("Device opened successfully.")
