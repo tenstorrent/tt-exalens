@@ -31,7 +31,7 @@ def init_ttexalens(
     Args:
         init_jtag (bool): Whether to initialize JTAG interface. Default is False.
         noc_id (NocId): NOC used for all communication with the device, including topology discovery
-            (NocId.NOC0, NocId.NOC1, or NocId.SMN). Default is NocId.NOC1.
+            (NocId.NOC0, NocId.NOC1, or NocId.SMN). Default is NocId.NOC1 except for Quasar which uses NocId.NOC0 as default.
         use_4B_mode (bool): Whether to use 4B mode for communication with the device. Default is True.
         simulation_directory (str, optional): If specified, starts the simulator from the given build output directory.
         safe_mode (bool): Whether to enable safe mode for memory access. Default is True.
@@ -39,6 +39,10 @@ def init_ttexalens(
     Returns:
         Context: TTExaLens context object.
     """
+
+    # Since Quasar is only available through simulation as workaround if we are using simulator we switch to NOC0
+    if simulation_directory is not None and noc_id == NocId.NOC1:
+        noc_id = NocId.NOC0
 
     umd_api = local_init(init_jtag, noc_id, simulation_directory)
 
