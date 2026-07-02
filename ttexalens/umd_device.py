@@ -133,6 +133,7 @@ class UmdDevice:
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
     def __convert_noc0_to_device_coords(self, noc_id: int, noc0_x: int, noc0_y: int):
+        noc_id = NocId(noc_id)
         return self.__device_coords[noc_id][noc0_x][noc0_y]
 
     def __read_from_device_reg(
