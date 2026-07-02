@@ -26,7 +26,7 @@ Options:
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
-  --noc-id=<id>                   NOC to use for device communication [0: NOC0, 1: NOC1, 2: SMN].  [default: 1]
+  --noc-id=<id>                   NOC to use for device communication [0: NOC0, 1: NOC1, 2: SMN]. [default: 1]
   --disable-4B-mode               Disable 4-byte mode for communication with the device.
   --gdb                           Start RISC-V gdb client with the specified arguments.
   --unsafe-mode                   Disable safe mode to allow potentially unsafe operations (e.g., writing to certain memory regions) without explicit overrides. Use with caution.

@@ -16,8 +16,10 @@ Interfacing device is local, through pybind.
 ### Args
 
 - `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
-- `noc_id` *(NocId)*: NOC used for all communication with the device, including topology discovery
-(NocId.NOC0, NocId.NOC1, or NocId.SMN). Default is NocId.NOC1.
+- `noc_id` *(NocId)*: NOC to use for communication with the device and for topology discovery
+(NocId.NOC0, NocId.NOC1, or NocId.SMN). It is recorded as the context's immutable init_noc_id and is
+always used for ARC telemetry reads. An architecture that doesn't support this NOC falls back to its
+own default (e.g. Quasar, which has no NOC1, uses NOC0). Default is NocId.NOC1.
 - `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
 - `simulation_directory` *(str, optional)*: If specified, starts the simulator from the given build output directory.
 - `safe_mode` *(bool)*: Whether to enable safe mode for memory access. Default is True.
