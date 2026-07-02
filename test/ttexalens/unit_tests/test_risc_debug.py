@@ -106,6 +106,8 @@ class TestDebugging(unittest.TestCase):
         if self.device.is_quasar():
             self.skipTest("Skipping Quasar test since it lasts for 1 hour on simulator.")
 
+        assert 0 == 1, "Intentional test failure"
+
         risc_info = self.core_sim.risc_debug.baby_risc_info
         if risc_info.default_code_start_address is None:
             self.skipTest(
