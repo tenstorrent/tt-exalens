@@ -35,9 +35,7 @@ def init_default_test_context(noc_id: NocId | None = None):
     if os.getenv("TTEXALENS_TESTS_REMOTE"):
         ip_address = os.getenv("TTEXALENS_TESTS_REMOTE_ADDRESS", "localhost")
         port = int(os.getenv("TTEXALENS_TESTS_REMOTE_PORT", "5555"))
-        _cached_test_context = init_ttexalens_remote(
-            ip_address, port, use_4B_mode=False, noc_failover=False, safe_mode=False
-        )
+        _cached_test_context = init_ttexalens_remote(ip_address, port, noc_failover=False, safe_mode=False)
     elif os.getenv("TTEXALENS_SIMULATOR"):
         # Reuse cached simulator context to prevent multiple simulator processes
         if _cached_simulator_context is None:
@@ -45,13 +43,12 @@ def init_default_test_context(noc_id: NocId | None = None):
             _cached_simulator_context = init_ttexalens(
                 simulation_directory=simulation_directory,
                 noc_id=noc_id,
-                use_4B_mode=False,
                 noc_failover=False,
                 safe_mode=False,
             )
         return _cached_simulator_context
     else:
-        _cached_test_context = init_ttexalens(noc_id=noc_id, use_4B_mode=False, noc_failover=False, safe_mode=False)
+        _cached_test_context = init_ttexalens(noc_id=noc_id, noc_failover=False, safe_mode=False)
     return _cached_test_context
 
 
@@ -65,7 +62,7 @@ def init_cached_test_context():
 def init_test_context(noc_id: NocId | None = None, safe_mode: bool = False):
     if noc_id == NocId.NOC1 or noc_id == NocId.SMN:
         assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing with an explicit NOC is not supported"
-        return init_ttexalens(noc_id=noc_id, use_4B_mode=False, noc_failover=False, safe_mode=safe_mode)
+        return init_ttexalens(noc_id=noc_id, noc_failover=False, safe_mode=safe_mode)
     else:
         return init_default_test_context(noc_id=noc_id)
 

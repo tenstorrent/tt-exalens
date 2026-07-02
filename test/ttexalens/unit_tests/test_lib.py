@@ -142,17 +142,17 @@ class TestReadWrite(unittest.TestCase):
         read_data = bytearray(len(data))
         for address in range(0, 128, 1):
             # Write over regular TLB access to clean any previous data
-            location.noc_write(address, b"\x00" * len(data), use_4B_mode=False, dma_threshold=len(data) + 1)
+            location.noc_write(address, b"\x00" * len(data), dma_threshold=len(data) + 1)
 
             # Write over DMA
-            location.noc_write(address, data, use_4B_mode=False, dma_threshold=0)
+            location.noc_write(address, data, dma_threshold=0)
 
             # Read over regular TLB access
-            location.noc_read(address, read_data, use_4B_mode=False, dma_threshold=len(data) + 1)
+            location.noc_read(address, read_data, dma_threshold=len(data) + 1)
             self.assertEqual(read_data, data)
 
             # Read over DMA
-            location.noc_read(address, read_data, use_4B_mode=False, dma_threshold=0)
+            location.noc_read(address, read_data, dma_threshold=0)
             self.assertEqual(read_data, data)
 
     @parameterized.expand(
@@ -892,11 +892,6 @@ class TestSafeAccess(unittest.TestCase):
         is_safe_to_write: bool,
     ):
         """Test access fully inside a block."""
-        # Determine if we need use_4B_mode=True (for RISC private memory)
-        use_4b_mode = None
-        if "data_private_memory" in block_name:
-            use_4b_mode = True
-
         # Determine test size (small enough to fit in block, min 4 bytes)
         span_size = min(64, size // 2, size - 4)
         if span_size < 4:
@@ -916,7 +911,6 @@ class TestSafeAccess(unittest.TestCase):
                     start_addr,
                     device_id=device_id,
                     num_bytes=span_size,
-                    use_4B_mode=use_4b_mode,
                     context=self.context,
                 )
 
@@ -926,9 +920,7 @@ class TestSafeAccess(unittest.TestCase):
                 UnsafeAccessException,
                 msg=f"Write to inaccessible block {block_name} at {location} should raise UnsafeAccessException",
             ):
-                lib.write_to_device(
-                    location, start_addr, data, device_id=device_id, use_4B_mode=use_4b_mode, context=self.context
-                )
+                lib.write_to_device(location, start_addr, data, device_id=device_id, context=self.context)
             return
 
         # Test READ for accessible blocks
@@ -938,7 +930,6 @@ class TestSafeAccess(unittest.TestCase):
                 start_addr,
                 device_id=device_id,
                 num_bytes=span_size,
-                use_4B_mode=use_4b_mode,
                 context=self.context,
             )
             self.assertEqual(
@@ -957,16 +948,13 @@ class TestSafeAccess(unittest.TestCase):
                     start_addr,
                     device_id=device_id,
                     num_bytes=span_size,
-                    use_4B_mode=use_4b_mode,
                     context=self.context,
                 )
 
         # Test WRITE
         if is_safe_to_write:
             data = bytes([i % 256 for i in range(span_size)])
-            lib.write_to_device(
-                location, start_addr, data, device_id=device_id, use_4B_mode=use_4b_mode, context=self.context
-            )
+            lib.write_to_device(location, start_addr, data, device_id=device_id, context=self.context)
 
             # Verify by reading back (skip debug registers block - they don't guarantee read-back of written values)
             if is_safe_to_read and block_name != "debug_regs":
@@ -975,7 +963,6 @@ class TestSafeAccess(unittest.TestCase):
                     start_addr,
                     device_id=device_id,
                     num_bytes=span_size,
-                    use_4B_mode=use_4b_mode,
                     context=self.context,
                 )
                 self.assertEqual(
@@ -996,7 +983,6 @@ class TestSafeAccess(unittest.TestCase):
                     data,
                     device_id=device_id,
                     safe_mode=True,
-                    use_4B_mode=use_4b_mode,
                     context=self.context,
                 )
 
@@ -1037,15 +1023,8 @@ class TestSafeAccess(unittest.TestCase):
 
         start_addr = block_end - span_size // 2
 
-        # Determine if we need use_4B_mode=True
-        use_4b_mode = None
-        if "data_private_memory" in block_name or "data_private_memory" in next_block_info.name:
-            use_4b_mode = True
-
         # Test READ spanning two blocks
-        result = lib.read_from_device(
-            location, start_addr, num_bytes=span_size, use_4B_mode=use_4b_mode, context=self.context
-        )
+        result = lib.read_from_device(location, start_addr, num_bytes=span_size, context=self.context)
         self.assertEqual(
             len(result), span_size, f"Read spanning {block_name} -> {next_block_info.name} at {location} should succeed"
         )
@@ -1053,9 +1032,7 @@ class TestSafeAccess(unittest.TestCase):
         # Test WRITE spanning two blocks
         if is_safe_to_write and next_is_safe_to_write:
             data = bytes([i % 256 for i in range(span_size)])
-            lib.write_to_device(
-                location, start_addr, data, device_id=device_id, use_4B_mode=use_4b_mode, context=self.context
-            )
+            lib.write_to_device(location, start_addr, data, device_id=device_id, context=self.context)
 
             # Verify by reading back if both are readable
             result = lib.read_from_device(
@@ -1063,7 +1040,6 @@ class TestSafeAccess(unittest.TestCase):
                 start_addr,
                 device_id=device_id,
                 num_bytes=span_size,
-                use_4B_mode=use_4b_mode,
                 context=self.context,
             )
             self.assertEqual(

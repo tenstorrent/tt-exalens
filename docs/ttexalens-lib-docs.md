@@ -3,7 +3,7 @@
 ## init_ttexalens
 
 ```
-init_ttexalens(init_jtag: bool = False, noc_id: NocId = NocId.NOC1, use_4B_mode: bool = True, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True) -> Context
+init_ttexalens(init_jtag: bool = False, noc_id: NocId = NocId.NOC1, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True) -> Context
 ```
 
 
@@ -16,11 +16,8 @@ Interfacing device is local, through pybind.
 ### Args
 
 - `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
-- `noc_id` *(NocId)*: NOC to use for communication with the device and for topology discovery
-(NocId.NOC0, NocId.NOC1, or NocId.SMN). It is recorded as the context's immutable init_noc_id and is
-always used for ARC telemetry reads. An architecture that doesn't support this NOC falls back to its
-own default (e.g. Quasar, which has no NOC1, uses NOC0). Default is NocId.NOC1.
-- `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
+- `noc_id` *(NocId)*: NOC used for all communication with the device, including topology discovery
+(NocId.NOC0, NocId.NOC1, or NocId.SMN). Default is NocId.NOC1 except for Quasar which uses NocId.NOC0 as default.
 - `simulation_directory` *(str, optional)*: If specified, starts the simulator from the given build output directory.
 - `safe_mode` *(bool)*: Whether to enable safe mode for memory access. Default is True.
 
@@ -34,7 +31,7 @@ own default (e.g. Quasar, which has no NOC1, uses NOC0). Default is NocId.NOC1.
 ## init_ttexalens_remote
 
 ```
-init_ttexalens_remote(ip_address: str = localhost, port: int = 5555, use_4B_mode: bool = True, noc_failover: bool = True, safe_mode: bool = True) -> Context
+init_ttexalens_remote(ip_address: str = localhost, port: int = 5555, noc_failover: bool = True, safe_mode: bool = True) -> Context
 ```
 
 
@@ -48,7 +45,6 @@ Interfacing device is done remotely through TTExaLens client.
 
 - `ip_address` *(str)*: IP address of the TTExaLens server. Default is 'localhost'.
 - `port` *(int)*: Port number of the TTExaLens server interface. Default is 5555.
-- `use_4B_mode` *(bool)*: Whether to use 4B mode for communication with the device. Default is True.
 - `safe_mode` *(bool)*: Whether to enable safe mode for memory access. Default is True.
 
 
@@ -105,7 +101,6 @@ Reads one four-byte word of data, from address 'addr' at specified location usin
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
-- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
@@ -118,7 +113,7 @@ Reads one four-byte word of data, from address 'addr' at specified location usin
 ## read_words_from_device
 
 ```
-read_words_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, word_count: int = 1, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None, safe_mode: bool | None = None) -> list[int]
+read_words_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, word_count: int = 1, context: Context | None = None, noc_id: int | None = None, safe_mode: bool | None = None) -> list[int]
 ```
 
 
@@ -135,7 +130,6 @@ Reads word_count four-byte words of data, starting from address 'addr' at specif
 - `word_count` *(int, default 1)*: Number of 4-byte words to read.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
-- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
@@ -148,7 +142,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at specif
 ## read_from_device
 
 ```
-read_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, num_bytes: int = 4, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None, safe_mode: bool | None = None) -> bytes
+read_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, num_bytes: int = 4, context: Context | None = None, noc_id: int | None = None, safe_mode: bool | None = None) -> bytes
 ```
 
 
@@ -177,7 +171,7 @@ Reads num_bytes of data starting from address 'addr' at specified location using
 ## write_words_to_device
 
 ```
-write_words_to_device(location: str | OnChipCoordinate, addr: int, data: int | list[int], device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None, safe_mode: bool | None = None)
+write_words_to_device(location: str | OnChipCoordinate, addr: int, data: int | list[int], device_id: int = 0, context: Context | None = None, noc_id: int | None = None, safe_mode: bool | None = None)
 ```
 
 
@@ -194,7 +188,6 @@ Writes data word to address 'addr' at specified location using specified noc.
 - `device_id` *(int, default 0)*: ID number of device to write to.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
-- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
@@ -203,7 +196,7 @@ Writes data word to address 'addr' at specified location using specified noc.
 ## write_to_device
 
 ```
-write_to_device(location: str | OnChipCoordinate, addr: int, data: list[int] | bytes, device_id: int = 0, context: Context | None = None, noc_id: int | None = None, use_4B_mode: bool | None = None, safe_mode: bool | None = None)
+write_to_device(location: str | OnChipCoordinate, addr: int, data: list[int] | bytes, device_id: int = 0, context: Context | None = None, noc_id: int | None = None, safe_mode: bool | None = None)
 ```
 
 
@@ -220,7 +213,6 @@ Writes data to address 'addr' at specified location using specified noc.
 - `device_id` *(int, default 0)*: ID number of device to write to.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 - `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
-- `use_4B_mode` *(bool, optional)*: Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 

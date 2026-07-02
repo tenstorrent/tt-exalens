@@ -37,7 +37,6 @@ class Context:
         file_api: FileAccessApi,
         short_name: str = "default",
         noc_id: NocId = NocId.NOC1,
-        use_4B_mode=True,
         dma_read_threshold: int = 24,  # Measured thresholds for DMA vs NOC transfers on WH
         dma_write_threshold: int = 56,  # Measured thresholds for DMA vs NOC transfers on WH
         noc_failover: bool = True,
@@ -46,7 +45,6 @@ class Context:
         self.umd_api = umd_api
         self.file_api = file_api
         self.short_name = short_name
-        self.use_4B_mode: bool = use_4B_mode
         self.dma_read_threshold: int = dma_read_threshold
         self.dma_write_threshold: int = dma_write_threshold
 

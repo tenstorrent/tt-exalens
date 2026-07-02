@@ -297,14 +297,11 @@ class Device:
         address: int,
         buffer: bytearray | memoryview,
         noc_id: int | None = None,
-        use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
     ) -> None:
         noc_x, noc_y = location._noc0_coord
 
-        if use_4B_mode is None:
-            use_4B_mode = self._context.use_4B_mode
         if dma_threshold is None:
             dma_threshold = self._context.dma_read_threshold
         if safe_mode is None:
@@ -314,7 +311,7 @@ class Device:
             self._validate_noc_access_is_safe(location, address, len(buffer), is_write=False)
 
         def noc_operation(noc_id: int) -> None:
-            self._umd_device.noc_read(noc_id, noc_x, noc_y, address, buffer, use_4B_mode, dma_threshold)
+            self._umd_device.noc_read(noc_id, noc_x, noc_y, address, buffer, dma_threshold)
 
         self._with_noc_failover(noc_operation, noc_id)
 
@@ -331,14 +328,11 @@ class Device:
         address: int,
         data: bytes | bytearray | memoryview,
         noc_id: int | None = None,
-        use_4B_mode: bool | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
     ):
         noc_x, noc_y = location._noc0_coord
 
-        if use_4B_mode is None:
-            use_4B_mode = self._context.use_4B_mode
         if dma_threshold is None:
             dma_threshold = self._context.dma_write_threshold
         if safe_mode is None:
@@ -348,7 +342,7 @@ class Device:
             self._validate_noc_access_is_safe(location, address, len(data), is_write=True)
 
         def noc_operation(noc_id: int) -> None:
-            self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
+            self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, dma_threshold)
 
         self._with_noc_failover(noc_operation, noc_id)
 

@@ -23,7 +23,7 @@ def create_timeout_error(chip_id=0, is_read=True):
     """Helper to create a properly initialized TimeoutDeviceRegisterError."""
     coord = tt_umd.CoreCoord(1, 1, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.NOC0)
     return TimeoutDeviceRegisterError(
-        chip_id=chip_id, coord=coord, address=0x1000, size=4, is_read=is_read, duration=1.0
+        chip_id=chip_id, coord=coord, address=0x1000, size=4, is_read=is_read, umd_error=None
     )
 
 
@@ -70,7 +70,6 @@ class TestNocFailoverDisabled(unittest.TestCase):
         cls.mock_context = Mock(spec=Context)
         cls.mock_context.noc_id = NocId.NOC1
         cls.mock_context.noc_failover = False
-        cls.mock_context.use_4B_mode = True
         cls.mock_context.dma_read_threshold = 24
         cls.mock_context.dma_write_threshold = 56
         cls.mock_context.safe_mode = True
@@ -323,7 +322,6 @@ class TestNocFailoverEnabled(unittest.TestCase):
         mock_context = Mock(spec=Context)
         mock_context.noc_id = noc_id
         mock_context.noc_failover = True
-        mock_context.use_4B_mode = True
         mock_context.dma_read_threshold = 24
         mock_context.dma_write_threshold = 56
         mock_context.safe_mode = True
