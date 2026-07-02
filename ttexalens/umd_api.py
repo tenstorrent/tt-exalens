@@ -54,8 +54,6 @@ class UmdApi:
         """
         Selects the NOC ID to be used for communication with the device by the current thread.
         This method should be called before any UMD API calls are made.
-        Maps the tt-exalens NocId to the corresponding UMD thread NOC:
-        NOC0 -> NOC0, NOC1 -> NOC1, SMN -> SYSTEM_NOC.
         """
         global TLS_FOR_NOC_ID
         if getattr(TLS_FOR_NOC_ID, "noc_id", -1) == noc_id:
