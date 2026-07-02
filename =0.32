@@ -1,6 +1,0 @@
-Looking in indexes: https://pypi.org/simple, https://download.pytorch.org/whl/cpu
-Collecting pyelftools
-  Downloading pyelftools-0.32-py3-none-any.whl.metadata (372 bytes)
-Downloading pyelftools-0.32-py3-none-any.whl (188 kB)
-Installing collected packages: pyelftools
-Successfully installed pyelftools-0.32
