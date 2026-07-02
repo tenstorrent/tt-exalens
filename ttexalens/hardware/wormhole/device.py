@@ -40,7 +40,6 @@ class WormholeDevice(Device):
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         super().__init__(id, umd_device, context)
         self.instructions = WormholeInstructions()
-        # Active NOC comes from the context; the failover partner is the other Wormhole NOC (NOC0 <-> NOC1).
         self._noc_to_use = [context.noc_id, NocId.NOC0 if context.noc_id != NocId.NOC0 else NocId.NOC1]
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
