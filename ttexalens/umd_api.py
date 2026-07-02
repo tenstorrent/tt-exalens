@@ -58,16 +58,18 @@ class UmdApi:
         NOC0 -> NOC0, NOC1 -> NOC1, SMN -> SYSTEM_NOC.
         """
         global TLS_FOR_NOC_ID
-        noc_id = int(noc_id)
         if getattr(TLS_FOR_NOC_ID, "noc_id", -1) == noc_id:
             return
         TLS_FOR_NOC_ID.noc_id = noc_id
-        if noc_id == 0:  # NocId.NOC0
-            tt_umd.set_thread_noc_id(tt_umd.NocId.NOC0)
-        elif noc_id == 2:  # NocId.SMN -> System Management NOC
-            tt_umd.set_thread_noc_id(tt_umd.NocId.SYSTEM_NOC)
-        else:  # NocId.NOC1
-            tt_umd.set_thread_noc_id(tt_umd.NocId.NOC1)
+        match noc_id:
+            case NocId.NOC0:
+                tt_umd.set_thread_noc_id(tt_umd.NocId.NOC0)
+            case NocId.NOC1:
+                tt_umd.set_thread_noc_id(tt_umd.NocId.NOC1)
+            case NocId.SMN:
+                tt_umd.set_thread_noc_id(tt_umd.NocId.SYSTEM_NOC)
+            case _:
+                raise ValueError(f"Invalid NOC ID: {noc_id}")
 
     def __init__(
         self,
