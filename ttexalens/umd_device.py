@@ -6,6 +6,7 @@ import traceback
 from typing import Sequence
 import tt_umd
 from ttexalens import util
+from ttexalens.context import NocId
 from ttexalens.exceptions import TimeoutDeviceRegisterError
 from ttexalens.umd_api import UmdApi
 
@@ -53,15 +54,15 @@ class UmdDevice:
     @staticmethod
     def initialize_device_coords_cache(
         soc_descriptor: tt_umd.SocDescriptor, arch: tt_umd.ARCH
-    ) -> dict[int, list[list[tt_umd.CoreCoord | None]]]:
+    ) -> dict[NocId, list[list[tt_umd.CoreCoord | None]]]:
         all_cores = soc_descriptor.get_all_cores(
             coord_system=tt_umd.CoordSystem.NOC0
         ) + soc_descriptor.get_all_harvested_cores(coord_system=tt_umd.CoordSystem.NOC0)
 
         max_x = max(core.x for core in all_cores) + 1
         max_y = max(core.y for core in all_cores) + 1
-        supported_noc_ids = [0, 2] if arch == tt_umd.ARCH.QUASAR else [0, 1]
-        result: dict[int, list[list[tt_umd.CoreCoord | None]]] = {}
+        supported_noc_ids = [NocId.NOC0, NocId.SMN] if arch == tt_umd.ARCH.QUASAR else [NocId.NOC0, NocId.NOC1]
+        result: dict[NocId, list[list[tt_umd.CoreCoord | None]]] = {}
         for noc_id in supported_noc_ids:
             UmdApi.select_noc_id(noc_id, arch)
             noc_result: list[list[tt_umd.CoreCoord | None]] = []
