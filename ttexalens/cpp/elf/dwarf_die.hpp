@@ -368,4 +368,10 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     mutable std::optional<std::weak_ptr<DwarfDie>> parent;
 };
 
+// Serializes a DW_AT_const_value into `size` little-endian bytes suitable for
+// backing a synthesized ElfVariable (see ElfVariable::from_constant). Returns
+// std::nullopt for std::monostate. Bools become 0/1; floats/doubles keep their
+// IEEE-754 bit pattern.
+std::optional<std::vector<std::byte>> serialize_constant_value(const DwarfDie::ConstantValue& value, uint64_t size);
+
 }  // namespace ttexalens::native_elf

@@ -20,6 +20,13 @@ class ElfFileImpl;
 class DwarfInfoImpl;
 }  // namespace details
 
+// Preference for the final component of a name when several DIEs share it
+// (e.g. an `enum noc_mode` type shadowing a `constexpr uint8_t noc_mode`).
+enum class DieNameFilter {
+    Any,       // first name match, tag-agnostic (generic find-any-DIE lookups)
+    Variable,  // prefer a DW_TAG_variable (value lookups: get_global/get_constant)
+};
+
 class DwarfInfo {
    public:
     DwarfInfo(std::weak_ptr<details::ElfFileImpl> elf_impl);
@@ -76,6 +83,13 @@ class DwarfInfo {
     ElfVariable read_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const;
 
    private:
+    // Core name resolver for "Foo::Bar::baz" paths. With DieNameFilter::Variable
+    // the final component prefers a DW_TAG_variable over a same-named type
+    // (e.g. `constexpr uint8_t noc_mode` over `enum noc_mode`), scanning other
+    // CUs before settling for a non-variable. Falls back to the first name
+    // match, then to a declaration. get_die_by_name() passes DieNameFilter::Any.
+    DwarfDiePtr resolve_die_by_name(std::string_view name, DieNameFilter filter) const;
+
     std::shared_ptr<details::DwarfInfoImpl> impl;
 };
 
