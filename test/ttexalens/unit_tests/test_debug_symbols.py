@@ -10,7 +10,7 @@ from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.elf import ElfFile, ElfVariable
+from ttexalens.elf import DwarfDieTag, ElfFile, ElfVariable
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.memory_access import MemoryAccess, create_memory_access
 from ttexalens.exceptions import RestrictedMemoryAccessError
@@ -385,6 +385,18 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(-12345, self.parsed_elf.get_constant("c_int16_t"))
         self.assertEqual(-1234567, self.parsed_elf.get_constant("c_int32_t"))
         self.assertEqual(-1234567890123456789, self.parsed_elf.get_constant("c_int64_t"))
+
+    def test_elf_enum_variable_name_collision(self):
+        # `enum shadowed_const` and `constexpr uint8_t shadowed_const` share a
+        # name (mirrors dev_msgs.h's `enum noc_mode` shadowing `noc_mode`).
+        self.assertEqual(42, self.parsed_elf.get_global("shadowed_const", TestDebugSymbols.mem_access).read_value())
+        self.assertEqual(42, self.parsed_elf.get_constant("shadowed_const"))
+
+        die = self.parsed_elf.find_die_by_name("shadowed_const")
+        assert die is not None
+        self.assertEqual(DwarfDieTag.enumeration_type, die.tag)
+
+        self.assertEqual(1, self.parsed_elf.get_enum_value("shadowed_const::SHADOWED_B"))
 
     def test_elf_variable_array_iteration(self):
         variable_die = self.parsed_elf.find_die_by_name("g_global_struct")

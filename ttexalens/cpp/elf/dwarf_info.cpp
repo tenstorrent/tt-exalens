@@ -178,7 +178,7 @@ DwarfDiePtr DwarfInfo::resolve_die_by_name(std::string_view name, DieNameFilter 
         start = pos + 2;
     }
 
-    DwarfDiePtr declaration_die;  // fallback if all matches are declarations
+    DwarfDiePtr declaration_die;   // fallback if all matches are declarations
     DwarfDiePtr non_variable_die;  // fallback if nothing resolves to a variable
 
     for (auto& cu : impl->get_cus()) {

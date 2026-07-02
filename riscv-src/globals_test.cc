@@ -68,6 +68,10 @@ enum class EnumClass : uint32_t { VALUE_A = 0, VALUE_B = 1, VALUE_C = 2, VALUE_D
 
 enum EnumType : uint32_t { TYPE_X = 10, TYPE_Y = 20, TYPE_Z = 30 };
 
+enum shadowed_const : uint8_t { SHADOWED_A = 0, SHADOWED_B = 1, SHADOWED_C = 2 };
+[[gnu::used]] volatile enum shadowed_const g_shadowed_enum_user = SHADOWED_B;
+constexpr uint8_t shadowed_const = 42;
+
 struct InnerStruct {
     uint16_t x;
     uint16_t y;
