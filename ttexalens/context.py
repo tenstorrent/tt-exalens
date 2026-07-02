@@ -69,7 +69,7 @@ class Context:
 
         self._noc_id = value
         for device in self.devices.values():
-            device.switch_noc(int(value))
+            device.switch_noc(value)
 
     def assign_commands(self, commands: list[CommandMetadata]):
         self.commands = []
