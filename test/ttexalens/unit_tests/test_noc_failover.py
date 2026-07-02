@@ -11,6 +11,14 @@ from ttexalens.umd_device import TimeoutDeviceRegisterError
 from ttexalens.coordinate import OnChipCoordinate
 
 
+class FailoverTestDevice(Device):
+    """Concrete Device for failover tests; uses a Wormhole/Blackhole-style NOC0/NOC1 pair."""
+
+    def __init__(self, id, umd_device, context):
+        super().__init__(id, umd_device, context)
+        self._noc_to_use = [context.noc_id, NocId.NOC0 if context.noc_id != NocId.NOC0 else NocId.NOC1]
+
+
 def create_timeout_error(chip_id=0, is_read=True):
     """Helper to create a properly initialized TimeoutDeviceRegisterError."""
     coord = tt_umd.CoreCoord(1, 1, tt_umd.CoreType.TENSIX, tt_umd.CoordSystem.NOC0)
@@ -98,7 +106,7 @@ class TestNocFailoverDisabled(unittest.TestCase):
         with patch.object(Device, "_init_coordinate_systems"), patch.object(Device, "get_block"), patch.object(
             Device, "get_tensix_registers_description"
         ), patch.object(Device, "get_tensix_debug_bus_description"):
-            device = Device(0, self.mock_umd_device, self.mock_context)  # type: ignore[abstract]
+            device = FailoverTestDevice(0, self.mock_umd_device, self.mock_context)  # type: ignore[abstract]
             return device
 
     def test_noc_read_timeout_no_failover(self):
@@ -323,7 +331,7 @@ class TestNocFailoverEnabled(unittest.TestCase):
         with patch.object(Device, "_init_coordinate_systems"), patch.object(Device, "get_block"), patch.object(
             Device, "get_tensix_registers_description"
         ), patch.object(Device, "get_tensix_debug_bus_description"):
-            return Device(0, self.mock_umd_device, mock_context)  # type: ignore[abstract]
+            return FailoverTestDevice(0, self.mock_umd_device, mock_context)  # type: ignore[abstract]
 
 
 if __name__ == "__main__":

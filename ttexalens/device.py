@@ -93,6 +93,9 @@ class Device:
     NOC_0_X_TO_DIE_X: list[int] = []
     NOC_0_Y_TO_DIE_Y: list[int] = []
 
+    # NOC failover queue (active NOC first); defined by each architecture subclass in its __init__.
+    _noc_to_use: list[NocId]
+
     # NOC reg type
     class RegType:
         Cmd = 0
@@ -152,19 +155,17 @@ class Device:
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 
-        # NOC failover queue (active NOC first). The NOC is chosen by the context (single source of truth for
-        # all devices); the other NOC is the failover partner. If the active NOC times out, it is moved to the
-        # back of the list and the next is tried.
-        primary = int(context.noc_id)
-        partner = int(NocId.NOC1 if context.noc_id == NocId.NOC0 else NocId.NOC0)
-        self._noc_to_use: list[int] = [primary, partner]
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
+        # NOC failover queue (active NOC first). The active NOC is always the context's NOC (the context is the
+        # single source of truth); the failover partner is architecture-specific, so each architecture subclass
+        # defines self._noc_to_use in its __init__.
 
     @property
-    def active_noc(self) -> int:
+    def active_noc(self) -> NocId:
         return self._noc_to_use[0]
 
-    def switch_noc(self, noc_id: int):
+    def switch_noc(self, noc_id: NocId):
+        noc_id = NocId(noc_id)
         assert noc_id in self._noc_to_use, f"NOC{noc_id} is not in the known NOC list {self._noc_to_use}"
         noc_to_use_copy = self._noc_to_use.copy()
         noc_to_use_copy.remove(noc_id)

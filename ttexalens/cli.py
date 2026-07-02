@@ -245,7 +245,7 @@ def main_loop(args, context: Context):
                             my_prompt += f"gdb:{gdb_status} "
                         if ui_state.context.use_4B_mode:
                             my_prompt += f"{util.CLR_PROMPT}[4B MODE] {util.CLR_PROMPT_END}"
-                        noc_prompt = f"{ui_state.current_device.active_noc}"
+                        noc_prompt = f"{int(ui_state.current_device.active_noc)}"
                         if ui_state.current_device.is_blackhole() or ui_state.current_device.is_wormhole():
                             my_prompt += f"noc:{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
                         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
