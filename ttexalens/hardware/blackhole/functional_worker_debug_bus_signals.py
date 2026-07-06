@@ -2125,6 +2125,6 @@ group_map: dict[str, tuple[int, int]] = {
 }
 
 tensix_debug_bus_description = TensixDebugBusDescription(
-    register_window_counter_groups=[group_name for group_name in group_map.keys() if group_name.startswith("rwc")],
-    address_counter_groups=[group_name for group_name in group_map.keys() if group_name.startswith("adc")],
+    register_window_counter_groups=["rwc_coordinates_a", "rwc_coordinates_b", "rwc_fidelity_phase"],
+    address_counter_groups=[group_name for group_name in group_map.keys() if group_name.startswith(("adcs0", "adcs2"))],
 )
