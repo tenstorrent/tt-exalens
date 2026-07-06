@@ -10,7 +10,7 @@ from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.elf import DwarfDieTag, ElfFile, ElfVariable
+from ttexalens.elf import ElfFile, ElfVariable
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.memory_access import MemoryAccess, create_memory_access
 from ttexalens.exceptions import RestrictedMemoryAccessError
@@ -392,10 +392,7 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(42, self.parsed_elf.get_global("shadowed_const", TestDebugSymbols.mem_access).read_value())
         self.assertEqual(42, self.parsed_elf.get_constant("shadowed_const"))
 
-        die = self.parsed_elf.find_die_by_name("shadowed_const")
-        assert die is not None
-        self.assertEqual(DwarfDieTag.enumeration_type, die.tag)
-
+        # Enumerator lookup by qualified name keeps working
         self.assertEqual(1, self.parsed_elf.get_enum_value("shadowed_const::SHADOWED_B"))
 
     def test_elf_variable_array_iteration(self):

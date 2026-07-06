@@ -641,9 +641,10 @@ const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& DwarfDie::get_address_rang
     return ranges;
 }
 
-DwarfDiePtr DwarfDie::find_child_by_name(std::string_view target) const {
+DwarfDiePtr DwarfDie::find_child_by_name(std::string_view target,
+                                        const std::function<bool(const DwarfDiePtr&)>& filter) const {
     for (auto child = get_first_child(); child; child = child->get_next_sibling()) {
-        if (child->get_name() == target) {
+        if (child->get_name() == target && (!filter || filter(child))) {
             return child;
         }
     }
@@ -811,12 +812,9 @@ static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool al
             return std::nullopt;
         }
         if (const auto* cv = die.get_attribute(DwarfAttributeTag::const_value)) {
-            // A const_value is only an *address* for the hard-coded-pointer
-            // pattern (`T* const g = (T*)0xADDR;`), where the constant IS the
-            // target address. For any non-pointer variable the const_value is
-            // the VALUE, not an address; treating it as one reads garbage from
-            // device memory (e.g. a folded `constexpr uint8_t x = 7` would read
-            // address 7). Such values are served via serialize_constant_value.
+            // A const_value is a target address only for hard-coded pointers
+            // (`T* const g = (T*)0xADDR;`). For a scalar it's the value, not an
+            // address, so don't hand it back as one.
             auto resolved = die.get_resolved_type();
             if (resolved && resolved->get_tag() == DwarfDieTag::pointer_type) {
                 return attr_as_uint(cv);

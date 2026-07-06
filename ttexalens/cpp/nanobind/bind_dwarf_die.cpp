@@ -235,8 +235,9 @@ void bind_dwarf_die(nb::module_& m) {
              nb::sig("def get_dereference_type(self) -> DwarfDie | None"))
         .def("get_array_element_type", &DwarfDie::get_array_element_type, nb::rv_policy::reference_internal,
              nb::sig("def get_array_element_type(self) -> DwarfDie | None"))
-        .def("find_child_by_name", &DwarfDie::find_child_by_name, nb::arg("name"), nb::rv_policy::reference_internal,
-             nb::sig("def find_child_by_name(self, name: str) -> DwarfDie | None"))
+        .def("find_child_by_name",
+             [](const DwarfDie& self, std::string_view name) { return self.find_child_by_name(name); }, nb::arg("name"),
+             nb::rv_policy::reference_internal, nb::sig("def find_child_by_name(self, name: str) -> DwarfDie | None"))
         .def("get_die_from_attribute", &DwarfDie::get_die_from_attribute, nb::arg("attribute_tag"),
              nb::rv_policy::reference_internal,
              nb::sig("def get_die_from_attribute(self, attribute_tag: DwarfAttributeTag) -> DwarfDie | None"))

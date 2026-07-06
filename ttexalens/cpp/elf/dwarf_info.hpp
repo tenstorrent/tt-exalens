@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -19,13 +20,6 @@ namespace details {
 class ElfFileImpl;
 class DwarfInfoImpl;
 }  // namespace details
-
-// Preference for the final component of a name when several DIEs share it
-// (e.g. an `enum noc_mode` type shadowing a `constexpr uint8_t noc_mode`).
-enum class DieNameFilter {
-    Any,       // first name match, tag-agnostic (generic find-any-DIE lookups)
-    Variable,  // prefer a DW_TAG_variable (value lookups: get_global/get_constant)
-};
 
 class DwarfInfo {
    public:
@@ -43,8 +37,12 @@ class DwarfInfo {
 
     // Resolves a "Foo::Bar::baz" path against every CU's DIE tree and returns
     // the first non-declaration match (or a declaration as fallback). Follows
-    // DW_AT_abstract_origin / DW_AT_specification one hop when present.
-    DwarfDiePtr get_die_by_name(std::string_view name) const;
+    // DW_AT_abstract_origin / DW_AT_specification one hop when present. When
+    // `filter` is set, it constrains the last component so a value lookup
+    // can require a variable and skip a same-named type (e.g.
+    // `constexpr uint8_t noc_mode` over `enum noc_mode`).
+    DwarfDiePtr get_die_by_name(std::string_view name,
+                                const std::function<bool(const DwarfDiePtr&)>& filter = {}) const;
 
     // Walks every CU and recursively drills into children to find the DIE
     // whose address range contains `address`. When multiple CUs match (e.g.
@@ -83,13 +81,6 @@ class DwarfInfo {
     ElfVariable read_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const;
 
    private:
-    // Core name resolver for "Foo::Bar::baz" paths. With DieNameFilter::Variable
-    // the final component prefers a DW_TAG_variable over a same-named type
-    // (e.g. `constexpr uint8_t noc_mode` over `enum noc_mode`), scanning other
-    // CUs before settling for a non-variable. Falls back to the first name
-    // match, then to a declaration. get_die_by_name() passes DieNameFilter::Any.
-    DwarfDiePtr resolve_die_by_name(std::string_view name, DieNameFilter filter) const;
-
     std::shared_ptr<details::DwarfInfoImpl> impl;
 };
 

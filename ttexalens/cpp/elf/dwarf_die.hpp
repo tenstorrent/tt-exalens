@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -294,7 +295,9 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
 
     // Walks the direct children of this DIE and returns the first whose
     // DW_AT_name matches `name`. nullptr on miss.
-    DwarfDiePtr find_child_by_name(std::string_view name) const;
+    // When `filter` is set, returns the first child that also satisfies it.
+    DwarfDiePtr find_child_by_name(std::string_view name,
+                                   const std::function<bool(const DwarfDiePtr&)>& filter = {}) const;
 
     // Resolves a DIE-valued attribute (e.g. DW_AT_abstract_origin,
     // DW_AT_specification) to the referenced DIE. nullptr when the attribute
