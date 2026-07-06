@@ -20,9 +20,10 @@ namespace ttexalens::native_elf::bindings {
 void bind_dwarf_info(nb::module_& m) {
     nb::class_<DwarfInfo>(m, "DwarfInfo")
         .def("find_file_line_by_address", &DwarfInfo::find_file_line_by_address, nb::arg("address"))
-        .def("get_die_by_name",
-             [](const DwarfInfo& self, std::string_view name) { return self.get_die_by_name(name); }, nb::arg("name"),
-             nb::rv_policy::reference_internal, nb::sig("def get_die_by_name(self, name: str) -> DwarfDie | None"))
+        .def(
+            "get_die_by_name", [](const DwarfInfo& self, std::string_view name) { return self.get_die_by_name(name); },
+            nb::arg("name"), nb::rv_policy::reference_internal,
+            nb::sig("def get_die_by_name(self, name: str) -> DwarfDie | None"))
         .def("find_function_by_address", &DwarfInfo::find_function_by_address, nb::arg("address"),
              nb::rv_policy::reference_internal,
              nb::sig("def find_function_by_address(self, address: int) -> DwarfDie | None"))

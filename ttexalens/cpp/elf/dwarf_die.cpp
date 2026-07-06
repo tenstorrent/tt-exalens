@@ -642,7 +642,7 @@ const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& DwarfDie::get_address_rang
 }
 
 DwarfDiePtr DwarfDie::find_child_by_name(std::string_view target,
-                                        const std::function<bool(const DwarfDiePtr&)>& filter) const {
+                                         const std::function<bool(const DwarfDiePtr&)>& filter) const {
     for (auto child = get_first_child(); child; child = child->get_next_sibling()) {
         if (child->get_name() == target && (!filter || filter(child))) {
             return child;
