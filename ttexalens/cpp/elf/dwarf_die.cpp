@@ -942,9 +942,11 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
     }
 
     // Compile-time constant (DW_AT_const_value).
-    if (auto bytes = serialize_constant_value(get_constant_value(), resolved->get_size().value_or(4))) {
-        auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(*bytes), NoMemoryAccess::instance());
-        return ElfVariable(resolved, 0, std::move(cache));
+    if (auto size = resolved->get_size()) {
+        if (auto bytes = serialize_constant_value(get_constant_value(), *size)) {
+            auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(*bytes), NoMemoryAccess::instance());
+            return ElfVariable(resolved, 0, std::move(cache));
+        }
     }
 
     // Static-storage variable (globals, file/function statics):
@@ -965,7 +967,11 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
     // Literal value (DW_OP_stack_value / register-direct / composite via
     // DW_OP_piece): synthesise a backing buffer holding the materialised
     // bytes and hand back a ElfVariable that reads from it.
-    const uint64_t size = resolved->get_size().value_or(4);
+    auto size_opt = resolved->get_size();
+    if (!size_opt) {
+        return std::nullopt;
+    }
+    const uint64_t size = *size_opt;
     std::vector<std::byte> bytes(size);
     if (!location->raw_bytes.empty()) {
         // Composite location already assembled the bytes in little-endian
