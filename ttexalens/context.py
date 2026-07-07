@@ -49,7 +49,6 @@ class Context:
         self.dma_write_threshold: int = dma_write_threshold
 
         self.noc_failover = noc_failover
-        # Current noc selected for communication.
         self._noc_id = noc_id
         self.init_noc_id = noc_id # TODO #1102: Noc selected for initialization.
         self.safe_mode = safe_mode
