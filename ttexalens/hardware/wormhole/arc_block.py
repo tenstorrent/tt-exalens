@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Callable
+from ttexalens.context import NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.device_address import DeviceAddress
@@ -117,10 +118,10 @@ class WormholeArcBlock(ArcBlock):
             block_list_lambda=build_blocks,
         )
 
-    def get_register_store(self, noc_id: int = 1, neo_id: int | None = None) -> RegisterStore:
-        if noc_id == 0:
+    def get_register_store(self, noc_id: NocId = NocId.NOC1, neo_id: int | None = None) -> RegisterStore:
+        if noc_id == NocId.NOC0:
             return self.register_store_noc0
-        elif noc_id == 1:
+        elif noc_id == NocId.NOC1:
             return self.register_store_noc1
         else:
             raise ValueError(f"Invalid NOC ID: {noc_id}")

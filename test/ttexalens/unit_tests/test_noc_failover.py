@@ -16,7 +16,7 @@ class FailoverTestDevice(Device):
 
     def __init__(self, id, umd_device, context):
         super().__init__(id, umd_device, context)
-        self._noc_to_use = [context.noc_id, NocId.NOC0 if context.noc_id != NocId.NOC0 else NocId.NOC1]
+        self.available_nocs = [NocId.NOC0, NocId.NOC1]
 
 
 def create_timeout_error(chip_id=0, is_read=True):
@@ -111,7 +111,7 @@ class TestNocFailoverDisabled(unittest.TestCase):
     def test_noc_read_timeout_no_failover(self):
         """Test that timeout raises immediately when failover is disabled."""
         device = self.create_test_device()
-        initial_noc_order = device._noc_to_use.copy()
+        initial_active_noc = device.active_noc
         self.mock_umd_device.noc_read.side_effect = create_timeout_error()
 
         with self.assertRaises(TimeoutDeviceRegisterError):
@@ -119,13 +119,13 @@ class TestNocFailoverDisabled(unittest.TestCase):
 
         # Should only try once (no failover)
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 1)
-        # NOC order should remain unchanged
-        self.assertEqual(device._noc_to_use, initial_noc_order)
+        # Active NOC should remain unchanged
+        self.assertEqual(device.active_noc, initial_active_noc)
 
     def test_noc_write_timeout_no_failover(self):
         """Test that write timeout raises immediately when failover is disabled."""
         device = self.create_test_device()
-        initial_noc_order = device._noc_to_use.copy()
+        initial_active_noc = device.active_noc
         self.mock_umd_device.noc_write.side_effect = create_timeout_error(is_read=False)
 
         with self.assertRaises(TimeoutDeviceRegisterError):
@@ -133,8 +133,8 @@ class TestNocFailoverDisabled(unittest.TestCase):
 
         # Should only try once (no failover)
         self.assertEqual(self.mock_umd_device.noc_write.call_count, 1)
-        # NOC order should remain unchanged
-        self.assertEqual(device._noc_to_use, initial_noc_order)
+        # Active NOC should remain unchanged
+        self.assertEqual(device.active_noc, initial_active_noc)
 
 
 class TestNocFailoverEnabled(unittest.TestCase):
@@ -145,8 +145,8 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("noc0", NocId.NOC0, 0),
-            ("noc1", NocId.NOC1, 1),
+            ("noc0", NocId.NOC0, NocId.NOC0),
+            ("noc1", NocId.NOC1, NocId.NOC1),
         ]
     )
     def test_noc_read_success_no_failover_triggered(self, _name, noc_id, primary_noc):
@@ -159,13 +159,13 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
         self.assertEqual(bytes(buffer), b"\x00\x01\x02\x03")
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 1)
-        # NOC order should remain unchanged (primary still first)
-        self.assertEqual(device._noc_to_use[0], primary_noc)
+        # Active NOC should remain unchanged (primary still active)
+        self.assertEqual(device.active_noc, primary_noc)
 
     @parameterized.expand(
         [
-            ("noc0_to_noc1", NocId.NOC0, 0, 1),
-            ("noc1_to_noc0", NocId.NOC1, 1, 0),
+            ("noc0_to_noc1", NocId.NOC0, NocId.NOC0, NocId.NOC1),
+            ("noc1_to_noc0", NocId.NOC1, NocId.NOC1, NocId.NOC0),
         ]
     )
     def test_noc_read_timeout_fails_over(self, _name, noc_id, primary_noc, other_noc):
@@ -183,9 +183,8 @@ class TestNocFailoverEnabled(unittest.TestCase):
         self.assertEqual(bytes(buffer), b"\x00\x01\x02\x03")
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 2)
 
-        # Verify NOC order was rotated (primary moved to back, other now first)
-        self.assertEqual(device._noc_to_use[0], other_noc)  # Other NOC now first
-        self.assertEqual(device._noc_to_use[1], primary_noc)  # Primary moved to back
+        # Verify active NOC switched to the other NOC
+        self.assertEqual(device.active_noc, other_noc)
 
         # Verify the actual noc_id arguments used
         calls = self.mock_umd_device.noc_read.call_args_list
@@ -216,11 +215,11 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ("noc0", NocId.NOC0, 0, 1),
-            ("noc1", NocId.NOC1, 1, 0),
+            ("noc0", NocId.NOC0, NocId.NOC0, NocId.NOC1),
+            ("noc1", NocId.NOC1, NocId.NOC1, NocId.NOC0),
         ]
     )
-    def test_noc_write_timeout_fails_over(self, _name, noc_id, primary_noc, other_noc):
+    def test_noc_write_timeout_fails_over(self, _name, noc_id, _primary_noc, other_noc):
         """Test that write timeout triggers failover."""
         device = self._create_device(noc_id)
 
@@ -230,20 +229,19 @@ class TestNocFailoverEnabled(unittest.TestCase):
         device.noc_write(self.test_location, 0x1000, b"\x00\x01\x02\x03")
 
         self.assertEqual(self.mock_umd_device.noc_write.call_count, 2)
-        # Verify NOC order was rotated
-        self.assertEqual(device._noc_to_use[0], other_noc)
-        self.assertEqual(device._noc_to_use[1], primary_noc)
+        # Verify active NOC switched to the other NOC
+        self.assertEqual(device.active_noc, other_noc)
 
     @parameterized.expand(
         [
-            ("noc0", NocId.NOC0, 0),
-            ("noc1", NocId.NOC1, 1),
+            ("noc0", NocId.NOC0, NocId.NOC0),
+            ("noc1", NocId.NOC1, NocId.NOC1),
         ]
     )
     def test_explicit_noc_id_no_failover(self, _name, noc_id, expected_noc):
         """Test that explicit noc_id doesn't trigger failover."""
         device = self._create_device(noc_id)
-        initial_noc_order = device._noc_to_use.copy()
+        initial_active_noc = device.active_noc
         self.mock_umd_device.noc_read.side_effect = create_timeout_error()
 
         with self.assertRaises(TimeoutDeviceRegisterError):
@@ -251,13 +249,13 @@ class TestNocFailoverEnabled(unittest.TestCase):
 
         # Should only try once (no failover)
         self.assertEqual(self.mock_umd_device.noc_read.call_count, 1)
-        # NOC order should remain unchanged
-        self.assertEqual(device._noc_to_use, initial_noc_order)
+        # Active NOC should remain unchanged
+        self.assertEqual(device.active_noc, initial_active_noc)
 
     @parameterized.expand(
         [
-            ("noc0", NocId.NOC0, 0, 1),
-            ("noc1", NocId.NOC1, 1, 0),
+            ("noc0", NocId.NOC0, NocId.NOC0, NocId.NOC1),
+            ("noc1", NocId.NOC1, NocId.NOC1, NocId.NOC0),
         ]
     )
     def test_subsequent_reads_use_active_noc(self, _name, noc_id, _primary_noc, other_noc):
@@ -273,8 +271,8 @@ class TestNocFailoverEnabled(unittest.TestCase):
         # First read triggers failover
         device.noc_read(self.test_location, 0x1000, bytearray(4))
 
-        # Verify NOC order changed
-        self.assertEqual(device._noc_to_use[0], other_noc)
+        # Verify active NOC changed
+        self.assertEqual(device.active_noc, other_noc)
 
         # Reset side_effect for second read
         self.mock_umd_device.noc_read.side_effect = noc_read_outcomes(b"\x04\x05\x06\x07")

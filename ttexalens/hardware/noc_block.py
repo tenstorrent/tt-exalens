@@ -7,6 +7,7 @@ from abc import abstractmethod
 from functools import cache, cached_property
 from typing import TYPE_CHECKING
 
+from ttexalens.context import NocId
 from ttexalens.memory_map import MemoryMap
 
 if TYPE_CHECKING:
@@ -38,7 +39,7 @@ class NocBlock:
         return self.location.device
 
     @abstractmethod
-    def get_register_store(self, noc_id: int = 1, neo_id: int | None = None) -> RegisterStore:
+    def get_register_store(self, noc_id: NocId = NocId.NOC1, neo_id: int | None = None) -> RegisterStore:
         pass
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:

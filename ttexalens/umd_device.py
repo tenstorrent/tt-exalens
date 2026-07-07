@@ -6,7 +6,6 @@ import traceback
 from typing import Sequence
 import tt_umd
 from ttexalens import util
-from ttexalens.context import NocId
 from ttexalens.exceptions import TimeoutDeviceRegisterError
 from ttexalens.umd_api import UmdApi
 
@@ -54,15 +53,19 @@ class UmdDevice:
     @staticmethod
     def initialize_device_coords_cache(
         soc_descriptor: tt_umd.SocDescriptor, arch: tt_umd.ARCH
-    ) -> dict[NocId, list[list[tt_umd.CoreCoord | None]]]:
+    ) -> list[list[list[tt_umd.CoreCoord | None]]]:
         all_cores = soc_descriptor.get_all_cores(
             coord_system=tt_umd.CoordSystem.NOC0
         ) + soc_descriptor.get_all_harvested_cores(coord_system=tt_umd.CoordSystem.NOC0)
 
         max_x = max(core.x for core in all_cores) + 1
         max_y = max(core.y for core in all_cores) + 1
-        supported_noc_ids = [NocId.NOC0, NocId.SMN] if arch == tt_umd.ARCH.QUASAR else [NocId.NOC0, NocId.NOC1]
-        result: dict[NocId, list[list[tt_umd.CoreCoord | None]]] = {}
+        supported_noc_ids = (
+            [tt_umd.NocId.NOC0, tt_umd.NocId.SYSTEM_NOC]
+            if arch == tt_umd.ARCH.QUASAR
+            else [tt_umd.NocId.NOC0, tt_umd.NocId.NOC1]
+        )
+        result: list[list[list[tt_umd.CoreCoord | None]]] = []
         for noc_id in supported_noc_ids:
             UmdApi.select_noc_id(noc_id, arch)
             noc_result: list[list[tt_umd.CoreCoord | None]] = []
@@ -77,7 +80,7 @@ class UmdDevice:
                     except Exception:
                         row.append(None)
                 noc_result.append(row)
-            result[noc_id] = noc_result
+            result.append(noc_result)
         return result
 
     @property
@@ -112,7 +115,7 @@ class UmdDevice:
     def can_use_dma(self) -> bool:
         return self._arch != tt_umd.ARCH.BLACKHOLE and self._is_mmio_capable and not self._is_simulation
 
-    def __select_noc_id(self, noc_id: int):
+    def __select_noc_id(self, noc_id: tt_umd.NocId):
         UmdApi.select_noc_id(noc_id, self._arch)
 
     def __configure_working_active_eth(self):
@@ -132,9 +135,8 @@ class UmdDevice:
                 continue
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
-    def __convert_noc0_to_device_coords(self, noc_id: int, noc0_x: int, noc0_y: int):
-        noc_id = NocId(noc_id)
-        return self.__device_coords[noc_id][noc0_x][noc0_y]
+    def __convert_noc0_to_device_coords(self, noc_id: tt_umd.NocId, noc0_x: int, noc0_y: int):
+        return self.__device_coords[int(noc_id)][noc0_x][noc0_y]
 
     def __read_from_device_reg(
         self, coord: tt_umd.CoreCoord, address: int, buffer: bytearray | memoryview, dma_threshold: int
@@ -219,7 +221,7 @@ class UmdDevice:
 
     def __read_from_device_reg_unaligned(
         self,
-        noc_id: int,
+        noc_id: tt_umd.NocId,
         noc0_x: int,
         noc0_y: int,
         address: int,
@@ -289,7 +291,7 @@ class UmdDevice:
 
     def __write_to_device_reg_unaligned(
         self,
-        noc_id: int,
+        noc_id: tt_umd.NocId,
         noc0_x: int,
         noc0_y: int,
         address: int,
@@ -321,7 +323,7 @@ class UmdDevice:
 
     def noc_read(
         self,
-        noc_id: int,
+        noc_id: tt_umd.NocId,
         noc0_x: int,
         noc0_y: int,
         address: int,
@@ -340,7 +342,7 @@ class UmdDevice:
 
     def noc_read_bytes(
         self,
-        noc_id: int,
+        noc_id: tt_umd.NocId,
         noc0_x: int,
         noc0_y: int,
         address: int,
@@ -354,7 +356,7 @@ class UmdDevice:
 
     def noc_write(
         self,
-        noc_id: int,
+        noc_id: tt_umd.NocId,
         noc0_x: int,
         noc0_y: int,
         address: int,
@@ -408,7 +410,7 @@ class UmdDevice:
 
     def arc_msg(
         self,
-        noc_id: int,
+        noc_id: tt_umd.NocId,
         msg_code: int,
         wait_for_done: bool,
         args: Sequence[int],
@@ -425,7 +427,7 @@ class UmdDevice:
             self.__reinit_device_after_sigbus()
             return self.arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
 
-    def read_arc_telemetry_entry(self, noc_id: int, telemetry_tag: int) -> int:
+    def read_arc_telemetry_entry(self, noc_id: tt_umd.NocId, telemetry_tag: int) -> int:
         """Read ARC telemetry entry"""
         self.__select_noc_id(noc_id)
 
@@ -457,7 +459,7 @@ class UmdDevice:
                 self.__reinit_device_after_sigbus()
                 return self.read_arc_telemetry_entry(noc_id, telemetry_tag)
 
-    def get_firmware_version(self, noc_id: int) -> tt_umd.FirmwareBundleVersion:
+    def get_firmware_version(self, noc_id: tt_umd.NocId) -> tt_umd.FirmwareBundleVersion:
         """Returns firmware version"""
         self.__select_noc_id(noc_id)
 

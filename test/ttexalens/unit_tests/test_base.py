@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import os
-from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device, NocId
+from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device, NocId, to_noc_id
 from ttexalens.elf import ElfFile, read_elf
 from ttexalens.server import FileAccessApi
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebugHardware
@@ -30,7 +30,7 @@ def init_default_test_context(noc_id: NocId | None = None):
 
     if noc_id is None:
         env_noc_id = os.getenv("TTEXALENS_TESTS_NOC_ID")
-        noc_id = NocId(int(env_noc_id)) if env_noc_id is not None else NocId.NOC1
+        noc_id = to_noc_id(int(env_noc_id)) if env_noc_id is not None else NocId.NOC1
 
     if os.getenv("TTEXALENS_TESTS_REMOTE"):
         ip_address = os.getenv("TTEXALENS_TESTS_REMOTE_ADDRESS", "localhost")
@@ -59,8 +59,8 @@ def init_cached_test_context():
     return _cached_test_context
 
 
-def init_test_context(noc_id: NocId | None = None, safe_mode: bool = False):
-    if noc_id == NocId.NOC1 or noc_id == NocId.SMN:
+def init_test_context(noc_id: NocId, safe_mode: bool = False):
+    if noc_id == NocId.NOC1 or noc_id == NocId.SYSTEM_NOC:
         assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing with an explicit NOC is not supported"
         return init_ttexalens(noc_id=noc_id, noc_failover=False, safe_mode=safe_mode)
     else:

@@ -179,6 +179,7 @@ UMD_SERIALIZABLE_TYPES = {
     tt_umd.FirmwareBundleVersion,
     tt_umd.TelemetryTag,
     tt_umd.DramTrainingStatus,
+    tt_umd.NocId,
 }
 UMD_SERIALIZABLE_TYPES_NAMES: dict[str, type] = {f"{t.__module__}.{t.__name__}": t for t in UMD_SERIALIZABLE_TYPES}
 
@@ -275,7 +276,7 @@ class RemoteUmdDevice:
 
     def noc_read(
         self,
-        noc_id: int,
+        noc_id: tt_umd.NocId,
         noc0_x: int,
         noc0_y: int,
         address: int,

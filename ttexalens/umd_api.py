@@ -50,24 +50,17 @@ TLS_FOR_NOC_ID = threading.local()
 @Pyro5.api.expose
 class UmdApi:
     @staticmethod
-    def select_noc_id(noc_id: NocId | int, arch: tt_umd.ARCH | None = None):
+    def select_noc_id(noc_id: NocId, arch: tt_umd.ARCH | None = None):
         """
         Selects the NOC ID to be used for communication with the device by the current thread.
         This method should be called before any UMD API calls are made.
         """
         global TLS_FOR_NOC_ID
-        if getattr(TLS_FOR_NOC_ID, "noc_id", -1) == noc_id:
+        if getattr(TLS_FOR_NOC_ID, "noc_id", None) == noc_id:
             return
         TLS_FOR_NOC_ID.noc_id = noc_id
-        match noc_id:
-            case NocId.NOC0:
-                tt_umd.set_thread_noc_id(tt_umd.NocId.NOC0)
-            case NocId.NOC1:
-                tt_umd.set_thread_noc_id(tt_umd.NocId.NOC1)
-            case NocId.SMN:
-                tt_umd.set_thread_noc_id(tt_umd.NocId.SYSTEM_NOC)
-            case _:
-                raise ValueError(f"Invalid NOC ID: {noc_id}")
+        # NocId is tt-umd's own enum, so it can be handed to the UMD thread-NOC selector directly.
+        tt_umd.set_thread_noc_id(noc_id)
 
     def __init__(
         self,
@@ -213,7 +206,7 @@ class UmdApi:
     def get_cluster_descriptor(self) -> tt_umd.ClusterDescriptor:
         return self.cluster_descriptor
 
-    def warm_reset(self, noc_id: NocId | int, is_galaxy_configuration: bool = False) -> None:
+    def warm_reset(self, noc_id: NocId, is_galaxy_configuration: bool = False) -> None:
         UmdApi.select_noc_id(noc_id)
         if is_galaxy_configuration:
             tt_umd.WarmReset.ubb_warm_reset()

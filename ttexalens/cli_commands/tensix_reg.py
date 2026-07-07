@@ -38,7 +38,7 @@ Examples:
 """
 
 from fnmatch import fnmatch
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId, to_noc_id
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.register_store import REGISTER_DATA_TYPE, format_register_value, parse_register_value
@@ -79,7 +79,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     value_str: str | None = None
     data_type: REGISTER_DATA_TYPE | None = None
     register_pattern: str | None = dopt.args["<register_pattern>"] if dopt.args["--search"] else None
-    noc_id: int = dopt.args["-n"] if dopt.args["-n"] else 0
+    noc_id: NocId = to_noc_id(int(dopt.args["-n"])) if dopt.args["-n"] else NocId.NOC0
 
     # Do this only if search is disabled
     if register_pattern == None:

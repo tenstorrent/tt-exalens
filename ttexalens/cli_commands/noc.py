@@ -39,7 +39,7 @@ Examples:
 
 from ttexalens import util
 from ttexalens.util import search
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId, to_noc_id
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.register_store import (
@@ -143,7 +143,7 @@ def get_noc_status_registers(
         },
     }
 
-    register_store = device.get_block(loc).get_register_store(noc_id)
+    register_store = device.get_block(loc).get_register_store(to_noc_id(noc_id))
     noc_registers: dict[str, list[tuple[str, int, int]]] = {group_name: [] for group_name in register_groups.keys()}
     for group_name, registers in register_groups.items():
         for register_desc, reg_name in registers.items():
@@ -163,7 +163,7 @@ def get_all_noc_registers(loc: OnChipCoordinate, device: Device) -> dict[str, li
     Returns:
         Dictionary of all register values for both NOCs
     """
-    register_store_noc0 = device.get_block(loc).get_register_store(0)
+    register_store_noc0 = device.get_block(loc).get_register_store(NocId.NOC0)
     register_names = get_noc_register_names(register_store_noc0)  # We will get the same names for both NOCs
 
     registers = {}
@@ -188,7 +188,7 @@ def get_noc_registers(
     Returns:
         List of tuples containing (name, address, value)
     """
-    register_store = device.get_block(loc).get_register_store(noc_id)
+    register_store = device.get_block(loc).get_register_store(to_noc_id(noc_id))
     result = []
     for name in register_names:
         result.append(read_register_with_address(register_store, name))
@@ -267,7 +267,7 @@ def display_specific_noc_registers(
         simple_print: Whether to use simplified output format
     """
     # Get the list of valid register names
-    register_store = device.get_block(loc).get_register_store(noc_id)
+    register_store = device.get_block(loc).get_register_store(to_noc_id(noc_id))
     valid_register_names = get_noc_register_names(register_store)
 
     # Filter and validate register names
@@ -381,7 +381,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
                 reg_names = []
                 # Populate reg_names from either <reg-names> or <reg-pattern>, depending on the presence of --search
                 if dopt.args["--search"]:
-                    noc0_reg_store = device.get_block(loc).get_register_store(0)
+                    noc0_reg_store = device.get_block(loc).get_register_store(NocId.NOC0)
                     all_reg_names = get_noc_register_names(noc0_reg_store)
                     max = dopt.args["<max-regs>"] if dopt.args["--max"] else 10
                     reg_names = search(all_reg_names, dopt.args["<reg-pattern>"], max)

@@ -11,15 +11,15 @@ from ttexalens.register_store import RegisterStore
 
 @parameterized_class(
     [
-        {"init_noc_id": NocId.NOC0, "noc_id": 0},
-        {"init_noc_id": NocId.NOC0, "noc_id": 1},
-        {"init_noc_id": NocId.NOC1, "noc_id": 0},
-        {"init_noc_id": NocId.NOC1, "noc_id": 1},
+        {"init_noc_id": NocId.NOC0, "noc_id": NocId.NOC0},
+        {"init_noc_id": NocId.NOC0, "noc_id": NocId.NOC1},
+        {"init_noc_id": NocId.NOC1, "noc_id": NocId.NOC0},
+        {"init_noc_id": NocId.NOC1, "noc_id": NocId.NOC1},
     ]
 )
 class TestNOC(unittest.TestCase):
     init_noc_id: NocId
-    noc_id: int
+    noc_id: NocId
 
     def setUp(self):
         self.context = init_test_context(noc_id=self.init_noc_id)
@@ -59,8 +59,8 @@ class TestNOCLocations(unittest.TestCase):
         for device in self.context.devices.values():
             for block_type in device.block_types:
                 for block in device.get_blocks(block_type):
-                    noc0_register_store = block.get_register_store(noc_id=0)
-                    noc1_register_store = block.get_register_store(noc_id=1)
+                    noc0_register_store = block.get_register_store(noc_id=NocId.NOC0)
+                    noc1_register_store = block.get_register_store(noc_id=NocId.NOC1)
                     noc0_location = block.location.to("noc0")
                     noc0_id = TestNOCLocations._read_noc_location(noc0_register_store, "NOC_NODE_ID")
                     self.assertEqual(

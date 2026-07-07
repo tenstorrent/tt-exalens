@@ -26,7 +26,7 @@ Options:
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
-  --noc-id=<id>                   NOC to use for device communication [0: NOC0, 1: NOC1, 2: SMN]. [default: 1]
+  --noc-id=<id>                   NOC to use for device communication [0: NOC0, 1: NOC1, 2: SYSTEM_NOC]. [default: 1]
   --gdb                           Start RISC-V gdb client with the specified arguments.
   --unsafe-mode                   Disable safe mode to allow potentially unsafe operations (e.g., writing to certain memory regions) without explicit overrides. Use with caution.
   --disable-noc-failover          Disable automatic NOC failover if communication fails on it (NOC0->NOC1 and vice versa).
@@ -60,7 +60,7 @@ from ttexalens import init_ttexalens, init_ttexalens_remote
 from ttexalens.server import start_server
 from ttexalens import util as util
 from ttexalens.exceptions import TTException
-from ttexalens.context import Context, NocId
+from ttexalens.context import Context, to_noc_id
 from ttexalens.uistate import UIState
 from ttexalens.command_parser import tt_docopt, CommandMetadata, CommandParsingException
 from ttexalens.gdb.gdb_client import get_gdb_client_path
@@ -242,14 +242,10 @@ def main_loop(args, context: Context):
                             if ui_state.gdb_server.is_connected:
                                 gdb_status += "(connected)"
                             my_prompt += f"gdb:{gdb_status} "
-                        noc_prompt = f"{int(ui_state.current_device.active_noc)}"
-                        if ui_state.current_device.is_blackhole() or ui_state.current_device.is_wormhole():
-                            my_prompt += f"noc:{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
+                        noc_prompt = f"{(ui_state.current_device.active_noc.name)}"
+                        my_prompt += f"{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
                         jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
                         device_id = f"{ui_state.current_device_id}"
-                        # TODO (#617): Once we figure out do we want to show unique_id in prompt, uncomment following lines
-                        # if ui_state.current_device.unique_id is not None:
-                        #     device_id += f" [0x{ui_state.current_device.unique_id:x}]"
                         my_prompt += f"device:{util.CLR_PROMPT}{jtag_prompt}{device_id}{util.CLR_PROMPT_END} "
                         my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
                         my_prompt += f"{ui_state.current_prompt}> "
@@ -390,7 +386,7 @@ def main():
         util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 
     safe_mode = False if args["--unsafe-mode"] else True
-    noc_id = NocId(int(args["--noc-id"]))
+    noc_id = to_noc_id(int(args["--noc-id"]))
     simulation_directory = args["-s"]
     init_jtag = args["--jtag"]
     noc_failover: bool = False if args["--disable-noc-failover"] else True

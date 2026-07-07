@@ -6,7 +6,7 @@ import atexit
 from ttexalens.umd_api import UmdApi, local_init
 from ttexalens.server import FileAccessApi, connect_to_server
 from ttexalens import util as util
-from ttexalens.context import Context, NocId
+from ttexalens.context import Context, NocId, to_noc_id
 
 """
 GLOBAL_CONTEXT is a convenience variable to store fallback TTExaLens context object.
@@ -30,13 +30,14 @@ def init_ttexalens(
     Args:
         init_jtag (bool): Whether to initialize JTAG interface. Default is False.
         noc_id (NocId): NOC used for all communication with the device, including topology discovery
-            (NocId.NOC0, NocId.NOC1, or NocId.SMN). Default is NocId.NOC1 except for Quasar which uses NocId.NOC0 as default.
+            (NocId.NOC0, NocId.NOC1, or NocId.SYSTEM_NOC). Default is NocId.NOC1 except for Quasar which uses NocId.NOC0 as default.
         simulation_directory (str, optional): If specified, starts the simulator from the given build output directory.
         safe_mode (bool): Whether to enable safe mode for memory access. Default is True.
 
     Returns:
         Context: TTExaLens context object.
     """
+    noc_id = to_noc_id(noc_id)
 
     # Since Quasar is only available through simulation as workaround if we are using simulator we switch to NOC0
     if simulation_directory is not None and noc_id == NocId.NOC1:

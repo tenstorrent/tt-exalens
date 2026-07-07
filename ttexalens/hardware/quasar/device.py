@@ -29,7 +29,7 @@ class QuasarDevice(Device):
 
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         super().__init__(id, umd_device, context)
-        self._noc_to_use = [context.noc_id, NocId.NOC0 if context.noc_id != NocId.NOC0 else NocId.SMN]
+        self.available_nocs = [NocId.NOC0, NocId.SYSTEM_NOC]
 
     def is_quasar(self) -> bool:
         return True

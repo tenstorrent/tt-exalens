@@ -2,7 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
-from enum import IntEnum
 from functools import cached_property
 import traceback
 from typing import Iterable, TYPE_CHECKING
@@ -23,10 +22,17 @@ if TYPE_CHECKING:
     from ttexalens.umd_api import UmdApi
 
 
-class NocId(IntEnum):
-    NOC0 = 0
-    NOC1 = 1
-    SMN = 2
+NocId = tt_umd.NocId
+
+
+def to_noc_id(value: NocId | int) -> NocId:
+    if isinstance(value, NocId):
+        return value
+    try:
+        noc_id = NocId.NOC0 if value == 0 else NocId(value)
+    except ValueError as e:
+        raise ValueError(f"Invalid NOC ID value {value}: {e}")
+    return noc_id
 
 
 # All-encompassing structure representing a TTExaLens context
@@ -52,7 +58,7 @@ class Context:
         # Current noc selected for communication.
         self._noc_id = noc_id
         # Noc selected for initialization. Will be removed when #1102 is resolved.
-        self.init_noc_id = noc_id
+        self.init_noc_id = self._noc_id
         self.safe_mode = safe_mode
 
         self.commands: list[CommandMetadata] = []
