@@ -51,8 +51,7 @@ class Context:
         self.noc_failover = noc_failover
         # Current noc selected for communication.
         self._noc_id = noc_id
-        # Noc selected for initialization. Will be removed when #1102 is resolved.
-        self.init_noc_id = noc_id
+        self.init_noc_id = noc_id # TODO #1102: Noc selected for initialization.
         self.safe_mode = safe_mode
 
         self.commands: list[CommandMetadata] = []
