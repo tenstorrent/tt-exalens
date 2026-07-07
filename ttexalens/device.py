@@ -371,7 +371,7 @@ class Device:
 
     def read_arc_telemetry_entry(self, noc_id: int | None, telemetry_tag: int) -> int:
         def noc_operation(noc_id: int) -> int:
-            # ARC telemetry must be read over the NOC selected at initialization (#1102), regardless of the
+            # TODO #1102: ARC telemetry must be read over the NOC selected at initialization, regardless of the
             # context's current noc_id (which may have been changed after init).
             init_noc_id = self._context.init_noc_id
             if noc_id != init_noc_id:
