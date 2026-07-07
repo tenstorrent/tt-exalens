@@ -92,6 +92,7 @@ class UmdApi:
                 tt_umd.logging.set_level(tt_umd.logging.Level.Error)
 
         UmdApi.select_noc_id(1 if initialize_with_noc1 else 0)
+        tt_umd.MmioTimeoutConfig.set_op_timeout(0.005)  # 5ms timeout for MMIO operations
         if simulation_directory is not None:
             tt_device: tt_umd.TTDevice
             if simulation_directory.endswith(".so"):
@@ -176,7 +177,6 @@ class UmdApi:
                 assert wrapped_device.is_mmio_capable == self.cluster_descriptor.is_chip_mmio_capable(chip_id)
                 self.devices[chip_id] = wrapped_device
                 self.devices[unique_id] = wrapped_device
-            tt_umd.MmioTimeoutConfig.set_op_timeout(0.002)  # 2ms timeout for MMIO operations
 
     def _reinit_devices_after_sigbus(self):
         with self.reset_lock:
