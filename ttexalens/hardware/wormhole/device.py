@@ -40,7 +40,7 @@ class WormholeDevice(Device):
     def __init__(self, id: int, umd_device: UmdDevice, context: Context):
         super().__init__(id, umd_device, context)
         self.instructions = WormholeInstructions()
-        self._noc_to_use = [context.noc_id, NocId.NOC0 if context.noc_id != NocId.NOC0 else NocId.NOC1]
+        self.available_nocs = [NocId.NOC0, NocId.NOC1]
 
     def is_translated_coordinate(self, x: int, y: int) -> bool:
         return x >= 16 and y >= 16
