@@ -10,6 +10,18 @@ import unittest
 import subprocess
 import re
 
+from ttexalens import util
+
+_UMD_LOGGER_LEVEL_BY_VERBOSITY = {
+    util.Verbosity.NONE: "off",
+    util.Verbosity.ERROR: "error",
+    util.Verbosity.WARN: "warning",
+    util.Verbosity.INFO: "info",
+    util.Verbosity.VERBOSE: "info",
+    util.Verbosity.DEBUG: "debug",
+    util.Verbosity.TRACE: "trace",
+}
+
 
 class TTExaLensOutputVerifier:
     def __init__(self):
@@ -47,6 +59,7 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
             r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=",
             r".*ttSiliconDevice::init_hugepage:.*",
             r"Loading yaml file: '([^']*\.yaml)'",
+            r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \| \w+\s*\| .*",
         ]
         tester.assertGreaterEqual(len(lines), len(test_regex))
 
@@ -57,7 +70,7 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
             # Check if the line matches the current test regex
             # Last test regex is a special case, as there may be multiple lines that match it
             # depending on number of devices
-            if re.search(test_regex[id], line):
+            if num_test_regex > 0 and re.search(test_regex[id], line):
                 if id < num_test_regex - 1:
                     id += 1
                 continue
@@ -67,7 +80,8 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
                 continue
 
             # Report an unexpected line
-            tester.fail(f"Unexpected line: {line}, expected {test_regex[id]}")
+            expected = test_regex[id] if num_test_regex > 0 else "<no expected lines>"
+            tester.fail(f"Unexpected line: {line}, expected {expected}")
 
 
 class TTExaLensTestRunner:
@@ -95,6 +109,7 @@ class TTExaLensTestRunner:
                 args = [args]
         if os.getenv("TTEXALENS_TESTS_USE_NOC1", "0") == "1":
             program_args.append("--use-noc1")
+        os.environ["TT_LOGGER_LEVEL"] = _UMD_LOGGER_LEVEL_BY_VERBOSITY[util.Verbosity.get()]
         self.process = subprocess.Popen(
             program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
