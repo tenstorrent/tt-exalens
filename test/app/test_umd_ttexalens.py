@@ -43,6 +43,7 @@ class TTExaLensOutputVerifier:
 
 class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
     prompt_regex = r"^(gdb:[^ ]+ )?noc:\d+ device:\d+ loc:\d+-\d+ \(\d+,\d+\) > $"
+    umd_log_entry_regex = r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \| \w+\s*\|\s*\w+ \| .*?\(\w[\w./]*:\d+\)"
 
     def __init__(self):
         self.server_temp_path = ""
@@ -60,7 +61,6 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
             r".*ttSiliconDevice::init_hugepage:.*",
             r"Loading yaml file: '([^']*\.yaml)'",
             r"\(\d+ bytes loaded in [\d.]+s\)",
-            r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \| \w+\s*\|\s*\w+ \| .*?\(\w[\w./]*:\d+\)",
         ]
         tester.assertGreaterEqual(len(lines), len(test_regex))
 
@@ -68,6 +68,11 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
         num_test_regex = len(test_regex)
 
         for line in lines:
+            # Strip out any interleaved UMD logger entries, then ignore the line if nothing meaningful remains.
+            line = re.sub(self.umd_log_entry_regex, "", line).strip()
+            if not line:
+                continue
+
             # Check if the line matches the current test regex
             # Last test regex is a special case, as there may be multiple lines that match it
             # depending on number of devices
