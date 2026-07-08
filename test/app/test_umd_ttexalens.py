@@ -59,7 +59,7 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
             r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=",
             r".*ttSiliconDevice::init_hugepage:.*",
             r"Loading yaml file: '([^']*\.yaml)'",
-            r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \| \w+\s*\| .*",
+            r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \| \w+\s*\| ",
         ]
         tester.assertGreaterEqual(len(lines), len(test_regex))
 
@@ -181,6 +181,7 @@ class TTExaLensTestRunner:
 
 class TestUmdTTExaLens(unittest.TestCase):
     def test_startup_and_exit_just_return_code(self):
+        util.Verbosity.set(util.Verbosity.DEBUG)
         runner = TTExaLensTestRunner(UmdTTExaLensOutputVerifier())
         runner.start(self)
         runner.writeline("x")
