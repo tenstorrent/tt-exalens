@@ -59,7 +59,8 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
             r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=",
             r".*ttSiliconDevice::init_hugepage:.*",
             r"Loading yaml file: '([^']*\.yaml)'",
-            r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \| \w+\s*\| ",
+            r"\(\d+ bytes loaded in [\d.]+s\)",
+            r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \| \w+\s*\|\s*\w+ \| .*?\(\w[\w./]*:\d+\)",
         ]
         tester.assertGreaterEqual(len(lines), len(test_regex))
 
