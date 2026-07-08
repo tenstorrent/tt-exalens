@@ -12,6 +12,12 @@ import re
 
 from ttexalens import util
 
+# UMD's logger (spdlog) colorizes its output with ANSI escape codes when it believes it is writing to a
+# terminal. Depending on the UMD build and environment (notably CI), this can happen even though we read its
+# output through a pipe, producing lines like "\x1b[90m<timestamp>\x1b[0m | info | ...". Strip these escapes
+# (and any trailing carriage return) as we read, so output matching is not thrown off by invisible bytes.
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
 _UMD_LOGGER_LEVEL_BY_VERBOSITY = {
     util.Verbosity.NONE: "off",
     util.Verbosity.ERROR: "error",
@@ -143,6 +149,9 @@ class TTExaLensTestRunner:
             line = line[:-1]
         elif not line:
             return None
+        # Strip ANSI color escapes (emitted by UMD's logger) and any trailing carriage return so downstream
+        # matching (prompt detection, startup verification) operates on clean text.
+        line = _ANSI_ESCAPE_RE.sub("", line).rstrip("\r")
         print(line)
         return line
 
