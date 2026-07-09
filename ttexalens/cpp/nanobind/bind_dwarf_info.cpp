@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/function.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/shared_ptr.h>
 #include <nanobind/stl/string_view.h>
@@ -21,9 +22,13 @@ void bind_dwarf_info(nb::module_& m) {
     nb::class_<DwarfInfo>(m, "DwarfInfo")
         .def("find_file_line_by_address", &DwarfInfo::find_file_line_by_address, nb::arg("address"))
         .def(
-            "get_die_by_name", [](const DwarfInfo& self, std::string_view name) { return self.get_die_by_name(name); },
-            nb::arg("name"), nb::rv_policy::reference_internal,
-            nb::sig("def get_die_by_name(self, name: str) -> DwarfDie | None"))
+            "get_die_by_name",
+            [](const DwarfInfo& self, std::string_view name, std::optional<std::function<bool(const DwarfDiePtr&)>> filter) {
+                return self.get_die_by_name(name, filter ? *filter : std::function<bool(const DwarfDiePtr&)>{});
+            },
+            nb::arg("name"), nb::arg("filter") = nb::none(), nb::rv_policy::reference_internal,
+            nb::sig("def get_die_by_name(self, name: str, filter: collections.abc.Callable[[DwarfDie], bool] | None = "
+                    "None) -> DwarfDie | None"))
         .def("find_function_by_address", &DwarfInfo::find_function_by_address, nb::arg("address"),
              nb::rv_policy::reference_internal,
              nb::sig("def find_function_by_address(self, address: int) -> DwarfDie | None"))

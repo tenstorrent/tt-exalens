@@ -908,7 +908,7 @@ std::optional<DwarfFileLine> DwarfDie::get_call_file_info() const {
                              DwarfAttributeTag::call_column);
 }
 
-std::optional<std::vector<std::byte>> serialize_constant_value(const DwarfDie::ConstantValue& value, uint64_t size) {
+std::optional<std::vector<std::byte>> DwarfDie::serialize_constant_value(const ConstantValue& value, uint64_t size) {
     uint64_t uint_value = 0;
     if (const auto* b = std::get_if<bool>(&value)) {
         uint_value = *b ? 1 : 0;

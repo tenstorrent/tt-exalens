@@ -240,6 +240,11 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     using ConstantValue = std::variant<std::monostate, bool, int64_t, uint64_t, float, double>;
     ConstantValue get_constant_value() const;
 
+    // Serializes a DW_AT_const_value into `size` little-endian bytes suitable
+    // for backing a synthesized ElfVariable. Returns std::nullopt for
+    // std::monostate. Bools become 0/1; floats/doubles keep their IEEE-754 bits.
+    static std::optional<std::vector<std::byte>> serialize_constant_value(const ConstantValue& value, uint64_t size);
+
     // Peels typedef / const_type / volatile_type wrappers off a type, or
     // follows DW_AT_type from a non-type DIE (variable, member, …) to its
     // type and then peels. Also follows DW_AT_specification /
@@ -370,11 +375,5 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     mutable std::optional<std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>> address_ranges;
     mutable std::optional<std::weak_ptr<DwarfDie>> parent;
 };
-
-// Serializes a DW_AT_const_value into `size` little-endian bytes suitable for
-// backing a synthesized ElfVariable (see ElfVariable::from_constant). Returns
-// std::nullopt for std::monostate. Bools become 0/1; floats/doubles keep their
-// IEEE-754 bit pattern.
-std::optional<std::vector<std::byte>> serialize_constant_value(const DwarfDie::ConstantValue& value, uint64_t size);
 
 }  // namespace ttexalens::native_elf

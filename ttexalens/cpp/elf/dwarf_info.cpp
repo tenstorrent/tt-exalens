@@ -282,7 +282,7 @@ ElfVariable DwarfInfo::get_global(std::string_view name, std::shared_ptr<MemoryA
     // synthesized read-only buffer (writes raise via NoMemoryAccess).
     if (resolved_type) {
         if (auto size = resolved_type->get_size()) {
-            if (auto bytes = serialize_constant_value(die->get_constant_value(), *size)) {
+            if (auto bytes = DwarfDie::serialize_constant_value(die->get_constant_value(), *size)) {
                 auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(*bytes), NoMemoryAccess::instance());
                 return ElfVariable(std::move(resolved_type), 0, std::move(cache));
             }
