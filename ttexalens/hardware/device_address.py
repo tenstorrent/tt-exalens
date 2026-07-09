@@ -4,13 +4,15 @@
 
 from dataclasses import dataclass
 
+from ttexalens.context import NocId
+
 
 @dataclass
 class DeviceAddress:
     private_address: int | None = None
     noc_address: int | None = None
     bar0_address: int | None = None
-    noc_id: int | None = None
+    noc_id: NocId | None = None
 
     def __post_init__(self):
         assert (

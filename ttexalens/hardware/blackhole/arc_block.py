@@ -36,7 +36,7 @@ register_map = {
 }
 
 
-def get_register_base_address_callable(noc_id: int, has_mmio: bool) -> Callable[[RegisterDescription], DeviceAddress]:
+def get_register_base_address_callable(noc_id: NocId, has_mmio: bool) -> Callable[[RegisterDescription], DeviceAddress]:
     def get_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
         if isinstance(register_description, ArcResetRegisterDescription):
             if has_mmio:
@@ -53,26 +53,26 @@ def get_register_base_address_callable(noc_id: int, has_mmio: bool) -> Callable[
                 return DeviceAddress(bar0_address=0x1FF00000)
             else:
                 return DeviceAddress(noc_address=0x80000000)
-        elif noc_id == 0:
+        elif noc_id == NocId.NOC0:
             return get_niu_register_base_address_callable(DeviceAddress(noc_address=0x80050000))(register_description)
         else:
-            assert noc_id == 1
+            assert noc_id == NocId.NOC1
             return get_niu_register_base_address_callable(DeviceAddress(noc_address=0x80058000))(register_description)
 
     return get_register_base_address
 
 
 register_store_noc0_initialization_local = RegisterStore.create_initialization(
-    [register_map, niu_register_map], get_register_base_address_callable(noc_id=0, has_mmio=True)
+    [register_map, niu_register_map], get_register_base_address_callable(noc_id=NocId.NOC0, has_mmio=True)
 )
 register_store_noc1_initialization_local = RegisterStore.create_initialization(
-    [register_map, niu_register_map], get_register_base_address_callable(noc_id=1, has_mmio=True)
+    [register_map, niu_register_map], get_register_base_address_callable(noc_id=NocId.NOC1, has_mmio=True)
 )
 register_store_noc0_initialization_remote = RegisterStore.create_initialization(
-    [register_map, niu_register_map], get_register_base_address_callable(noc_id=0, has_mmio=False)
+    [register_map, niu_register_map], get_register_base_address_callable(noc_id=NocId.NOC0, has_mmio=False)
 )
 register_store_noc1_initialization_remote = RegisterStore.create_initialization(
-    [register_map, niu_register_map], get_register_base_address_callable(noc_id=1, has_mmio=False)
+    [register_map, niu_register_map], get_register_base_address_callable(noc_id=NocId.NOC1, has_mmio=False)
 )
 
 

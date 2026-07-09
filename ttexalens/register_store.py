@@ -9,7 +9,7 @@ from functools import cached_property
 import re
 from typing import TYPE_CHECKING, Callable
 
-from ttexalens.context import Context, NocId, to_noc_id
+from ttexalens.context import Context, NocId
 from ttexalens.pack_unpack_regfile import TensixDataFormat
 
 if TYPE_CHECKING:
@@ -89,9 +89,7 @@ class RegisterDescription:
     @property
     def noc_id(self) -> NocId | None:
         assert self.base_address is not None and self.base_address.noc_address is not None
-        # DeviceAddress.noc_id is the raw NOC address-space index (0/1); a register living in a given NOC's
-        # address space must be accessed over that same NOC, so map it to the corresponding NocId.
-        return to_noc_id(self.base_address.noc_id) if self.base_address.noc_id is not None else None
+        return self.base_address.noc_id
 
     def clone(self, base_address: DeviceAddress) -> "RegisterDescription":
         new_instance = deepcopy(self)
