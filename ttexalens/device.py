@@ -155,26 +155,22 @@ class Device:
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 
-        self._active_noc: NocId = context.noc_id
+        self.active_noc: NocId = context.noc_id
 
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
 
-    @property
-    def active_noc(self) -> NocId:
-        return self._active_noc
-
     def switch_noc(self, noc_id: NocId):
         assert noc_id in self.available_nocs, f"{noc_id.name} is not available on this device {self.available_nocs}"
-        self._active_noc = noc_id
+        self.active_noc = noc_id
         if self.on_noc_switch is not None:
             self.on_noc_switch()
 
     def _with_noc_failover(self, noc_operation: Callable[[NocId], T], noc_id: NocId | None = None) -> T:
         if noc_id is not None or not self._context.noc_failover:
-            selected_noc = noc_id if noc_id is not None else self._active_noc
+            selected_noc = noc_id if noc_id is not None else self.active_noc
             return noc_operation(selected_noc)
 
-        start_noc = self._active_noc
+        start_noc = self.active_noc
         start_index = self.available_nocs.index(start_noc)
         num_nocs = len(self.available_nocs)
 
@@ -184,7 +180,7 @@ class Device:
             try:
                 result = noc_operation(current_noc)
                 if current_noc != start_noc:
-                    self._active_noc = current_noc
+                    self.active_noc = current_noc
                     if self.on_noc_switch:
                         self.on_noc_switch()
                 return result
@@ -356,12 +352,14 @@ class Device:
 
     def arc_msg(
         self,
-        noc_id: NocId,
+        noc_id: NocId | None,
         msg_code: int,
         wait_for_done: bool,
         args: Sequence[int],
         timeout: datetime.timedelta | float,
     ):
+        if noc_id is None:
+            noc_id = self.active_noc
         return self._umd_device.arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
 
     def read_arc_telemetry_entry(self, noc_id: NocId | None, telemetry_tag: int) -> int:
@@ -376,6 +374,8 @@ class Device:
                 noc_id = init_noc_id
             return self._umd_device.read_arc_telemetry_entry(noc_id, telemetry_tag)
 
+        if noc_id is None:
+            noc_id = self.active_noc
         return self._with_noc_failover(noc_operation, noc_id)
 
     def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:
