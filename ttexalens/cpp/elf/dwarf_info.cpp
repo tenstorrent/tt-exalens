@@ -20,6 +20,7 @@
 #include "dwarf_cu.hpp"
 #include "dwarf_die.hpp"
 #include "dwarf_frame.hpp"
+#include "memory_access.hpp"
 #include "private/dwarf_info_impl.hpp"
 
 namespace ttexalens::native_elf {
@@ -129,7 +130,8 @@ DwarfDiePtr DwarfInfo::find_function_by_address(uint64_t address) const {
     return best;
 }
 
-DwarfDiePtr DwarfInfo::get_die_by_name(std::string_view name) const {
+DwarfDiePtr DwarfInfo::get_die_by_name(std::string_view name,
+                                       const std::function<bool(const DwarfDiePtr&)>& filter) const {
     // Split "Foo::Bar::baz" into ["Foo", "Bar", "baz"]. An empty input yields
     // one empty part and ends up finding nothing.
     std::vector<std::string_view> parts;
@@ -144,15 +146,22 @@ DwarfDiePtr DwarfInfo::get_die_by_name(std::string_view name) const {
         start = pos + 2;
     }
 
+    // The filter constrains only the final component; intermediate scopes are
+    // matched by name alone.
+    const std::function<bool(const DwarfDiePtr&)> no_filter;
+    const auto& filter_for = [&](size_t index) -> const std::function<bool(const DwarfDiePtr&)>& {
+        return index + 1 == parts.size() ? filter : no_filter;
+    };
+
     DwarfDiePtr declaration_die;  // fallback if all matches are declarations
 
     for (auto& cu : impl->get_cus()) {
         // First part is matched against the CU's root DIE; subsequent parts
         // chain off the previous match.
-        auto current = cu.get_die()->find_child_by_name(parts[0]);
+        auto current = cu.get_die()->find_child_by_name(parts[0], filter_for(0));
         bool matched_all = static_cast<bool>(current);
         for (size_t i = 1; matched_all && i < parts.size(); ++i) {
-            auto next = current->find_child_by_name(parts[i]);
+            auto next = current->find_child_by_name(parts[i], filter_for(i));
             if (!next) {
                 matched_all = false;
                 break;
@@ -227,7 +236,7 @@ std::optional<uint64_t> DwarfInfo::get_enum_value(std::string_view name) const {
 }
 
 DwarfDie::ConstantValue DwarfInfo::get_constant(std::string_view name) const {
-    auto die = get_die_by_name(name);
+    auto die = get_die_by_name(name, [](const DwarfDiePtr& d) { return d->get_tag() == DwarfDieTag::variable; });
     if (!die) {
         throw SymbolNotFoundException(std::string(name));
     }
@@ -243,30 +252,43 @@ DwarfDie::ConstantValue DwarfInfo::get_constant(std::string_view name) const {
 }
 
 ElfVariable DwarfInfo::get_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const {
-    auto die = get_die_by_name(name);
+    auto die = get_die_by_name(name, [](const DwarfDiePtr& d) { return d->get_tag() == DwarfDieTag::variable; });
     if (!die) {
-        throw SymbolNotFoundException(std::string(name));
-    }
-    auto address = die->get_address();
-    if (!address) {
+        if (auto other = get_die_by_name(name); other && other->is_type()) {
+            throw SymbolNotFoundException(std::string(name) + " (resolves to a type, not a variable)");
+        }
         throw SymbolNotFoundException(std::string(name));
     }
     auto resolved_type = die->get_resolved_type();
 
-    // Hard-coded-pointer pattern: `T* const g = (T*)0xADDR;` — the DIE's
-    // resolved type is pointer_type AND it carries a constant value. Treat
-    // the constant as the target address and return a variable of the
-    // pointee type.
-    if (resolved_type && resolved_type->get_tag() == DwarfDieTag::pointer_type) {
-        auto cv = die->get_constant_value();
-        if (!std::holds_alternative<std::monostate>(cv)) {
-            auto pointee = resolved_type->get_dereference_type();
-            if (pointee) {
-                return ElfVariable(std::move(pointee), *address, std::move(memory_access));
+    if (auto address = die->get_address()) {
+        // Hard-coded-pointer pattern: `T* const g = (T*)0xADDR;` — the DIE's
+        // resolved type is pointer_type AND it carries a constant value (which
+        // get_address() surfaces as the target address). Return a variable of
+        // the pointee type.
+        if (resolved_type && resolved_type->get_tag() == DwarfDieTag::pointer_type) {
+            auto cv = die->get_constant_value();
+            if (!std::holds_alternative<std::monostate>(cv)) {
+                auto pointee = resolved_type->get_dereference_type();
+                if (pointee) {
+                    return ElfVariable(std::move(pointee), *address, std::move(memory_access));
+                }
+            }
+        }
+        return ElfVariable(std::move(resolved_type), *address, std::move(memory_access));
+    }
+
+    // No runtime storage (folded constexpr): serve the compile-time value from a
+    // synthesized read-only buffer (writes raise via NoMemoryAccess).
+    if (resolved_type) {
+        if (auto size = resolved_type->get_size()) {
+            if (auto bytes = DwarfDie::serialize_constant_value(die->get_constant_value(), *size)) {
+                auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(*bytes), NoMemoryAccess::instance());
+                return ElfVariable(std::move(resolved_type), 0, std::move(cache));
             }
         }
     }
-    return ElfVariable(std::move(resolved_type), *address, std::move(memory_access));
+    throw SymbolNotFoundException(std::string(name));
 }
 
 ElfVariable DwarfInfo::read_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const {
