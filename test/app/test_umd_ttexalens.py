@@ -186,7 +186,6 @@ class TTExaLensTestRunner:
 
 class TestUmdTTExaLens(unittest.TestCase):
     def test_startup_and_exit_just_return_code(self):
-        util.Verbosity.set(util.Verbosity.DEBUG)
         runner = TTExaLensTestRunner(UmdTTExaLensOutputVerifier())
         runner.start(self)
         runner.writeline("x")
