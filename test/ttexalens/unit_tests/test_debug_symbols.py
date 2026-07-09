@@ -386,6 +386,15 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(-1234567, self.parsed_elf.get_constant("c_int32_t"))
         self.assertEqual(-1234567890123456789, self.parsed_elf.get_constant("c_int64_t"))
 
+    def test_elf_enum_variable_name_collision(self):
+        # `enum shadowed_const` and `constexpr uint8_t shadowed_const` share a
+        # name (mirrors dev_msgs.h's `enum noc_mode` shadowing `noc_mode`).
+        self.assertEqual(42, self.parsed_elf.get_global("shadowed_const", TestDebugSymbols.mem_access).read_value())
+        self.assertEqual(42, self.parsed_elf.get_constant("shadowed_const"))
+
+        # Enumerator lookup by qualified name keeps working
+        self.assertEqual(1, self.parsed_elf.get_enum_value("shadowed_const::SHADOWED_B"))
+
     def test_elf_variable_array_iteration(self):
         variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
         assert variable_die is not None

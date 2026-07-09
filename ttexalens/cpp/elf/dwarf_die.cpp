@@ -641,9 +641,10 @@ const std::vector<std::pair<Dwarf_Addr, Dwarf_Addr>>& DwarfDie::get_address_rang
     return ranges;
 }
 
-DwarfDiePtr DwarfDie::find_child_by_name(std::string_view target) const {
+DwarfDiePtr DwarfDie::find_child_by_name(std::string_view target,
+                                         const std::function<bool(const DwarfDiePtr&)>& filter) const {
     for (auto child = get_first_child(); child; child = child->get_next_sibling()) {
-        if (child->get_name() == target) {
+        if (child->get_name() == target && (!filter || filter(child))) {
             return child;
         }
     }
@@ -811,7 +812,14 @@ static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool al
             return std::nullopt;
         }
         if (const auto* cv = die.get_attribute(DwarfAttributeTag::const_value)) {
-            return attr_as_uint(cv);
+            // A const_value is a target address only for hard-coded pointers
+            // (`T* const g = (T*)0xADDR;`). For a scalar it's the value, not an
+            // address, so don't hand it back as one.
+            auto resolved = die.get_resolved_type();
+            if (resolved && resolved->get_tag() == DwarfDieTag::pointer_type) {
+                return attr_as_uint(cv);
+            }
+            return std::nullopt;
         }
         // .symtab address fallback runs in the public wrapper below — keeps
         // this free function from needing private access to DwarfDie.
@@ -900,6 +908,26 @@ std::optional<DwarfFileLine> DwarfDie::get_call_file_info() const {
                              DwarfAttributeTag::call_column);
 }
 
+std::optional<std::vector<std::byte>> DwarfDie::serialize_constant_value(const ConstantValue& value, uint64_t size) {
+    uint64_t uint_value = 0;
+    if (const auto* b = std::get_if<bool>(&value)) {
+        uint_value = *b ? 1 : 0;
+    } else if (const auto* s = std::get_if<int64_t>(&value)) {
+        uint_value = static_cast<uint64_t>(*s);
+    } else if (const auto* u = std::get_if<uint64_t>(&value)) {
+        uint_value = *u;
+    } else if (const auto* f = std::get_if<float>(&value)) {
+        uint_value = std::bit_cast<uint32_t>(*f);
+    } else if (const auto* d = std::get_if<double>(&value)) {
+        uint_value = std::bit_cast<uint64_t>(*d);
+    } else {
+        return std::nullopt;  // std::monostate — no constant value
+    }
+    std::vector<std::byte> bytes(size);
+    std::memcpy(bytes.data(), &uint_value, std::min(size, static_cast<uint64_t>(sizeof(uint_value))));
+    return bytes;
+}
+
 std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) const {
     // Reading value only makes sense for variables and parameters.
     const auto tag = get_tag();
@@ -914,27 +942,11 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
     }
 
     // Compile-time constant (DW_AT_const_value).
-    auto const_value = get_constant_value();
-    if (!std::holds_alternative<std::monostate>(const_value)) {
-        const uint64_t size = resolved->get_size().value_or(4);
-        uint64_t uint_value = 0;
-        if (const auto* b = std::get_if<bool>(&const_value)) {
-            uint_value = *b ? 1 : 0;
-        } else if (const auto* s = std::get_if<int64_t>(&const_value)) {
-            uint_value = static_cast<uint64_t>(*s);
-        } else if (const auto* u = std::get_if<uint64_t>(&const_value)) {
-            uint_value = *u;
-        } else if (const auto* f = std::get_if<float>(&const_value)) {
-            uint_value = std::bit_cast<uint32_t>(*f);
-        } else if (const auto* d = std::get_if<double>(&const_value)) {
-            uint_value = std::bit_cast<uint64_t>(*d);
-        } else {
-            return std::nullopt;
+    if (auto size = resolved->get_size()) {
+        if (auto bytes = serialize_constant_value(get_constant_value(), *size)) {
+            auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(*bytes), NoMemoryAccess::instance());
+            return ElfVariable(resolved, 0, std::move(cache));
         }
-        std::vector<std::byte> bytes(size);
-        std::memcpy(bytes.data(), &uint_value, std::min(size, static_cast<uint64_t>(sizeof(uint_value))));
-        auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(bytes), NoMemoryAccess::instance());
-        return ElfVariable(resolved, 0, std::move(cache));
     }
 
     // Static-storage variable (globals, file/function statics):
@@ -955,7 +967,11 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
     // Literal value (DW_OP_stack_value / register-direct / composite via
     // DW_OP_piece): synthesise a backing buffer holding the materialised
     // bytes and hand back a ElfVariable that reads from it.
-    const uint64_t size = resolved->get_size().value_or(4);
+    auto size_opt = resolved->get_size();
+    if (!size_opt) {
+        return std::nullopt;
+    }
+    const uint64_t size = *size_opt;
     std::vector<std::byte> bytes(size);
     if (!location->raw_bytes.empty()) {
         // Composite location already assembled the bytes in little-endian
