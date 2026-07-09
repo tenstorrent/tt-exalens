@@ -59,12 +59,12 @@ def init_cached_test_context():
     return _cached_test_context
 
 
-def init_test_context(noc_id: NocId, safe_mode: bool = False):
-    if noc_id == NocId.NOC1 or noc_id == NocId.SYSTEM_NOC:
+def init_test_context(noc_id: NocId | None, safe_mode: bool = False):
+    if noc_id is None:
+        return init_default_test_context()
+    else:
         assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing with an explicit NOC is not supported"
         return init_ttexalens(noc_id=noc_id, noc_failover=False, safe_mode=safe_mode)
-    else:
-        return init_default_test_context(noc_id=noc_id)
 
 
 def get_core_location(core_desc: str, device: Device) -> OnChipCoordinate:

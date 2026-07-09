@@ -12,7 +12,7 @@ Arguments:
     noc-loc     Optional. X-Y or R,C, or dram channel (e.g. ch3). Use interchangeably with -l <loc>.
 
 Options:
-    -n <noc>     NOC to use for communication with the device. [0: NOC0, 1: NOC1, 2: SYSTEM_NOC]
+    -n <noc>     NOC to use for communication with the device. Accepts a number or name (case-insensitive): 0/NOC0, 1/NOC1, 2/SYSTEM_NOC.
 
 Examples:
     go -n 1 -d 0 -l 0,0
@@ -39,11 +39,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     noc_loc_str: str | None = args["<noc-loc>"]
 
     if args["-n"] is not None:
-        noc = int(args["-n"])
-        if noc not in [0, 1, 2]:
-            util.ERROR("NOC must be 0 (NOC0), 1 (NOC1), or 2 (SYSTEM_NOC)")
+        try:
+            ui_state.context.noc_id = to_noc_id(args["-n"])
+        except ValueError as e:
+            util.ERROR(str(e))
             return
-        ui_state.context.noc_id = to_noc_id(noc)
 
     device: Device = next(dopt.for_each(CommonCommandOptions.Device, context, ui_state))
     ui_state.current_device_id = device.id

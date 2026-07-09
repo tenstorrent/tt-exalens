@@ -26,7 +26,7 @@ Options:
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
-  --noc-id=<id>                   NOC to use for device communication [0: NOC0, 1: NOC1, 2: SYSTEM_NOC]. [default: 1]
+  --noc-id=<id>                   NOC to use for device communication. Accepts a number or name (case-insensitive): 0/NOC0, 1/NOC1, 2/SYSTEM_NOC. [default: 1]
   --gdb                           Start RISC-V gdb client with the specified arguments.
   --unsafe-mode                   Disable safe mode to allow potentially unsafe operations (e.g., writing to certain memory regions) without explicit overrides. Use with caution.
   --disable-noc-failover          Disable automatic NOC failover if communication fails on it (NOC0->NOC1 and vice versa).
@@ -386,7 +386,7 @@ def main():
         util.VERBOSE(f"Verbosity level: {util.Verbosity.get().name} ({util.Verbosity.get().value})")
 
     safe_mode = False if args["--unsafe-mode"] else True
-    noc_id = to_noc_id(int(args["--noc-id"]))
+    noc_id = to_noc_id(args["--noc-id"])
     simulation_directory = args["-s"]
     init_jtag = args["--jtag"]
     noc_failover: bool = False if args["--disable-noc-failover"] else True

@@ -25,9 +25,21 @@ if TYPE_CHECKING:
 NocId = tt_umd.NocId
 
 
-def to_noc_id(value: NocId | int) -> NocId:
+def to_noc_id(value: NocId | int | str) -> NocId:
     if isinstance(value, NocId):
         return value
+    if isinstance(value, str):
+        text = value.strip()
+        try:
+            # Numeric string, e.g. "0", "1", "2".
+            value = int(text)
+        except ValueError:
+            # Named NOC (case-insensitive), e.g. "NOC0", "noc1", "system_noc".
+            name = text.upper()
+            if name in NocId.__members__:
+                return NocId[name]
+            valid = ", ".join(m for m in NocId.__members__ if m != "DEFAULT_NOC")
+            raise ValueError(f"Invalid NOC ID value '{value}': expected a NOC number or one of {valid}.")
     try:
         noc_id = NocId.NOC0 if value == 0 else NocId(value)
     except ValueError as e:
