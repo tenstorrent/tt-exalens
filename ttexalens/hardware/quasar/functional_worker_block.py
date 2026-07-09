@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from functools import cache, cached_property
+from ttexalens.context import NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.device_address import DeviceAddress
@@ -72,7 +73,7 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             return self.neo3.debug_bus
         return super().get_debug_bus(neo_id)
 
-    def get_register_store(self, noc_id: int = 0, neo_id: int | None = None) -> RegisterStore:
+    def get_register_store(self, noc_id: NocId | None = None, neo_id: int | None = None) -> RegisterStore:
         if neo_id == 0:
             return self.neo0.register_store
         elif neo_id == 1:

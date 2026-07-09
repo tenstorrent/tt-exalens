@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from ttexalens.context import NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_store_initialization
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
@@ -11,10 +12,10 @@ from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from ttexalens.register_store import RegisterStore
 
 register_store_noc0_initialization = get_niu_register_store_initialization(
-    DeviceAddress(noc_address=0xFFFFFFFF_FF000000, bar0_address=0x1FD04000, noc_id=0)
+    DeviceAddress(noc_address=0xFFFFFFFF_FF000000, bar0_address=0x1FD04000, noc_id=NocId.NOC0)
 )
 register_store_noc1_initialization = get_niu_register_store_initialization(
-    DeviceAddress(noc_address=0xFFFFFFFF_FF000000, bar0_address=0x1FD14000, noc_id=1)
+    DeviceAddress(noc_address=0xFFFFFFFF_FF000000, bar0_address=0x1FD14000, noc_id=NocId.NOC1)
 )
 
 

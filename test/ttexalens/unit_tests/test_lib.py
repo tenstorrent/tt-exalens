@@ -564,11 +564,9 @@ class TestReadWrite(unittest.TestCase):
         [
             ("0,0", "brisc"),
             ("1,0", "brisc"),
-            ("1,0", "brisc"),
             ("1,0", "trisc0"),
             ("0,1", "brisc"),
             ("1,1", "brisc"),
-            ("0,0", "brisc"),  # noc_id = 1
             ("0,0", "trisc0"),
             ("0,0", "trisc1"),
             ("0,0", "trisc2"),

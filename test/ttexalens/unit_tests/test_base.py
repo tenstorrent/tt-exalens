@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import os
-from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device
+from ttexalens import init_ttexalens_remote, init_ttexalens, OnChipCoordinate, Device, NocId, to_noc_id
 from ttexalens.elf import ElfFile, read_elf
 from ttexalens.server import FileAccessApi
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebugHardware
@@ -24,14 +24,13 @@ _cached_test_context = None
 _cached_parsed_elf_files: dict[str, ElfFile] = {}
 
 
-def init_default_test_context(use_noc1: bool | None = None):
+def init_default_test_context(noc_id: NocId | None = None):
     global _cached_simulator_context
     global _cached_test_context
 
-    if use_noc1 is None:
-        use_noc1 = False
-        if os.getenv("TTEXALENS_TESTS_USE_NOC1", "0") == "1":
-            use_noc1 = True
+    if noc_id is None:
+        env_noc_id = os.getenv("TTEXALENS_TESTS_NOC_ID")
+        noc_id = to_noc_id(int(env_noc_id)) if env_noc_id is not None else NocId.NOC1
 
     if os.getenv("TTEXALENS_TESTS_REMOTE"):
         ip_address = os.getenv("TTEXALENS_TESTS_REMOTE_ADDRESS", "localhost")
@@ -43,13 +42,13 @@ def init_default_test_context(use_noc1: bool | None = None):
             simulation_directory = os.getenv("TTEXALENS_SIMULATOR")
             _cached_simulator_context = init_ttexalens(
                 simulation_directory=simulation_directory,
-                use_noc1=use_noc1,
+                noc_id=noc_id,
                 noc_failover=False,
                 safe_mode=False,
             )
         return _cached_simulator_context
     else:
-        _cached_test_context = init_ttexalens(use_noc1=use_noc1, noc_failover=False, safe_mode=False)
+        _cached_test_context = init_ttexalens(noc_id=noc_id, noc_failover=False, safe_mode=False)
     return _cached_test_context
 
 
@@ -60,12 +59,12 @@ def init_cached_test_context():
     return _cached_test_context
 
 
-def init_test_context(use_noc1: bool = False, safe_mode: bool = False):
-    if use_noc1:
-        assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing for NOC1 not supported"
-        return init_ttexalens(use_noc1=True, noc_failover=False, safe_mode=safe_mode)
+def init_test_context(noc_id: NocId | None, safe_mode: bool = False):
+    if noc_id is None:
+        return init_default_test_context()
     else:
-        return init_default_test_context(use_noc1=use_noc1)
+        assert not os.getenv("TTEXALENS_TESTS_REMOTE"), "Remote testing with an explicit NOC is not supported"
+        return init_ttexalens(noc_id=noc_id, noc_failover=False, safe_mode=safe_mode)
 
 
 def get_core_location(core_desc: str, device: Device) -> OnChipCoordinate:

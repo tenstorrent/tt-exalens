@@ -3,7 +3,7 @@
 ## init_ttexalens
 
 ```
-init_ttexalens(init_jtag: bool = False, use_noc1: bool = False, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True) -> Context
+init_ttexalens(init_jtag: bool = False, noc_id: NocId = NocId.NOC1, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True) -> Context
 ```
 
 
@@ -16,7 +16,8 @@ Interfacing device is local, through pybind.
 ### Args
 
 - `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
-- `use_noc1` *(bool)*: Whether to initialize with NOC1 and use NOC1 for communication with the device. Default is False.
+- `noc_id` *(NocId)*: NOC used for all communication with the device, including topology discovery
+(NocId.NOC0, NocId.NOC1, or NocId.SYSTEM_NOC). Default is NocId.NOC1 except for Quasar which uses NocId.NOC0 as default.
 - `simulation_directory` *(str, optional)*: If specified, starts the simulator from the given build output directory.
 - `safe_mode` *(bool)*: Whether to enable safe mode for memory access. Default is True.
 
@@ -84,7 +85,7 @@ Set the active TTExaLens context object.
 ## read_word_from_device
 
 ```
-read_word_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, context: Context | None = None, noc_id: int | None = None, safe_mode: bool | None = None) -> int
+read_word_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None) -> int
 ```
 
 
@@ -99,7 +100,7 @@ Reads one four-byte word of data, from address 'addr' at specified location usin
 - `addr` *(int)*: Memory address to read from.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
@@ -112,7 +113,7 @@ Reads one four-byte word of data, from address 'addr' at specified location usin
 ## read_words_from_device
 
 ```
-read_words_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, word_count: int = 1, context: Context | None = None, noc_id: int | None = None, safe_mode: bool | None = None) -> list[int]
+read_words_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, word_count: int = 1, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None) -> list[int]
 ```
 
 
@@ -128,7 +129,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at specif
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `word_count` *(int, default 1)*: Number of 4-byte words to read.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
@@ -141,7 +142,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at specif
 ## read_from_device
 
 ```
-read_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, num_bytes: int = 4, context: Context | None = None, noc_id: int | None = None, safe_mode: bool | None = None) -> bytes
+read_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, num_bytes: int = 4, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None) -> bytes
 ```
 
 
@@ -157,7 +158,7 @@ Reads num_bytes of data starting from address 'addr' at specified location using
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `num_bytes` *(int, default 4)*: Number of bytes to read.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
@@ -170,7 +171,7 @@ Reads num_bytes of data starting from address 'addr' at specified location using
 ## write_words_to_device
 
 ```
-write_words_to_device(location: str | OnChipCoordinate, addr: int, data: int | list[int], device_id: int = 0, context: Context | None = None, noc_id: int | None = None, safe_mode: bool | None = None)
+write_words_to_device(location: str | OnChipCoordinate, addr: int, data: int | list[int], device_id: int = 0, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None)
 ```
 
 
@@ -186,7 +187,7 @@ Writes data word to address 'addr' at specified location using specified noc.
 - `data` *(int | list[int])*: 4-byte integer word to be written, or a list of them.
 - `device_id` *(int, default 0)*: ID number of device to write to.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
@@ -195,7 +196,7 @@ Writes data word to address 'addr' at specified location using specified noc.
 ## write_to_device
 
 ```
-write_to_device(location: str | OnChipCoordinate, addr: int, data: list[int] | bytes, device_id: int = 0, context: Context | None = None, noc_id: int | None = None, safe_mode: bool | None = None)
+write_to_device(location: str | OnChipCoordinate, addr: int, data: list[int] | bytes, device_id: int = 0, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None)
 ```
 
 
@@ -211,7 +212,7 @@ Writes data to address 'addr' at specified location using specified noc.
 - `data` *(list[int] | bytes)*: Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
 - `device_id` *(int, default 0)*: ID number of device to write to.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
 
@@ -279,7 +280,7 @@ Loads the given ELF file into the specified RISC core and executes it. Similar t
 ## arc_msg
 
 ```
-arc_msg(device_id: int, msg_code: int, wait_for_done: bool, args: list[int], timeout: datetime.timedelta, context: Context | None = None, noc_id: int | None = None) -> list[int]
+arc_msg(device_id: int, msg_code: int, wait_for_done: bool, args: list[int], timeout: datetime.timedelta, context: Context | None = None, noc_id: NocId | int | None = None) -> list[int]
 ```
 
 
@@ -296,7 +297,7 @@ Sends an ARC message to the device.
 - `args` *(list[int])*: Arguments to the message.
 - `timeout` *(datetime.timedelta)*: Timeout.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-- `noc_id` *(int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
+- `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 
 
 ### Returns
@@ -308,7 +309,7 @@ Sends an ARC message to the device.
 ## read_arc_telemetry_entry
 
 ```
-read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: int | None = None) -> int
+read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: NocId | int | None = None) -> int
 ```
 
 
@@ -322,6 +323,7 @@ Reads an ARC telemetry entry from the device.
 - `device_id` *(int)*: ID number of device to read telemetry from.
 - `telemetry_tag` *(int | str)*: Name or ID of the tag to read.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+- `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 
 
 ### Returns
@@ -333,7 +335,7 @@ Reads an ARC telemetry entry from the device.
 ## read_register
 
 ```
-read_register(location: str | OnChipCoordinate, register, noc_id: int = 0, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None) -> int
+read_register(location: str | OnChipCoordinate, register, noc_id: NocId | int | None = None, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None) -> int
 ```
 
 
@@ -347,7 +349,7 @@ Reads the value of a register from the noc location.
 - `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
 - `register` *(str | RegisterDescription)*: Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
 ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
-- `noc_id` *(int, default 0)*: NOC ID to use.
+- `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, the architecture default is used (NOC1 on Wormhole/Blackhole, NOC0 on Quasar).
 - `neo_id` *(int | None, optional)*: NEO ID of the register store.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
@@ -363,7 +365,7 @@ ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr
 ## write_register
 
 ```
-write_register(location: str | OnChipCoordinate, register, value: int, noc_id: int = 0, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None)
+write_register(location: str | OnChipCoordinate, register, value: int, noc_id: NocId | int | None = None, neo_id: int | None = None, device_id: int = 0, context: Context | None = None, safe_mode: bool | None = None)
 ```
 
 
@@ -378,7 +380,7 @@ Writes value to a register on the noc location.
 - `register` *(str | TensixRegisterDescription)*: Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
 ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
 - `value` *(int)*: Value to write to the register.
-- `noc_id` *(int, default 0)*: NOC ID to use.
+- `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, the architecture default is used (NOC1 on Wormhole/Blackhole, NOC0 on Quasar).
 - `neo_id` *(int | None, optional)*: NEO ID of the register store.
 - `device_id` *(int, default 0)*: ID number of device to read from.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.

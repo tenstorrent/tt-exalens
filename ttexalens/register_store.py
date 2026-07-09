@@ -9,7 +9,7 @@ from functools import cached_property
 import re
 from typing import TYPE_CHECKING, Callable
 
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.pack_unpack_regfile import TensixDataFormat
 
 if TYPE_CHECKING:
@@ -87,7 +87,7 @@ class RegisterDescription:
         return self.base_address.bar0_address + self.offset
 
     @property
-    def noc_id(self) -> int | None:
+    def noc_id(self) -> NocId | None:
         assert self.base_address is not None and self.base_address.noc_address is not None
         return self.base_address.noc_id
 

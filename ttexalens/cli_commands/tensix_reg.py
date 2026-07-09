@@ -16,7 +16,7 @@ Options:
   --type <data-type>  Data type of the register. This affects print format. Options: [INT_VALUE, ADDRESS, MASK, FLAGS, TENSIX_DATA_FORMAT]. Default: INT_VALUE.
   --write <value>     Value to write to the register. If not given, register is dumped instead.
   --max <max-regs>    Maximum number of register names to print when searching or all for everything. Default: 10.
-  -n <noc-id>         NOC ID. Optional. Default: 0.
+  -n <noc-id>         NOC ID, a number or name (case-insensitive): 0/NOC0, 1/NOC1, 2/SYSTEM_NOC. Optional. Default: 0.
 
 Description:
   Prints/writes to the specified register, at the specified location and device.
@@ -38,7 +38,7 @@ Examples:
 """
 
 from fnmatch import fnmatch
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId, to_noc_id
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.register_store import REGISTER_DATA_TYPE, format_register_value, parse_register_value
@@ -79,7 +79,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     value_str: str | None = None
     data_type: REGISTER_DATA_TYPE | None = None
     register_pattern: str | None = dopt.args["<register_pattern>"] if dopt.args["--search"] else None
-    noc_id: int = dopt.args["-n"] if dopt.args["-n"] else 0
+    noc_id: NocId = to_noc_id(dopt.args["-n"]) if dopt.args["-n"] else NocId.NOC0
 
     # Do this only if search is disabled
     if register_pattern == None:

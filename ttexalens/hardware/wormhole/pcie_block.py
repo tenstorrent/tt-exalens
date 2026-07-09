@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from ttexalens.context import NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
@@ -12,10 +13,10 @@ from ttexalens.register_store import RegisterStore
 
 
 register_store_noc0_initialization = get_niu_register_store_initialization(
-    DeviceAddress(noc_address=0xFFFB20000, noc_id=0)
+    DeviceAddress(noc_address=0xFFFB20000, noc_id=NocId.NOC0)
 )
 register_store_noc1_initialization = get_niu_register_store_initialization(
-    DeviceAddress(noc_address=0xFFFB20000, noc_id=1)
+    DeviceAddress(noc_address=0xFFFB20000, noc_id=NocId.NOC1)
 )
 
 

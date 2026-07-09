@@ -9,6 +9,7 @@ out across many cores iterate themselves.
 """
 
 from ttexalens import _lib_helpers
+from ttexalens.context import NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.perf_counters import (
     PerfCounterBlockDescription,
@@ -45,7 +46,7 @@ def reset_perf_counters(
     location: OnChipCoordinate,
     block_name: str | None = None,
     *,
-    noc_id: int | None = None,
+    noc_id: NocId | int | None = None,
     neo_id: int | None = None,
     safe_mode: bool | None = None,
 ) -> None:
@@ -64,7 +65,7 @@ def start_perf_counters(
     location: OnChipCoordinate,
     block_name: str | None = None,
     *,
-    noc_id: int | None = None,
+    noc_id: NocId | int | None = None,
     neo_id: int | None = None,
     safe_mode: bool | None = None,
 ) -> None:
@@ -83,7 +84,7 @@ def stop_perf_counters(
     location: OnChipCoordinate,
     block_name: str | None = None,
     *,
-    noc_id: int | None = None,
+    noc_id: NocId | int | None = None,
     neo_id: int | None = None,
     safe_mode: bool | None = None,
 ) -> None:
@@ -102,7 +103,7 @@ def read_perf_counters(
     location: OnChipCoordinate,
     block_name: str | None = None,
     *,
-    noc_id: int | None = None,
+    noc_id: NocId | int | None = None,
     neo_id: int | None = None,
     safe_mode: bool | None = None,
 ) -> dict[tuple[str, int, str], tuple[int, int]]:

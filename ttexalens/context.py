@@ -21,6 +21,29 @@ if TYPE_CHECKING:
     from ttexalens.server import FileAccessApi
     from ttexalens.umd_api import UmdApi
 
+
+NocId = tt_umd.NocId
+
+
+def to_noc_id(value: NocId | int | str) -> NocId:
+    if isinstance(value, NocId):
+        return value
+    if isinstance(value, str):
+        text = value.strip()
+        try:
+            value = int(text)
+        except ValueError:
+            name = text.upper()
+            if name in NocId.__members__:
+                return NocId.__members__[name]
+            raise ValueError(f"Invalid NOC ID name {name}. Valid names: {list(NocId.__members__.keys())}")
+    try:
+        noc_id = NocId.NOC0 if value == 0 else NocId(value)
+    except ValueError as e:
+        raise ValueError(f"Invalid NOC ID value {value}: {e}")
+    return noc_id
+
+
 # All-encompassing structure representing a TTExaLens context
 class Context:
     def __init__(
@@ -28,7 +51,7 @@ class Context:
         umd_api: UmdApi,
         file_api: FileAccessApi,
         short_name: str = "default",
-        use_noc1=False,
+        noc_id: NocId = NocId.NOC1,
         dma_read_threshold: int = 24,  # Measured thresholds for DMA vs NOC transfers on WH
         dma_write_threshold: int = 56,  # Measured thresholds for DMA vs NOC transfers on WH
         noc_failover: bool = True,
@@ -41,24 +64,25 @@ class Context:
         self.dma_write_threshold: int = dma_write_threshold
 
         self.noc_failover = noc_failover
-        self._use_noc1 = use_noc1
+        self._noc_id = noc_id
+        self.init_noc_id = self._noc_id  # TODO #1102: Noc selected for initialization.
         self.safe_mode = safe_mode
 
         self.commands: list[CommandMetadata] = []
         self.loaded_elfs: dict[RiscLocation, str] = {}
 
     @property
-    def use_noc1(self):
-        return self._use_noc1
+    def noc_id(self) -> NocId:
+        return self._noc_id
 
-    @use_noc1.setter
-    def use_noc1(self, value: bool):
-        if value == self._use_noc1:
+    @noc_id.setter
+    def noc_id(self, value: NocId):
+        if value == self._noc_id:
             return
 
-        self._use_noc1 = value
+        self._noc_id = value
         for device in self.devices.values():
-            device.switch_noc(int(value))
+            device.switch_noc(value)
 
     def assign_commands(self, commands: list[CommandMetadata]):
         self.commands = []

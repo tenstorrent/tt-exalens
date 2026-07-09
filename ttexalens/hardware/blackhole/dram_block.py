@@ -4,6 +4,7 @@
 
 from functools import cache, cached_property
 from typing import Callable
+from ttexalens.context import NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
@@ -150,18 +151,18 @@ register_map: dict[str, RegisterDescription] = {
 }
 
 
-def get_register_base_address_callable(noc_id: int) -> Callable[[RegisterDescription], DeviceAddress]:
+def get_register_base_address_callable(noc_id: NocId) -> Callable[[RegisterDescription], DeviceAddress]:
     def get_register_base_address(register_description: RegisterDescription) -> DeviceAddress:
         if isinstance(register_description, DebugRegisterDescription):
             return DeviceAddress(private_address=0xFFB12000, noc_address=0x100FFB12000)
         elif isinstance(register_description, RiscControlRegisterDescription):
             return DeviceAddress(private_address=0xFFB14000, noc_address=0x100FFB14000)
-        elif noc_id == 0:
+        elif noc_id == NocId.NOC0:
             return get_niu_register_base_address_callable(
                 DeviceAddress(private_address=0xFFB20000, noc_address=0x100FFB20000)
             )(register_description)
         else:
-            assert noc_id == 1
+            assert noc_id == NocId.NOC1
             return get_niu_register_base_address_callable(
                 DeviceAddress(private_address=0xFFB30000, noc_address=0x100FFB30000)
             )(register_description)
@@ -170,10 +171,10 @@ def get_register_base_address_callable(noc_id: int) -> Callable[[RegisterDescrip
 
 
 register_store_noc0_initialization = RegisterStore.create_initialization(
-    [register_map, niu_register_map], get_register_base_address_callable(noc_id=0)
+    [register_map, niu_register_map], get_register_base_address_callable(noc_id=NocId.NOC0)
 )
 register_store_noc1_initialization = RegisterStore.create_initialization(
-    [register_map, niu_register_map], get_register_base_address_callable(noc_id=1)
+    [register_map, niu_register_map], get_register_base_address_callable(noc_id=NocId.NOC1)
 )
 debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 

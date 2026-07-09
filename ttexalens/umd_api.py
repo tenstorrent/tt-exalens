@@ -9,6 +9,7 @@ import tt_umd
 from typing import TYPE_CHECKING
 
 from ttexalens import util as util
+from ttexalens.context import NocId
 
 if TYPE_CHECKING:
     from ttexalens.umd_device import UmdDevice
@@ -49,27 +50,22 @@ TLS_FOR_NOC_ID = threading.local()
 @Pyro5.api.expose
 class UmdApi:
     @staticmethod
-    def select_noc_id(noc_id: int, arch: tt_umd.ARCH | None = None):
+    def select_noc_id(noc_id: NocId, arch: tt_umd.ARCH | None = None):
         """
         Selects the NOC ID to be used for communication with the device by the current thread.
         This method should be called before any UMD API calls are made.
         """
         global TLS_FOR_NOC_ID
-        if getattr(TLS_FOR_NOC_ID, "noc_id", -1) == noc_id:
+        if getattr(TLS_FOR_NOC_ID, "noc_id", None) == noc_id:
             return
         TLS_FOR_NOC_ID.noc_id = noc_id
-        if noc_id == 0:
-            tt_umd.set_thread_noc_id(tt_umd.NocId.NOC0)
-        else:
-            if arch == tt_umd.ARCH.QUASAR:
-                tt_umd.set_thread_noc_id(tt_umd.NocId.SYSTEM_NOC)
-            else:
-                tt_umd.set_thread_noc_id(tt_umd.NocId.NOC1)
+        # NocId is tt-umd's own enum, so it can be handed to the UMD thread-NOC selector directly.
+        tt_umd.set_thread_noc_id(noc_id)
 
     def __init__(
         self,
         init_jtag=False,
-        initialize_with_noc1=False,
+        noc_id: NocId = NocId.NOC1,
         simulation_directory: str | None = None,
     ):
         from ttexalens.umd_device import UmdDevice
@@ -91,7 +87,7 @@ class UmdApi:
             else:
                 tt_umd.logging.set_level(tt_umd.logging.Level.Error)
 
-        UmdApi.select_noc_id(1 if initialize_with_noc1 else 0)
+        UmdApi.select_noc_id(noc_id)
         if simulation_directory is not None:
             tt_device: tt_umd.TTDevice
             if simulation_directory.endswith(".so"):
@@ -210,7 +206,7 @@ class UmdApi:
     def get_cluster_descriptor(self) -> tt_umd.ClusterDescriptor:
         return self.cluster_descriptor
 
-    def warm_reset(self, noc_id: int, is_galaxy_configuration: bool = False) -> None:
+    def warm_reset(self, noc_id: NocId, is_galaxy_configuration: bool = False) -> None:
         UmdApi.select_noc_id(noc_id)
         if is_galaxy_configuration:
             tt_umd.WarmReset.ubb_warm_reset()
@@ -218,8 +214,12 @@ class UmdApi:
             tt_umd.WarmReset.warm_reset()
 
 
-def local_init(init_jtag=False, initialize_with_noc1=False, simulation_directory: str | None = None):
-    communicator = UmdApi(init_jtag, initialize_with_noc1, simulation_directory)
+def local_init(init_jtag=False, noc_id: NocId = NocId.NOC1, simulation_directory: str | None = None):
+    if simulation_directory is not None:
+        noc_id = (
+            NocId.NOC0
+        )  # Quasar is only available through simulation and does not have NOC1, so we switch to NOC0 as a workaround.
+    communicator = UmdApi(init_jtag, noc_id, simulation_directory)
     if util.VERBOSE_ENABLED:
         util.VERBOSE("Device opened successfully.")
     return communicator

@@ -32,6 +32,8 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Mapping
 
 
+from ttexalens.context import NocId
+
 if TYPE_CHECKING:
     from ttexalens.hardware.noc_block import NocBlock
     from ttexalens.register_store import RegisterStore
@@ -103,7 +105,7 @@ class TensixPerfCounters:
         self,
         block_name: str,
         *,
-        noc_id: int | None = None,
+        noc_id: NocId | None = None,
         neo_id: int | None = None,
         safe_mode: bool | None = None,
     ) -> None:
@@ -118,7 +120,7 @@ class TensixPerfCounters:
         self,
         block_name: str,
         *,
-        noc_id: int | None = None,
+        noc_id: NocId | None = None,
         neo_id: int | None = None,
         safe_mode: bool | None = None,
     ) -> None:
@@ -132,7 +134,7 @@ class TensixPerfCounters:
         self,
         block_name: str,
         *,
-        noc_id: int | None = None,
+        noc_id: NocId | None = None,
         neo_id: int | None = None,
         safe_mode: bool | None = None,
     ) -> None:
@@ -146,7 +148,7 @@ class TensixPerfCounters:
         self,
         block_name: str,
         *,
-        noc_id: int | None = None,
+        noc_id: NocId | None = None,
         safe_mode: bool | None = None,
     ) -> int:
         """Read the block's free-running cycle counter (the denominator)."""
@@ -158,7 +160,7 @@ class TensixPerfCounters:
         block_name: str,
         counter: int | str,
         *,
-        noc_id: int | None = None,
+        noc_id: NocId | None = None,
         safe_mode: bool | None = None,
     ) -> int:
         """Select ``counter`` in REG1 and return the OUT_H readback.
@@ -170,12 +172,11 @@ class TensixPerfCounters:
         counter_id = self._resolve_counter(block, counter)
         return self._read_counter_id(block, counter_id, noc_id, safe_mode)
 
-    def _register_store(self, noc_id: int | None) -> RegisterStore:
+    def _register_store(self, noc_id: NocId | None) -> RegisterStore:
         if noc_id is None:
-            # Pick up the active NOC from the device's TTExaLens context so
-            # callers reaching directly through ``noc_block.perf_counters``
-            # don't have to re-resolve it themselves.
-            noc_id = 1 if self._noc_block.location.context.use_noc1 else 0
+            # Pick up the device's active NOC (the context's choice or the architecture default) so
+            # callers reaching directly through ``noc_block.perf_counters`` don't have to re-resolve it.
+            noc_id = self._noc_block.location.device.active_noc
         return self._noc_block.get_register_store(noc_id=noc_id, neo_id=self._neo_id)
 
     def _resolve_counter(self, block: PerfCounterBlockDescription, counter: int | str) -> int:
@@ -194,7 +195,7 @@ class TensixPerfCounters:
         self,
         block: PerfCounterBlockDescription,
         counter_id: int,
-        noc_id: int | None,
+        noc_id: NocId | None,
         safe_mode: bool | None,
     ) -> int:
         if counter_id >= 256:

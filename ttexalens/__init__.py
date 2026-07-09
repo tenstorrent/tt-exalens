@@ -37,7 +37,7 @@ from .perf_counters import (
     TensixPerfCounters,
 )
 from .coordinate import OnChipCoordinate
-from .context import Context
+from .context import Context, NocId, to_noc_id
 from .device import Device
 from .util import Verbosity
 from .exceptions import (
@@ -53,6 +53,8 @@ from .exceptions import (
 __all__ = [
     # context.py
     "Context",
+    "NocId",
+    "to_noc_id",
     # coordinate.py
     "OnChipCoordinate",
     # device.py

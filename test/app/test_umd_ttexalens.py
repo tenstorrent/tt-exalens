@@ -44,7 +44,7 @@ class TTExaLensOutputVerifier:
 
 
 class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
-    prompt_regex = r"^(gdb:[^ ]+ )?noc:\d+ device:\d+ loc:\d+-\d+ \(\d+,\d+\) > $"
+    prompt_regex = r"^(gdb:[^ ]+ )?(NOC0|NOC1|SYSTEM_NOC) device:\d+ loc:\d+-\d+ \(\d+,\d+\) > $"
 
     def __init__(self):
         self.server_temp_path = ""
@@ -110,8 +110,9 @@ class TTExaLensTestRunner:
         if not args is None:
             if not type(args) == list:
                 args = [args]
-        if os.getenv("TTEXALENS_TESTS_USE_NOC1", "0") == "1":
-            program_args.append("--use-noc1")
+        noc_id_env = os.getenv("TTEXALENS_TESTS_NOC_ID")
+        if noc_id_env is not None:
+            program_args += ["--noc-id", noc_id_env]
         os.environ["TT_LOGGER_LEVEL"] = _UMD_LOGGER_LEVEL_BY_VERBOSITY[util.Verbosity.get()]
         self.process = subprocess.Popen(
             program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
