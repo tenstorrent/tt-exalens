@@ -238,12 +238,14 @@ void bind_dwarf_die(nb::module_& m) {
              nb::sig("def get_array_element_type(self) -> DwarfDie | None"))
         .def(
             "find_child_by_name",
-            [](const DwarfDie& self, std::string_view name, std::optional<std::function<bool(const DwarfDiePtr&)>> filter) {
+            [](const DwarfDie& self, std::string_view name,
+               std::optional<std::function<bool(const DwarfDiePtr&)>> filter) {
                 return self.find_child_by_name(name, filter ? *filter : std::function<bool(const DwarfDiePtr&)>{});
             },
             nb::arg("name"), nb::arg("filter") = nb::none(), nb::rv_policy::reference_internal,
-            nb::sig("def find_child_by_name(self, name: str, filter: collections.abc.Callable[[DwarfDie], bool] | None = "
-                    "None) -> DwarfDie | None"))
+            nb::sig(
+                "def find_child_by_name(self, name: str, filter: collections.abc.Callable[[DwarfDie], bool] | None = "
+                "None) -> DwarfDie | None"))
         .def("get_die_from_attribute", &DwarfDie::get_die_from_attribute, nb::arg("attribute_tag"),
              nb::rv_policy::reference_internal,
              nb::sig("def get_die_from_attribute(self, attribute_tag: DwarfAttributeTag) -> DwarfDie | None"))

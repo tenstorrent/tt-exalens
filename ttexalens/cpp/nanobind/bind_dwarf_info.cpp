@@ -23,7 +23,8 @@ void bind_dwarf_info(nb::module_& m) {
         .def("find_file_line_by_address", &DwarfInfo::find_file_line_by_address, nb::arg("address"))
         .def(
             "get_die_by_name",
-            [](const DwarfInfo& self, std::string_view name, std::optional<std::function<bool(const DwarfDiePtr&)>> filter) {
+            [](const DwarfInfo& self, std::string_view name,
+               std::optional<std::function<bool(const DwarfDiePtr&)>> filter) {
                 return self.get_die_by_name(name, filter ? *filter : std::function<bool(const DwarfDiePtr&)>{});
             },
             nb::arg("name"), nb::arg("filter") = nb::none(), nb::rv_policy::reference_internal,
