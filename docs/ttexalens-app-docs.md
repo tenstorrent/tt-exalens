@@ -1275,7 +1275,7 @@ noc-loc     Optional. X-Y or R,C, or dram channel (e.g. ch3). Use interchangeabl
 
 ### Options
 
-- `-n` = **\<noc\>**: NOC to use for communication with the device. [0: NOC0, 1: NOC1, 2: SMN]
+- `-n` = **\<noc\>**: NOC to use for communication with the device. Accepts a number or name (case-insensitive): 0/NOC0, 1/NOC1, 2/SYSTEM_NOC.
 
 
 ### Examples
@@ -1402,7 +1402,7 @@ Displays NOC (Network on Chip) registers.
 
 ### Arguments
 
-- `noc-id`: Identifier for the NOC (e.g. 0, 1) [default: both noc0 and noc1]
+- `noc-id`: Identifier for the NOC, a number or name (case-insensitive): 0/NOC0, 1/NOC1 [default: both noc0 and noc1]
 - `reg-names`: Name of specific NOC register(s) to display, can be comma-separated
 - `reg-pattern`: Pattern in wildcard format for finding registers (mutually exclusive with <reg-names>)
 - `max-regs`: Limit --search output (default: 10, use --max "all" to print all matches)
@@ -2144,7 +2144,7 @@ Prints/writes to the specified register, at the specified location and device.
 - `--type` = **\<data-type\>**: Data type of the register. This affects print format. Options: [INT_VALUE, ADDRESS, MASK, FLAGS, TENSIX_DATA_FORMAT]. Default: INT_VALUE.
 - `--write` = **\<value\>**: Value to write to the register. If not given, register is dumped instead.
 - `--max` = **\<max-regs\>**: Maximum number of register names to print when searching or all for everything. Default: 10.
-- `-n` = **\<noc-id\>**: NOC ID. Optional. Default: 0.
+- `-n` = **\<noc-id\>**: NOC ID, a number or name (case-insensitive): 0/NOC0, 1/NOC1, 2/SYSTEM_NOC. Optional. Default: 0.
 
 
 ### Examples
