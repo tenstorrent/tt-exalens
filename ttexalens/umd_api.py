@@ -46,6 +46,16 @@ io_device_type: SIMULATION
 TLS_FOR_NOC_ID = threading.local()
 
 
+def _format_device_health(unhealthy_chips, health_errors: dict) -> str:
+    # An unhealthy chip may have no structured health error, so fall back to a placeholder.
+    parts = []
+    for chip_id in unhealthy_chips:
+        errors = health_errors.get(chip_id, [])
+        reason = ", ".join(type(error).__name__ for error in errors) if errors else "reason unavailable"
+        parts.append(f"chip {chip_id} ({reason})")
+    return "; ".join(parts)
+
+
 @Pyro5.api.expose
 class UmdApi:
     @staticmethod
@@ -128,6 +138,7 @@ class UmdApi:
             self.discovery_options.eth_fw_mismatch_action = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
             self.discovery_options.unexpected_routing_firmware_config = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
             self.discovery_options.eth_fw_heartbeat_failure = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
+            self.discovery_options.device_init_failure_action = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
             self.discovery_options.wait_on_ethernet_link_training = True  # TODO: Set to False.
             self.discovery_options.use_safe_api = True
 
@@ -136,6 +147,13 @@ class UmdApi:
             )
 
             if len(self.cluster_descriptor.get_all_chips()) == 0:
+                unhealthy_chips = self.cluster_descriptor.get_unhealthy_devices()
+                if unhealthy_chips:
+                    health_errors = self.cluster_descriptor.get_health_errors()
+                    raise RuntimeError(
+                        f"All {len(unhealthy_chips)} detected Tenstorrent device(s) failed to initialize and are "
+                        f"unhealthy: {_format_device_health(unhealthy_chips, health_errors)}"
+                    )
                 raise RuntimeError("No Tenstorrent devices were detected on this system.")
 
             # Setup used devices
@@ -176,6 +194,17 @@ class UmdApi:
                 assert wrapped_device.is_mmio_capable == self.cluster_descriptor.is_chip_mmio_capable(chip_id)
                 self.devices[chip_id] = wrapped_device
                 self.devices[unique_id] = wrapped_device
+
+            # Unhealthy devices are excluded from this session; warn which chips were dropped and why.
+            unhealthy_chips = self.cluster_descriptor.get_unhealthy_devices()
+            if unhealthy_chips:
+                health_errors = self.cluster_descriptor.get_health_errors()
+                healthy_count = len(self.cluster_descriptor.get_all_chips())
+                util.WARN(
+                    f"{len(unhealthy_chips)} of {len(unhealthy_chips) + healthy_count} Tenstorrent device(s) are "
+                    f"unhealthy and excluded from this session: "
+                    f"{_format_device_health(unhealthy_chips, health_errors)}."
+                )
             tt_umd.MmioTimeoutConfig.set_op_timeout(0.002)  # 2ms timeout for MMIO operations
 
     def _reinit_devices_after_sigbus(self):
