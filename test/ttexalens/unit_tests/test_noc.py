@@ -5,24 +5,24 @@
 import unittest
 from parameterized import parameterized_class
 from test.ttexalens.unit_tests.test_base import init_test_context
-from ttexalens import OnChipCoordinate, write_words_to_device
+from ttexalens import OnChipCoordinate, write_words_to_device, NocId
 from ttexalens.register_store import RegisterStore
 
 
 @parameterized_class(
     [
-        {"use_noc1": False, "noc_id": 0},
-        {"use_noc1": False, "noc_id": 1},
-        {"use_noc1": True, "noc_id": 0},
-        {"use_noc1": True, "noc_id": 1},
+        {"init_noc_id": NocId.NOC0, "noc_id": NocId.NOC0},
+        {"init_noc_id": NocId.NOC0, "noc_id": NocId.NOC1},
+        {"init_noc_id": NocId.NOC1, "noc_id": NocId.NOC0},
+        {"init_noc_id": NocId.NOC1, "noc_id": NocId.NOC1},
     ]
 )
 class TestNOC(unittest.TestCase):
-    use_noc1: bool
-    noc_id: int
+    init_noc_id: NocId
+    noc_id: NocId
 
     def setUp(self):
-        self.context = init_test_context(use_noc1=self.use_noc1)
+        self.context = init_test_context(noc_id=self.init_noc_id)
         self.device = self.context.devices[0]
         self.loc = OnChipCoordinate(1, 0, "logical", self.device, core_type="tensix")
         self.register_store = self.device.get_block(self.loc).get_register_store(self.noc_id)
@@ -38,15 +38,15 @@ class TestNOC(unittest.TestCase):
 
 @parameterized_class(
     [
-        {"use_noc1": False},
-        {"use_noc1": True},
+        {"init_noc_id": NocId.NOC0},
+        {"init_noc_id": NocId.NOC1},
     ]
 )
 class TestNOCLocations(unittest.TestCase):
-    use_noc1: bool
+    init_noc_id: NocId
 
     def setUp(self):
-        self.context = init_test_context(use_noc1=self.use_noc1)
+        self.context = init_test_context(noc_id=self.init_noc_id)
 
     @staticmethod
     def _read_noc_location(register_store: RegisterStore, register_name: str):
@@ -57,13 +57,10 @@ class TestNOCLocations(unittest.TestCase):
 
     def test_noc_locations(self):
         for device in self.context.devices.values():
-            # TODO (944): Remove this check once UMD bug is fixed.
-            if device.is_blackhole():
-                continue
             for block_type in device.block_types:
                 for block in device.get_blocks(block_type):
-                    noc0_register_store = block.get_register_store(noc_id=0)
-                    noc1_register_store = block.get_register_store(noc_id=1)
+                    noc0_register_store = block.get_register_store(noc_id=NocId.NOC0)
+                    noc1_register_store = block.get_register_store(noc_id=NocId.NOC1)
                     noc0_location = block.location.to("noc0")
                     noc0_id = TestNOCLocations._read_noc_location(noc0_register_store, "NOC_NODE_ID")
                     self.assertEqual(

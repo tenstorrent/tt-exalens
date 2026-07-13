@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from typing import Callable
+from ttexalens.context import NocId
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.register_store import (
     NocConfigurationRegisterDescription,
@@ -162,8 +163,8 @@ def get_niu_register_store_initialization(base_address: DeviceAddress) -> Regist
 
 
 default_niu_register_store_noc0_initialization = get_niu_register_store_initialization(
-    DeviceAddress(noc_address=0xFFB20000, noc_id=0)
+    DeviceAddress(noc_address=0xFFB20000, noc_id=NocId.NOC0)
 )
 default_niu_register_store_noc1_initialization = get_niu_register_store_initialization(
-    DeviceAddress(noc_address=0xFFB20000, noc_id=1)
+    DeviceAddress(noc_address=0xFFB20000, noc_id=NocId.NOC1)
 )

@@ -7,6 +7,7 @@ from __future__ import annotations
 from functools import cache, cached_property
 from typing import TYPE_CHECKING
 
+from ttexalens.context import NocId
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.quasar.functional_overlay_registers import (
@@ -42,7 +43,9 @@ def get_overlay_register_base_address(register_description: RegisterDescription)
     elif isinstance(register_description, DebugRegisterDescription):
         return DeviceAddress(noc_address=0x0300A000)
     elif isinstance(register_description, SmnRegisterDescription):
-        return DeviceAddress(noc_address=0x03010000, noc_id=1)  # These registers are only available through SMN
+        return DeviceAddress(
+            noc_address=0x03010000, noc_id=NocId.SYSTEM_NOC
+        )  # These registers are only available through SMN
     elif isinstance(register_description, NeoRegisterDescription):
         return DeviceAddress(noc_address=0x03020000)
     else:

@@ -35,7 +35,7 @@ Examples:
 import traceback
 from ttexalens import util as util
 from ttexalens.exceptions import TTException
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.device import Device
 from ttexalens.coordinate import VALID_COORDINATE_TYPES, OnChipCoordinate
 from ttexalens.uistate import UIState
@@ -151,7 +151,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     cell_contents_str.append(color_block(text, block_type))
                 elif ct == "noc0_id" or ct == "noc1_id" or ct == "noc0_logical_id" or ct == "noc1_logical_id":
                     try:
-                        noc_id = 0 if ct == "noc0_id" or ct == "noc0_logical_id" else 1
+                        noc_id = NocId.NOC0 if ct == "noc0_id" or ct == "noc0_logical_id" else NocId.NOC1
                         block = device.get_block(loc)
                         register_store = block.get_register_store(noc_id=noc_id)
                         data = register_store.read_register("NOC_ID_LOGICAL" if "logical" in ct else "NOC_NODE_ID")

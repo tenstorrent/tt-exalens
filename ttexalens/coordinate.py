@@ -47,7 +47,7 @@ from typing import TYPE_CHECKING, Any
 from ttexalens.exceptions import CoordinateTranslationError, TTException, UnknownCoordinateSystemError
 
 if TYPE_CHECKING:
-    from ttexalens.context import Context
+    from ttexalens.context import Context, NocId
     from ttexalens.device import Device
     from ttexalens.hardware.noc_block import NocBlock
 
@@ -316,26 +316,24 @@ class OnChipCoordinate:
         self,
         address: int,
         buffer: bytearray | memoryview,
-        noc_id: int | None = None,
-        use_4B_mode: bool | None = None,
+        noc_id: NocId | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
     ) -> None:
-        self.device.noc_read(self, address, buffer, noc_id, use_4B_mode, dma_threshold, safe_mode)
+        self.device.noc_read(self, address, buffer, noc_id, dma_threshold, safe_mode)
 
-    def noc_read32(self, address: int, noc_id: int | None = None, safe_mode: bool | None = None) -> int:
+    def noc_read32(self, address: int, noc_id: NocId | None = None, safe_mode: bool | None = None) -> int:
         return self.device.noc_read32(self, address, noc_id, safe_mode)
 
     def noc_write(
         self,
         address: int,
         data: bytes | bytearray | memoryview,
-        noc_id: int | None = None,
-        use_4B_mode: bool | None = None,
+        noc_id: NocId | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
     ):
-        self.device.noc_write(self, address, data, noc_id, use_4B_mode, dma_threshold, safe_mode)
+        self.device.noc_write(self, address, data, noc_id, dma_threshold, safe_mode)
 
-    def noc_write32(self, address: int, data: int, noc_id: int | None = None, safe_mode: bool | None = None):
+    def noc_write32(self, address: int, data: int, noc_id: NocId | None = None, safe_mode: bool | None = None):
         self.device.noc_write32(self, address, data, noc_id, safe_mode)

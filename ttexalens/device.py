@@ -12,7 +12,7 @@ import tt_umd
 from typing import Callable, Iterable, Sequence, TypeVar
 
 from tabulate import tabulate
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.exceptions import CoordinateTranslationError, UnsafeAccessException
 from ttexalens.hardware.arc_block import ArcBlock
@@ -93,6 +93,9 @@ class Device:
     NOC_0_X_TO_DIE_X: list[int] = []
     NOC_0_Y_TO_DIE_Y: list[int] = []
 
+    # NOCs available on this device, in failover order; defined by each architecture-specific device class
+    available_nocs: list[NocId]
+
     # NOC reg type
     class RegType:
         Cmd = 0
@@ -152,57 +155,45 @@ class Device:
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 
-        # NOC queue used for failover, initialized based on context preference
-        # When an operation is attempted, the first NOC in the list is used. If it fails, it is moved to the back of the list
-        # and the next NOC is tried. When all NOCs are exhausted, an exception is raised.
-        self._noc_to_use: list[int] = [1, 0] if context.use_noc1 else [0, 1]
+        self.active_noc: NocId = context.noc_id
+
         self.on_noc_switch: Callable[[], None] | None = None  # callback that is called when NOC is switched
 
-    @property
-    def active_noc(self) -> int:
-        return self._noc_to_use[0]
-
-    def switch_noc(self, noc_id: int):
-        assert noc_id in self._noc_to_use, f"NOC{noc_id} is not in the known NOC list {self._noc_to_use}"
-        noc_to_use_copy = self._noc_to_use.copy()
-        noc_to_use_copy.remove(noc_id)
-        noc_to_use_copy.insert(0, noc_id)
-        self._noc_to_use = noc_to_use_copy
+    def switch_noc(self, noc_id: NocId):
+        assert noc_id in self.available_nocs, f"{noc_id.name} is not available on this device {self.available_nocs}"
+        self.active_noc = noc_id
         if self.on_noc_switch is not None:
             self.on_noc_switch()
 
-    def _with_noc_failover(self, noc_operation: Callable[[int], T], noc_id: int | None = None) -> T:
+    def _with_noc_failover(self, noc_operation: Callable[[NocId], T], noc_id: NocId | None = None) -> T:
         if noc_id is not None or not self._context.noc_failover:
-            selected_noc = noc_id if noc_id is not None else self._noc_to_use[0]
+            selected_noc = noc_id if noc_id is not None else self.active_noc
             return noc_operation(selected_noc)
 
-        noc_queue = self._noc_to_use  # reference, not a copy
-        first_used = noc_queue[0]
-        selected_noc = first_used
+        start_noc = self.active_noc
+        start_index = self.available_nocs.index(start_noc)
+        num_nocs = len(self.available_nocs)
 
+        offset = 0
         while True:
+            current_noc = self.available_nocs[(start_index + offset) % num_nocs]
             try:
-                selected_noc = noc_queue[0]
-                result = noc_operation(selected_noc)
-                if selected_noc != first_used:
-                    self._noc_to_use = noc_queue
+                result = noc_operation(current_noc)
+                if current_noc != start_noc:
+                    self.active_noc = current_noc
                     if self.on_noc_switch:
                         self.on_noc_switch()
                 return result
             except TimeoutDeviceRegisterError as e:
-                if selected_noc == first_used:
-                    noc_queue = self._noc_to_use.copy()
-
-                failed_noc = noc_queue.pop(0)
-                noc_queue.append(failed_noc)
-
-                if noc_queue[0] == first_used:
+                next_noc = self.available_nocs[(start_index + offset + 1) % num_nocs]
+                if next_noc == start_noc:
                     util.ERROR(f"Device {self.id}: All NOCs hung. Raising exception: {e}")
                     raise  # Exhausted all NOCs, raise Timeout
 
                 util.WARN(
-                    f"Device {self.id}: NOC{failed_noc} hung, switching over to NOC{noc_queue[0]}: Exception: {e}"
+                    f"Device {self.id}: {current_noc.name} hung, switching over to {next_noc.name}: Exception: {e}"
                 )
+                offset += 1
 
     @property
     def board_type(self) -> tt_umd.BoardType:
@@ -220,7 +211,7 @@ class Device:
 
     @cached_property
     def firmware_version(self):
-        def noc_operation(noc_id: int) -> util.FirmwareVersion:
+        def noc_operation(noc_id: NocId) -> util.FirmwareVersion:
             fw = self._umd_device.get_firmware_version(noc_id)
             return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
 
@@ -293,15 +284,12 @@ class Device:
         location: OnChipCoordinate,
         address: int,
         buffer: bytearray | memoryview,
-        noc_id: int | None = None,
-        use_4B_mode: bool | None = None,
+        noc_id: NocId | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
     ) -> None:
         noc_x, noc_y = location._noc0_coord
 
-        if use_4B_mode is None:
-            use_4B_mode = self._context.use_4B_mode
         if dma_threshold is None:
             dma_threshold = self._context.dma_read_threshold
         if safe_mode is None:
@@ -310,13 +298,13 @@ class Device:
         if safe_mode:
             self._validate_noc_access_is_safe(location, address, len(buffer), is_write=False)
 
-        def noc_operation(noc_id: int) -> None:
-            self._umd_device.noc_read(noc_id, noc_x, noc_y, address, buffer, use_4B_mode, dma_threshold)
+        def noc_operation(noc_id: NocId) -> None:
+            self._umd_device.noc_read(noc_id, noc_x, noc_y, address, buffer, dma_threshold)
 
         self._with_noc_failover(noc_operation, noc_id)
 
     def noc_read32(
-        self, location: OnChipCoordinate, address: int, noc_id: int | None = None, safe_mode: bool | None = None
+        self, location: OnChipCoordinate, address: int, noc_id: NocId | None = None, safe_mode: bool | None = None
     ) -> int:
         buffer = bytearray(4)
         self.noc_read(location, address, buffer, noc_id, True, safe_mode=safe_mode)
@@ -327,15 +315,12 @@ class Device:
         location: OnChipCoordinate,
         address: int,
         data: bytes | bytearray | memoryview,
-        noc_id: int | None = None,
-        use_4B_mode: bool | None = None,
+        noc_id: NocId | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
     ):
         noc_x, noc_y = location._noc0_coord
 
-        if use_4B_mode is None:
-            use_4B_mode = self._context.use_4B_mode
         if dma_threshold is None:
             dma_threshold = self._context.dma_write_threshold
         if safe_mode is None:
@@ -344,8 +329,8 @@ class Device:
         if safe_mode:
             self._validate_noc_access_is_safe(location, address, len(data), is_write=True)
 
-        def noc_operation(noc_id: int) -> None:
-            self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, use_4B_mode, dma_threshold)
+        def noc_operation(noc_id: NocId) -> None:
+            self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, dma_threshold)
 
         self._with_noc_failover(noc_operation, noc_id)
 
@@ -354,7 +339,7 @@ class Device:
         location: OnChipCoordinate,
         address: int,
         data: int,
-        noc_id: int | None = None,
+        noc_id: NocId | None = None,
         safe_mode: bool | None = None,
     ):
         self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True, safe_mode=safe_mode)
@@ -367,18 +352,30 @@ class Device:
 
     def arc_msg(
         self,
-        noc_id: int,
+        noc_id: NocId | None,
         msg_code: int,
         wait_for_done: bool,
         args: Sequence[int],
         timeout: datetime.timedelta | float,
     ):
+        if noc_id is None:
+            noc_id = self.active_noc
         return self._umd_device.arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
 
-    def read_arc_telemetry_entry(self, noc_id: int | None, telemetry_tag: int) -> int:
-        def noc_operation(noc_id: int) -> int:
+    def read_arc_telemetry_entry(self, noc_id: NocId | None, telemetry_tag: int) -> int:
+        def noc_operation(noc_id: NocId) -> int:
+            # TODO #1102: ARC telemetry must be read over the NOC selected at initialization
+            init_noc_id = self._context.init_noc_id
+            if noc_id != init_noc_id:
+                util.WARN(
+                    f"Due to #1102, reading arc telemetry entries only works with the NOC selected at "
+                    f"initialization. Using {init_noc_id} instead of {noc_id}."
+                )
+                noc_id = init_noc_id
             return self._umd_device.read_arc_telemetry_entry(noc_id, telemetry_tag)
 
+        if noc_id is None:
+            noc_id = self.active_noc
         return self._with_noc_failover(noc_operation, noc_id)
 
     def get_remote_transfer_eth_core(self) -> tuple[int, int] | None:

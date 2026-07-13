@@ -10,7 +10,7 @@ Usage:
 
 
 Arguments:
-    noc-id            Identifier for the NOC (e.g. 0, 1) [default: both noc0 and noc1]
+    noc-id            Identifier for the NOC, a number or name (case-insensitive): 0/NOC0, 1/NOC1 [default: both noc0 and noc1]
     reg-names         Name of specific NOC register(s) to display, can be comma-separated
     reg-pattern       Pattern in wildcard format for finding registers (mutually exclusive with <reg-names>)
     max-regs          Limit --search output (default: 10, use --max "all" to print all matches)
@@ -39,7 +39,7 @@ Examples:
 
 from ttexalens import util
 from ttexalens.util import search
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId, to_noc_id
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.register_store import (
@@ -107,7 +107,7 @@ def read_register_with_address(register_store: RegisterStore, reg_name: str) -> 
 
 
 def get_noc_status_registers(
-    loc: OnChipCoordinate, device: Device, noc_id: int
+    loc: OnChipCoordinate, device: Device, noc_id: NocId
 ) -> dict[str, list[tuple[str, int, int]]]:
     """
     Get all NOC status registers organized by groups.
@@ -115,7 +115,7 @@ def get_noc_status_registers(
     Args:
         loc: On-chip coordinate
         device: Device object
-        noc_id: NOC identifier (0 or 1)
+        noc_id: NOC identifier (NocId.NOC0 or NocId.NOC1)
 
     Returns:
         Dictionary of register groups, each containing list of (name, address, value) tuples
@@ -163,18 +163,18 @@ def get_all_noc_registers(loc: OnChipCoordinate, device: Device) -> dict[str, li
     Returns:
         Dictionary of all register values for both NOCs
     """
-    register_store_noc0 = device.get_block(loc).get_register_store(0)
+    register_store_noc0 = device.get_block(loc).get_register_store(NocId.NOC0)
     register_names = get_noc_register_names(register_store_noc0)  # We will get the same names for both NOCs
 
     registers = {}
-    registers["Noc0 Registers"] = get_noc_registers(device, loc, 0, register_names)
-    registers["Noc1 Registers"] = get_noc_registers(device, loc, 1, register_names)
+    registers["Noc0 Registers"] = get_noc_registers(device, loc, NocId.NOC0, register_names)
+    registers["Noc1 Registers"] = get_noc_registers(device, loc, NocId.NOC1, register_names)
 
     return registers
 
 
 def get_noc_registers(
-    device: Device, loc: OnChipCoordinate, noc_id: int, register_names: list[str]
+    device: Device, loc: OnChipCoordinate, noc_id: NocId, register_names: list[str]
 ) -> list[tuple[str, int, int]]:
     """
     Get NOC register values with their addresses.
@@ -182,7 +182,7 @@ def get_noc_registers(
     Args:
         device: Device object
         loc: On-chip coordinate
-        noc_id: NOC identifier (0 or 1)
+        noc_id: NOC identifier (NocId.NOC0 or NocId.NOC1)
         register_names: List of register names to read
 
     Returns:
@@ -199,7 +199,7 @@ def get_noc_registers(
 # NOC Register Display Functions
 ###############################################################################
 def display_noc_status_registers(
-    loc: OnChipCoordinate, device: Device, noc_id: int, simple_print: bool = False
+    loc: OnChipCoordinate, device: Device, noc_id: NocId, simple_print: bool = False
 ) -> None:
     """
     Display status registers for a specific NOC.
@@ -207,10 +207,10 @@ def display_noc_status_registers(
     Args:
         loc: On-chip coordinate
         device: Device object
-        noc_id: NOC identifier (0 or 1)
+        noc_id: NOC identifier (NocId.NOC0 or NocId.NOC1)
         simple_print: Whether to use simplified output format
     """
-    formatter.print_header(f"NOC{noc_id} Status Registers", "bold")
+    formatter.print_header(f"{noc_id.name} Status Registers", "bold")
     noc_registers = get_noc_status_registers(loc, device, noc_id)
     grouping = [
         ["Transaction Counters (Sent)", "Transaction Counters (Received)"],
@@ -249,12 +249,12 @@ def display_all_noc_status_registers(loc: OnChipCoordinate, device: Device, simp
         device: Device object
         simple_print: Whether to use simplified output format
     """
-    display_noc_status_registers(loc, device, 0, simple_print)
-    display_noc_status_registers(loc, device, 1, simple_print)
+    display_noc_status_registers(loc, device, NocId.NOC0, simple_print)
+    display_noc_status_registers(loc, device, NocId.NOC1, simple_print)
 
 
 def display_specific_noc_registers(
-    loc: OnChipCoordinate, device: Device, reg_names: list[str], noc_id: int, simple_print: bool = False
+    loc: OnChipCoordinate, device: Device, reg_names: list[str], noc_id: NocId, simple_print: bool = False
 ) -> None:
     """
     Display one or more specific NOC registers by name.
@@ -263,7 +263,7 @@ def display_specific_noc_registers(
         loc: On-chip coordinate
         device: Device object
         reg_names: List of register names to display
-        noc_id: NOC identifier (0 or 1)
+        noc_id: NOC identifier (NocId.NOC0 or NocId.NOC1)
         simple_print: Whether to use simplified output format
     """
     # Get the list of valid register names
@@ -286,15 +286,15 @@ def display_specific_noc_registers(
 
     # Report any invalid register names
     if invalid_registers:
-        util.ERROR(f"The following register names are invalid for NOC{noc_id}: {', '.join(invalid_registers)}")
+        util.ERROR(f"The following register names are invalid for {noc_id.name}: {', '.join(invalid_registers)}")
 
     # Only display if we found at least one valid register
     if valid_registers:
-        register_data = {f"NOC{noc_id} Registers": get_noc_registers(device, loc, noc_id, valid_registers)}
-        display_grouped_data(register_data, [[f"NOC{noc_id} Registers"]], simple_print)
+        register_data = {f"{noc_id.name} Registers": get_noc_registers(device, loc, noc_id, valid_registers)}
+        display_grouped_data(register_data, [[f"{noc_id.name} Registers"]], simple_print)
     elif not invalid_registers:
         # If no registers were found but none were invalid, it's likely an empty list
-        util.ERROR(f"No register names provided for NOC{noc_id}")
+        util.ERROR(f"No register names provided for {noc_id.name}")
 
 
 def display_grouped_data(
@@ -347,16 +347,15 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
     # Parse and validate NOC ID
     if dopt.args["--noc"]:
         try:
-            noc_id = int(dopt.args["<noc-id>"])
-            if noc_id not in (0, 1):
-                util.ERROR(f"Invalid NOC identifier: {noc_id}. Must be 0 or 1.")
-                return []
-            noc_ids = [noc_id]
+            noc_id = to_noc_id(dopt.args["<noc-id>"])
         except ValueError:
-            util.ERROR(f"Invalid NOC identifier: {dopt.args['<noc-id>']}. Must be 0 or 1.")
+            noc_id = None
+        if noc_id not in (NocId.NOC0, NocId.NOC1):
+            util.ERROR(f"Invalid NOC identifier: {dopt.args['<noc-id>']}. Must be 0 (NOC0) or 1 (NOC1).")
             return []
+        noc_ids = [noc_id]
     else:
-        noc_ids = [0, 1]
+        noc_ids = [NocId.NOC0, NocId.NOC1]
 
     simple_print = dopt.args["--simple"]
 
@@ -381,7 +380,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
                 reg_names = []
                 # Populate reg_names from either <reg-names> or <reg-pattern>, depending on the presence of --search
                 if dopt.args["--search"]:
-                    noc0_reg_store = device.get_block(loc).get_register_store(0)
+                    noc0_reg_store = device.get_block(loc).get_register_store(NocId.NOC0)
                     all_reg_names = get_noc_register_names(noc0_reg_store)
                     max = dopt.args["<max-regs>"] if dopt.args["--max"] else 10
                     reg_names = search(all_reg_names, dopt.args["<reg-pattern>"], max)
@@ -395,11 +394,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState) -> list[dict[str, st
 
                 if dopt.args["--noc"]:
                     # If a specific NOC ID was specified, only display for that one
-                    print(f"Displaying registers for NOC{noc_ids[0]}: {', '.join(reg_names)}")
+                    print(f"Displaying registers for {noc_ids[0].name}: {', '.join(reg_names)}")
                     display_specific_noc_registers(loc, device, reg_names, noc_ids[0], simple_print)
                 else:
                     # Otherwise, display for both NOCs
-                    for noc_id in [0, 1]:
+                    for noc_id in [NocId.NOC0, NocId.NOC1]:
                         display_specific_noc_registers(loc, device, reg_names, noc_id, simple_print)
 
     return []

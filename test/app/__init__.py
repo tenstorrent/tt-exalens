@@ -2,6 +2,10 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+import os
 from ttexalens import Verbosity
 
-Verbosity.set(Verbosity.ERROR)
+try:
+    Verbosity.set(Verbosity[os.getenv("LOGGER_LEVEL", "ERROR").upper()])
+except KeyError:
+    Verbosity.set(Verbosity.ERROR)

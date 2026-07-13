@@ -9,7 +9,6 @@ from typing import Callable
 
 from ttexalens import util
 from ttexalens._lib_helpers import (
-    check_4B_mode,
     check_context,
     check_noc_id,
     convert_coordinate,
@@ -18,7 +17,7 @@ from ttexalens._lib_helpers import (
     validate_device_id,
 )
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.elf import read_elf, CallstackEntry, ElfFile, ElfVariable, get_callstack, get_frame_callstack
 from ttexalens.exceptions import TTException
 from ttexalens.memory_access import create_memory_access
@@ -30,7 +29,7 @@ def read_word_from_device(
     addr: int,
     device_id: int = 0,
     context: Context | None = None,
-    noc_id: int | None = None,
+    noc_id: NocId | int | None = None,
     safe_mode: bool | None = None,
 ) -> int:
     """
@@ -41,8 +40,7 @@ def read_word_from_device(
         addr (int): Memory address to read from.
         device_id (int, default 0):	ID number of device to read from.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-        noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
-        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
+        noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
         safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
     Returns:
@@ -63,8 +61,7 @@ def read_words_from_device(
     device_id: int = 0,
     word_count: int = 1,
     context: Context | None = None,
-    noc_id: int | None = None,
-    use_4B_mode: bool | None = None,
+    noc_id: NocId | int | None = None,
     safe_mode: bool | None = None,
 ) -> list[int]:
     """
@@ -76,8 +73,7 @@ def read_words_from_device(
         device_id (int, default 0):	ID number of device to read from.
         word_count (int, default 1): Number of 4-byte words to read.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-        noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
-        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
+        noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
         safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
     Returns:
@@ -87,12 +83,11 @@ def read_words_from_device(
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, coordinate.context)
-    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
     if word_count <= 0:
         raise TTException("word_count must be greater than 0.")
 
     buffer = bytearray(4 * word_count)
-    coordinate.noc_read(addr, buffer, noc_id, use_4B_mode, safe_mode=safe_mode)
+    coordinate.noc_read(addr, buffer, noc_id, safe_mode=safe_mode)
     data = list(struct.unpack(f"<{word_count}I", buffer))
     return data
 
@@ -104,8 +99,7 @@ def read_from_device(
     device_id: int = 0,
     num_bytes: int = 4,
     context: Context | None = None,
-    noc_id: int | None = None,
-    use_4B_mode: bool | None = None,
+    noc_id: NocId | int | None = None,
     safe_mode: bool | None = None,
 ) -> bytes:
     """
@@ -117,7 +111,7 @@ def read_from_device(
         device_id (int, default 0): ID number of device to read from.
         num_bytes (int, default 4): Number of bytes to read.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-        noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
+        noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
         safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
 
     Returns:
@@ -127,12 +121,11 @@ def read_from_device(
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, coordinate.context)
-    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
     if num_bytes <= 0:
         raise TTException("num_bytes must be greater than 0.")
 
     buffer = bytearray(num_bytes)
-    coordinate.noc_read(addr, buffer, noc_id, use_4B_mode, safe_mode=safe_mode)
+    coordinate.noc_read(addr, buffer, noc_id, safe_mode=safe_mode)
     return bytes(buffer)
 
 
@@ -143,8 +136,7 @@ def write_words_to_device(
     data: int | list[int],
     device_id: int = 0,
     context: Context | None = None,
-    noc_id: int | None = None,
-    use_4B_mode: bool | None = None,
+    noc_id: NocId | int | None = None,
     safe_mode: bool | None = None,
 ):
     """
@@ -156,21 +148,19 @@ def write_words_to_device(
         data (int | list[int]): 4-byte integer word to be written, or a list of them.
         device_id (int, default 0): ID number of device to write to.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
-        noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
-        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
+        noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
         safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
     """
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, coordinate.context)
-    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
 
     if isinstance(data, int):
         coordinate.noc_write32(addr, data, noc_id, safe_mode)
     else:
         byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-        coordinate.noc_write(addr, byte_data, noc_id, use_4B_mode, safe_mode=safe_mode)
+        coordinate.noc_write(addr, byte_data, noc_id, safe_mode=safe_mode)
 
 
 @trace_api
@@ -180,8 +170,7 @@ def write_to_device(
     data: list[int] | bytes,
     device_id: int = 0,
     context: Context | None = None,
-    noc_id: int | None = None,
-    use_4B_mode: bool | None = None,
+    noc_id: NocId | int | None = None,
     safe_mode: bool | None = None,
 ):
     """
@@ -193,15 +182,13 @@ def write_to_device(
         data (list[int] | bytes): Data to be written. Lists are converted to bytes before writing, each element a byte. Elements must be between 0 and 255.
         device_id (int, default 0):	ID number of device to write to.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-        noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
-        use_4B_mode (bool, optional): Whether to use 4B mode for communication with the device. If None, it will be set based on context initialization.
+        noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
         safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
     """
 
     coordinate = convert_coordinate(location, device_id, context)
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, coordinate.context)
-    use_4B_mode = check_4B_mode(use_4B_mode, coordinate.context)
 
     if isinstance(data, list):
         data = bytes(data)
@@ -209,7 +196,7 @@ def write_to_device(
     if len(data) == 0:
         raise TTException("Data to write must not be empty.")
 
-    coordinate.noc_write(addr, data, noc_id, use_4B_mode, safe_mode=safe_mode)
+    coordinate.noc_write(addr, data, noc_id, safe_mode=safe_mode)
 
 
 @trace_api
@@ -349,7 +336,7 @@ def arc_msg(
     args: list[int],
     timeout: datetime.timedelta,
     context: Context | None = None,
-    noc_id: int | None = None,
+    noc_id: NocId | int | None = None,
 ) -> list[int]:
     """
     Sends an ARC message to the device.
@@ -361,14 +348,14 @@ def arc_msg(
         args (list[int]): Arguments to the message.
         timeout (datetime.timedelta): Timeout.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-        noc_id (int, optional): NOC ID to use. If None, it will be set based on context initialization.
+        noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
         list[int]: return code, reply0, reply1.
     """
     context = check_context(context)
-    noc_id = check_noc_id(noc_id, context)
     device = validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
     if timeout < datetime.timedelta(0):
         raise TTException("Timeout must be greater than or equal to 0.")
 
@@ -377,7 +364,7 @@ def arc_msg(
 
 @trace_api
 def read_arc_telemetry_entry(
-    device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: int | None = None
+    device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: NocId | int | None = None
 ) -> int:
     """
     Reads an ARC telemetry entry from the device.
@@ -386,6 +373,7 @@ def read_arc_telemetry_entry(
         device_id (int): ID number of device to read telemetry from.
         telemetry_tag (int | str): Name or ID of the tag to read.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+        noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
 
     Returns:
         int: Value of the telemetry entry.
@@ -394,6 +382,7 @@ def read_arc_telemetry_entry(
 
     context = check_context(context)
     device = validate_device_id(device_id, context)
+    noc_id = check_noc_id(noc_id, context)
     arc = device.arc_block
 
     if device.firmware_version < CUTOFF_FIRMWARE_VERSION:
@@ -417,7 +406,7 @@ def read_arc_telemetry_entry(
 def read_register(
     location: str | OnChipCoordinate,
     register,
-    noc_id: int = 0,
+    noc_id: NocId | int | None = None,
     neo_id: int | None = None,
     device_id: int = 0,
     context: Context | None = None,
@@ -430,7 +419,7 @@ def read_register(
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
         register (str | RegisterDescription): Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
                                               ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
-        noc_id (int, default 0): NOC ID to use.
+        noc_id (NocId, int, optional): NOC ID to use. If None, the architecture default is used (NOC1 on Wormhole/Blackhole, NOC0 on Quasar).
         neo_id (int | None, optional): NEO ID of the register store.
         device_id (int, default 0):	ID number of device to read from.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
@@ -442,6 +431,7 @@ def read_register(
     from ttexalens.register_store import RegisterDescription
 
     coordinate = convert_coordinate(location, device_id, context)
+    noc_id = check_noc_id(noc_id, coordinate.context)
 
     if not isinstance(register, RegisterDescription) and not isinstance(register, str):
         raise TTException(
@@ -456,7 +446,7 @@ def write_register(
     location: str | OnChipCoordinate,
     register,
     value: int,
-    noc_id: int = 0,
+    noc_id: NocId | int | None = None,
     neo_id: int | None = None,
     device_id: int = 0,
     context: Context | None = None,
@@ -470,7 +460,7 @@ def write_register(
         register (str | TensixRegisterDescription): Configuration or debug register to read from (name or instance of ConfigurationRegisterDescription or DebugRegisterDescription).
                                                     ConfigurationRegisterDescription(id, mask, shift), DebugRegisterDescription(addr).
         value (int): Value to write to the register.
-        noc_id (int, default 0): NOC ID to use.
+        noc_id (NocId, int, optional): NOC ID to use. If None, the architecture default is used (NOC1 on Wormhole/Blackhole, NOC0 on Quasar).
         neo_id (int | None, optional): NEO ID of the register store.
         device_id (int, default 0):	ID number of device to read from.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
@@ -480,6 +470,7 @@ def write_register(
     from ttexalens.register_store import RegisterDescription
 
     coordinate = convert_coordinate(location, device_id, context)
+    noc_id = check_noc_id(noc_id, coordinate.context)
 
     if not isinstance(register, RegisterDescription) and not isinstance(register, str):
         raise TTException(

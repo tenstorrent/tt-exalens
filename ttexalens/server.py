@@ -179,6 +179,7 @@ UMD_SERIALIZABLE_TYPES = {
     tt_umd.FirmwareBundleVersion,
     tt_umd.TelemetryTag,
     tt_umd.DramTrainingStatus,
+    tt_umd.NocId,
 }
 UMD_SERIALIZABLE_TYPES_NAMES: dict[str, type] = {f"{t.__module__}.{t.__name__}": t for t in UMD_SERIALIZABLE_TYPES}
 
@@ -275,15 +276,14 @@ class RemoteUmdDevice:
 
     def noc_read(
         self,
-        noc_id: int,
+        noc_id: tt_umd.NocId,
         noc0_x: int,
         noc0_y: int,
         address: int,
         buffer: bytearray | memoryview,
-        use_4B_mode: bool,
         dma_threshold: int,
     ) -> None:
-        data = self._proxy.noc_read_bytes(noc_id, noc0_x, noc0_y, address, len(buffer), use_4B_mode, dma_threshold)
+        data = self._proxy.noc_read_bytes(noc_id, noc0_x, noc0_y, address, len(buffer), dma_threshold)
         # Pyro5/serpent returns bytes either as real bytes or as a base64-encoded dict.
         buffer[:] = serpent.tobytes(data) if isinstance(data, dict) else data
 

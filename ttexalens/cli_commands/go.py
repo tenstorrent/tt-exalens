@@ -3,27 +3,25 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-    go [-m <mode>] [-n <noc>] [ -d <device> ] [ -l <noc-loc> ]
-    go <noc-loc> [-m <mode>] [-n <noc>] [ -d <device> ]
+    go [-n <noc>] [ -d <device> ] [ -l <noc-loc> ]
+    go <noc-loc> [-n <noc>] [ -d <device> ]
 
 Description:
-    Sets the current device/location/noc/4B mode.
-
+    Sets the current device/location/noc.
 Arguments:
     noc-loc     Optional. X-Y or R,C, or dram channel (e.g. ch3). Use interchangeably with -l <loc>.
 
 Options:
-    -m <mode>    Use 4B mode for communication with the device. [0: False, 1: True]
-    -n <noc>     Use NOC1 or NOC0 for communication with the device. [0: NOC0, 1: NOC1]
+    -n <noc>     NOC to use for communication with the device. Accepts a number or name (case-insensitive): 0/NOC0, 1/NOC1, 2/SYSTEM_NOC.
 
 Examples:
-    go -m 1 -n 1 -d 0 -l 0,0
+    go -n 1 -d 0 -l 0,0
 """
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 import ttexalens.util as util
 from ttexalens.uistate import UIState
-from ttexalens.context import Context
+from ttexalens.context import Context, to_noc_id
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
@@ -41,18 +39,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     noc_loc_str: str | None = args["<noc-loc>"]
 
     if args["-n"] is not None:
-        noc = int(args["-n"])
-        if noc not in [0, 1]:
-            util.ERROR("NOC must be 0 or 1")
+        try:
+            ui_state.context.noc_id = to_noc_id(args["-n"])
+        except ValueError as e:
+            util.ERROR(str(e))
             return
-        ui_state.context.use_noc1 = noc == 1
 
-    if args["-m"] is not None:
-        use_4B_mode = int(args["-m"])
-        if use_4B_mode not in [0, 1]:
-            util.ERROR("4B mode must be 0 or 1")
-            return
-        ui_state.context.use_4B_mode = True if use_4B_mode == 1 else False
     device: Device = next(dopt.for_each(CommonCommandOptions.Device, context, ui_state))
     ui_state.current_device_id = device.id
 

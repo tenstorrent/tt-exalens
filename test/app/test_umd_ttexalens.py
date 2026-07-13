@@ -10,6 +10,20 @@ import unittest
 import subprocess
 import re
 
+from ttexalens import util
+
+_ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
+
+_UMD_LOGGER_LEVEL_BY_VERBOSITY = {
+    util.Verbosity.NONE: "off",
+    util.Verbosity.ERROR: "error",
+    util.Verbosity.WARN: "warning",
+    util.Verbosity.INFO: "info",
+    util.Verbosity.VERBOSE: "info",
+    util.Verbosity.DEBUG: "debug",
+    util.Verbosity.TRACE: "trace",
+}
+
 
 class TTExaLensOutputVerifier:
     def __init__(self):
@@ -30,7 +44,7 @@ class TTExaLensOutputVerifier:
 
 
 class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
-    prompt_regex = r"^(gdb:[^ ]+ )?([[]4B MODE[\]] )?noc:\d+ device:\d+ loc:\d+-\d+ \(\d+,\d+\) > $"
+    prompt_regex = r"^(gdb:[^ ]+ )?(NOC0|NOC1|SYSTEM_NOC) device:\d+ loc:\d+-\d+ \(\d+,\d+\) > $"
 
     def __init__(self):
         self.server_temp_path = ""
@@ -47,6 +61,8 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
             r"Opened device: id=\d+, arch=\w+, has_mmio=\w+, harvesting=",
             r".*ttSiliconDevice::init_hugepage:.*",
             r"Loading yaml file: '([^']*\.yaml)'",
+            r"\(\d+ bytes loaded in [\d.]+s\)",
+            r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+ \| \w+\s*\|\s*\w+ \| .*?\(\w[\w./]*:\d+\)",
         ]
         tester.assertGreaterEqual(len(lines), len(test_regex))
 
@@ -57,7 +73,7 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
             # Check if the line matches the current test regex
             # Last test regex is a special case, as there may be multiple lines that match it
             # depending on number of devices
-            if re.search(test_regex[id], line):
+            if num_test_regex > 0 and re.search(test_regex[id], line):
                 if id < num_test_regex - 1:
                     id += 1
                 continue
@@ -67,7 +83,8 @@ class UmdTTExaLensOutputVerifier(TTExaLensOutputVerifier):
                 continue
 
             # Report an unexpected line
-            tester.fail(f"Unexpected line: {line}, expected {test_regex[id]}")
+            expected = test_regex[id] if num_test_regex > 0 else "<no expected lines>"
+            tester.fail(f"Unexpected line: {line}, expected {expected}")
 
 
 class TTExaLensTestRunner:
@@ -93,8 +110,10 @@ class TTExaLensTestRunner:
         if not args is None:
             if not type(args) == list:
                 args = [args]
-        if os.getenv("TTEXALENS_TESTS_USE_NOC1", "0") == "1":
-            program_args.append("--use-noc1")
+        noc_id_env = os.getenv("TTEXALENS_TESTS_NOC_ID")
+        if noc_id_env is not None:
+            program_args += ["--noc-id", noc_id_env]
+        os.environ["TT_LOGGER_LEVEL"] = _UMD_LOGGER_LEVEL_BY_VERBOSITY[util.Verbosity.get()]
         self.process = subprocess.Popen(
             program_args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
         )
@@ -122,6 +141,8 @@ class TTExaLensTestRunner:
             line = line[:-1]
         elif not line:
             return None
+        # Strip ANSI color escapes
+        line = _ANSI_ESCAPE_RE.sub("", line).rstrip("\r")
         print(line)
         return line
 
