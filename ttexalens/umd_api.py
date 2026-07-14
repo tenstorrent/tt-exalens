@@ -72,6 +72,7 @@ class UmdApi:
 
         self.devices: dict[int, UmdDevice] = {}
         self.reset_lock = threading.Lock()
+        self.simulation_directory = simulation_directory
 
         # Respect UMD's existing environment variable for logging level.
         # If it's not set, set it based on ttexalens' verbosity level.
