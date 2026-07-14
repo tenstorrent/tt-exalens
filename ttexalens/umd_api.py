@@ -72,7 +72,7 @@ class UmdApi:
 
         self.devices: dict[int, UmdDevice] = {}
         self.reset_lock = threading.Lock()
-        self.simulation_directory = simulation_directory
+        self._simulation_directory = simulation_directory
 
         # Respect UMD's existing environment variable for logging level.
         # If it's not set, set it based on ttexalens' verbosity level.
@@ -174,6 +174,10 @@ class UmdApi:
                 self.devices[chip_id] = wrapped_device
                 self.devices[unique_id] = wrapped_device
             tt_umd.MmioTimeoutConfig.set_op_timeout(0.002)  # 2ms timeout for MMIO operations
+
+    @property
+    def simulation_directory(self) -> str | None:
+        return self._simulation_directory
 
     def _reinit_devices_after_sigbus(self):
         with self.reset_lock:
