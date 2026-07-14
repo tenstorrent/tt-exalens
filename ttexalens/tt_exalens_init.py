@@ -79,6 +79,11 @@ def load_context(
     safe_mode: bool = True,
 ) -> Context:
     """Load the TTExaLens context object with specified parameters."""
+
+    # Since Quasar is only available through simulation as workaround if we are using simulator we switch to NOC0
+    if umd_api.simulation_directory is not None and noc_id == NocId.NOC1:
+        noc_id = NocId.NOC0
+
     context = Context(umd_api, file_api, noc_id=noc_id, noc_failover=noc_failover, safe_mode=safe_mode)
 
     global GLOBAL_CONTEXT
