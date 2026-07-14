@@ -74,15 +74,13 @@ def init_ttexalens_remote(
 def load_context(
     umd_api: UmdApi,
     file_api: FileAccessApi,
-    noc_id: NocId = NocId.NOC1,
+    noc_id: NocId | None = None,
     noc_failover: bool = True,
     safe_mode: bool = True,
 ) -> Context:
     """Load the TTExaLens context object with specified parameters."""
-
-    # Since Quasar is only available through simulation as workaround if we are using simulator we switch to NOC0
-    if umd_api.simulation_directory is not None and noc_id == NocId.NOC1:
-        noc_id = NocId.NOC0
+    if noc_id is None:
+        noc_id = umd_api.initialization_noc_id
 
     context = Context(umd_api, file_api, noc_id=noc_id, noc_failover=noc_failover, safe_mode=safe_mode)
 
