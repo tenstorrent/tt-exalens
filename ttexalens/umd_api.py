@@ -82,6 +82,7 @@ class UmdApi:
 
         self.devices: dict[int, UmdDevice] = {}
         self.reset_lock = threading.Lock()
+        self._initialization_noc_id = noc_id
 
         # Respect UMD's existing environment variable for logging level.
         # If it's not set, set it based on ttexalens' verbosity level.
@@ -202,6 +203,10 @@ class UmdApi:
                     f"{_format_device_health(unhealthy_devices, health_errors)}."
                 )
             tt_umd.MmioTimeoutConfig.set_op_timeout(0.002)  # 2ms timeout for MMIO operations
+
+    @property
+    def initialization_noc_id(self) -> NocId:
+        return self._initialization_noc_id
 
     def _reinit_devices_after_sigbus(self):
         with self.reset_lock:

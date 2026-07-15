@@ -53,7 +53,7 @@ class UmdDevice:
     @staticmethod
     def initialize_device_coords_cache(
         soc_descriptor: tt_umd.SocDescriptor, arch: tt_umd.ARCH
-    ) -> list[list[list[tt_umd.CoreCoord | None]]]:
+    ) -> list[list[list[tt_umd.CoreCoord | None]] | None]:
         all_cores = soc_descriptor.get_all_cores(
             coord_system=tt_umd.CoordSystem.NOC0
         ) + soc_descriptor.get_all_harvested_cores(coord_system=tt_umd.CoordSystem.NOC0)
@@ -65,7 +65,7 @@ class UmdDevice:
             if arch == tt_umd.ARCH.QUASAR
             else [tt_umd.NocId.NOC0, tt_umd.NocId.NOC1]
         )
-        result: list[list[list[tt_umd.CoreCoord | None]]] = []
+        result: list[list[list[tt_umd.CoreCoord | None]] | None] = [None] * (max(int(n) for n in supported_noc_ids) + 1)
         for noc_id in supported_noc_ids:
             UmdApi.select_noc_id(noc_id, arch)
             noc_result: list[list[tt_umd.CoreCoord | None]] = []
@@ -80,7 +80,7 @@ class UmdDevice:
                     except Exception:
                         row.append(None)
                 noc_result.append(row)
-            result.append(noc_result)
+            result[int(noc_id)] = noc_result
         return result
 
     @property
@@ -136,7 +136,9 @@ class UmdDevice:
         raise RuntimeError("Failed to configure working active Ethernet")  # TODO: Improve error message
 
     def __convert_noc0_to_device_coords(self, noc_id: tt_umd.NocId, noc0_x: int, noc0_y: int):
-        return self.__device_coords[int(noc_id)][noc0_x][noc0_y]
+        noc_coords = self.__device_coords[int(noc_id)]
+        assert noc_coords is not None, f"NOC {noc_id} is not supported on this device"
+        return noc_coords[noc0_x][noc0_y]
 
     def __read_from_device_reg(
         self, coord: tt_umd.CoreCoord, address: int, buffer: bytearray | memoryview, dma_threshold: int

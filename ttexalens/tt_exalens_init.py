@@ -67,18 +67,19 @@ def init_ttexalens_remote(
     """
 
     umd_api, file_api = connect_to_server(ip_address, port)
-
-    return load_context(umd_api, file_api, noc_failover=noc_failover, safe_mode=safe_mode)
+    noc_id = umd_api.initialization_noc_id
+    return load_context(umd_api, file_api, noc_id, noc_failover, safe_mode)
 
 
 def load_context(
     umd_api: UmdApi,
     file_api: FileAccessApi,
-    noc_id: NocId = NocId.NOC1,
+    noc_id: NocId,
     noc_failover: bool = True,
     safe_mode: bool = True,
 ) -> Context:
     """Load the TTExaLens context object with specified parameters."""
+
     context = Context(umd_api, file_api, noc_id=noc_id, noc_failover=noc_failover, safe_mode=safe_mode)
 
     global GLOBAL_CONTEXT
