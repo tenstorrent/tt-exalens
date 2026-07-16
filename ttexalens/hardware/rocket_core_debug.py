@@ -5,6 +5,8 @@
 from contextlib import contextmanager
 from typing import Any, Generator
 
+from ttexalens.context import Context
+from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import (
@@ -22,6 +24,14 @@ class RocketCoreDebug(RiscDebug):
         self.baby_risc_info = risc_info
         self.register_store = register_store
         self.enable_asserts = enable_asserts
+
+    @property
+    def device(self) -> Device:
+        return self.baby_risc_info.noc_block.device
+
+    @property
+    def context(self) -> Context:
+        return self.device._context
 
     def is_in_reset(self) -> bool:
         raise NotImplementedError("is_in_reset must be implemented by subclasses of RocketCoreDebug")
@@ -87,7 +97,9 @@ class RocketCoreDebug(RiscDebug):
 
     def read_memory_bytes(self, address: int, buffer: bytearray | memoryview, safe_mode: bool | None = None) -> None:
         size_bytes = len(buffer)
-        self._validate_safe_access(address, size_bytes)
+        safe_mode = safe_mode if safe_mode is not None else self.context.safe_mode
+        if safe_mode:
+            self._validate_safe_access(address, size_bytes)
         word_size = 4
         pos = 0
         while pos < size_bytes:
@@ -103,7 +115,9 @@ class RocketCoreDebug(RiscDebug):
     def write_memory_bytes(
         self, address: int, data: bytes | bytearray | memoryview, safe_mode: bool | None = None
     ) -> None:
-        self._validate_safe_access(address, len(data))
+        safe_mode = safe_mode if safe_mode is not None else self.context.safe_mode
+        if safe_mode:
+            self._validate_safe_access(address, len(data))
         word_size = 4
         size_bytes = len(data)
         aligned_start = address - (address % word_size)
