@@ -75,12 +75,12 @@ class RocketCoreDebug(RiscDebug):
     def get_pc(self) -> int:
         raise NotImplementedError("get_pc must be implemented by subclasses of RocketCoreDebug")
 
-    def _read_word(self, word_address: int) -> int:
-        """Read a single 32-bit word. 'word_address' must be 4-byte aligned."""
+    def _read_word(self, address: int) -> int:
+        """Read a single 32-bit word. Address must be 4-byte aligned."""
         raise NotImplementedError("_read_word must be implemented by subclasses of RocketCoreDebug")
 
-    def _write_word(self, word_address: int, data: int) -> None:
-        """Write a single 32-bit word. 'word_address' must be 4-byte aligned."""
+    def _write_word(self, address: int, data: int) -> None:
+        """Write a single 32-bit word. Address must be 4-byte aligned."""
         raise NotImplementedError("_write_word must be implemented by subclasses of RocketCoreDebug")
 
     def _validate_safe_access(self, address: int, size_bytes: int) -> None:
