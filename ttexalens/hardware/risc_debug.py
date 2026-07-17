@@ -2,13 +2,19 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 from abc import abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass
-from typing import Any, Generator
+from typing import TYPE_CHECKING, Any, Callable, Generator
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_info import RiscInfo
+
+if TYPE_CHECKING:
+    from ttexalens.context import Context
+    from ttexalens.device import Device
 
 
 @dataclass
@@ -63,6 +69,14 @@ class RiscDebug:
     def get_instance(risc_location: RiscLocation) -> "RiscDebug":
         noc_block = risc_location.location.device.get_block(risc_location.location)
         return noc_block.get_risc_debug(risc_location.risc_name, risc_location.neo_id)
+
+    @property
+    def device(self) -> Device:
+        return self.risc_info.noc_block.device
+
+    @property
+    def context(self) -> Context:
+        return self.device._context
 
     @abstractmethod
     def is_in_reset(self) -> bool:
@@ -146,6 +160,78 @@ class RiscDebug:
         """Validate that a value fits within 32 bits for SBA access."""
         if value < 0 or value > 0xFFFFFFFF:
             raise ValueError(f"Value out of bounds: value=0x{value:08x}. Value must fit within 32 bits.")
+
+    def _validate_safe_access(self, address: int, size_bytes: int) -> None:
+        """Safety validations to be added. tt-exalens:#913"""
+        pass
+
+    def _read_memory_bytes(
+        self,
+        address: int,
+        buffer: bytearray | memoryview,
+        read_word: Callable[[int], int],
+        safe_mode: bool | None = None,
+    ) -> None:
+        size_bytes = len(buffer)
+        safe_mode = safe_mode if safe_mode is not None else self.context.safe_mode
+        if safe_mode:
+            self._validate_safe_access(address, size_bytes)
+
+        word_size = 4
+        pos = 0
+        while pos < size_bytes:
+            addr = address + pos
+            word_addr = addr - (addr % word_size)
+            word = read_word(word_addr)
+            word_bytes = word.to_bytes(word_size, byteorder="little")
+            start_in_word = addr - word_addr
+            n = min(word_size - start_in_word, size_bytes - pos)
+            buffer[pos : pos + n] = word_bytes[start_in_word : start_in_word + n]
+            pos += n
+
+    def _write_memory_bytes(
+        self,
+        address: int,
+        data: bytes | bytearray | memoryview,
+        read_word: Callable[[int], int],
+        write_word: Callable[[int, int], None],
+        safe_mode: bool | None = None,
+    ) -> None:
+        safe_mode = safe_mode if safe_mode is not None else self.context.safe_mode
+        if safe_mode:
+            self._validate_safe_access(address, len(data))
+
+        word_size = 4
+        data = memoryview(data)
+        size = len(data)
+        if size == 0:
+            return
+
+        # Unaligned prefix
+        first_unaligned = address % word_size
+        if first_unaligned != 0:
+            aligned_address = address - first_unaligned
+            word_bytes = bytearray(read_word(aligned_address).to_bytes(word_size, byteorder="little"))
+            n = min(word_size - first_unaligned, size)
+            word_bytes[first_unaligned : first_unaligned + n] = data[:n]
+            write_word(aligned_address, int.from_bytes(word_bytes, byteorder="little"))
+            data = data[n:]
+            address += n
+            size -= n
+
+        aligned_size = size - (size % word_size)
+        for offset in range(0, aligned_size, word_size):
+            word = int.from_bytes(data[offset : offset + word_size], byteorder="little")
+            write_word(address + offset, word)
+        data = data[aligned_size:]
+        address += aligned_size
+        size -= aligned_size
+
+        # Unaligned suffix
+        if size != 0:
+            word_bytes = bytearray(read_word(address).to_bytes(word_size, byteorder="little"))
+            word_bytes[:size] = data[:size]
+            write_word(address, int.from_bytes(word_bytes, byteorder="little"))
 
     @abstractmethod
     def _read_memory(self, address: int) -> int:

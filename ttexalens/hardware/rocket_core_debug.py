@@ -5,8 +5,6 @@
 from contextlib import contextmanager
 from typing import Any, Generator
 
-from ttexalens.context import Context
-from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_debug import (
@@ -24,14 +22,6 @@ class RocketCoreDebug(RiscDebug):
         self.baby_risc_info = risc_info
         self.register_store = register_store
         self.enable_asserts = enable_asserts
-
-    @property
-    def device(self) -> Device:
-        return self.baby_risc_info.noc_block.device
-
-    @property
-    def context(self) -> Context:
-        return self.device._context
 
     def is_in_reset(self) -> bool:
         raise NotImplementedError("is_in_reset must be implemented by subclasses of RocketCoreDebug")
@@ -83,10 +73,6 @@ class RocketCoreDebug(RiscDebug):
         """Write a single 32-bit word. Address must be 4-byte aligned."""
         raise NotImplementedError("_write_word must be implemented by subclasses of RocketCoreDebug")
 
-    def _validate_safe_access(self, address: int, size_bytes: int) -> None:
-        """Safety validations to be added. tt-exalens:#913"""
-        pass
-
     def _read_memory(self, address: int, safe_mode: bool | None = None) -> int:
         buffer = bytearray(4)
         self.read_memory_bytes(address, buffer, safe_mode=safe_mode)
@@ -96,53 +82,12 @@ class RocketCoreDebug(RiscDebug):
         self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"), safe_mode=safe_mode)
 
     def read_memory_bytes(self, address: int, buffer: bytearray | memoryview, safe_mode: bool | None = None) -> None:
-        size_bytes = len(buffer)
-        safe_mode = safe_mode if safe_mode is not None else self.context.safe_mode
-        if safe_mode:
-            self._validate_safe_access(address, size_bytes)
-        word_size = 4
-        pos = 0
-        while pos < size_bytes:
-            addr = address + pos
-            word_addr = addr - (addr % word_size)
-            word = self._read_word(word_addr)
-            word_bytes = word.to_bytes(word_size, byteorder="little")
-            start_in_word = addr - word_addr
-            n = min(word_size - start_in_word, size_bytes - pos)
-            buffer[pos : pos + n] = word_bytes[start_in_word : start_in_word + n]
-            pos += n
+        self._read_memory_bytes(address, buffer, self._read_word, safe_mode=safe_mode)
 
     def write_memory_bytes(
         self, address: int, data: bytes | bytearray | memoryview, safe_mode: bool | None = None
     ) -> None:
-        safe_mode = safe_mode if safe_mode is not None else self.context.safe_mode
-        if safe_mode:
-            self._validate_safe_access(address, len(data))
-        word_size = 4
-        size_bytes = len(data)
-        aligned_start = address - (address % word_size)
-        aligned_end = ((address + size_bytes + word_size - 1) // word_size) * word_size
-
-        new_data = bytearray()
-
-        if aligned_start < address:
-            prefix_size = address - aligned_start
-            prefix_word = self._read_word(aligned_start)
-            new_data.extend(prefix_word.to_bytes(word_size, byteorder="little")[:prefix_size])
-
-        new_data.extend(data)
-
-        if aligned_end > address + size_bytes:
-            suffix_size = aligned_end - (address + size_bytes)
-            suffix_word = self._read_word(aligned_end - word_size)
-            new_data.extend(suffix_word.to_bytes(word_size, byteorder="little")[-suffix_size:])
-
-        assert len(new_data) % word_size == 0, "Data length must be multiple of word size after alignment"
-
-        for offset in range(0, len(new_data), word_size):
-            new_addr = aligned_start + offset
-            word = int.from_bytes(new_data[offset : offset + word_size], byteorder="little")
-            self._write_word(new_addr, word)
+        self._write_memory_bytes(address, data, self._read_word, self._write_word, safe_mode=safe_mode)
 
     def read_status(self) -> RiscDebugStatus:
         raise NotImplementedError("read_status must be implemented by subclasses of RocketCoreDebug")
