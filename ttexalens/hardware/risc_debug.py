@@ -8,6 +8,7 @@ from abc import abstractmethod
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Generator
+from ttexalens import util
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_info import RiscInfo
@@ -165,6 +166,21 @@ class RiscDebug:
         """Safety validations to be added. tt-exalens:#913"""
         pass
 
+    def _read_word_debug(self, read_word: Callable[[int], int]) -> Callable[[int], int]:
+        def read_word_debug(address: int) -> int:
+            word = read_word(address)
+            util.DEBUG(f"Read word at 0x{address:08x}: 0x{word:08x}")
+            return word
+
+        return read_word_debug
+
+    def _write_word_debug(self, write_word: Callable[[int, int], None]) -> Callable[[int, int], None]:
+        def write_word_debug(address: int, word: int) -> None:
+            write_word(address, word)
+            util.DEBUG(f"Wrote word at 0x{address:08x}: 0x{word:08x}")
+
+        return write_word_debug
+
     def _read_memory_bytes(
         self,
         address: int,
@@ -172,6 +188,8 @@ class RiscDebug:
         read_word: Callable[[int], int],
         safe_mode: bool | None = None,
     ) -> None:
+        if util.DEBUG_ENABLED:
+            read_word = self._read_word_debug(read_word)
         size_bytes = len(buffer)
         safe_mode = safe_mode if safe_mode is not None else self.context.safe_mode
         if safe_mode:
@@ -197,6 +215,9 @@ class RiscDebug:
         write_word: Callable[[int, int], None],
         safe_mode: bool | None = None,
     ) -> None:
+        if util.DEBUG_ENABLED:
+            read_word = self._read_word_debug(read_word)
+            write_word = self._write_word_debug(write_word)
         safe_mode = safe_mode if safe_mode is not None else self.context.safe_mode
         if safe_mode:
             self._validate_safe_access(address, len(data))
