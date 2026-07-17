@@ -20,6 +20,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context, NocId
 from ttexalens.elf import read_elf, CallstackEntry, ElfFile, ElfVariable, get_callstack, get_frame_callstack
 from ttexalens.exceptions import TTException
+from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
 from ttexalens.memory_access import create_memory_access
 
 
@@ -650,10 +651,12 @@ def callstack(
         # Reading the program counter from risc register
         pc = risc_debug.read_gpr(32)
 
-        # If ebreak was hit, pc will point to the instruction after it
-        if risc_debug.is_ebreak_hit():
-            # Rewind pc to unwind callstack from the ebreak instruction
-            pc -= 4
+        # TODO: #1071
+        if not isinstance(risc_debug, RocketCoreDebug):
+            # If ebreak was hit, pc will point to the instruction after it
+            if risc_debug.is_ebreak_hit():
+                # Rewind pc to unwind callstack from the ebreak instruction
+                pc -= 4
 
         mem_access = create_memory_access(risc_debug)
 
