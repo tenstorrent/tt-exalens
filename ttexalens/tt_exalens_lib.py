@@ -650,10 +650,12 @@ def callstack(
         # Reading the program counter from risc register
         pc = risc_debug.read_gpr(32)
 
-        # If ebreak was hit, pc will point to the instruction after it
-        if risc_debug.is_ebreak_hit():
-            # Rewind pc to unwind callstack from the ebreak instruction
-            pc -= 4
+        # TODO: #1071
+        if not "rocket" in risc_name.lower():
+            # If ebreak was hit, pc will point to the instruction after it
+            if risc_debug.is_ebreak_hit():
+                # Rewind pc to unwind callstack from the ebreak instruction
+                pc -= 4
 
         mem_access = create_memory_access(risc_debug)
 
