@@ -65,19 +65,29 @@ class RocketCoreDebug(RiscDebug):
     def get_pc(self) -> int:
         raise NotImplementedError("get_pc must be implemented by subclasses of RocketCoreDebug")
 
-    def _read_memory(self, address: int) -> int:
-        raise NotImplementedError("_read_memory must be implemented by subclasses of RocketCoreDebug")
+    def _read_word(self, address: int) -> int:
+        """Read a single 32-bit word. Address must be 4-byte aligned."""
+        raise NotImplementedError("_read_word must be implemented by subclasses of RocketCoreDebug")
+
+    def _write_word(self, address: int, data: int) -> None:
+        """Write a single 32-bit word. Address must be 4-byte aligned."""
+        raise NotImplementedError("_write_word must be implemented by subclasses of RocketCoreDebug")
+
+    def _read_memory(self, address: int, safe_mode: bool | None = None) -> int:
+        buffer = bytearray(4)
+        self.read_memory_bytes(address, buffer, safe_mode=safe_mode)
+        return int.from_bytes(buffer, byteorder="little")
+
+    def _write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
+        self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"), safe_mode=safe_mode)
 
     def read_memory_bytes(self, address: int, buffer: bytearray | memoryview, safe_mode: bool | None = None) -> None:
-        raise NotImplementedError("read_memory_bytes must be implemented by subclasses of RocketCoreDebug")
-
-    def _write_memory(self, address: int, data: int) -> None:
-        raise NotImplementedError("_write_memory must be implemented by subclasses of RocketCoreDebug")
+        self._read_memory_bytes(address, buffer, self._read_word, safe_mode=safe_mode)
 
     def write_memory_bytes(
         self, address: int, data: bytes | bytearray | memoryview, safe_mode: bool | None = None
     ) -> None:
-        raise NotImplementedError("write_memory_bytes must be implemented by subclasses of RocketCoreDebug")
+        self._write_memory_bytes(address, data, self._read_word, self._write_word, safe_mode=safe_mode)
 
     def read_status(self) -> RiscDebugStatus:
         raise NotImplementedError("read_status must be implemented by subclasses of RocketCoreDebug")

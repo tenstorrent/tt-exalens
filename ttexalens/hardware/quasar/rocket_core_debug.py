@@ -225,8 +225,9 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
                 raise Exception("Timeout waiting for system bus access")
             time.sleep(0.01)
 
-    def _read_memory(self, address: int, safe_mode: bool | None = None) -> int:
-        """Read a 32-bit word via System Bus Access."""
+    def _read_word(self, address: int) -> int:
+        """Read a single 32-bit word via System Bus Access. Address must be 4-byte aligned."""
+        assert address % 4 == 0, f"Address 0x{address:x} is not 4-byte aligned"
         with self.ensure_debug_module_is_active():
             self._sba_wait_not_busy()
             self.register_store.write_register(
@@ -236,8 +237,9 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address)
             return self.register_store.read_register("TT_DEBUG_MODULE_APB_SBDATA0")
 
-    def _write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
-        """Write a 32-bit word via System Bus Access."""
+    def _write_word(self, address: int, data: int) -> None:
+        """Write a single 32-bit word via System Bus Access. Address must be 4-byte aligned."""
+        assert address % 4 == 0, f"Address 0x{address:x} is not 4-byte aligned"
         with self.ensure_debug_module_is_active():
             self._sba_wait_not_busy()
             self.register_store.write_register(
