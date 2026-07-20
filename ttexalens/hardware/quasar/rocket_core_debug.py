@@ -29,7 +29,6 @@ INSN_CSRR_X5_DPC = 0x7B1022F3  # csrr x5, dpc  (csrrs x5, 0x7B1, x0)
 INSN_EBREAK = 0x00100073
 # DCSR (CSR 0x7B0) single-step control. dcsr.step is set/cleared atomically with a
 # single csrrsi/csrrci from the program buffer
-DCSR_STEP = 1 << 2
 INSN_CSRSI_DCSR_STEP = 0x7B026073  # set dcsr.step
 INSN_CSRCI_DCSR_STEP = 0x7B027073  # clear dcsr.step
 INSN_CSRW_DPC_X5 = 0x7B129073
@@ -91,45 +90,36 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         self._wait_for_debug_module_to_be_active()
         assert not self.is_debug_module_in_reset(), "Debug module should be out of reset"
 
-    @contextmanager
-    def ensure_debug_module_is_active(self) -> Generator[None, Any, None]:
+    def ensure_debug_module_is_active(self) -> None:
+        """Bring the debug module out of reset if it is not already"""
         value = self.register_store.read_register("SMN_RISC_RESET_REG")
-        dm_was_in_reset = self.is_debug_module_in_reset(value)
-        if dm_was_in_reset:
+        if self.is_debug_module_in_reset(value):
             self.take_debug_module_out_of_reset(value)
-        try:
-            yield
-        finally:
-            if dm_was_in_reset:
-                # Put register in initial state
-                self.register_store.write_register("SMN_RISC_RESET_REG", value)
 
     def is_halted(self) -> bool:
-        with self.ensure_debug_module_is_active():
-            haltsummary = self.register_store.read_register("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
-            return bool(haltsummary & (1 << self.baby_risc_info.risc_id))
+        self.ensure_debug_module_is_active()
+        haltsummary = self.register_store.read_register("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
+        return bool(haltsummary & (1 << self.baby_risc_info.risc_id))
 
     def halt(self) -> None:
-        with self.ensure_debug_module_is_active():
-            if self.is_halted():
-                util.WARN(f"Halt: {self.risc_location.risc_name} at {self.risc_location.location} is already halted")
-                return
-            hartsel = self.baby_risc_info.risc_id << 16
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | HALTREQ)
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
-            if not self.is_halted():
-                raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
+        self.ensure_debug_module_is_active()
+        if self.is_halted():
+            util.WARN(f"Halt: {self.risc_location.risc_name} at {self.risc_location.location} is already halted")
+            return
+        hartsel = self.baby_risc_info.risc_id << 16
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | HALTREQ)
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
+        if not self.is_halted():
+            raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
 
     def cont(self) -> None:
-        with self.ensure_debug_module_is_active():
-            if not self.is_halted():
-                util.WARN(
-                    f"Continue: {self.risc_location.risc_name} at {self.risc_location.location} is already running"
-                )
-                return
-            hartsel = self.baby_risc_info.risc_id << 16
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | RESUMEREQ)
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
+        self.ensure_debug_module_is_active()
+        if not self.is_halted():
+            util.WARN(f"Continue: {self.risc_location.risc_name} at {self.risc_location.location} is already running")
+            return
+        hartsel = self.baby_risc_info.risc_id << 16
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | RESUMEREQ)
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
 
     @contextmanager
     def ensure_halted(self) -> Generator[None, Any, None]:
@@ -144,14 +134,14 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
 
     def step(self) -> None:
         """Execute a single instruction on the hart, then re-enter Debug Mode."""
+        self.ensure_debug_module_is_active()
         assert self.is_halted(), "Hart must be halted before single-stepping"
-        with self.ensure_debug_module_is_active():
-            self._set_single_step(True)
-            hartsel = self.baby_risc_info.risc_id << 16
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | RESUMEREQ)
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
-            self._wait_for_step_to_complete()
-            self._set_single_step(False)
+        self._set_single_step(True)
+        hartsel = self.baby_risc_info.risc_id << 16
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | RESUMEREQ)
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
+        self._wait_for_step_to_complete()
+        self._set_single_step(False)
 
     def _set_single_step(self, enable: bool) -> None:
         """Set or clear dcsr.step atomically via a single program-buffer instruction."""
@@ -217,19 +207,19 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
 
     def _execute_abstract_command(self, command: int, prepare: Callable[[], None] | None = None) -> None:
         """Run an abstract COMMAND with the full handshake."""
-        with self.ensure_debug_module_is_active():
-            with self.ensure_halted():
-                self._abstract_wait_not_busy()  # Enusre idle before issuing a new command
-                self.register_store.write_register(
-                    "TT_DEBUG_MODULE_APB_ABSTRACTCS", ABSTRACTS_CMDERR_MASK
-                )  # Clear any sticky cmderr
-                # Run prerequisite steps
-                if prepare is not None:
-                    prepare()
-                self.register_store.write_register("TT_DEBUG_MODULE_APB_COMMAND", command)
-                cmderr = self._abstract_wait_not_busy()  # Wait for completion and get cmderr
-                if cmderr != 0:
-                    raise Exception(f"Abstract command 0x{command:x} failed with command error {cmderr}")
+        self.ensure_debug_module_is_active()
+        with self.ensure_halted():
+            self._abstract_wait_not_busy()  # Enusre idle before issuing a new command
+            self.register_store.write_register(
+                "TT_DEBUG_MODULE_APB_ABSTRACTCS", ABSTRACTS_CMDERR_MASK
+            )  # Clear any sticky cmderr
+            # Run prerequisite steps
+            if prepare is not None:
+                prepare()
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_COMMAND", command)
+            cmderr = self._abstract_wait_not_busy()  # Wait for completion and get cmderr
+            if cmderr != 0:
+                raise Exception(f"Abstract command 0x{command:x} failed with command error {cmderr}")
 
     def _execute_program_buffer(self, insn0: int, insn1: int) -> None:
         """Stage two instructions into the program buffer and execute them."""
@@ -242,11 +232,10 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
 
     def _read_gpr_via_debug_module(self, index: int) -> int:
         """Read a 64-bit general purpose register via the Access Register abstract command."""
-        with self.ensure_debug_module_is_active():
-            self._execute_abstract_command(CMD_READ_GPR_BASE + index)
-            low = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA0")
-            high = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA1")
-            return (high << 32) | low
+        self._execute_abstract_command(CMD_READ_GPR_BASE + index)
+        low = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA0")
+        high = self.register_store.read_register("TT_DEBUG_MODULE_APB_DATA1")
+        return (high << 32) | low
 
     def _write_gpr_via_debug_module(self, index: int, value: int) -> None:
         """Write a 64-bit general purpose register via the Access Register abstract command."""
@@ -280,26 +269,26 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
     def _read_word(self, address: int) -> int:
         """Read a single 32-bit word via System Bus Access. Address must be 4-byte aligned."""
         assert address % 4 == 0, f"Address 0x{address:x} is not 4-byte aligned"
-        with self.ensure_debug_module_is_active():
-            self._sba_wait_not_busy()
-            self.register_store.write_register(
-                "TT_DEBUG_MODULE_APB_SBCS",
-                SBCS_SBACCESS_32 | SBCS_SBREADONADDR | SBCS_SBERROR_MASK | SBCS_SBBUSYERROR,
-            )
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address)
-            return self.register_store.read_register("TT_DEBUG_MODULE_APB_SBDATA0")
+        self.ensure_debug_module_is_active()
+        self._sba_wait_not_busy()
+        self.register_store.write_register(
+            "TT_DEBUG_MODULE_APB_SBCS",
+            SBCS_SBACCESS_32 | SBCS_SBREADONADDR | SBCS_SBERROR_MASK | SBCS_SBBUSYERROR,
+        )
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address)
+        return self.register_store.read_register("TT_DEBUG_MODULE_APB_SBDATA0")
 
     def _write_word(self, address: int, data: int) -> None:
         """Write a single 32-bit word via System Bus Access. Address must be 4-byte aligned."""
         assert address % 4 == 0, f"Address 0x{address:x} is not 4-byte aligned"
-        with self.ensure_debug_module_is_active():
-            self._sba_wait_not_busy()
-            self.register_store.write_register(
-                "TT_DEBUG_MODULE_APB_SBCS",
-                SBCS_SBACCESS_32 | SBCS_SBERROR_MASK | SBCS_SBBUSYERROR,
-            )
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address)
-            self.register_store.write_register("TT_DEBUG_MODULE_APB_SBDATA0", data)
+        self.ensure_debug_module_is_active()
+        self._sba_wait_not_busy()
+        self.register_store.write_register(
+            "TT_DEBUG_MODULE_APB_SBCS",
+            SBCS_SBACCESS_32 | SBCS_SBERROR_MASK | SBCS_SBBUSYERROR,
+        )
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_SBADDR0", address)
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_SBDATA0", data)
 
     def set_code_start_address(self, address: int | None) -> None:
         self.baby_risc_info.set_code_start_address(self.register_store, address if address is not None else 0)
