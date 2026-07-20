@@ -25,14 +25,12 @@ ABSTRACTS_BUSY = 1 << 12
 ABSTRACTS_CMDERR_MASK = 0x7 << 8  # ABSTRACTCS[10:8], write-1-to-clear
 CMD_READ_DPC = (3 << 20) | (1 << 17) | 0x7B1
 
-INSN_CSRR_X5_DPC = 0x7B1022F3  # csrr x5, dpc  (csrrs x5, 0x7B1, x0)
-INSN_EBREAK = 0x00100073
-# DCSR (CSR 0x7B0) single-step control. dcsr.step is set/cleared atomically with a
-# single csrrsi/csrrci from the program buffer
-DCSR_STEP = 1 << 2
-INSN_CSRSI_DCSR_STEP = 0x7B026073  # set dcsr.step
-INSN_CSRCI_DCSR_STEP = 0x7B027073  # clear dcsr.step
-INSN_CSRW_DPC_X5 = 0x7B129073
+# Debugging instructions
+INSN_CSRR_X5_DPC = 0x7B1022F3  # csrrs x5, dpc, x0
+INSN_EBREAK = 0x00100073 # ebreak
+INSN_CSRSI_DCSR_STEP = 0x7B026073  # csrrsi x0, dcsr, 4
+INSN_CSRCI_DCSR_STEP = 0x7B027073  # csrrci x0, dcsr, 4
+INSN_CSRW_DPC_X5 = 0x7B129073 # csrrw x0, dpc, x5
 
 # Access Register abstract command, 64-bit, postexec=1, no register transfer.
 CMD_EXEC_PROGBUF = (3 << 20) | (1 << 18)
