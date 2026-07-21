@@ -29,8 +29,7 @@ class RocketCoreDebug(RiscDebug):
     def set_reset_signal(self, value: bool) -> None:
         raise NotImplementedError("set_reset_signal must be implemented by subclasses of RocketCoreDebug")
 
-    @contextmanager
-    def ensure_debug_module_is_active(self) -> Generator[None, Any, None]:
+    def ensure_debug_module_is_active(self) -> None:
         raise NotImplementedError("ensure_debug_module_is_active must be implemented by subclasses of RocketCoreDebug")
 
     def is_halted(self) -> bool:
