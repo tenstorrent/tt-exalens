@@ -307,7 +307,7 @@ class Device:
         self, location: OnChipCoordinate, address: int, noc_id: NocId | None = None, safe_mode: bool | None = None
     ) -> int:
         buffer = bytearray(4)
-        self.noc_read(location, address, buffer, noc_id, True, safe_mode=safe_mode)
+        self.noc_read(location, address, buffer, noc_id, safe_mode=safe_mode)
         return int.from_bytes(buffer, byteorder="little")
 
     def noc_write(
@@ -342,7 +342,7 @@ class Device:
         noc_id: NocId | None = None,
         safe_mode: bool | None = None,
     ):
-        self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, True, safe_mode=safe_mode)
+        self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, safe_mode=safe_mode)
 
     def bar0_read32(self, address: int) -> int:
         return self._umd_device.bar0_read32(address)
