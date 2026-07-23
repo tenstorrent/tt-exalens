@@ -246,13 +246,13 @@ class Device:
             curr_addr = addr + bytes_checked
             memory_block_info = noc_memory_map.find_by_noc_address(curr_addr)
             if not memory_block_info:
-                raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write)
+                raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write=is_write)
             assert (
                 memory_block_info.memory_block.address.noc_address is not None
             ), "Memory block found by NoC address must have a NoC address."
 
             if not memory_block_info.is_accessible:
-                raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write)
+                raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write=is_write)
 
             memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
             assert memory_block_end > curr_addr, "Memory block end must be greater than current address."
@@ -271,11 +271,11 @@ class Device:
                         addr,
                         num_bytes,
                         curr_addr,
-                        is_write,
+                        is_write=is_write,
                         reason="Risc data private memory is marked unsafe due to potential blackhole hardware bug, see tt-exalens:#907/#908.",
                     )
                 else:
-                    raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write)
+                    raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write=is_write)
 
             bytes_checked += access_size
 
@@ -360,7 +360,7 @@ class Device:
     ):
         if noc_id is None:
             noc_id = self.active_noc
-        return self._umd_device.arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
+        return self._umd_device.arc_msg(noc_id, msg_code, wait_for_done=wait_for_done, args=args, timeout=timeout)
 
     def read_arc_telemetry_entry(self, noc_id: NocId | None, telemetry_tag: int) -> int:
         def noc_operation(noc_id: NocId) -> int:

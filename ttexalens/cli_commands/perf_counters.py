@@ -64,7 +64,6 @@ from ttexalens.perf_counters import (
 from ttexalens.rich_formatters import formatter
 from ttexalens.uistate import UIState
 
-
 command_metadata = CommandMetadata(
     short_name="pcnt",
     long_name="perf-counters",
@@ -167,7 +166,7 @@ def _render_per_core(
     sample_key = next(iter(snap))
     did, coord = sample_key[0], sample_key[1]
     print(f"\n=== Perf Counter Read: chip={did} core={coord.to_user_str()} ===\n")
-    data = _build_render_data(snap, snap_prev, active_only, consolidated=False)
+    data = _build_render_data(snap, snap_prev, active_only=active_only, consolidated=False)
     if not data:
         print("  (no counters changed)")
         return
@@ -188,7 +187,7 @@ def _render_consolidated(
     active_only: bool,
 ) -> None:
     print("\n=== Perf Counter Read: multiple cores ===\n")
-    data = _build_render_data(snap, snap_prev, active_only, consolidated=True)
+    data = _build_render_data(snap, snap_prev, active_only=active_only, consolidated=True)
     if not data:
         print("  (no counters changed)")
         return
@@ -269,9 +268,9 @@ def _run_read(
 
     unique_locs = {(did, coord) for did, coord, *_ in snap.keys()}
     if len(unique_locs) > 1:
-        _render_consolidated(snap, snap_prev, active_only)
+        _render_consolidated(snap, snap_prev, active_only=active_only)
     else:
-        _render_per_core(snap, snap_prev, active_only)
+        _render_per_core(snap, snap_prev, active_only=active_only)
 
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
