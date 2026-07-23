@@ -314,9 +314,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
             try:
                 if risc_name:
-                    ranges = _get_risc_search_ranges(location, risc_name, start_addr, end_addr, unsafe)
+                    ranges = _get_risc_search_ranges(location, risc_name, start_addr, end_addr, unsafe=unsafe)
                 else:
-                    ranges = _get_noc_search_ranges(location, start_addr, end_addr, unsafe)
+                    ranges = _get_noc_search_ranges(location, start_addr, end_addr, unsafe=unsafe)
             except TTException as e:
                 util.ERROR(f"Device {device_id_str} | Location {location_str}: {e}")
                 continue
@@ -329,7 +329,15 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             for r_start, r_end, block_name in ranges:
                 remaining = None if max_results is None else max_results - len(all_matches)
                 block_matches = _search_in_range(
-                    location, r_start, r_end, block_name, pattern_bytes, unsafe, risc_name, read_size, remaining
+                    location,
+                    r_start,
+                    r_end,
+                    block_name,
+                    pattern_bytes,
+                    unsafe=unsafe,
+                    risc_name=risc_name,
+                    read_size=read_size,
+                    max_results=remaining,
                 )
                 all_matches.extend(block_matches)
                 if max_results is not None and len(all_matches) >= max_results:

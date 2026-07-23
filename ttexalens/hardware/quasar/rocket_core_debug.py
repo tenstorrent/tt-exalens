@@ -53,7 +53,7 @@ SBCS_SBBUSYERROR = 1 << 22
 
 class QuasarRocketCoreDebug(RocketCoreDebug):
     def __init__(self, risc_info: BabyRiscInfo, register_store: RegisterStore, enable_asserts: bool = True):
-        super().__init__(risc_info, enable_asserts)
+        super().__init__(risc_info, enable_asserts=enable_asserts)
         self.register_store = register_store
 
     def is_in_reset(self) -> bool:
@@ -238,6 +238,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
 
     def _write_gpr_via_debug_module(self, index: int, value: int) -> None:
         """Write a 64-bit general purpose register via the Access Register abstract command."""
+
         # Value to write: LSB -> DATA0, MSB -> DATA1
         def stage_value() -> None:
             self.register_store.write_register("TT_DEBUG_MODULE_APB_DATA0", value & 0xFFFFFFFF)
