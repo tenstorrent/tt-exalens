@@ -111,8 +111,8 @@ def dump_counters(register_store: RegisterStore, verbose: bool, cores: list[int]
             acked = register_store.read_register(base + "ACKED")
             cap = register_store.read_register(base + "BUFFER_CAPACITY")
             err = register_store.read_register(base + "ERROR_STATUS")
-            occ = ((posted - acked) & 0xFFFFFFFF) if posted is not None and acked is not None else None
-            free = (cap - occ) if cap is not None and occ is not None else None
+            occ = (posted - acked) & 0xFFFFFFFF
+            free = cap - occ
             row = [c, _dec(posted), _dec(acked), _dec(occ), _dec(cap), _dec(free), _flag(err)]
             if verbose:
                 row += [
@@ -137,7 +137,7 @@ def dump_cmdbuf(register_store: RegisterStore, verbose: bool, cores: list[int]) 
         ip0 = register_store.read_register(b + "PER_TR_ID_IP_0")
         ip1 = register_store.read_register(b + "PER_TR_ID_IP_1")
         ip2 = register_store.read_register(b + "PER_TR_ID_IP_2")
-        outst = "YES" if wr is not None and ack is not None and wr != ack else ""
+        outst = "YES" if wr != ack else ""
         rows.append([cpu, _hex(ip), _hex(wr), _hex(ack), outst, _hex(ip0), _hex(ip1), _hex(ip2)])
     print(
         tabulate.tabulate(
@@ -166,7 +166,7 @@ def dump_errors(register_store: RegisterStore, verbose: bool, cores: list[int]) 
         en = register_store.read_register(b + "ENABLE")
         plic_en = register_store.read_register(b + "PLIC_ENABLE")
         local_en = register_store.read_register(b + "LOCAL_ENABLE")
-        note = "<-- FAULT" if cause not in (None, 0) else ""
+        note = "<-- FAULT" if cause != 0 else ""
         rows.append([u, _hex(cause), _hex(pa), _hex(acc), _hex(en), _hex(plic_en), _hex(local_en), note])
     print(
         tabulate.tabulate(
@@ -213,9 +213,8 @@ def dump_debug(register_store: RegisterStore, verbose: bool, cores: list[int]) -
     rows = [[n, _hex(register_store.read_register(f"TT_DEBUG_MODULE_APB_{n}"))] for n in names]
     print(tabulate.tabulate(rows, headers=["Register", "Value"], tablefmt="simple_outline"))
     hs = register_store.read_register("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
-    if hs is not None:
-        halted = [i for i in cores if hs & (1 << i)]
-        print(f"  Halted harts (HALTSUMMARY0 bitmap): {halted if halted else 'none'}")
+    halted = [i for i in cores if hs & (1 << i)]
+    print(f"  Halted harts (HALTSUMMARY0 bitmap): {halted if halted else 'none'}")
 
 
 def dump_clint(register_store: RegisterStore, verbose: bool, cores: list[int]) -> None:
