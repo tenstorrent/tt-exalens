@@ -8,7 +8,7 @@ from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 
 class WormholeBabyRiscDebug(BabyRiscDebug):
     def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool | None = None):
-        super().__init__(risc_info, enable_asserts)
+        super().__init__(risc_info, enable_asserts=enable_asserts)
 
     def cont(self):
         # If this is functional worker core, we need to disable branch prediction as a hardware workaround

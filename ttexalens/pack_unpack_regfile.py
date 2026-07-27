@@ -198,7 +198,7 @@ def unpack_data_direct_access(data: list[int], df: int | TensixDataFormat, signe
     if isinstance(df, int):
         df = TensixDataFormat(df)
 
-    return [unpack_value_direct_access(value, df, signed) for value in data]
+    return [unpack_value_direct_access(value, df, signed=signed) for value in data]
 
 
 def pack_value_direct_access(value: int | float, df: TensixDataFormat) -> int:

@@ -26,7 +26,6 @@ from ttexalens.gdb.gdb_communication import (
 )
 from ttexalens.tt_exalens_lib import parse_elf, run_elf
 
-
 _MAINTENANCE_CASES: list[tuple[str, str, int | None, bool]] = [
     # Wormhole L1: [0x00000000, 0x0016E000)
     ("wormhole_inside", "wormhole", None, False),
@@ -337,7 +336,7 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
             )
 
             # For this addr, all four packets (m/M/x/X) should either all succeed or all E04.
-            self._assert_packet_result(output, "m", addr_hex, length_hex, expect_e04)
-            self._assert_packet_result(output, "M", addr_hex, length_hex, expect_e04)
-            self._assert_packet_result(output, "x", addr_hex, length_hex, expect_e04)
-            self._assert_packet_result(output, "X", addr_hex, length_hex, expect_e04)
+            self._assert_packet_result(output, "m", addr_hex, length_hex, expect_e04=expect_e04)
+            self._assert_packet_result(output, "M", addr_hex, length_hex, expect_e04=expect_e04)
+            self._assert_packet_result(output, "x", addr_hex, length_hex, expect_e04=expect_e04)
+            self._assert_packet_result(output, "X", addr_hex, length_hex, expect_e04=expect_e04)

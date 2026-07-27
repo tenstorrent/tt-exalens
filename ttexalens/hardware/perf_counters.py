@@ -170,7 +170,7 @@ class TensixPerfCounters:
         """
         block = self.get_block(block_name)
         counter_id = self._resolve_counter(block, counter)
-        return self._read_counter_id(block, counter_id, noc_id, safe_mode)
+        return self._read_counter_id(block, counter_id, noc_id, safe_mode=safe_mode)
 
     def _register_store(self, noc_id: NocId | None) -> RegisterStore:
         if noc_id is None:

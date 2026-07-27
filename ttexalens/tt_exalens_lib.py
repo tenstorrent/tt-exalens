@@ -52,7 +52,7 @@ def read_word_from_device(
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, coordinate.context)
 
-    return coordinate.noc_read32(addr, noc_id, safe_mode)
+    return coordinate.noc_read32(addr, noc_id, safe_mode=safe_mode)
 
 
 @trace_api
@@ -158,7 +158,7 @@ def write_words_to_device(
     noc_id = check_noc_id(noc_id, coordinate.context)
 
     if isinstance(data, int):
-        coordinate.noc_write32(addr, data, noc_id, safe_mode)
+        coordinate.noc_write32(addr, data, noc_id, safe_mode=safe_mode)
     else:
         byte_data = b"".join(x.to_bytes(4, "little") for x in data)
         coordinate.noc_write(addr, byte_data, noc_id, safe_mode=safe_mode)
@@ -360,7 +360,7 @@ def arc_msg(
     if timeout < datetime.timedelta(0):
         raise TTException("Timeout must be greater than or equal to 0.")
 
-    return list(device.arc_msg(noc_id, msg_code, wait_for_done, args, timeout))
+    return list(device.arc_msg(noc_id, msg_code, wait_for_done=wait_for_done, args=args, timeout=timeout))
 
 
 @trace_api
@@ -580,7 +580,6 @@ def top_callstack(
     context: Context | None = None,
     extract_variables: bool = True,
 ) -> list[CallstackEntry]:
-
     """
     Retrieves the top frame of the callstack for the specified PC on the given ELF.
     There is no stack walking, so the function will return the function at the given PC and all inlined functions on the top frame (if there are any).
@@ -598,7 +597,7 @@ def top_callstack(
 
     context = check_context(context)
     elfs_loaded = parse_elfs(elfs, offsets, context)
-    return get_frame_callstack(elfs_loaded, pc, extract_variables)
+    return get_frame_callstack(elfs_loaded, pc, extract_variables=extract_variables)
 
 
 @trace_api
@@ -668,8 +667,8 @@ def callstack(
             mem_access,
             max_depth,
             "main" if stop_on_main else "",
-            extract_variables,
-            expand_tail_call_inline_frames,
+            extract_variables=extract_variables,
+            expand_tail_call_inline_frames=expand_tail_call_inline_frames,
         )
 
 
@@ -717,7 +716,6 @@ def read_riscv_memory(
     context: Context | None = None,
     safe_mode: bool | None = None,
 ) -> int:
-
     """
     Reads a 32-bit word from the specified RISC-V core's private memory.
 
@@ -874,8 +872,8 @@ def get_tensix_state(
     pack_counters = _read_register_group(tensix_reg_desc.pack_counters)
     pack_strides = _read_register_group(tensix_reg_desc.pack_strides)
     gpr = _read_register_group(tensix_reg_desc.general_purpose_registers)
-    group_reader = (
-        lambda signal_group: debug_bus.read_signal_group(signal_group, l1_address)
+    group_reader = lambda signal_group: (
+        debug_bus.read_signal_group(signal_group, l1_address)
         if l1_address is not None
         else debug_bus.read_signal_group_unsafe(signal_group)
     )

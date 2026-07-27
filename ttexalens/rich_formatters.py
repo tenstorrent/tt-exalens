@@ -235,7 +235,9 @@ class RichFormatter:
             tables: list[Panel | Table] = []
             for group_name in group_row:
                 if group_name in data:
-                    tables.append(self.create_data_table(group_name, columns, data[group_name], simple_print))
+                    tables.append(
+                        self.create_data_table(group_name, columns, data[group_name], simple_print=simple_print)
+                    )
                 else:
                     tables.append(Panel(empty_text, title=group_name))
             console.print(Columns(tables, equal=True, expand=False))
@@ -270,7 +272,7 @@ class RichFormatter:
         if sort_by_height_desc:
             names.sort(key=lambda n: -len(data[n]))
         tables: list[Panel | Table] = [
-            self.create_data_table(name, columns, data[name], simple_print) for name in names
+            self.create_data_table(name, columns, data[name], simple_print=simple_print) for name in names
         ]
         console.print(Columns(tables, equal=False, expand=False, padding=(0, 1)))
         console.print()  # blank line
