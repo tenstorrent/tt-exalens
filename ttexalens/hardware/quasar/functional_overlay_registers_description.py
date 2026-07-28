@@ -1,16 +1,6 @@
 # SPDX-FileCopyrightText: © 2025 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-"""
-Describes *which* Quasar overlay ("Rocket" cluster) registers make up each logical
-debug group, and under *what* logical field name each is exposed. This is the
-overlay analogue of ``TensixRegisterDescription``: it centralizes the register-name
-layout so consumers (e.g. the ``dump-rocket-state`` command) read registers by
-logical field instead of hand-constructing register-map names.
-
-Each per-core / per-index group is a list indexed by core/unit/interface; each entry
-maps a logical field name to a register-map key understood by ``RegisterStore``.
-"""
 
 from dataclasses import dataclass, field
 
@@ -24,36 +14,26 @@ NUM_PLIC_PRIORITY_SOURCES = 80
 
 @dataclass
 class OverlayRegistersDescription:
-    # LLK tile counters — [interface][counter] -> {field: register_name}
     tile_counters: list[list[dict[str, str]]] = field(default_factory=list)
 
-    # ROCC command buffers (cmd_buf_r) — [cpu] -> {field: register_name}
     command_buffers: list[dict[str, str]] = field(default_factory=list)
     command_buffer_descriptors: list[dict[str, str]] = field(default_factory=list)
 
-    # Bus error units — [unit] -> {field: register_name}
     bus_error_units: list[dict[str, str]] = field(default_factory=list)
 
-    # Watchdog timers — [core] -> {field: register_name}
     watchdog_timers: list[dict[str, str]] = field(default_factory=list)
 
-    # RISC-V debug module — {field: register_name} (ordered)
     debug_module: dict[str, str] = field(default_factory=dict)
     debug_module_verbose: dict[str, str] = field(default_factory=dict)
 
-    # CLINT — [core] -> {field: register_name}, plus the shared MTIME register
     clint: list[dict[str, str]] = field(default_factory=list)
     clint_mtime: str = ""
 
-    # PLIC — per-core enables/threshold/claim, pending bitmap words, source priorities
     plic_cores: list[dict[str, str]] = field(default_factory=list)
     plic_pending: list[str] = field(default_factory=list)
     plic_priorities: list[str] = field(default_factory=list)
 
 
-# ---------------------------------------------------------------------------
-# Register-name layout (naming conventions of the overlay register map).
-# ---------------------------------------------------------------------------
 _LLK_IFACE_PREFIX = {
     0: "TT_OVERLAY_LLK_TILE_COUNTERS_TT_LLK_INTERFACE_TILE_COUNTERS_",
     1: "TT_OVERLAY_LLK_TILE_COUNTERS_TT_LLK_INTERFACE_1_TILE_COUNTERS_",
@@ -61,7 +41,6 @@ _LLK_IFACE_PREFIX = {
     3: "TT_OVERLAY_LLK_TILE_COUNTERS_TT_LLK_INTERFACE_3_TILE_COUNTERS_",
 }
 
-# logical field -> register-name suffix within a counter reg-file
 _TILE_COUNTER_FIELDS = {
     "POSTED": "POSTED",
     "ACKED": "ACKED",
@@ -73,7 +52,6 @@ _TILE_COUNTER_FIELDS = {
     "FREE_TH": "TILES_FREE_THRESHOLD",
 }
 
-# logical field -> cmd_buf_r register suffix
 _CMDBUF_FIELDS = {
     "IP": "IP",
     "WR_SENT": "WR_SENT_TR_ID",
@@ -112,7 +90,6 @@ _DEBUG_VERBOSE_EXTRA = [
     "SBDATA1",
 ]
 
-# logical field -> per-core PLIC register suffix (note trailing "_" on the IE arrays)
 _PLIC_FIELDS = {
     "THRESHOLD": "THRESHOLD",
     "CLAIM_COMP": "CLAIM_COMPLETE",
