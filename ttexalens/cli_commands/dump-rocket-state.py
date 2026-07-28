@@ -37,7 +37,7 @@ Examples:
   rocket --debug -l 1,1             # debug module at location 1,1
 """
 
-import tabulate
+from typing import Any
 
 from ttexalens import util
 from ttexalens.context import Context
@@ -45,7 +45,9 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.register_store import RegisterStore
 from ttexalens.uistate import UIState
 from ttexalens.device import Device
-from ttexalens.util import INFO, CLR_GREEN, CLR_END
+from ttexalens.util import INFO, format_hex, format_dec, format_flag
+from ttexalens.rich_formatters import formatter, console
+from ttexalens.hardware.quasar.functional_overlay_registers_description import OverlayRegistersDescription
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
@@ -56,20 +58,6 @@ command_metadata = CommandMetadata(
 )
 
 GROUPS = ["counters", "cmdbuf", "errors", "wdt", "debug", "clint", "plic"]
-
-
-def _hex(v: int | None) -> str:
-    return "-" if v is None else f"0x{v:x}"
-
-
-def _dec(v: int | None) -> str:
-    return "-" if v is None else str(v)
-
-
-def _flag(v: int | None) -> str:
-    if v is None:
-        return "-"
-    return "False" if v == 0 else "True"
 
 
 def _parse_cores(cores_arg: str | None, num_cores: int) -> list[int]:
@@ -85,182 +73,187 @@ def _parse_cores(cores_arg: str | None, num_cores: int) -> list[int]:
     return cores
 
 
-_LLK_IFACE_PREFIX = {
-    0: "TT_OVERLAY_LLK_TILE_COUNTERS_TT_LLK_INTERFACE_TILE_COUNTERS_",
-    1: "TT_OVERLAY_LLK_TILE_COUNTERS_TT_LLK_INTERFACE_1_TILE_COUNTERS_",
-    2: "TT_OVERLAY_LLK_TILE_COUNTERS_TT_LLK_INTERFACE_2_TILE_COUNTERS_",
-    3: "TT_OVERLAY_LLK_TILE_COUNTERS_TT_LLK_INTERFACE_3_TILE_COUNTERS_",
-}
-
-NUM_OF_TILE_COUNTERS = 16
-NUM_OF_PLIC_PENDING_WORDS = 3
-NUM_OF_PLIC_PRIORITY_SOURCES = 80
-
-
-def dump_counters(register_store: RegisterStore, verbose: bool, cores: list[int]) -> None:
-    print(f"{CLR_GREEN}LLK TILE COUNTERS{CLR_END}")
+def dump_counters(
+    register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription
+) -> None:
+    formatter.print_section_header("LLK TILE COUNTERS")
     headers = ["CNT", "POSTED", "ACKED", "OCC", "CAP", "FREE", "ERR"]
     if verbose:
         headers += ["R_POST", "R_ACK", "AVL_TH", "FREE_TH"]
-    for iface in range(len(_LLK_IFACE_PREFIX)):
-        prefix = _LLK_IFACE_PREFIX[iface]
-        rows = []
-        for c in range(NUM_OF_TILE_COUNTERS):
-            base = f"{prefix}{c}__"
-            posted = register_store.read_register(base + "POSTED")
-            acked = register_store.read_register(base + "ACKED")
-            cap = register_store.read_register(base + "BUFFER_CAPACITY")
-            err = register_store.read_register(base + "ERROR_STATUS")
+    data: dict[str, list[tuple[Any, ...]]] = {}
+    for iface, counters in enumerate(desc.tile_counters):
+        rows: list[tuple[Any, ...]] = []
+        for counter, regs in enumerate(counters):
+            posted = register_store.read_register(regs["POSTED"])
+            acked = register_store.read_register(regs["ACKED"])
+            cap = register_store.read_register(regs["CAP"])
+            err = register_store.read_register(regs["ERR"])
             occ = (posted - acked) & 0xFFFFFFFF
             free = cap - occ
-            row = [c, _dec(posted), _dec(acked), _dec(occ), _dec(cap), _dec(free), _flag(err)]
+            row = [
+                counter,
+                format_dec(posted),
+                format_dec(acked),
+                format_dec(occ),
+                format_dec(cap),
+                format_dec(free),
+                format_flag(err),
+            ]
             if verbose:
                 row += [
-                    _dec(register_store.read_register(base + "READ_POSTED")),
-                    _dec(register_store.read_register(base + "READ_ACKED")),
-                    _dec(register_store.read_register(base + "TILES_AVAIL_THRESHOLD")),
-                    _dec(register_store.read_register(base + "TILES_FREE_THRESHOLD")),
+                    format_dec(register_store.read_register(regs["R_POST"])),
+                    format_dec(register_store.read_register(regs["R_ACK"])),
+                    format_dec(register_store.read_register(regs["AVL_TH"])),
+                    format_dec(register_store.read_register(regs["FREE_TH"])),
                 ]
-            rows.append(row)
-        print(f"Interface {iface}")
-        print(tabulate.tabulate(rows, headers=headers, tablefmt="simple_outline"))
+            rows.append(tuple(row))
+        data[f"Interface {iface}"] = rows
+    formatter.display_grouped_data_autoflow(data, columns=formatter.styled_columns(headers), sort_by_height_desc=False)
 
 
-def dump_cmdbuf(register_store: RegisterStore, verbose: bool, cores: list[int]) -> None:
-    print(f"{CLR_GREEN}ROCC COMMAND BUFFERS (cmd_buf_r){CLR_END}")
-    rows = []
+def dump_cmdbuf(
+    register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription
+) -> None:
+    rows: list[tuple[Any, ...]] = []
     for cpu in cores:
-        b = f"TT_ROCC_ACCEL_TT_ROCC_CPU{cpu}_CMD_BUF_R_"
-        ip = register_store.read_register(b + "IP")
-        wr = register_store.read_register(b + "WR_SENT_TR_ID")
-        ack = register_store.read_register(b + "TR_ACK_TR_ID")
-        ip0 = register_store.read_register(b + "PER_TR_ID_IP_0")
-        ip1 = register_store.read_register(b + "PER_TR_ID_IP_1")
-        ip2 = register_store.read_register(b + "PER_TR_ID_IP_2")
+        regs = desc.command_buffers[cpu]
+        ip = register_store.read_register(regs["IP"])
+        wr = register_store.read_register(regs["WR_SENT"])
+        ack = register_store.read_register(regs["TR_ACK"])
+        ip0 = register_store.read_register(regs["IP_0"])
+        ip1 = register_store.read_register(regs["IP_1"])
+        ip2 = register_store.read_register(regs["IP_2"])
         outst = "YES" if wr != ack else ""
-        rows.append([cpu, _hex(ip), _hex(wr), _hex(ack), outst, _hex(ip0), _hex(ip1), _hex(ip2)])
-    print(
-        tabulate.tabulate(
-            rows, headers=["CPU", "IP", "WR_SENT", "TR_ACK", "OUTST", "IP_0", "IP_1", "IP_2"], tablefmt="simple_outline"
+        rows.append(
+            (
+                cpu,
+                format_hex(ip),
+                format_hex(wr),
+                format_hex(ack),
+                outst,
+                format_hex(ip0),
+                format_hex(ip1),
+                format_hex(ip2),
+            )
         )
+    formatter.print_styled_table(
+        "ROCC COMMAND BUFFERS (cmd_buf_r)",
+        ["CPU", "IP", "WR_SENT", "TR_ACK", "OUTST", "IP_0", "IP_1", "IP_2"],
+        rows,
     )
 
     if verbose:
-        desc = ["SRC_ADDR", "SRC_COORD", "DEST_ADDR", "DEST_COORD", "LEN_BYTES", "REQ_VC", "RESP_VC", "TR_ID", "MISC"]
-        rows = []
+        fields = list(desc.command_buffer_descriptors[0].keys())
+        drows: list[tuple[Any, ...]] = []
         for cpu in cores:
-            b = f"TT_ROCC_ACCEL_TT_ROCC_CPU{cpu}_CMD_BUF_R_"
-            rows.append([cpu] + [_hex(register_store.read_register(b + r)) for r in desc])
-        print("Descriptor")
-        print(tabulate.tabulate(rows, headers=["CPU"] + desc, tablefmt="simple_outline"))
+            regs = desc.command_buffer_descriptors[cpu]
+            drows.append((cpu, *(format_hex(register_store.read_register(regs[f])) for f in fields)))
+        formatter.print_styled_table("ROCC COMMAND BUFFERS — descriptor", ["CPU"] + fields, drows)
 
 
-def dump_errors(register_store: RegisterStore, verbose: bool, cores: list[int]) -> None:
-    print(f"{CLR_GREEN}BUS ERROR UNITS{CLR_END}")
-    rows = []
-    for u in cores:
-        b = f"BUS_ERROR_UNIT_{u}_"
-        cause = register_store.read_register(b + "CAUSE")
-        pa = register_store.read_register(b + "PHYS_ADDR")
-        acc = register_store.read_register(b + "ACCRUED")
-        en = register_store.read_register(b + "ENABLE")
-        plic_en = register_store.read_register(b + "PLIC_ENABLE")
-        local_en = register_store.read_register(b + "LOCAL_ENABLE")
-        note = "<-- FAULT" if cause != 0 else ""
-        rows.append([u, _hex(cause), _hex(pa), _hex(acc), _hex(en), _hex(plic_en), _hex(local_en), note])
-    print(
-        tabulate.tabulate(
-            rows,
-            headers=["Unit", "CAUSE", "PHYS_ADDR", "ACCRUED", "EN", "PLIC_EN", "LOCAL_EN", ""],
-            tablefmt="simple_outline",
+def dump_errors(
+    register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription
+) -> None:
+    rows: list[tuple[Any, ...]] = []
+    for unit in cores:
+        regs = desc.bus_error_units[unit]
+        cause = register_store.read_register(regs["CAUSE"])
+        pa = register_store.read_register(regs["PHYS_ADDR"])
+        acc = register_store.read_register(regs["ACCRUED"])
+        en = register_store.read_register(regs["ENABLE"])
+        plic_en = register_store.read_register(regs["PLIC_ENABLE"])
+        local_en = register_store.read_register(regs["LOCAL_ENABLE"])
+        note = "FAULT" if cause != 0 else ""
+        rows.append(
+            (
+                unit,
+                format_hex(cause),
+                format_hex(pa),
+                format_hex(acc),
+                format_hex(en),
+                format_hex(plic_en),
+                format_hex(local_en),
+                note,
+            )
         )
+    formatter.print_styled_table(
+        "BUS ERROR UNITS",
+        ["Unit", "CAUSE", "PHYS_ADDR", "ACCRUED", "EN", "PLIC_EN", "LOCAL_EN", "NOTE"],
+        rows,
     )
 
 
-def dump_wdt(register_store: RegisterStore, verbose: bool, cores: list[int]) -> None:
-    print(f"{CLR_GREEN}WATCHDOG TIMERS{CLR_END}")
-    rows = []
-    for c in cores:
-        b = f"TT_CLUSTER_CORE{c}_WDT_"
+def dump_wdt(register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription) -> None:
+    rows: list[tuple[Any, ...]] = []
+    for core in cores:
+        regs = desc.watchdog_timers[core]
         rows.append(
-            [
-                c,
-                _hex(register_store.read_register(b + "CTRL")),
-                _dec(register_store.read_register(b + "COUNT")),
-                _dec(register_store.read_register(b + "SCALED_COUNT")),
-                _dec(register_store.read_register(b + "CMP")),
-            ]
+            (
+                core,
+                format_hex(register_store.read_register(regs["CTRL"])),
+                format_dec(register_store.read_register(regs["COUNT"])),
+                format_dec(register_store.read_register(regs["SCALED_COUNT"])),
+                format_dec(register_store.read_register(regs["CMP"])),
+            )
         )
-    print(tabulate.tabulate(rows, headers=["Core", "CTRL", "COUNT", "SCALED_COUNT", "CMP"], tablefmt="simple_outline"))
+    formatter.print_styled_table("WATCHDOG TIMERS", ["Core", "CTRL", "COUNT", "SCALED_COUNT", "CMP"], rows)
 
 
-def dump_debug(register_store: RegisterStore, verbose: bool, cores: list[int]) -> None:
-    print(f"{CLR_GREEN}DEBUG MODULE{CLR_END}")
-    names = ["DMSTATUS", "DMCONTROL", "HALTSUMMARY0", "HALTSUMMARY1", "ABSTRACTCS", "STATUS2", "SBCS", "HARTINFO"]
-    if verbose:
-        names += [
-            "DATA0",
-            "DATA1",
-            "COMMAND",
-            "ABSTRACTAUTO",
-            "PROGBUF0",
-            "PROGBUF1",
-            "SBADDR0",
-            "SBADDR1",
-            "SBDATA0",
-            "SBDATA1",
-        ]
-    rows = [[n, _hex(register_store.read_register(f"TT_DEBUG_MODULE_APB_{n}"))] for n in names]
-    print(tabulate.tabulate(rows, headers=["Register", "Value"], tablefmt="simple_outline"))
-    hs = register_store.read_register("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
+def dump_debug(
+    register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription
+) -> None:
+    regs = desc.debug_module_verbose if verbose else desc.debug_module
+    rows: list[tuple[Any, ...]] = [(name, format_hex(register_store.read_register(rn))) for name, rn in regs.items()]
+    formatter.print_styled_table("DEBUG MODULE", ["Register", "Value"], rows)
+    hs = register_store.read_register(desc.debug_module["HALTSUMMARY0"])
     halted = [i for i in cores if hs & (1 << i)]
-    print(f"  Halted harts (HALTSUMMARY0 bitmap): {halted if halted else 'none'}")
+    console.print(f"  Halted harts (HALTSUMMARY0 bitmap): {halted if halted else 'none'}", markup=False)
 
 
-def dump_clint(register_store: RegisterStore, verbose: bool, cores: list[int]) -> None:
-    print(f"{CLR_GREEN}CLINT{CLR_END}")
-    rows = []
-    for c in cores:
+def dump_clint(
+    register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription
+) -> None:
+    rows: list[tuple[Any, ...]] = []
+    for core in cores:
+        regs = desc.clint[core]
         rows.append(
-            [
-                c,
-                _hex(register_store.read_register(f"TT_CLUSTER_CLINT_MSIP_{c}_")),
-                _hex(register_store.read_register(f"TT_CLUSTER_CLINT_MTIMECMP_{c}_")),
-            ]
+            (
+                core,
+                format_hex(register_store.read_register(regs["MSIP"])),
+                format_hex(register_store.read_register(regs["MTIMECMP"])),
+            )
         )
-    print(tabulate.tabulate(rows, headers=["Core", "MSIP", "MTIMECMP"], tablefmt="simple_outline"))
-    print(f"  MTIME: {_hex(register_store.read_register('TT_CLUSTER_CLINT_MTIME'))}")
+    formatter.print_styled_table("CLINT", ["Core", "MSIP", "MTIMECMP"], rows)
+    console.print(f"  MTIME: {format_hex(register_store.read_register(desc.clint_mtime))}", markup=False)
 
 
-def dump_plic(register_store: RegisterStore, verbose: bool, cores: list[int]) -> None:
-    print(f"{CLR_GREEN}PLIC{CLR_END}")
-    pend = [register_store.read_register(f"TT_CLUSTER_PLIC_PENDING_{n}_") for n in range(NUM_OF_PLIC_PENDING_WORDS)]
-    print("  PENDING: " + ", ".join(f"[{n}]={_hex(pend[n])}" for n in range(NUM_OF_PLIC_PENDING_WORDS)))
-    rows = []
-    for c in cores:
-        b = f"TT_CLUSTER_PLIC_CORE{c}_"
+def dump_plic(
+    register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription
+) -> None:
+    rows: list[tuple[Any, ...]] = []
+    for core in cores:
+        regs = desc.plic_cores[core]
         rows.append(
-            [
-                c,
-                _hex(register_store.read_register(b + "THRESHOLD")),
-                _hex(register_store.read_register(b + "CLAIM_COMPLETE")),
-                _hex(register_store.read_register(b + "IE_0_")),
-                _hex(register_store.read_register(b + "IE_1_")),
-                _hex(register_store.read_register(b + "IE_2_")),
-            ]
+            (
+                core,
+                format_hex(register_store.read_register(regs["THRESHOLD"])),
+                format_hex(register_store.read_register(regs["CLAIM_COMP"])),
+                format_hex(register_store.read_register(regs["IE_0"])),
+                format_hex(register_store.read_register(regs["IE_1"])),
+                format_hex(register_store.read_register(regs["IE_2"])),
+            )
         )
-    print(
-        tabulate.tabulate(
-            rows, headers=["Core", "THRESHOLD", "CLAIM_COMP", "IE_0", "IE_1", "IE_2"], tablefmt="simple_outline"
-        )
+    formatter.print_styled_table("PLIC", ["Core", "THRESHOLD", "CLAIM_COMP", "IE_0", "IE_1", "IE_2"], rows)
+    pend = [register_store.read_register(rn) for rn in desc.plic_pending]
+    console.print(
+        "  PENDING: " + ", ".join(f"[{n}]={format_hex(v)}" for n, v in enumerate(pend)),
+        markup=False,
     )
     if verbose:
-        rows = [
-            [n, _hex(register_store.read_register(f"TT_CLUSTER_PLIC_PRIORITY_{n}_"))]
-            for n in range(NUM_OF_PLIC_PRIORITY_SOURCES)
+        prows: list[tuple[Any, ...]] = [
+            (source, format_hex(register_store.read_register(rn))) for source, rn in enumerate(desc.plic_priorities)
         ]
-        print("Source priorities")
-        print(tabulate.tabulate(rows, headers=["Source", "PRIORITY"], tablefmt="simple_outline"))
+        formatter.print_styled_table("PLIC — source priorities", ["Source", "PRIORITY"], prows)
 
 
 DISPATCH = {
@@ -294,10 +287,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             if overlay_block is None:
                 util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have a Rocket overlay.")
                 continue
+            desc = overlay_block.get_register_description()
             num_cores = len(overlay_block.all_riscs)
             register_store = noc_block.get_register_store()
             cores = _parse_cores(dopt.args["--cores"], num_cores)
 
             INFO(f"Rocket state for location {loc} on device {device.id}")
             for group in selected:
-                DISPATCH[group](register_store, verbose, cores)
+                DISPATCH[group](register_store, verbose, cores, desc)

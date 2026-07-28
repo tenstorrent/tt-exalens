@@ -164,6 +164,24 @@ class RichFormatter:
 
         return table
 
+    def styled_columns(
+        self, column_names: list[str], index_style: str = "cyan", value_style: str = "green"
+    ) -> list[tuple[str, str]]:
+        return [(column_names[0], index_style)] + [(name, value_style) for name in column_names[1:]]
+
+    def print_styled_table(
+        self,
+        title: str,
+        column_names: list[str],
+        data: list[tuple[Any, ...]],
+        simple_print: bool = False,
+        index_style: str = "cyan",
+        value_style: str = "green",
+    ) -> None:
+        columns = self.styled_columns(column_names, index_style, value_style)
+        console.print(self.create_data_table(title, columns, data, simple_print))
+        console.print()
+
     def format_value(self, value_info: dict[str, Any]) -> str:
         """
         Format a value based on its format specification.
