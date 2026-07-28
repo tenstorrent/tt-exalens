@@ -114,76 +114,39 @@ def dump_counters(
 def dump_cmdbuf(
     register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription
 ) -> None:
+    fields = list(desc.command_buffers[0].keys())
     rows: list[tuple[Any, ...]] = []
     for cpu in cores:
         regs = desc.command_buffers[cpu]
-        ip = register_store.read_register(regs["IP"])
-        wr = register_store.read_register(regs["WR_SENT"])
-        ack = register_store.read_register(regs["TR_ACK"])
-        ip0 = register_store.read_register(regs["IP_0"])
-        ip1 = register_store.read_register(regs["IP_1"])
-        ip2 = register_store.read_register(regs["IP_2"])
-        outst = "YES" if wr != ack else ""
-        rows.append(
-            (
-                cpu,
-                format_hex(ip),
-                format_hex(wr),
-                format_hex(ack),
-                outst,
-                format_hex(ip0),
-                format_hex(ip1),
-                format_hex(ip2),
-            )
-        )
-    formatter.print_styled_table(
-        "ROCC COMMAND BUFFERS (cmd_buf_r)",
-        ["CPU", "IP", "WR_SENT", "TR_ACK", "OUTST", "IP_0", "IP_1", "IP_2"],
-        rows,
-    )
+        vals = {field: register_store.read_register(regs[field]) for field in fields}
+        outst = "YES" if vals["WR_SENT"] != vals["TR_ACK"] else ""
+        rows.append((cpu, *(format_hex(vals[field]) for field in fields), outst))
+    formatter.print_styled_table("ROCC COMMAND BUFFERS (cmd_buf_r)", ["CPU", *fields, "OUTST"], rows)
 
     if verbose:
-        fields = list(desc.command_buffer_descriptors[0].keys())
+        descriptor_fields = list(desc.command_buffer_descriptors[0].keys())
         drows: list[tuple[Any, ...]] = []
         for cpu in cores:
             regs = desc.command_buffer_descriptors[cpu]
-            drows.append((cpu, *(format_hex(register_store.read_register(regs[f])) for f in fields)))
-        formatter.print_styled_table("ROCC COMMAND BUFFERS — descriptor", ["CPU"] + fields, drows)
+            drows.append((cpu, *(format_hex(register_store.read_register(regs[field])) for field in descriptor_fields)))
+        formatter.print_styled_table("ROCC COMMAND BUFFERS — descriptor", ["CPU", *descriptor_fields], drows)
 
 
 def dump_errors(
     register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription
 ) -> None:
+    fields = list(desc.bus_error_units[0].keys())
     rows: list[tuple[Any, ...]] = []
     for unit in cores:
         regs = desc.bus_error_units[unit]
-        cause = register_store.read_register(regs["CAUSE"])
-        pa = register_store.read_register(regs["PHYS_ADDR"])
-        acc = register_store.read_register(regs["ACCRUED"])
-        en = register_store.read_register(regs["ENABLE"])
-        plic_en = register_store.read_register(regs["PLIC_ENABLE"])
-        local_en = register_store.read_register(regs["LOCAL_ENABLE"])
-        note = "FAULT" if cause != 0 else ""
-        rows.append(
-            (
-                unit,
-                format_hex(cause),
-                format_hex(pa),
-                format_hex(acc),
-                format_hex(en),
-                format_hex(plic_en),
-                format_hex(local_en),
-                note,
-            )
-        )
-    formatter.print_styled_table(
-        "BUS ERROR UNITS",
-        ["Unit", "CAUSE", "PHYS_ADDR", "ACCRUED", "EN", "PLIC_EN", "LOCAL_EN", "NOTE"],
-        rows,
-    )
+        vals = {field: register_store.read_register(regs[field]) for field in fields}
+        note = "FAULT" if vals["CAUSE"] != 0 else ""
+        rows.append((unit, *(format_hex(vals[field]) for field in fields), note))
+    formatter.print_styled_table("BUS ERROR UNITS", ["Unit", *fields, "NOTE"], rows)
 
 
 def dump_wdt(register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription) -> None:
+    fields = list(desc.watchdog_timers[0].keys())
     rows: list[tuple[Any, ...]] = []
     for core in cores:
         regs = desc.watchdog_timers[core]
@@ -196,7 +159,7 @@ def dump_wdt(register_store: RegisterStore, verbose: bool, cores: list[int], des
                 format_dec(register_store.read_register(regs["CMP"])),
             )
         )
-    formatter.print_styled_table("WATCHDOG TIMERS", ["Core", "CTRL", "COUNT", "SCALED_COUNT", "CMP"], rows)
+    formatter.print_styled_table("WATCHDOG TIMERS", ["Core", *fields], rows)
 
 
 def dump_debug(
@@ -213,37 +176,24 @@ def dump_debug(
 def dump_clint(
     register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription
 ) -> None:
+    fields = list(desc.clint[0].keys())
     rows: list[tuple[Any, ...]] = []
     for core in cores:
         regs = desc.clint[core]
-        rows.append(
-            (
-                core,
-                format_hex(register_store.read_register(regs["MSIP"])),
-                format_hex(register_store.read_register(regs["MTIMECMP"])),
-            )
-        )
-    formatter.print_styled_table("CLINT", ["Core", "MSIP", "MTIMECMP"], rows)
+        rows.append((core, *(format_hex(register_store.read_register(regs[field])) for field in fields)))
+    formatter.print_styled_table("CLINT", ["Core", *fields], rows)
     console.print(f"  MTIME: {format_hex(register_store.read_register(desc.clint_mtime))}", markup=False)
 
 
 def dump_plic(
     register_store: RegisterStore, verbose: bool, cores: list[int], desc: OverlayRegistersDescription
 ) -> None:
+    fields = list(desc.plic_cores[0].keys())
     rows: list[tuple[Any, ...]] = []
     for core in cores:
         regs = desc.plic_cores[core]
-        rows.append(
-            (
-                core,
-                format_hex(register_store.read_register(regs["THRESHOLD"])),
-                format_hex(register_store.read_register(regs["CLAIM_COMP"])),
-                format_hex(register_store.read_register(regs["IE_0"])),
-                format_hex(register_store.read_register(regs["IE_1"])),
-                format_hex(register_store.read_register(regs["IE_2"])),
-            )
-        )
-    formatter.print_styled_table("PLIC", ["Core", "THRESHOLD", "CLAIM_COMP", "IE_0", "IE_1", "IE_2"], rows)
+        rows.append((core, *(format_hex(register_store.read_register(regs[field])) for field in fields)))
+    formatter.print_styled_table("PLIC", ["Core", *fields], rows)
     pend = [register_store.read_register(rn) for rn in desc.plic_pending]
     console.print(
         "  PENDING: " + ", ".join(f"[{n}]={format_hex(v)}" for n, v in enumerate(pend)),
