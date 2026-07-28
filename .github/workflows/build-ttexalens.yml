@@ -64,6 +64,7 @@ jobs:
         uses: pyTooling/upload-artifact@v4
         with:
           name: ttexalens-build-${{ inputs.os }}
+          retention-days: 1
           path: |
             build
             build_riscv

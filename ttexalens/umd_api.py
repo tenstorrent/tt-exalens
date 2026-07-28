@@ -253,7 +253,7 @@ def local_init(init_jtag=False, noc_id: NocId = NocId.NOC1, simulation_directory
         noc_id = (
             NocId.NOC0
         )  # Quasar is only available through simulation and does not have NOC1, so we switch to NOC0 as a workaround.
-    communicator = UmdApi(init_jtag, noc_id, simulation_directory)
+    communicator = UmdApi(init_jtag=init_jtag, noc_id=noc_id, simulation_directory=simulation_directory)
     if util.VERBOSE_ENABLED:
         util.VERBOSE("Device opened successfully.")
     return communicator
