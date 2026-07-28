@@ -232,9 +232,6 @@ class QuasarFunctionalOverlayBlock:
         ]
 
     def get_register_description(self) -> OverlayRegistersDescription:
-        """Logical description of the overlay debug registers (which register belongs to
-        which group / field). Consumed by commands such as dump-rocket-state so they read
-        registers by logical field instead of hand-constructing register-map names."""
         return overlay_registers_description
 
     @cached_property
