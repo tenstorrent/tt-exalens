@@ -13,15 +13,15 @@ Options:
   --debug           Dump RISC-V debug module state (halt / abstract / system bus).
   --clint           Dump CLINT (per-core software interrupt + timer compare).
   --plic            Dump PLIC (interrupt priorities / pending / enables).
-  --cores <cores>   Comma-separated Rocket core indices for the per-core groups (e.g. 0,3,5). Default: all cores.
+  --cores <cores>   Comma-separated core indices for the per-core groups (e.g. 0,3,5). Default: all cores.
 
 Description:
-  Dumps Quasar overlay ("Rocket" data-movement cluster) state at the given
+  Dumps Quasar overlay state at the given
   location and device, grouped by logical block. With no group flag, all
   groups are dumped; multiple group flags may be combined to dump a subset.
 
   The core selector (--cores) restricts the per-core groups (cmdbuf, errors, wdt,
-  debug, clint, plic) to the given Rocket cores; the per-interface LLK tile-counter
+  debug, clint, plic) to the given cores; the per-interface LLK tile-counter
   group is unaffected.
 
   Verbose (-v) widens each group: read-mirror/threshold counters, the full
@@ -235,7 +235,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                 continue
             overlay_block = getattr(noc_block, "overlay", None)
             if overlay_block is None:
-                util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have a Rocket overlay.")
+                util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have an overlay block.")
                 continue
             desc = overlay_block.get_register_description()
             num_cores = len(overlay_block.all_riscs)
