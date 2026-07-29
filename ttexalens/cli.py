@@ -185,7 +185,9 @@ def redirect_command_output_to_file(file_output: str | None):
 
     file_output = file_output.strip()
     file_output = file_output.replace('"', "").replace("'", "")
-    return util.redirect_output_to_file_and_terminal(file_output, show_terminal_output, append)
+    return util.redirect_output_to_file_and_terminal(
+        file_output, show_terminal_output=show_terminal_output, append=append
+    )
 
 
 def main_loop(args, context: Context):
