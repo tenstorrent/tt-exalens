@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING
 from ttexalens.context import NocId
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
+from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.memory_map import MemoryMapBlockInfo
 from ttexalens.hardware.quasar.functional_overlay_registers import (
     SmnRegisterDescription,
     ControlStatusRegisterDescription,
@@ -17,9 +19,17 @@ from ttexalens.hardware.quasar.functional_overlay_registers import (
     NeoRegisterDescription,
     OverlayLlkTileCountersRegisterDescription,
     RoccAcellRegisterDescription,
+    BusErrorUnitRegisterDescription,
+    WatchdogTimerRegisterDescription,
+    ClintRegisterDescription,
+    PlicRegisterDescription,
     register_map,
 )
 from ttexalens.hardware.quasar.rocket_core_debug import QuasarRocketCoreDebug
+from ttexalens.hardware.quasar.functional_overlay_registers_description import (
+    OverlayRegistersDescription,
+    overlay_registers_description,
+)
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     DebugRegisterDescription,
@@ -48,6 +58,14 @@ def get_overlay_register_base_address(register_description: RegisterDescription)
         )  # These registers are only available through SMN
     elif isinstance(register_description, NeoRegisterDescription):
         return DeviceAddress(noc_address=0x03020000)
+    elif isinstance(register_description, BusErrorUnitRegisterDescription):
+        return DeviceAddress(noc_address=0x04000000)
+    elif isinstance(register_description, WatchdogTimerRegisterDescription):
+        return DeviceAddress(noc_address=0x04008000)
+    elif isinstance(register_description, ClintRegisterDescription):
+        return DeviceAddress(noc_address=0x04020000)
+    elif isinstance(register_description, PlicRegisterDescription):
+        return DeviceAddress(noc_address=0x08000000)
     else:
         raise ValueError(f"Unknown register description type: {type(register_description)}")
 
@@ -170,6 +188,51 @@ class QuasarFunctionalOverlayBlock:
             code_start_address_enable_register=None,
             debug_hardware_present=True,
         )
+
+        self.noc_memory_list: list[MemoryMapBlockInfo] = [
+            MemoryMapBlockInfo(
+                "overlay_cluster_control",
+                MemoryBlock(0x1000, DeviceAddress(noc_address=0x03000000)),
+                safe_to_read=True,
+                safe_to_write=True,
+            ),
+            MemoryMapBlockInfo(
+                "overlay_llk_tile_counters",
+                MemoryBlock(0x1000, DeviceAddress(noc_address=0x03003000)),
+                safe_to_read=True,
+                safe_to_write=True,
+            ),
+            MemoryMapBlockInfo(
+                "overlay_rocc_accel", MemoryBlock(0x6000, DeviceAddress(noc_address=0x03004000)), safe_to_read=True
+            ),
+            MemoryMapBlockInfo(
+                "overlay_debug_module",
+                MemoryBlock(0x1000, DeviceAddress(noc_address=0x0300A000)),
+                safe_to_read=True,
+                safe_to_write=True,
+            ),
+            MemoryMapBlockInfo(
+                "overlay_smn",
+                MemoryBlock(0x8000, DeviceAddress(noc_address=0x03010000)),
+                safe_to_read=True,
+                safe_to_write=True,
+            ),
+            MemoryMapBlockInfo(
+                "overlay_bus_error_units", MemoryBlock(0x8000, DeviceAddress(noc_address=0x04000000)), safe_to_read=True
+            ),
+            MemoryMapBlockInfo(
+                "overlay_watchdog_timers", MemoryBlock(0x8000, DeviceAddress(noc_address=0x04008000)), safe_to_read=True
+            ),
+            MemoryMapBlockInfo(
+                "overlay_clint", MemoryBlock(0xC000, DeviceAddress(noc_address=0x04020000)), safe_to_read=True
+            ),
+            MemoryMapBlockInfo(
+                "overlay_plic", MemoryBlock(0x208000, DeviceAddress(noc_address=0x08000000)), safe_to_read=True
+            ),
+        ]
+
+    def get_register_description(self) -> OverlayRegistersDescription:
+        return overlay_registers_description
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:
