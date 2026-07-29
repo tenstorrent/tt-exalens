@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-rocket-state [--counters] [--cmdbuf] [--errors] [--wdt] [--debug] [--clint] [--plic] [--cores <cores>] [ -d <device> ] [ -l <loc> ] [ -v ]
+  dump-overlay-state [--counters] [--cmdbuf] [--errors] [--wdt] [--debug] [--clint] [--plic] [--cores <cores>] [ -d <device> ] [ -l <loc> ] [ -v ]
 
 Options:
   --counters        Dump LLK tile counters (DFB credits / flow control).
@@ -28,13 +28,13 @@ Description:
   command-buffer descriptor, extra debug-module registers, and PLIC priorities.
 
 Examples:
-  dump-rocket-state                 # all groups, current device/core
-  rocket                            # same (short name)
-  rocket --cmdbuf                   # only ROCC command buffers
-  rocket --errors --wdt             # bus errors + watchdogs together
-  rocket --counters -v              # LLK counters incl. read-mirrors/thresholds
-  rocket --cmdbuf --cores 0,3,5     # command buffers for cores 0, 3, 5 only
-  rocket --debug -l 1,1             # debug module at location 1,1
+  dump-overlay-state                 # all groups, current device/core
+  overlay                            # same (short name)
+  overlay --cmdbuf                   # only ROCC command buffers
+  overlay --errors --wdt             # bus errors + watchdogs together
+  overlay --counters -v              # LLK counters incl. read-mirrors/thresholds
+  overlay --cmdbuf --cores 0,3,5     # command buffers for cores 0, 3, 5 only
+  overlay --debug -l 1,1             # debug module at location 1,1
 """
 
 from typing import Any
@@ -51,7 +51,7 @@ from ttexalens.hardware.quasar.functional_overlay_registers_description import O
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 command_metadata = CommandMetadata(
-    short_name="rocket",
+    short_name="overlay",
     type="low-level",
     description=__doc__,
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
@@ -242,6 +242,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             register_store = noc_block.get_register_store()
             cores = _parse_cores(dopt.args["--cores"], num_cores)
 
-            INFO(f"Rocket state for location {loc} on device {device.id}")
+            INFO(f"Overlay state for location {loc} on device {device.id}")
             for group in selected:
                 DISPATCH[group](register_store, verbose, cores, desc)
