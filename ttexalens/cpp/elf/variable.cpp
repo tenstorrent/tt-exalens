@@ -156,7 +156,8 @@ uint64_t ElfVariable::get_size() const {
 }
 
 ElfVariable ElfVariable::get_member(std::string_view member_name) const {
-    if (type_die->get_tag() == DwarfDieTag::pointer_type) {
+    const DwarfDieTag member_tag = type_die->get_tag();
+    if (member_tag == DwarfDieTag::pointer_type || member_tag == DwarfDieTag::reference_type) {
         return dereference().get_member(member_name);
     }
 
@@ -194,7 +195,8 @@ ElfVariable ElfVariable::get_member(std::string_view member_name) const {
 }
 
 ElfVariable ElfVariable::dereference() const {
-    if (type_die->get_tag() != DwarfDieTag::pointer_type) {
+    const DwarfDieTag tag = type_die->get_tag();
+    if (tag != DwarfDieTag::pointer_type && tag != DwarfDieTag::reference_type) {
         throw TypeMismatchException("dereference", type_die->get_path());
     }
     auto ptr_size = type_die->get_size();

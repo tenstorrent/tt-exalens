@@ -966,7 +966,9 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
     }
     // Literal value (DW_OP_stack_value / register-direct / composite via
     // DW_OP_piece): synthesise a backing buffer holding the materialised
-    // bytes and hand back a ElfVariable that reads from it.
+    // bytes and hand back a ElfVariable that reads from it. The frame's
+    // memory access stays the cache's base so that a materialised pointer or
+    // reference can still be dereferenced into live memory.
     auto size_opt = resolved->get_size();
     if (!size_opt) {
         return std::nullopt;
@@ -982,7 +984,7 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
         uint64_t raw = *location->value;
         std::memcpy(bytes.data(), &raw, std::min(size, static_cast<uint64_t>(sizeof(raw))));
     }
-    auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(bytes), NoMemoryAccess::instance());
+    auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(bytes), frame.get_memory_access());
     return ElfVariable(resolved, 0, std::move(cache));
 }
 
