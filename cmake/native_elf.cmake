@@ -37,11 +37,18 @@ endif()
 
 # ELFIO — header-only C++ ELF reader (section list + symbol table; libdwarf v2.x
 # doesn't expose those publicly). DOWNLOAD_ONLY: we only want the headers.
+#
+# Pinned to a commit rather than a release tag: elf_types.hpp is missing
+# `#include <cstdint>` as of Release_3.12 (the latest tag, from 2023), which
+# fails to compile under GCC 15+/newer libstdc++ headers that no longer leak
+# <cstdint> in transitively. Fixed upstream on main but no release has been
+# cut since Release_3.12 (2023). Safe to move to a tagged release once one
+# exists.
 if(NOT TARGET elfio)
     CPMAddPackage(
         NAME ELFIO
         GITHUB_REPOSITORY serge1/ELFIO
-        GIT_TAG Release_3.12
+        GIT_TAG 6c77f9b01e8cf11cc1ac7f7aa7f3b288f23371ae
         EXCLUDE_FROM_ALL YES
         DOWNLOAD_ONLY YES
     )
