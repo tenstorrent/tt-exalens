@@ -13,7 +13,7 @@ from ttexalens.context import Context
 from ttexalens.elf import ElfFile, ElfVariable
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.memory_access import MemoryAccess, create_memory_access
-from ttexalens.exceptions import RestrictedMemoryAccessError
+from ttexalens.exceptions import DataLossError, RestrictedMemoryAccessError, SymbolNotFoundError, TypeMismatchError
 from ttexalens.umd_device import TimeoutDeviceRegisterError
 
 from parameterized import parameterized
@@ -312,6 +312,35 @@ class TestDebugSymbols(unittest.TestCase):
         self.verify_global_struct(g_global_struct)
         self.assertEqual(self.mem_access.read_count, 1)
 
+    def test_elf_reference_global_variable(self):
+        # A reference has no value of its own - every operation resolves the referent.
+        g_global_struct = self.parsed_elf.get_global("g_global_struct_ref", TestDebugSymbols.mem_access)
+        self.verify_global_struct(g_global_struct)
+        self.assertEqual(0x11223344, g_global_struct.dereference().a)
+
+        # An rvalue reference resolves the same way.
+        self.assertEqual(0x5A5A1234, self.parsed_elf.get_global("g_uint_rvalue_ref", TestDebugSymbols.mem_access))
+
+    def test_elf_reference_struct_members(self):
+        # Reference members mirror GlobalStruct's pointer members: reaching one
+        # walks the struct offset first, then resolves through the reference.
+        g_ref_struct = self.parsed_elf.get_global("g_ref_struct", TestDebugSymbols.mem_access)
+        self.assertEqual(0x11223344, g_ref_struct.a_ref)
+        self.assertEqual(2 * 2, g_ref_struct.inner_ref.x)
+        self.assertEqual(2 * 2 + 1, g_ref_struct.inner_ref.y)
+        self.assertEqual(4, len(g_ref_struct.array_ref))
+        self.assertEqual([0x11111111, 0x22222222, 0x33333333, 0x44444444], g_ref_struct.array_ref.as_value_list())
+        # A reference to a char array, and a reference to a char pointer.
+        self.assertEqual("Hello, struct!", g_ref_struct.string_buffer_ref)
+        self.assertEqual("pointer to string", g_ref_struct.string_pointer_ref)
+
+    def test_read_elf_reference_global_variable(self):
+        self.mem_access.reset_stats()
+        g_global_struct = self.parsed_elf.read_global("g_global_struct_ref", TestDebugSymbols.mem_access)
+        self.verify_global_struct(g_global_struct)
+        # Two reads: the reference slot, then the referent snapshot.
+        self.assertEqual(self.mem_access.read_count, 2)
+
     def test_symtab_fallback_address(self):
         """Variables declared `extern` (no DW_AT_location on the DIE) need
         the .symtab fallback in DwarfDie::get_address. Anchored by
@@ -593,6 +622,12 @@ class TestDebugSymbols(unittest.TestCase):
         g_global_struct.string_buffer.write_value("Hello, struct!")  # Restore original value
         self.assertEqual("Hello, struct!", g_global_struct.string_buffer)
 
+        # A write through a reference lands on the referent.
+        a_ref = self.parsed_elf.get_global("g_ref_struct", TestDebugSymbols.mem_access).a_ref
+        a_ref.write_value(0xDEADBEEF)
+        self.assertEqual(0xDEADBEEF, g_global_struct.a)
+        a_ref.write_value(0x11223344)  # Restore original value
+
     def test_elf_variable_string(self):
         """C-style strings (char array and char pointer) are read as their text via read_value."""
         g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
@@ -608,6 +643,18 @@ class TestDebugSymbols(unittest.TestCase):
 
         # A non-char array (uint8_t[16]) is not a string - it is still read as numbers.
         self.assertEqual(list(range(16)), g_global_struct.c.as_value_list())
+
+    def test_elf_variable_exception_translation(self):
+        # Without nanobind's std::string/std::optional casters the native layer's
+        # exceptions all degrade to `RuntimeError: std::bad_cast`, so pin the mapping.
+        g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
+        self.assertRaises(
+            SymbolNotFoundError, self.parsed_elf.get_global, "no_such_global", TestDebugSymbols.mem_access
+        )
+        self.assertRaises(SymbolNotFoundError, lambda: g_global_struct.no_such_field.read_value())
+        self.assertRaises(TypeMismatchError, lambda: g_global_struct.a.dereference())
+        self.assertRaises(TypeMismatchError, lambda: g_global_struct.read_value())
+        self.assertRaises(DataLossError, lambda: g_global_struct.a.write_value(2.5))
 
     @parameterized.expand(
         [

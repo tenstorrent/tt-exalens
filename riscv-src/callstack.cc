@@ -277,6 +277,11 @@ __attribute__((noinline)) void dispatch(uint32_t type_index) {
     register type reg_value asm("s2") = host_value<type>((slot) * 8); \
     asm volatile("" : "+r"(reg_value))
 
+// As above, but binds a reference to that slot, so s2 holds the referent's address.
+#define DECLARE_CALLEE_SAVED_REFERENCE(type, slot)                                                      \
+    register type& reg_value asm("s2") = *reinterpret_cast<type*>(mailbox_value_buffer() + (slot) * 8); \
+    asm volatile("" : : "r"(&reg_value))
+
 // Keeps reg_value live past the nested call so it is preserved in - or spilled from - s2.
 #define USE_CALLEE_SAVED_VALUE() asm volatile("" : : "r"(reg_value))
 
@@ -361,7 +366,19 @@ __attribute__((noinline, noclone)) void value_test_charptr() {
 }
 }  // namespace callee_saved_test
 
+namespace reference_test {
+// Like callee_saved_test, but s2 holds a reference. Its register-direct DWARF
+// location makes it materialised, so following it has to reach live memory.
+
+__attribute__((noinline, noclone)) void run() {
+    DECLARE_CALLEE_SAVED_REFERENCE(volatile uint32_t, 0);
+    halt();
+    USE_CALLEE_SAVED_VALUE();
+}
+}  // namespace reference_test
+
 #undef DECLARE_CALLEE_SAVED_VALUE
+#undef DECLARE_CALLEE_SAVED_REFERENCE
 #undef USE_CALLEE_SAVED_VALUE
 
 namespace tail_call_test {
@@ -522,7 +539,8 @@ __attribute__((noinline)) int run(int a) {
 int main() {
     if (*g_MAILBOX != 0xFFFFFFFF && *g_MAILBOX != 0xFFFFFFFE && *g_MAILBOX != 0xFFFFFFFD && *g_MAILBOX != 0xFFFFFFFC &&
         *g_MAILBOX != 0xFFFFFFFB && *g_MAILBOX != 0xFFFFFFFA && *g_MAILBOX != 0xFFFFFFF9 && *g_MAILBOX != 0xFFFFFFF8 &&
-        *g_MAILBOX != 0xFFFFFFF7 && (*g_MAILBOX & 0xFFFFFF00) != 0xFFFFFE00 && (*g_MAILBOX < 0 || *g_MAILBOX > 1000)) {
+        *g_MAILBOX != 0xFFFFFFF7 && *g_MAILBOX != 0xFFFFFFF6 && (*g_MAILBOX & 0xFFFFFF00) != 0xFFFFFE00 &&
+        (*g_MAILBOX < 0 || *g_MAILBOX > 1000)) {
         *g_MAILBOX = 10;
     }
 
@@ -548,6 +566,8 @@ int main() {
         tail_branch_test::run(host_value<int>(0));
     } else if (*g_MAILBOX == 0xFFFFFFF7) {
         tail_multi_test::run(host_value<int>(0));
+    } else if (*g_MAILBOX == 0xFFFFFFF6) {
+        reference_test::run();
     } else {
         int sum = recurse(*g_MAILBOX);
         *g_MAILBOX = sum;

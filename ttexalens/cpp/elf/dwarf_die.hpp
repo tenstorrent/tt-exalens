@@ -154,6 +154,11 @@ enum class DwarfDieTag : Dwarf_Half {
     with_stmt = DW_TAG_with_stmt,
 };
 
+// Lvalue and rvalue references.
+constexpr bool is_reference_tag(DwarfDieTag tag) {
+    return tag == DwarfDieTag::reference_type || tag == DwarfDieTag::rvalue_reference_type;
+}
+
 // Source location for a particular program counter — returned by
 // DwarfInfo::find_file_line_by_address.
 struct DwarfFileLine {

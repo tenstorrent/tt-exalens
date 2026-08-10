@@ -392,7 +392,7 @@ DwarfDiePtr DwarfDie::get_resolved_type() const {
 
 DwarfDiePtr DwarfDie::get_dereference_type() const {
     const DwarfDieTag tag = get_tag();
-    if (tag != DwarfDieTag::pointer_type && tag != DwarfDieTag::reference_type) {
+    if (tag != DwarfDieTag::pointer_type && !is_reference_tag(tag)) {
         return nullptr;
     }
     auto pointee = get_die_from_attribute(DwarfAttributeTag::type);
