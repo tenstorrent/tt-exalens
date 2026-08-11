@@ -2107,6 +2107,32 @@ class TestCallStack(unittest.TestCase):
                 address = self.get_symbol_address(parsed_elf, struct_format)
                 self.assert_string_pointer(frame.locals[0], "reg_value", address, f"reg_value of {function_name}")
 
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_register_reference_value(self, elf_name: str):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        # reg_value references slot 0 of the value buffer.
+        self.l1_mem_access.write(self.get_mailbox_value_address(parsed_elf), struct.pack("<I", 0x5A5A1234))
+        # 0xFFFFFFF6 selects reference_test::run.
+        self.set_recursion_count(parsed_elf, 0xFFFFFFF6)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        # The callstack is: halt, reference_test::run, main.
+        frame = callstack[1]
+        self.assertIn(frame.function_name, ("reference_test::run", "run"))
+        self.assertEqual(len(frame.locals), 1)
+        reg_value = frame.locals[0]
+        self.assertEqual(reg_value.name, "reg_value")
+        assert reg_value.value is not None
+        # The reference is materialised in the register, so following it reads live memory.
+        self.assertEqual(0x5A5A1234, reg_value.value.dereference().read_value())
+
     @parameterized.expand(
         [
             ("abcd", "build/riscv-src/blackhole/callstack.debug.brisc.elf"),  # Invalid location string

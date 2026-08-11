@@ -156,7 +156,8 @@ uint64_t ElfVariable::get_size() const {
 }
 
 ElfVariable ElfVariable::get_member(std::string_view member_name) const {
-    if (type_die->get_tag() == DwarfDieTag::pointer_type) {
+    const DwarfDieTag member_tag = type_die->get_tag();
+    if (member_tag == DwarfDieTag::pointer_type || is_reference_tag(member_tag)) {
         return dereference().get_member(member_name);
     }
 
@@ -194,7 +195,8 @@ ElfVariable ElfVariable::get_member(std::string_view member_name) const {
 }
 
 ElfVariable ElfVariable::dereference() const {
-    if (type_die->get_tag() != DwarfDieTag::pointer_type) {
+    const DwarfDieTag tag = type_die->get_tag();
+    if (tag != DwarfDieTag::pointer_type && !is_reference_tag(tag)) {
         throw TypeMismatchException("dereference", type_die->get_path());
     }
     auto ptr_size = type_die->get_size();
@@ -213,6 +215,9 @@ ElfVariable ElfVariable::dereference() const {
 
 ElfVariable ElfVariable::get_index(int64_t i) const {
     const auto tag = type_die->get_tag();
+    if (is_reference_tag(tag)) {
+        return dereference().get_index(i);
+    }
     if (tag != DwarfDieTag::array_type && tag != DwarfDieTag::pointer_type) {
         throw TypeMismatchException("index", type_die->get_path());
     }
@@ -237,7 +242,11 @@ ElfVariable ElfVariable::get_index(int64_t i) const {
 }
 
 uint64_t ElfVariable::get_length() const {
-    if (type_die->get_tag() != DwarfDieTag::array_type) {
+    const auto tag = type_die->get_tag();
+    if (is_reference_tag(tag)) {
+        return dereference().get_length();
+    }
+    if (tag != DwarfDieTag::array_type) {
         throw TypeMismatchException("len", type_die->get_path());
     }
     for (auto child = type_die->get_first_child(); child; child = child->get_next_sibling()) {
@@ -276,6 +285,10 @@ std::vector<std::byte> ElfVariable::read_bytes() const {
 ElfVariable::Value ElfVariable::read_value() const {
     auto type = type_die;
     const auto tag = type->get_tag();
+
+    if (is_reference_tag(tag)) {
+        return dereference().read_value();
+    }
 
     // C strings: char[] and char* are returned as Python str.
     if (type->is_string_type()) {
@@ -350,6 +363,12 @@ ElfVariable::Value ElfVariable::read_value() const {
 void ElfVariable::write_value(Value value, bool check_data_loss) {
     auto type = type_die;
     const auto tag = type->get_tag();
+
+    if (is_reference_tag(tag)) {
+        ElfVariable target = dereference();
+        target.write_value(std::move(value), check_data_loss);
+        return;
+    }
 
     // C string write: only `char[]` is accepted (char* would have to allocate,
     // which we don't model). The supplied string + NUL must fit the array.
@@ -496,7 +515,8 @@ void ElfVariable::write_value(Value value, bool check_data_loss) {
 }
 
 ElfVariable ElfVariable::read() const {
-    if (type_die->get_tag() == DwarfDieTag::pointer_type) {
+    const DwarfDieTag tag = type_die->get_tag();
+    if (tag == DwarfDieTag::pointer_type || is_reference_tag(tag)) {
         return dereference().read();
     }
     auto data = read_bytes();
