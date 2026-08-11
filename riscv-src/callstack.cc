@@ -536,11 +536,16 @@ __attribute__((noinline)) int run(int a) {
 }
 }  // namespace tail_multi_test
 
+// Scenario selectors occupy the top of the range plus the 0xFFFFFE00 block; any
+// other value is a recursion count. Lower the bound when adding a scenario.
+constexpr uint32_t kLowestScenarioSelector = 0xFFFFFFF6;
+
+static bool is_scenario_selector(uint32_t mailbox) {
+    return mailbox >= kLowestScenarioSelector || (mailbox & 0xFFFFFF00) == 0xFFFFFE00;
+}
+
 int main() {
-    if (*g_MAILBOX != 0xFFFFFFFF && *g_MAILBOX != 0xFFFFFFFE && *g_MAILBOX != 0xFFFFFFFD && *g_MAILBOX != 0xFFFFFFFC &&
-        *g_MAILBOX != 0xFFFFFFFB && *g_MAILBOX != 0xFFFFFFFA && *g_MAILBOX != 0xFFFFFFF9 && *g_MAILBOX != 0xFFFFFFF8 &&
-        *g_MAILBOX != 0xFFFFFFF7 && *g_MAILBOX != 0xFFFFFFF6 && (*g_MAILBOX & 0xFFFFFF00) != 0xFFFFFE00 &&
-        (*g_MAILBOX < 0 || *g_MAILBOX > 1000)) {
+    if (!is_scenario_selector(*g_MAILBOX) && *g_MAILBOX > 1000) {
         *g_MAILBOX = 10;
     }
 

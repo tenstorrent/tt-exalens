@@ -570,6 +570,23 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(self.mem_access.read_count, 0)
         self.assertEqual(self.mem_access.total_bytes_read, 0)
 
+        # Test references
+        g_ref_struct = self.parsed_elf.get_global("g_ref_struct", TestDebugSymbols.mem_access)
+        a_ref = g_ref_struct.a_ref
+        self.assertTrue(a_ref == 0x11223344)
+        self.assertTrue(a_ref != 0x12345678)
+        self.assertTrue(a_ref < g_global_struct.b)
+        self.assertTrue(a_ref >= 0x11223344)
+        self.assertEqual(a_ref * g_global_struct.c[2], 0x11223344 * 2)
+        self.assertEqual(a_ref + 1, 0x11223345)
+        self.assertEqual(0x100000000 - a_ref, 0x100000000 - 0x11223344)
+        self.assertEqual(a_ref & 0xFF, 0x44)
+        self.assertEqual(a_ref >> 16, 0x1122)
+        self.assertEqual(-a_ref, -0x11223344)
+        self.assertEqual(str(a_ref), str(0x11223344))
+        self.assertEqual(format(a_ref, "08x"), format(0x11223344, "08x"))
+        self.assertEqual([0, 1, 2, 3, 4][g_ref_struct.inner_ref.x], 4)
+
     def test_elf_variable_hash(self):
         g_global_struct1 = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_access)
         g_global_struct2 = self.parsed_elf.read_global("g_global_struct", TestDebugSymbols.mem_access)
