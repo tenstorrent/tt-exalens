@@ -164,6 +164,24 @@ class RichFormatter:
 
         return table
 
+    def styled_columns(
+        self, column_names: list[str], index_style: str = "cyan", value_style: str = "green"
+    ) -> list[tuple[str, str]]:
+        return [(column_names[0], index_style)] + [(name, value_style) for name in column_names[1:]]
+
+    def print_styled_table(
+        self,
+        title: str,
+        column_names: list[str],
+        data: list[tuple[Any, ...]],
+        simple_print: bool = False,
+        index_style: str = "cyan",
+        value_style: str = "green",
+    ) -> None:
+        columns = self.styled_columns(column_names, index_style, value_style)
+        console.print(self.create_data_table(title, columns, data, simple_print))
+        console.print()
+
     def format_value(self, value_info: dict[str, Any]) -> str:
         """
         Format a value based on its format specification.
@@ -235,7 +253,9 @@ class RichFormatter:
             tables: list[Panel | Table] = []
             for group_name in group_row:
                 if group_name in data:
-                    tables.append(self.create_data_table(group_name, columns, data[group_name], simple_print))
+                    tables.append(
+                        self.create_data_table(group_name, columns, data[group_name], simple_print=simple_print)
+                    )
                 else:
                     tables.append(Panel(empty_text, title=group_name))
             console.print(Columns(tables, equal=True, expand=False))
@@ -270,7 +290,7 @@ class RichFormatter:
         if sort_by_height_desc:
             names.sort(key=lambda n: -len(data[n]))
         tables: list[Panel | Table] = [
-            self.create_data_table(name, columns, data[name], simple_print) for name in names
+            self.create_data_table(name, columns, data[name], simple_print=simple_print) for name in names
         ]
         console.print(Columns(tables, equal=False, expand=False, padding=(0, 1)))
         console.print()  # blank line

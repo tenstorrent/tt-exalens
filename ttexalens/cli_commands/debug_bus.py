@@ -54,7 +54,7 @@ import re
 from typing import Any
 
 from ttexalens import util as util
-from ttexalens.util import search
+from ttexalens.util import search, format_hex, format_flag
 from ttexalens.rich_formatters import formatter
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.uistate import UIState
@@ -91,8 +91,8 @@ def _format_signal_value(value, show_all_samples=False, signal_desc=None):
         """
         mask_value = getattr(signal_desc, "mask", None)
         if is_single_bit(mask_value):
-            return "True" if v else "False"
-        return f"0x{v:x}"
+            return format_flag(v)
+        return format_hex(v)
 
     if isinstance(value, list):
         formatted = [fmt(v) for v in value]

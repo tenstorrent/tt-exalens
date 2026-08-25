@@ -503,7 +503,7 @@ class BabyRiscDebug(RiscDebug):
         self.baby_risc_info = risc_info
         self.register_store = register_store
         self.debug_hardware = (
-            BabyRiscDebugHardware(register_store, risc_info, enable_asserts)
+            BabyRiscDebugHardware(register_store, risc_info, enable_asserts=enable_asserts)
             if risc_info.debug_hardware_present
             else None
         )

@@ -156,6 +156,18 @@ def with_hex_if_possible(val):
     return f"{val}{to_hex_if_possible(val)}"
 
 
+def format_hex(value: int | None) -> str:
+    return "-" if value is None else f"0x{value:x}"
+
+
+def format_dec(value: int | None) -> str:
+    return "-" if value is None else str(value)
+
+
+def format_flag(value: int | None) -> str:
+    return "-" if value is None else ("False" if value == 0 else "True")
+
+
 # Cache the result of should_use_color
 _USE_COLOR = sys.stdout.isatty()
 

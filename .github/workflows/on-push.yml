@@ -11,6 +11,7 @@ permissions:
 jobs:
   build-and-test:
     strategy:
+      fail-fast: false
       matrix:
         ubuntu-version: [ "22.04", "24.04" ]
     uses: ./.github/workflows/build-and-test.yml
