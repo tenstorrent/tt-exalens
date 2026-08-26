@@ -98,27 +98,26 @@ class NocBlock:
 NEO_ID_OVERLAY_NAME = "overlay"
 
 
-def to_neo_id(value: str | int, noc_block: NocBlock) -> int | None:
-    """
-    Converts a user supplied NEO selector into a neo_id for the given block.
+def str_to_neo_id(value: str, noc_block: NocBlock) -> int | None:
+    stripped = value.strip().lower()
+    if stripped == NEO_ID_OVERLAY_NAME:
+        return None
+    try:
+        neo_id = int(stripped, 0)
+    except ValueError:
+        raise ValueError(
+            f"Invalid NEO '{value}'. Expected {NEO_ID_OVERLAY_NAME} or one of {noc_block.neo_ids}."
+        ) from None
+    return neo_id
 
-    "overlay" selects the overlay block, which the hardware API addresses as neo_id None. A number
-    selects that NEO. Raises ValueError if the block does not have the requested NEO.
-    """
+
+def to_neo_id(value: str | int, noc_block: NocBlock) -> int | None:
     if isinstance(value, str):
-        stripped = value.strip().lower()
-        if stripped == NEO_ID_OVERLAY_NAME:
-            return None
-        try:
-            neo_id = int(stripped, 0)
-        except ValueError:
-            raise ValueError(
-                f"Invalid NEO '{value}'. Expected {NEO_ID_OVERLAY_NAME} or one of {noc_block.neo_ids}."
-            ) from None
+        neo_id = str_to_neo_id(value, noc_block)
     else:
         neo_id = value
 
-    if neo_id not in noc_block.neo_ids:
+    if neo_id is not None and neo_id not in noc_block.neo_ids:
         where = f"{noc_block.block_type} block at {noc_block.location.to_user_str()}"
         raise ValueError(f"Invalid NEO {neo_id} for the {where}.")
     return neo_id

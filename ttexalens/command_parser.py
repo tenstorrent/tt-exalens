@@ -239,8 +239,7 @@ class tt_docopt:
         option_info = tt_docopt.find_common_option_metadata(CommonCommandOptions.Neo)
         value = self.args.get(option_info.short_name)
         if value is None:
-            # Same clamp as neo_id_for_each: the current selection may not exist on this block.
-            return ui_state.current_neo_id if ui_state.current_neo_id in noc_block.neo_ids else None
+            return ui_state.current_neo_id
         return to_neo_id(value, noc_block)
 
     def for_each(self, option_name: CommonCommandOptions, context: Context, ui_state: UIState, **kwargs):
