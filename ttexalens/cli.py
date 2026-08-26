@@ -61,6 +61,7 @@ from ttexalens.server import start_server
 from ttexalens import util as util
 from ttexalens.exceptions import TTException
 from ttexalens.context import Context, to_noc_id
+from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.uistate import UIState
 from ttexalens.command_parser import tt_docopt, CommandMetadata, CommandParsingException
 from ttexalens.gdb.gdb_client import get_gdb_client_path
@@ -250,6 +251,9 @@ def main_loop(args, context: Context):
                         device_id = f"{ui_state.current_device_id}"
                         my_prompt += f"device:{util.CLR_PROMPT}{jtag_prompt}{device_id}{util.CLR_PROMPT_END} "
                         my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
+                        if ui_state.has_neos:
+                            neo_prompt = neo_id_to_str(ui_state.current_neo_id)
+                            my_prompt += f"neo:{util.CLR_PROMPT}{neo_prompt}{util.CLR_PROMPT_END} "
                         my_prompt += f"{ui_state.current_prompt}> "
                         return HTML(my_prompt)
 

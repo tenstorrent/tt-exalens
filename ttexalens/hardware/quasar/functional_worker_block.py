@@ -53,6 +53,7 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
         )
 
         self.overlay = QuasarFunctionalOverlayBlock(noc_block=self)
+        self.neos = [self.neo0, self.neo1, self.neo2, self.neo3]
 
         self.noc_memory_map.initialize_blocks(
             [MemoryMapBlockInfo("l1", self.l1, safe_to_write=True)]
@@ -62,6 +63,10 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             + self.neo3.noc_memory_list
             + self.overlay.noc_memory_list
         )
+
+    @property
+    def neo_ids(self) -> list[int]:
+        return [neo.neo_id for neo in self.neos]
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
         if neo_id == 0:

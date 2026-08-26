@@ -11,6 +11,7 @@ from docopt import DocoptExit, docopt
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import NocBlock, to_neo_id
 from ttexalens.uistate import UIState
 from ttexalens import util
 
@@ -19,6 +20,7 @@ class CommonCommandOptions(Enum):
     Device = "--device"
     Location = "--loc"
     Risc = "--risc"
+    Neo = "--neo"
     Test = "--test"
     Verbose = "--verbose"
 
@@ -106,12 +108,17 @@ class tt_docopt:
 
     @staticmethod
     def risc_name_for_each(
-        risc_name: str | None, context: Context, ui_state: UIState, device: Device, location: OnChipCoordinate
+        risc_name: str | None,
+        context: Context,
+        ui_state: UIState,
+        device: Device,
+        location: OnChipCoordinate,
+        neo_id: int | None = None,
     ):
         if not risc_name or risc_name == "all":
             try:
                 noc_block = device.get_block(location)
-                riscs = noc_block.all_riscs
+                riscs = noc_block.get_riscs(neo_id)
                 for risc in riscs:
                     yield risc.risc_location.risc_name
             except Exception:
@@ -155,6 +162,12 @@ class tt_docopt:
             argument="<risc-name>",
             description="RiscV name (e.g. brisc, triscs0, trisc1, trisc2, ncrisc, erisc). [default: all]",
             for_each=risc_name_for_each,
+        ),
+        CommonCommandOptionMetadata(
+            short_name="--neo",
+            long_name="--neo",
+            argument="<neo-id>",
+            description="NEO to address inside the block at the location: a NEO id, or 'overlay'. Defaults to the current NEO.",
         ),
     ]
 
@@ -205,6 +218,15 @@ class tt_docopt:
             return docopt(self.doc, self.argv)
         except (DocoptExit, SystemExit) as e:
             raise CommandParsingException(e)
+
+    def get_neo_id(self, ui_state: UIState, noc_block: NocBlock) -> int | None:
+        option_info = tt_docopt.find_common_option_metadata(CommonCommandOptions.Neo)
+        value = self.args.get(option_info.short_name)
+        if value is None:
+            # -d/-l can target a block that does not have the current selection; those fall back to
+            # the overlay rather than reaching a block that only accepts neo_id None.
+            return ui_state.current_neo_id if ui_state.current_neo_id in noc_block.neo_ids else None
+        return to_neo_id(value, noc_block)
 
     def for_each(self, option_name: CommonCommandOptions, context: Context, ui_state: UIState, **kwargs):
         option_info = tt_docopt.find_common_option_metadata(option_name)

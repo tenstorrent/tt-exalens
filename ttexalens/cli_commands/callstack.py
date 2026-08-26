@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  callstack <elf-files> [-o <offsets>] [-r <risc>] [-m <max-depth>] [-d <device>] [-l <loc>]
+  callstack <elf-files> [-o <offsets>] [-r <risc>] [-m <max-depth>] [-d <device>] [-l <loc>] [--neo <neo-id>]
 
 Description:
   Prints callstack using provided elf for a given RiscV core.
@@ -18,12 +18,14 @@ Options:
 
 Examples:
   callstack build/riscv-src/wormhole/sample.brisc.elf -r brisc
+  callstack sample.trisc0.elf -r trisc0 --neo 1     # NEO 1's trisc0 (Quasar)
 """
 
 import os
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.uistate import UIState
 
 from ttexalens import util
@@ -34,7 +36,7 @@ command_metadata = CommandMetadata(
     short_name="bt",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
 )
 
 
@@ -65,10 +67,14 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     risc_name: str
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            for risc_name in dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc):
+            # NEOs belong to the block, so this is resolved per location, not per device.
+            neo_id = dopt.get_neo_id(ui_state, loc.noc_block)
+            for risc_name in dopt.for_each(
+                CommonCommandOptions.Risc, context, ui_state, device=device, location=loc, neo_id=neo_id
+            ):
+                noc_block = device.get_block(loc)
                 if risc_name == "first risc":
-                    noc_block = device.get_block(loc)
-                    riscs = noc_block.all_riscs
+                    riscs = noc_block.get_riscs(neo_id)
                     if len(riscs) > 0:
                         risc_name = riscs[0].risc_location.risc_name
                     else:
@@ -79,11 +85,13 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     elfs=elfs,
                     offsets=offsets,
                     risc_name=risc_name,
+                    neo_id=neo_id,
                     max_depth=limit,
                     stop_on_main=stop_on_main,
                 )
+                neo_where = f", neo: {util.CLR_WHITE}{neo_id_to_str(neo_id)}{util.CLR_END}" if noc_block.neo_ids else ""
                 print(
-                    f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}, core: {util.CLR_WHITE}{risc_name}{util.CLR_END}"
+                    f"Location: {util.CLR_INFO}{loc.to_user_str()}{util.CLR_END}{neo_where}, core: {util.CLR_WHITE}{risc_name}{util.CLR_END}"
                 )
 
                 frame_number_width = len(str(len(callstack) - 1))

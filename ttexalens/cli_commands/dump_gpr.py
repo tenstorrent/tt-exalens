@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  gpr   [ <reg-list> ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ]
+  gpr   [ <reg-list> ] [ -d <device> ] [ -l <loc> ] [ -r <risc> ] [ --neo <neo-id> ]
 
 Options:
     <reg-list>                          List of registers to dump, comma-separated
@@ -16,6 +16,7 @@ Description:
 Examples:
   gpr
   gpr ra,sp,pc
+  gpr --neo 1              # Registers of NEO 1's RISCs (Quasar)
 """
 import tabulate
 import traceback
@@ -23,6 +24,7 @@ import traceback
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.exceptions import RiscHaltError
 import ttexalens.tt_exalens_lib as lib
 from ttexalens.hardware.baby_risc_debug import get_register_index, get_register_name
@@ -42,6 +44,7 @@ command_metadata = CommandMetadata(
         CommonCommandOptions.Device,
         CommonCommandOptions.Location,
         CommonCommandOptions.Risc,
+        CommonCommandOptions.Neo,
     ],
 )
 
@@ -52,7 +55,9 @@ def reg_included(reg_index, regs_to_include):
     return True
 
 
-def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, args, riscs_to_include):
+def get_register_data(
+    device: Device, context: Context, loc: OnChipCoordinate, args, riscs_to_include, neo_id: int | None = None
+):
     regs_to_include = args["<reg-list>"].split(",") if args["<reg-list>"] else []
     regs_to_include = [get_register_index(reg) for reg in regs_to_include]
 
@@ -64,7 +69,7 @@ def get_register_data(device: Device, context: Context, loc: OnChipCoordinate, a
     # Read the registers
     noc_block = device.get_block(loc)
     for risc_name in riscs_to_include:
-        risc = noc_block.get_risc_debug(risc_name)
+        risc = noc_block.get_risc_debug(risc_name, neo_id)
         reset_state[risc_name] = risc.is_in_reset()
         if reset_state[risc_name]:
             continue  # We cannot read registers from a core in reset
@@ -151,12 +156,15 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     loc: OnChipCoordinate
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
+            # NEOs belong to the block, so this is resolved per location, not per device.
+            neo_id = dopt.get_neo_id(ui_state, loc.noc_block)
+            neo_where = f" neo {neo_id_to_str(neo_id)}" if loc.noc_block.neo_ids else ""
             riscs_to_include = list(
-                dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc)
+                dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc, neo_id=neo_id)
             )
-            table = get_register_data(device, context, loc, dopt.args, riscs_to_include)
+            table = get_register_data(device, context, loc, dopt.args, riscs_to_include, neo_id)
             if table:
-                util.INFO(f"RISC-V registers for location {loc} on device {device.id}")
+                util.INFO(f"RISC-V registers for location {loc}{neo_where} on device {device.id}")
                 print(table)
             else:
-                print(f"No data available for location {loc} on device {device.id}")
+                print(f"No data available for location {loc}{neo_where} on device {device.id}")

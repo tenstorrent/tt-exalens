@@ -3,10 +3,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  debug-bus list-signals [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-sigs>] [-s]
-  debug-bus list-groups [-d <device>] [-l <loc>] [--search <pattern>] [--max <max-groups>] [-s]
-  debug-bus group <group-name> <l1-address> [--samples <num>] [--sampling-interval <cycles>] [--search <pattern>] [--max <max-sigs>] [-d <device>] [-l <loc>] [-s]
-  debug-bus <signals> [-d <device>] [-l <loc>] [-s]
+  debug-bus list-signals [-d <device>] [-l <loc>] [--neo <neo-id>] [--search <pattern>] [--max <max-sigs>] [-s]
+  debug-bus list-groups [-d <device>] [-l <loc>] [--neo <neo-id>] [--search <pattern>] [--max <max-groups>] [-s]
+  debug-bus group <group-name> <l1-address> [--samples <num>] [--sampling-interval <cycles>] [--search <pattern>] [--max <max-sigs>] [-d <device>] [-l <loc>] [--neo <neo-id>] [-s]
+  debug-bus <signals> [-d <device>] [-l <loc>] [--neo <neo-id>] [-s]
 
 Options:
     -s, --simple                        Print simple output.
@@ -60,6 +60,7 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBus
 from ttexalens.uistate import UIState
 from ttexalens.context import Context
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
@@ -68,7 +69,7 @@ command_metadata = CommandMetadata(
     long_name="debug-bus",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
 )
 
 
@@ -173,16 +174,21 @@ def _get_group_for_signal(signal_store: DebugBusSignalStore, signal: str) -> str
     return ""
 
 
-def _get_debug_bus_signal_store(device: Device, loc: OnChipCoordinate) -> DebugBusSignalStore | None:
-    """Return debug bus signal store for given device and location, or None if unavailable."""
+def _get_debug_bus_signal_store(
+    device: Device, loc: OnChipCoordinate, neo_id: int | None = None
+) -> DebugBusSignalStore | None:
+    """Return debug bus signal store for given device, location and NEO, or None if unavailable."""
     noc_block = device.get_block(loc)
     if not noc_block:
         util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have a NOC block.")
         return None
 
-    debug_bus_signal_store = noc_block.debug_bus
+    debug_bus_signal_store = noc_block.get_debug_bus(neo_id)
     if debug_bus_signal_store is None:
-        util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have a debug bus.")
+        where = f"Device {device.id} at location {loc.to_user_str()}"
+        if noc_block.neo_ids:
+            where += f" (neo {neo_id_to_str(neo_id)})"
+        util.ERROR(f"{where} does not have a debug bus.")
         return None
 
     return debug_bus_signal_store
@@ -190,7 +196,7 @@ def _get_debug_bus_signal_store(device: Device, loc: OnChipCoordinate) -> DebugB
 
 def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
     """Handle the list-signals command: list all debug bus signals for the device/location."""
-    debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
+    debug_bus_signal_store = _get_debug_bus_signal_store(device, loc, params.get("neo_id"))
     if debug_bus_signal_store is None:
         return
 
@@ -232,7 +238,7 @@ def handle_list_signals_command(device: Device, loc: OnChipCoordinate, params: d
 
 def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
     """Handle the list-groups command - list all groups or signals in a specific group."""
-    debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
+    debug_bus_signal_store = _get_debug_bus_signal_store(device, loc, params.get("neo_id"))
     if debug_bus_signal_store is None:
         return
 
@@ -269,7 +275,7 @@ def handle_list_groups_command(device: Device, loc: OnChipCoordinate, params: di
 
 def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
     """Handle the 'dbus group' command: read all signals in specified group using L1 sampling."""
-    debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
+    debug_bus_signal_store = _get_debug_bus_signal_store(device, loc, params.get("neo_id"))
     if debug_bus_signal_store is None:
         return
 
@@ -329,7 +335,7 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
 
 def handle_signal_reading_command(device: Device, loc: OnChipCoordinate, params: dict[str, Any]) -> None:
     """Handle signal reading commands - read specific signals with optional L1 sampling."""
-    debug_bus_signal_store = _get_debug_bus_signal_store(device, loc)
+    debug_bus_signal_store = _get_debug_bus_signal_store(device, loc, params.get("neo_id"))
     if debug_bus_signal_store is None:
         return
 
@@ -403,4 +409,5 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     loc: OnChipCoordinate
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
+            params["neo_id"] = dopt.get_neo_id(ui_state, loc.noc_block)
             command_handler(device, loc, params)

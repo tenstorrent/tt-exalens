@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  search <pattern>... [--start <start>] [--end <end>] [--width <width>] [--read-size <rs>] [--max-results <n>] [--unsafe] [-r <risc_name>] [-d <device>] [-l <loc>]
+  search <pattern>... [--start <start>] [--end <end>] [--width <width>] [--read-size <rs>] [--max-results <n>] [--unsafe] [-r <risc_name>] [-d <device>] [-l <loc>] [--neo <neo-id>]
 
 Arguments:
   pattern         One or more integer values forming the byte pattern to search for.
@@ -43,6 +43,7 @@ import math
 
 from ttexalens.context import Context
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
@@ -54,7 +55,7 @@ command_metadata = CommandMetadata(
     short_name="search",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
 )
 
 _DEFAULT_READ_SIZE = 0x100000  # 1MB default for NOC reads
@@ -132,7 +133,12 @@ def _get_noc_search_ranges(
 
 
 def _get_risc_search_ranges(
-    location: OnChipCoordinate, risc_name: str, start_addr: int, end_addr: int | None, unsafe: bool
+    location: OnChipCoordinate,
+    risc_name: str,
+    start_addr: int,
+    end_addr: int | None,
+    unsafe: bool,
+    neo_id: int | None = None,
 ) -> list[tuple[int, int, str]]:
     """Return list of (range_start, range_end, block_name) for consecutive RISC private blocks from start_addr.
 
@@ -142,7 +148,7 @@ def _get_risc_search_ranges(
     if unsafe and end_addr is not None:
         return [(start_addr, end_addr, "???")]
 
-    risc_debug = location.noc_block.get_risc_debug(risc_name)
+    risc_debug = location.noc_block.get_risc_debug(risc_name, neo_id)
     memory_map = risc_debug.risc_info.memory_map
     ranges: list[tuple[int, int, str]] = []
     current = start_addr
@@ -173,6 +179,7 @@ def _search_in_range(
     risc_name: str | None,
     read_size: int,
     max_results: int | None,
+    neo_id: int | None = None,
 ) -> list[tuple[int, str]]:
     """
     Read memory in [range_start, range_end) in chunks and search for pattern_bytes.
@@ -190,9 +197,9 @@ def _search_in_range(
         chunk_size = min(read_size, range_end - current_addr)
         try:
             if unsafe:
-                data, _ = execute_unsafe_read(location, current_addr, chunk_size, risc_name)
+                data, _ = execute_unsafe_read(location, current_addr, chunk_size, risc_name, neo_id)
             else:
-                data, _ = execute_safe_read(location, current_addr, chunk_size, risc_name)
+                data, _ = execute_safe_read(location, current_addr, chunk_size, risc_name, neo_id)
         except TTException as e:
             if util.DEBUG_ENABLED:
                 util.DEBUG(f"search: skipping 0x{current_addr:08x}: {e}")
@@ -310,11 +317,17 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             device_id_str += f" [0x{device.unique_id:x}]"
 
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            location_str = location.to_user_str()
+            # NEOs belong to the block, so this is resolved per location, not per device.
+            noc_block = location.noc_block
+            neo_id = dopt.get_neo_id(ui_state, noc_block)
+            neo_str = f" | Neo {neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""
+            location_str = location.to_user_str() + neo_str
 
             try:
                 if risc_name:
-                    ranges = _get_risc_search_ranges(location, risc_name, start_addr, end_addr, unsafe=unsafe)
+                    ranges = _get_risc_search_ranges(
+                        location, risc_name, start_addr, end_addr, unsafe=unsafe, neo_id=neo_id
+                    )
                 else:
                     ranges = _get_noc_search_ranges(location, start_addr, end_addr, unsafe=unsafe)
             except TTException as e:
@@ -338,6 +351,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     risc_name=risc_name,
                     read_size=read_size,
                     max_results=remaining,
+                    neo_id=neo_id,
                 )
                 all_matches.extend(block_matches)
                 if max_results is not None and len(all_matches) >= max_results:
