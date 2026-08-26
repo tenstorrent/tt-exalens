@@ -16,7 +16,6 @@ Description:
 Examples:
   gpr
   gpr ra,sp,pc
-  gpr --neo 1              # Registers of NEO 1's RISCs (Quasar)
 """
 import tabulate
 import traceback
@@ -156,7 +155,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     loc: OnChipCoordinate
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            # NEOs belong to the block, so this is resolved per location, not per device.
             neo_id = dopt.get_neo_id(ui_state, loc.noc_block)
             neo_where = f" neo {neo_id_to_str(neo_id)}" if loc.noc_block.neo_ids else ""
             riscs_to_include = list(

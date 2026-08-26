@@ -25,7 +25,7 @@ Examples:
   write 0x0 0x12 0x34 --width 2               # Write 4 bytes to address 0
   write 0x0 0xdeadbeef --repeat 4             # Write the same word to 4 consecutive addresses
   write 0xFFB0000 0xdeadbeef -r brisc         # Write 1 word to brisc private data memory
-  write 0x0 0xdeadbeef -r trisc0 --neo 1        # Write to trisc0 private memory of NEO 1 (Quasar)
+  write 0x0 0xdeadbeef -r trisc0 --neo 1      # Write to trisc0 private memory of NEO 1
 """
 
 from ttexalens.context import Context
@@ -94,7 +94,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             device_id_str += f" [0x{device.unique_id:x}]"
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             location_str = location.to_user_str()
-            # NEOs belong to the block, so this is resolved per location, not per device.
             noc_block = location.noc_block
             neo_id = dopt.get_neo_id(ui_state, noc_block)
             neo_str = f" | Neo {neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""

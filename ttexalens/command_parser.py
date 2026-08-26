@@ -107,6 +107,21 @@ class tt_docopt:
             yield OnChipCoordinate.create(loc_str, device)
 
     @staticmethod
+    def neo_id_for_each(
+        neo_id_str: str | None, context: Context, ui_state: UIState, device: Device, location: OnChipCoordinate
+    ):
+        noc_block = location.noc_block
+        if not neo_id_str:
+            yield ui_state.current_neo_id if ui_state.current_neo_id in noc_block.neo_ids else None
+        elif neo_id_str == "all":
+            # The overlay first, then every NEO this block has.
+            yield None
+            yield from noc_block.neo_ids
+        else:
+            for value in neo_id_str.split(","):
+                yield to_neo_id(value, noc_block)
+
+    @staticmethod
     def risc_name_for_each(
         risc_name: str | None,
         context: Context,
@@ -168,6 +183,7 @@ class tt_docopt:
             long_name="--neo",
             argument="<neo-id>",
             description="NEO to address inside the block at the location: a NEO id, or 'overlay'. Defaults to the current NEO.",
+            for_each=neo_id_for_each,
         ),
     ]
 
@@ -223,8 +239,7 @@ class tt_docopt:
         option_info = tt_docopt.find_common_option_metadata(CommonCommandOptions.Neo)
         value = self.args.get(option_info.short_name)
         if value is None:
-            # -d/-l can target a block that does not have the current selection; those fall back to
-            # the overlay rather than reaching a block that only accepts neo_id None.
+            # Same clamp as neo_id_for_each: the current selection may not exist on this block.
             return ui_state.current_neo_id if ui_state.current_neo_id in noc_block.neo_ids else None
         return to_neo_id(value, noc_block)
 

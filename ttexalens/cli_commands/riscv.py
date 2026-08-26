@@ -31,7 +31,7 @@ Description:
 
 Examples:
   riscv halt                      # Halt brisc
-  riscv halt --neo 1 -r trisc0       # Halt trisc0 of NEO 1 (Quasar)
+  riscv halt --neo 1 -r trisc0    # Halt trisc0 of NEO
   riscv status                    # Print status
   riscv step                      # Step
   riscv cont                      # Continue
@@ -81,7 +81,6 @@ def run_riscv_command(
     Given a command trough args, run the corresponding RISC-V command
     """
     noc_block = device.get_block(loc)
-    # The NEO is only worth naming on blocks that actually have more than one scope.
     neo_where = f" neo:{neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""
     where = f"{risc_name}{neo_where} {loc.to_str('logical')} [{device.id}]"
 
@@ -228,7 +227,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     risc_name: str
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            # NEOs belong to the block, so this is resolved per location, not per device.
             neo_id = dopt.get_neo_id(ui_state, loc.noc_block)
             for risc_name in dopt.for_each(
                 CommonCommandOptions.Risc, context, ui_state, device=device, location=loc, neo_id=neo_id

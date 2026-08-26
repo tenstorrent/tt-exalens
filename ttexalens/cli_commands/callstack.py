@@ -18,7 +18,7 @@ Options:
 
 Examples:
   callstack build/riscv-src/wormhole/sample.brisc.elf -r brisc
-  callstack sample.trisc0.elf -r trisc0 --neo 1     # NEO 1's trisc0 (Quasar)
+  callstack sample.trisc0.elf -r trisc0 --neo 1
 """
 
 import os
@@ -67,7 +67,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     risc_name: str
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            # NEOs belong to the block, so this is resolved per location, not per device.
             neo_id = dopt.get_neo_id(ui_state, loc.noc_block)
             for risc_name in dopt.for_each(
                 CommonCommandOptions.Risc, context, ui_state, device=device, location=loc, neo_id=neo_id

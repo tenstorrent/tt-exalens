@@ -317,7 +317,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             device_id_str += f" [0x{device.unique_id:x}]"
 
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            # NEOs belong to the block, so this is resolved per location, not per device.
             noc_block = location.noc_block
             neo_id = dopt.get_neo_id(ui_state, noc_block)
             neo_str = f" | Neo {neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""

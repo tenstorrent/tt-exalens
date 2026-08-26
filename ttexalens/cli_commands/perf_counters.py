@@ -113,7 +113,6 @@ def _iter_perf_targets(
     """
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            # NEOs belong to the block, so this is resolved per location, not per device.
             noc_block = loc.noc_block
             neo_id = dopt.get_neo_id(ui_state, noc_block)
             neo_where = f" neo={neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""

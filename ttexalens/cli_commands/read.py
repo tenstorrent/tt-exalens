@@ -22,7 +22,7 @@ Examples:
   read 0x0 16                         # Read 16 words from address 0
   read 0x0 32 --format i8             # Prints 32 bytes in i8 format
   read 0xFFB0000 -r brisc 16          # Read 16 words from brisc private data memory
-  read 0x0 4 -r trisc0 --neo 1           # Read trisc0 private memory of NEO 1 (Quasar)
+  read 0x0 4 -r trisc0 --neo 1        # Read trisc0 private memory of NEO 1 (Quasar)
 """
 
 from ttexalens.context import Context

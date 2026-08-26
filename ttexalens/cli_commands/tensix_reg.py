@@ -35,7 +35,7 @@ Examples:
   reg dbg(0x54) -d 0 -l 0,0                           # Prints debug register with address 0x54 for device 0 and core at location 0,0
   reg dbg(0x54) -l 0,0                                # Prints debug register with address 0x54 for core at location 0,0
   reg dbg(0x54) -d 0                                  # Prints debug register with address 0x54 for device 0
-  reg dbg(0x54) --neo 1                                  # Prints debug register 0x54 of NEO 1 (Quasar)
+  reg dbg(0x54) --neo 1                               # Prints debug register 0x54 of NEO 1 (Quasar)
 """
 
 from fnmatch import fnmatch
@@ -100,7 +100,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             noc_block = device.get_block(loc)
-            # NEOs belong to the block, so this is resolved per location, not per device.
             neo_id = dopt.get_neo_id(ui_state, noc_block)
             neo_where = f" (neo {neo_id_to_str(neo_id)})" if noc_block.neo_ids else ""
             register_store = noc_block.get_register_store(noc_id, neo_id)

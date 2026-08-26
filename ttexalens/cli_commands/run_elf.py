@@ -13,7 +13,7 @@ Options:
 
 Examples:
   run-elf build/riscv-src/wormhole/sample.brisc.elf
-  run-elf sample.trisc0.elf -r trisc0 --neo 1     # Run on NEO 1's trisc0 (Quasar)
+  run-elf sample.trisc0.elf -r trisc0 --neo 1
 """
 
 from ttexalens import util as util
@@ -65,7 +65,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             noc_block = device.get_block(loc)
-            # NEOs belong to the block, so this is resolved per location, not per device.
             neo_id = dopt.get_neo_id(ui_state, noc_block)
             if not risc or risc == "first risc":
                 riscs = noc_block.get_riscs(neo_id)
