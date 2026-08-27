@@ -82,7 +82,7 @@ def run_riscv_command(
     """
     noc_block = device.get_block(loc)
     neo_where = f" neo:{neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""
-    where = f"{risc_name}{neo_where} {loc.to_str('logical')} [{device.id}]"
+    where = f"{neo_where}{risc_name} {loc.to_str('logical')} [{device.id}]"
 
     risc = noc_block.get_risc_debug(risc_name, neo_id)
     if not risc.can_debug():

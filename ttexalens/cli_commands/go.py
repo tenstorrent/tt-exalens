@@ -56,8 +56,4 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     )
     ui_state.current_location = loc
     if args["--neo"] is not None:
-        try:
-            ui_state.set_current_neo_id(to_neo_id(args["--neo"], ui_state.current_block))
-        except ValueError as e:
-            util.ERROR(str(e))
-            return
+        ui_state.set_current_neo_id(to_neo_id(args["--neo"], ui_state.current_block))

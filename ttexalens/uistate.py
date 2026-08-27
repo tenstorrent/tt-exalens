@@ -15,6 +15,7 @@ from ttexalens.gdb.gdb_server import GdbServer, ServerSocket
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.server import TTExaLensServer, start_server
+from ttexalens import util
 
 
 class TTExaLensCompleter(Completer):
@@ -99,7 +100,9 @@ class UIState:
 
     def set_current_neo_id(self, neo_id: int | None) -> None:
         if neo_id is not None and neo_id not in self.current_neo_ids:
-            raise ValueError(f"Invalid NEO {neo_id} for the block at {self.current_location.to_user_str()}.")
+            util.WARN(
+                f"Invalid NEO {neo_id} for the block at {self.current_location.to_user_str()}. Setting NEO ID skipped."
+            )
         self.current_neo_id = neo_id
 
     def prompt(self, get_dynamic_prompt: Callable[[], HTML]) -> str:

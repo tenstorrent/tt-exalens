@@ -118,7 +118,7 @@ def _iter_perf_targets(
             neo_where = f" neo={neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""
             if noc_block.get_perf_counters(neo_id) is None:
                 util.WARN(
-                    f"chip={device.id} core={loc.to_user_str()}{neo_where}: "
+                    f"chip={device.id} {neo_where} core={loc.to_user_str()}: "
                     f"performance counters are not available on block_type={noc_block.block_type}"
                 )
                 continue
@@ -302,5 +302,5 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         for device, loc, neo_id in _iter_perf_targets(dopt, context, ui_state):
             fn(loc, block_name, noc_id=None, neo_id=neo_id, safe_mode=None)
             neo_where = f" neo={neo_id_to_str(neo_id)}" if loc.noc_block.neo_ids else ""
-            util.INFO(f"chip={device.id} core={loc.to_user_str()}{neo_where}: {op_name} {block_name or 'all blocks'}")
+            util.INFO(f"chip={device.id} {neo_where} core={loc.to_user_str()}: {op_name} {block_name or 'all blocks'}")
         return
