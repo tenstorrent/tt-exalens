@@ -13,7 +13,9 @@ from prompt_toolkit.patch_stdout import patch_stdout
 from ttexalens.context import Context
 from ttexalens.gdb.gdb_server import GdbServer, ServerSocket
 from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.server import TTExaLensServer, start_server
+from ttexalens import util
 
 
 class TTExaLensCompleter(Completer):
@@ -66,6 +68,7 @@ class UIState:
         assert isinstance(current_device_id, int)
         self.current_device_id: int = current_device_id  # Currently selected device id
         self.current_location = OnChipCoordinate.create("0,0", self.current_device)  # Currently selected core
+        self.current_neo_id: int | None = None
         self.current_prompt = ""  # Based on the current x,y
         self.gdb_server: GdbServer | None = None
         self.ttexalens_server: TTExaLensServer | None = None  # TTExaLens server object
@@ -82,6 +85,26 @@ class UIState:
     @property
     def current_device(self):
         return self.context.devices[self.current_device_id]
+
+    @property
+    def current_block(self) -> NocBlock:
+        return self.current_location.noc_block
+
+    @property
+    def current_neo_ids(self) -> list[int]:
+        return self.current_block.neo_ids
+
+    @property
+    def has_neos(self) -> bool:
+        return len(self.current_neo_ids) > 0
+
+    def set_current_neo_id(self, neo_id: int | None) -> None:
+        if neo_id is not None and neo_id not in self.current_neo_ids:
+            util.WARN(
+                f"Invalid NEO {neo_id} for the block at {self.current_location.to_user_str()}. Setting NEO ID skipped."
+            )
+            return
+        self.current_neo_id = neo_id
 
     def prompt(self, get_dynamic_prompt: Callable[[], HTML]) -> str:
         if self.is_prompt_session:

@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tensix-reg <register> [--type <data-type>] [ --write <value> ] [ -d <device> ] [ -l <loc> ] [-n <noc-id> ]
-  tensix-reg --search <register_pattern> [ --max <max-regs> ] [ -d <device> ] [ -l <loc> ] [-n <noc-id> ]
+  tensix-reg <register> [--type <data-type>] [ --write <value> ] [ -d <device> ] [ -l <loc> ] [-n <noc-id> ] [ --neo <neo-id> ]
+  tensix-reg --search <register_pattern> [ --max <max-regs> ] [ -d <device> ] [ -l <loc> ] [-n <noc-id> ] [ --neo <neo-id> ]
 
 Arguments:
   <register>            Register to dump/write to. Format: <reg-type>(<reg-parameters>) or register name.
@@ -35,12 +35,14 @@ Examples:
   reg dbg(0x54) -d 0 -l 0,0                           # Prints debug register with address 0x54 for device 0 and core at location 0,0
   reg dbg(0x54) -l 0,0                                # Prints debug register with address 0x54 for core at location 0,0
   reg dbg(0x54) -d 0                                  # Prints debug register with address 0x54 for device 0
+  reg dbg(0x54) --neo 1                               # Prints debug register 0x54 of NEO 1 (Quasar)
 """
 
 from fnmatch import fnmatch
 from ttexalens.context import Context, NocId, to_noc_id
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.register_store import REGISTER_DATA_TYPE, format_register_value, parse_register_value
 from ttexalens.uistate import UIState
 from ttexalens.util import INFO, WARN
@@ -51,7 +53,7 @@ command_metadata = CommandMetadata(
     long_name="tensix-reg",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
 )
 
 # Possible values
@@ -98,7 +100,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             noc_block = device.get_block(loc)
-            register_store = noc_block.get_register_store(noc_id)
+            neo_id = dopt.get_neo_id(ui_state, noc_block)
+            neo_where = f" (neo {neo_id_to_str(neo_id)})" if noc_block.neo_ids else ""
+            register_store = noc_block.get_register_store(noc_id, neo_id)
 
             # Do this only if search is enabled
             if register_pattern != None:
@@ -116,18 +120,18 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                 except (TypeError, ValueError) as e:
                     raise ValueError(f"Invalid value for max-regs. Expected an integer, but got {max_regs}") from e
 
-                INFO(f"Register names that match pattern on device {device.id}")
+                INFO(f"Register names that match pattern on device {device.id}{neo_where}")
                 print_matches(register_pattern, register_names, max_regs)
             else:
                 register, reg_name = register_store.parse_register_description(dopt.args["<register>"])
                 if value != None:
                     register_store.write_register(register, value)
                     INFO(
-                        f"Register {reg_name} on device {device.id} and location {loc} written with value {value_str}."
+                        f"Register {reg_name} on device {device.id}{neo_where} and location {loc} written with value {value_str}."
                     )
                 else:
                     reg_value = register_store.read_register(register)
                     reg_data_type = register.data_type if data_type is None else data_type
 
-                    INFO(f"Value of register {reg_name} on device {device.id} and location {loc}:")
+                    INFO(f"Value of register {reg_name} on device {device.id}{neo_where} and location {loc}:")
                     print(format_register_value(reg_value, reg_data_type, register.mask.bit_count()))
