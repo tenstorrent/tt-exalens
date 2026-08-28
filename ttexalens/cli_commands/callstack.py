@@ -17,8 +17,8 @@ Options:
   -m <max-depth>      Maximum depth of callstack. [Default: 100]
 
 Examples:
-  callstack build/riscv-src/wormhole/sample.brisc.elf -r brisc
-  callstack sample.trisc0.elf -r trisc0 --neo 1
+  callstack build/riscv-src/wormhole/sample.debug.brisc.elf -r brisc
+  callstack build/riscv-src/wormhole/sample.debug.brisc.elf -r trisc0 --neo 1
 """
 
 import os

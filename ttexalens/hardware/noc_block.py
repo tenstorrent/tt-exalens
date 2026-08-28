@@ -94,20 +94,14 @@ class NocBlock:
         raise NotImplementedError(f"Noc block on location {self.location.to_user_str()} doesn't have RISC cores.")
 
 
-# The name users type to select the overlay block instead of one of the NEOs.
-NEO_ID_OVERLAY_NAME = "overlay"
-
-
 def str_to_neo_id(value: str, noc_block: NocBlock) -> int | None:
     stripped = value.strip().lower()
-    if stripped == NEO_ID_OVERLAY_NAME:
+    if stripped == "none":
         return None
     try:
         neo_id = int(stripped, 0)
     except ValueError:
-        raise ValueError(
-            f"Invalid NEO '{value}'. Expected {NEO_ID_OVERLAY_NAME} or one of {noc_block.neo_ids}."
-        ) from None
+        raise ValueError(f"Invalid NEO '{value}'. Expected None or one of {noc_block.neo_ids}.") from None
     return neo_id
 
 
@@ -124,4 +118,4 @@ def to_neo_id(value: str | int, noc_block: NocBlock) -> int | None:
 
 
 def neo_id_to_str(neo_id: int | None) -> str:
-    return NEO_ID_OVERLAY_NAME if neo_id is None else str(neo_id)
+    return "None" if neo_id is None else str(neo_id)

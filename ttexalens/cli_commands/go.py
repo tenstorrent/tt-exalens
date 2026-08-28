@@ -55,5 +55,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         else next(dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device))
     )
     ui_state.current_location = loc
+    if not ui_state.current_block.neo_ids:
+        ui_state.set_current_neo_id(None)
     if args["--neo"] is not None:
         ui_state.set_current_neo_id(to_neo_id(args["--neo"], ui_state.current_block))

@@ -103,6 +103,7 @@ class UIState:
             util.WARN(
                 f"Invalid NEO {neo_id} for the block at {self.current_location.to_user_str()}. Setting NEO ID skipped."
             )
+            return
         self.current_neo_id = neo_id
 
     def prompt(self, get_dynamic_prompt: Callable[[], HTML]) -> str:

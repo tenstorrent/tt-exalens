@@ -251,7 +251,7 @@ def main_loop(args, context: Context):
                         device_id = f"{ui_state.current_device_id}"
                         my_prompt += f"device:{util.CLR_PROMPT}{jtag_prompt}{device_id}{util.CLR_PROMPT_END} "
                         my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
-                        if ui_state.has_neos:
+                        if ui_state.current_device.is_quasar():
                             neo_prompt = neo_id_to_str(ui_state.current_neo_id)
                             my_prompt += f"neo:{util.CLR_PROMPT}{neo_prompt}{util.CLR_PROMPT_END} "
                         my_prompt += f"{ui_state.current_prompt}> "

@@ -12,8 +12,8 @@ Options:
    -r <risc>           RiscV name (brisc, triscs0, triscs1, triscs2, ncrisc, erisc). [default: first risc]
 
 Examples:
-  run-elf build/riscv-src/wormhole/sample.brisc.elf
-  run-elf sample.trisc0.elf -r trisc0 --neo 1
+  run-elf build/riscv-src/wormhole/sample.debug.brisc.elf
+  run-elf build/riscv-src/wormhole/sample.debug.brisc.elf -r trisc0 --neo 1
 """
 
 from ttexalens import util as util

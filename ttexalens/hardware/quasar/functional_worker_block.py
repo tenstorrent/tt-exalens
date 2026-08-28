@@ -66,7 +66,7 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
     def neo_ids(self) -> list[int]:
         return [neo.neo_id for neo in self.neos]
 
-    def get_neo_by_id(self, neo_id: int | None) -> QuasarFunctionalNeoBlock | QuasarFunctionalOverlayBlock | None:
+    def get_sub_block(self, neo_id: int | None) -> QuasarFunctionalNeoBlock | QuasarFunctionalOverlayBlock | None:
         if neo_id is None:
             return self.overlay
         for neo in self.neos:
@@ -75,13 +75,13 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
         return None
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
-        neo = self.get_neo_by_id(neo_id)
+        neo = self.get_sub_block(neo_id)
         if neo is not None and not isinstance(neo, QuasarFunctionalOverlayBlock):
             return neo.debug_bus
         return super().get_debug_bus(neo_id)
 
     def get_register_store(self, noc_id: NocId | None = None, neo_id: int | None = None) -> RegisterStore:
-        neo = self.get_neo_by_id(neo_id)
+        neo = self.get_sub_block(neo_id)
         if neo is not None:
             return neo.register_store
         return super().get_register_store(noc_id, neo_id)
@@ -94,7 +94,7 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
 
     @cache
     def get_risc_debug(self, risc_name: str, neo_id: int | None = None) -> RiscDebug:
-        neo = self.get_neo_by_id(neo_id)
+        neo = self.get_sub_block(neo_id)
         if neo is not None:
             return neo.get_risc_debug(risc_name)
         raise ValueError(
