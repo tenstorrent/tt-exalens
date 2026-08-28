@@ -182,7 +182,7 @@ class tt_docopt:
             short_name="--neo",
             long_name="--neo",
             argument="<neo-id>",
-            description="NEO to address inside the block at the location: a NEO id, or 'overlay'. Defaults to the current NEO.",
+            description="NEO to address inside the block at the location: a NEO id, or None. Defaults to the current NEO.",
             for_each=neo_id_for_each,
         ),
     ]
