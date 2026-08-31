@@ -52,63 +52,51 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
             risc_base_start_address=0x00030000,
         )
 
+        self.neos = [self.neo0, self.neo1, self.neo2, self.neo3]
+
         self.overlay = QuasarFunctionalOverlayBlock(noc_block=self)
 
         self.noc_memory_map.initialize_blocks(
             [MemoryMapBlockInfo("l1", self.l1, safe_to_write=True)]
-            + self.neo0.noc_memory_list
-            + self.neo1.noc_memory_list
-            + self.neo2.noc_memory_list
-            + self.neo3.noc_memory_list
+            + [memory for neo in self.neos for memory in neo.noc_memory_list]
             + self.overlay.noc_memory_list
         )
 
+    @property
+    def neo_ids(self) -> list[int]:
+        return [neo.neo_id for neo in self.neos]
+
+    def get_sub_block(self, neo_id: int | None) -> QuasarFunctionalNeoBlock | QuasarFunctionalOverlayBlock | None:
+        if neo_id is None:
+            return self.overlay
+        for neo in self.neos:
+            if neo.neo_id == neo_id:
+                return neo
+        return None
+
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
-        if neo_id == 0:
-            return self.neo0.debug_bus
-        elif neo_id == 1:
-            return self.neo1.debug_bus
-        elif neo_id == 2:
-            return self.neo2.debug_bus
-        elif neo_id == 3:
-            return self.neo3.debug_bus
+        neo = self.get_sub_block(neo_id)
+        if neo is not None and not isinstance(neo, QuasarFunctionalOverlayBlock):
+            return neo.debug_bus
         return super().get_debug_bus(neo_id)
 
     def get_register_store(self, noc_id: NocId | None = None, neo_id: int | None = None) -> RegisterStore:
-        if neo_id == 0:
-            return self.neo0.register_store
-        elif neo_id == 1:
-            return self.neo1.register_store
-        elif neo_id == 2:
-            return self.neo2.register_store
-        elif neo_id == 3:
-            return self.neo3.register_store
-        elif neo_id is None:
-            return self.overlay.register_store
+        neo = self.get_sub_block(neo_id)
+        if neo is not None:
+            return neo.register_store
         return super().get_register_store(noc_id, neo_id)
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:
-        riscs = []
-        riscs.extend(self.neo0.all_riscs)
-        riscs.extend(self.neo1.all_riscs)
-        riscs.extend(self.neo2.all_riscs)
-        riscs.extend(self.neo3.all_riscs)
+        riscs = [risc for neo in self.neos for risc in neo.all_riscs]
         riscs.extend(self.overlay.all_riscs)
         return riscs
 
     @cache
     def get_risc_debug(self, risc_name: str, neo_id: int | None = None) -> RiscDebug:
-        if neo_id == self.neo0.neo_id:
-            return self.neo0.get_risc_debug(risc_name)
-        elif neo_id == self.neo1.neo_id:
-            return self.neo1.get_risc_debug(risc_name)
-        elif neo_id == self.neo2.neo_id:
-            return self.neo2.get_risc_debug(risc_name)
-        elif neo_id == self.neo3.neo_id:
-            return self.neo3.get_risc_debug(risc_name)
-        elif neo_id == None:
-            return self.overlay.get_risc_debug(risc_name)
+        neo = self.get_sub_block(neo_id)
+        if neo is not None:
+            return neo.get_risc_debug(risc_name)
         raise ValueError(
             f"RISC debug for {risc_name} [neo: {neo_id}] is not supported in Quasar functional worker block."
         )

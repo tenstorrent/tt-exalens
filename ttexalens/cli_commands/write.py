@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  write <address> <data>... [ --width=<width> ] [ --repeat=<repeat> ] [ --unsafe ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ]
+  write <address> <data>... [ --width=<width> ] [ --repeat=<repeat> ] [ --unsafe ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ]
 
 Arguments:
   address         Address to write to
@@ -25,10 +25,12 @@ Examples:
   write 0x0 0x12 0x34 --width 2               # Write 4 bytes to address 0
   write 0x0 0xdeadbeef --repeat 4             # Write the same word to 4 consecutive addresses
   write 0xFFB0000 0xdeadbeef -r brisc         # Write 1 word to brisc private data memory
+  write 0x0 0xdeadbeef -r trisc0 --neo 1      # Write to trisc0 private memory of NEO 1
 """
 
 from ttexalens.context import Context
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -40,7 +42,7 @@ command_metadata = CommandMetadata(
     short_name="w",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
 )
 
 
@@ -92,24 +94,33 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             device_id_str += f" [0x{device.unique_id:x}]"
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             location_str = location.to_user_str()
+            noc_block = location.noc_block
+            neo_id = dopt.get_neo_id(ui_state, noc_block)
+            neo_str = f" | Neo {neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""
             write_address = address
             written_bytes = 0
             data_offset = 0
             while written_bytes < total_bytes:
                 chunk = bytes(write_data[data_offset : data_offset + (total_bytes - written_bytes)])
                 if unsafe:
-                    chunk_written, memory_block_name = execute_unsafe_write(location, write_address, chunk, risc_name)
+                    chunk_written, memory_block_name = execute_unsafe_write(
+                        location, write_address, chunk, risc_name, neo_id
+                    )
                 else:
-                    chunk_written, memory_block_name = execute_safe_write(location, write_address, chunk, risc_name)
+                    chunk_written, memory_block_name = execute_safe_write(
+                        location, write_address, chunk, risc_name, neo_id
+                    )
                 util.INFO(
-                    f"Device {device_id_str} | Location {location_str} | Block {memory_block_name} : 0x{write_address:08x} ({chunk_written} bytes written)"
+                    f"Device {device_id_str} | Location {location_str}{neo_str} | Block {memory_block_name} : 0x{write_address:08x} ({chunk_written} bytes written)"
                 )
                 write_address += chunk_written
                 written_bytes += chunk_written
                 data_offset += chunk_written
 
 
-def execute_safe_write(location: OnChipCoordinate, address: int, data: bytes, risc_name: str | None) -> tuple[int, str]:
+def execute_safe_write(
+    location: OnChipCoordinate, address: int, data: bytes, risc_name: str | None, neo_id: int | None = None
+) -> tuple[int, str]:
     if risc_name is None:
         memory_block_info = location.noc_block.noc_memory_map.find_by_noc_address(address)
         if not memory_block_info:
@@ -121,7 +132,7 @@ def execute_safe_write(location: OnChipCoordinate, address: int, data: bytes, ri
         location.noc_write(address, data[:write_size])
         return write_size, memory_block_info.name
     else:
-        risc_debug = location.noc_block.get_risc_debug(risc_name)
+        risc_debug = location.noc_block.get_risc_debug(risc_name, neo_id)
         memory_block_info = risc_debug.risc_info.memory_map.find_by_private_address(address)
         if not memory_block_info:
             raise TTException(
@@ -143,7 +154,7 @@ def execute_safe_write(location: OnChipCoordinate, address: int, data: bytes, ri
 
 
 def execute_unsafe_write(
-    location: OnChipCoordinate, address: int, data: bytes, risc_name: str | None
+    location: OnChipCoordinate, address: int, data: bytes, risc_name: str | None, neo_id: int | None = None
 ) -> tuple[int, str]:
     if risc_name is None:
         risc_debug = None
@@ -154,7 +165,7 @@ def execute_unsafe_write(
             location.noc_write(address, data[:write_size], safe_mode=False)
             return write_size, memory_block_info.name
     else:
-        risc_debug = location.noc_block.get_risc_debug(risc_name)
+        risc_debug = location.noc_block.get_risc_debug(risc_name, neo_id)
         memory_block_info = risc_debug.risc_info.memory_map.find_by_private_address(address)
         if memory_block_info is not None and memory_block_info.memory_block.address.private_address is not None:
             memory_block_end = (

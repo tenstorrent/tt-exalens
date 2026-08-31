@@ -4,10 +4,10 @@
 """
 Usage:
   perf-counters list
-  perf-counters reset [--block=<name>] [-d <device>] [-l <loc>]
-  perf-counters start [--block=<name>] [-d <device>] [-l <loc>]
-  perf-counters stop [--block=<name>] [-d <device>] [-l <loc>]
-  perf-counters read [--snapshot] [--block=<name>] [--counter=<id>] [--active] [-d <device>] [-l <loc>]
+  perf-counters reset [--block=<name>] [-d <device>] [-l <loc>] [--neo <neo-id>]
+  perf-counters start [--block=<name>] [-d <device>] [-l <loc>] [--neo <neo-id>]
+  perf-counters stop [--block=<name>] [-d <device>] [-l <loc>] [--neo <neo-id>]
+  perf-counters read [--snapshot] [--block=<name>] [--counter=<id>] [--active] [-d <device>] [-l <loc>] [--neo <neo-id>]
 
 Options:
   --block=<name>        Block to operate on (FPU, INSTRN_THREAD, TDMA_UNPACK, TDMA_PACK).
@@ -54,6 +54,7 @@ from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_d
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.perf_counters import (
     list_perf_counters,
     read_perf_counters,
@@ -69,7 +70,7 @@ command_metadata = CommandMetadata(
     long_name="perf-counters",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
 )
 
 
@@ -106,19 +107,22 @@ def _print_list(listing: dict[str, list[tuple[int, str]]]) -> None:
 
 def _iter_perf_targets(
     dopt: tt_docopt, context: Context, ui_state: UIState
-) -> Iterator[tuple[Device, OnChipCoordinate]]:
-    """Yield (device, location) pairs that have perf counters wired.
+) -> Iterator[tuple[Device, OnChipCoordinate, int | None]]:
+    """Yield (device, location, neo_id) triples that have perf counters wired.
     Warns and skips targets without perf counters.
     """
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            if loc.noc_block.get_perf_counters() is None:
+            noc_block = loc.noc_block
+            neo_id = dopt.get_neo_id(ui_state, noc_block)
+            neo_where = f" neo={neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""
+            if noc_block.get_perf_counters(neo_id) is None:
                 util.WARN(
-                    f"chip={device.id} core={loc.to_user_str()}: "
-                    f"performance counters are not available on block_type={loc.noc_block.block_type}"
+                    f"chip={device.id} {neo_where} core={loc.to_user_str()}: "
+                    f"performance counters are not available on block_type={noc_block.block_type}"
                 )
                 continue
-            yield device, loc
+            yield device, loc, neo_id
 
 
 def _build_render_data(
@@ -234,8 +238,8 @@ def _run_read(
             return
         counter_arg = _parse_counter(args["--counter"])
         matched = False
-        for _device, loc in targets:
-            per_core = read_perf_counters(loc, block_name=block_name)
+        for _device, loc, neo_id in targets:
+            per_core = read_perf_counters(loc, block_name=block_name, neo_id=neo_id)
             for (_bname, cid, cname), (value, _ref) in per_core.items():
                 if (isinstance(counter_arg, int) and cid == counter_arg) or (
                     isinstance(counter_arg, str) and cname == counter_arg
@@ -254,8 +258,10 @@ def _run_read(
 
     def take_snapshot() -> FlatSnap:
         snap: FlatSnap = {}
-        for device, loc in targets:
-            for (bname, cid, cname), (value, ref) in read_perf_counters(loc, block_name=block_name).items():
+        for device, loc, neo_id in targets:
+            for (bname, cid, cname), (value, ref) in read_perf_counters(
+                loc, block_name=block_name, neo_id=neo_id
+            ).items():
                 snap[(device.id, loc, bname, cid, cname)] = (value, ref)
         return snap
 
@@ -293,7 +299,8 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     for op_name, fn in op_fn.items():
         if not args[op_name]:
             continue
-        for device, loc in _iter_perf_targets(dopt, context, ui_state):
-            fn(loc, block_name, noc_id=None, neo_id=None, safe_mode=None)
-            util.INFO(f"chip={device.id} core={loc.to_user_str()}: {op_name} {block_name or 'all blocks'}")
+        for device, loc, neo_id in _iter_perf_targets(dopt, context, ui_state):
+            fn(loc, block_name, noc_id=None, neo_id=neo_id, safe_mode=None)
+            neo_where = f" neo={neo_id_to_str(neo_id)}" if loc.noc_block.neo_ids else ""
+            util.INFO(f"chip={device.id} {neo_where} core={loc.to_user_str()}: {op_name} {block_name or 'all blocks'}")
         return

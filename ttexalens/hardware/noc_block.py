@@ -62,6 +62,13 @@ class NocBlock:
     def all_riscs(self) -> list[RiscDebug]:
         return []
 
+    @property
+    def neo_ids(self) -> list[int]:
+        return []
+
+    def get_riscs(self, neo_id: int | None = None) -> list[RiscDebug]:
+        return [risc for risc in self.all_riscs if risc.risc_location.neo_id == neo_id]
+
     @cached_property
     def risc_names(self) -> list[str]:
         """
@@ -85,3 +92,30 @@ class NocBlock:
         This method should be overridden in subclasses to provide a specific implementation.
         """
         raise NotImplementedError(f"Noc block on location {self.location.to_user_str()} doesn't have RISC cores.")
+
+
+def str_to_neo_id(value: str, noc_block: NocBlock) -> int | None:
+    stripped = value.strip().lower()
+    if stripped == "none":
+        return None
+    try:
+        neo_id = int(stripped, 0)
+    except ValueError:
+        raise ValueError(f"Invalid NEO '{value}'. Expected None or one of {noc_block.neo_ids}.") from None
+    return neo_id
+
+
+def to_neo_id(value: str | int, noc_block: NocBlock) -> int | None:
+    if isinstance(value, str):
+        neo_id = str_to_neo_id(value, noc_block)
+    else:
+        neo_id = value
+
+    if neo_id is not None and neo_id not in noc_block.neo_ids:
+        where = f"{noc_block.block_type} block at {noc_block.location.to_user_str()}"
+        raise ValueError(f"Invalid NEO {neo_id} for the {where}.")
+    return neo_id
+
+
+def neo_id_to_str(neo_id: int | None) -> str:
+    return "None" if neo_id is None else str(neo_id)
