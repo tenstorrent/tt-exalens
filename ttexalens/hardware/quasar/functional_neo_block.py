@@ -12,7 +12,7 @@ from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.quasar.baby_risc_debug import QuasarBabyRiscDebug
 from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import debug_bus_signal_map
 from ttexalens.hardware.quasar.functional_neo_registers import register_map
-from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from typing import TYPE_CHECKING
 
 from ttexalens.hardware.risc_debug import RiscDebug
@@ -21,6 +21,7 @@ from ttexalens.register_store import (
     DebugRegisterDescription,
     RegisterDescription,
     RegisterStore,
+    RegisterStoreInitialization,
 )
 
 if TYPE_CHECKING:
@@ -38,10 +39,7 @@ def get_register_base_address_callable(
         assert neo_base_address.noc_address is not None, "RISC base address must have a NOC address"
 
         if isinstance(register_description, ConfigurationRegisterDescription):
-            return DeviceAddress(
-                private_address=neo_base_address.private_address + 0xA000,
-                noc_address=neo_base_address.noc_address + 0xA000,
-            )
+            return DeviceAddress(private_address=neo_base_address.private_address + 0x20000)
         elif isinstance(register_description, DebugRegisterDescription):
             return DeviceAddress(
                 private_address=neo_base_address.private_address + 0x0000,
@@ -51,6 +49,15 @@ def get_register_base_address_callable(
             raise ValueError(f"Unsupported register description type: {type(register_description)}. ")
 
     return get_register_base_address
+
+
+@cache
+def get_register_store_initialization(private_address: int, noc_address: int) -> RegisterStoreInitialization:
+    """Returns the register store initialization for a NEO at the given base address."""
+    return RegisterStore.create_initialization(
+        register_map,
+        get_register_base_address_callable(DeviceAddress(private_address=private_address, noc_address=noc_address)),
+    )
 
 
 debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
@@ -70,10 +77,8 @@ class QuasarFunctionalNeoBlock:
         self.noc_block = noc_block
         self.neo_id = neo_id
         self.debug_bus = DebugBusSignalStore(debug_bus_signals_initialization, noc_block, neo_id)
-        # TODO: This register initialization should be moved to global scope to avoid its calculation every time object is created
-        # TODO: It should be done once Quasar is finalized and we know all about its hardware. For simulator we create only few of these blocks
-        register_store_initialization = RegisterStore.create_initialization(
-            register_map, get_register_base_address_callable(neo_base_address)
+        register_store_initialization = get_register_store_initialization(
+            neo_base_address.private_address, neo_base_address.noc_address
         )
         self.register_store = RegisterStore(register_store_initialization, noc_block.location, neo_id)
 
@@ -190,7 +195,6 @@ class QuasarFunctionalNeoBlock:
                 noc_address=neo_base_address.noc_address + 0x400,
             ),
         )
-
         self.noc_memory_list: list[MemoryMapBlockInfo] = [
             MemoryMapBlockInfo(f"neo{neo_id}.trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[union-attr]
             MemoryMapBlockInfo(f"neo{neo_id}.trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[union-attr]
@@ -200,6 +204,28 @@ class QuasarFunctionalNeoBlock:
             MemoryMapBlockInfo(f"neo{neo_id}.pic_regs", self.pic_regs.just_noc_address()),
         ]
 
+        self.config_regs = MemoryBlock(
+            size=0x2000,
+            address=DeviceAddress(private_address=neo_base_address.private_address + 0x20000),
+        )
+
+        self.private_memory_map = MemoryMap.get_memory_map_from_cache(
+            QuasarFunctionalNeoBlock,
+            f"neo_private_memory_map_{neo_base_address.noc_address:#x}",
+            block_list_lambda=lambda: [
+                MemoryMapBlockInfo("l1", noc_block.l1, safe_to_write=True),
+                MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
+                MemoryMapBlockInfo("pic_regs", self.pic_regs),
+                MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("trisc1.data_private_memory", self.trisc1.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("trisc3.data_private_memory", self.trisc3.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("config_regs", self.config_regs),
+            ],
+        )
+        for risc_info in [self.trisc0, self.trisc1, self.trisc2, self.trisc3]:
+            risc_info.memory_map = self.private_memory_map
+
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:
         return [
@@ -208,6 +234,9 @@ class QuasarFunctionalNeoBlock:
             self.get_risc_debug(self.trisc2.risc_name),
             self.get_risc_debug(self.trisc3.risc_name),
         ]
+
+    def get_default_risc_debug(self) -> RiscDebug:
+        return self.get_risc_debug(self.trisc0.risc_name)
 
     @cache
     def get_risc_debug(self, risc_name: str) -> RiscDebug:

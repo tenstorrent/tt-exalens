@@ -9,6 +9,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.quasar.dram_block import QuasarDramBlock, QuasarDramBlockSim
+from ttexalens.hardware.quasar.tensix_register_description import tensix_registers_descriptions
 from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
 from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
 from ttexalens.umd_device import UmdDevice
@@ -44,7 +45,7 @@ class QuasarDevice(Device):
         raise ValueError(f"Unsupported block type: {block_type}")
 
     def get_tensix_registers_description(self) -> TensixRegisterDescription:
-        raise NotImplementedError("Quasar does not have a Tensix registers description yet.")
+        return tensix_registers_descriptions
 
     def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
         raise NotImplementedError("Quasar does not have a Tensix debug bus description yet.")

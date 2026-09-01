@@ -376,8 +376,8 @@ class BlackholeDramBlock(BlackholeNocBlock):
         ]
 
     @cache
-    def get_default_risc_debug(self) -> RiscDebug:
-        return self.get_risc_debug(self.drisc.risc_name, self.drisc.neo_id)
+    def get_default_risc_debug(self, neo_id: int | None = None) -> RiscDebug:
+        return self.get_risc_debug(self.drisc.risc_name, neo_id)
 
     @cache
     def get_risc_debug(self, risc_name: str, neo_id: int | None = None) -> RiscDebug:

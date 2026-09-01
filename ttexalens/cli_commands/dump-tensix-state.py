@@ -156,7 +156,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     device: Device
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         tensix_reg_desc = device.get_tensix_registers_description()
-        tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
+        # tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
         loc: OnChipCoordinate
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             noc_block = device.get_block(loc)
@@ -251,35 +251,35 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     )
                 print(put_table_list_side_by_side(tables))
 
-            if group == "rwc" or group == "all":
-                print(f"{CLR_GREEN}RWCs{CLR_END}")
-                rwc_signal_dicts = read_signal_groups(
-                    tensix_debug_bus_desc.register_window_counter_groups, debug_bus, l1_address
-                )
-                parsed_rwc_signal_dicts = parse_signal_groups(rwc_signal_dicts, "rwc")
-                # Dealing with signal that spans accros two groups - rwc0_dst
-                if device.is_blackhole():
-                    signal_desc_lo = debug_bus.get_signal_description("rwc0_dst/0")
-                    signal_desc_hi = debug_bus.get_signal_description("rwc0_dst/1")
-                    parsed_rwc_signal_dicts["coordinates_b"]["rwc0_dst"] = hex(
-                        debug_bus.read_signal(signal_desc_lo)
-                        + (debug_bus.read_signal(signal_desc_hi) << signal_desc_lo.mask.bit_length())
-                    )
-                tables_rwc = debug_bus_to_tables(parsed_rwc_signal_dicts)
-                print_3_tables_side_by_side(tables_rwc)
+            # if group == "rwc" or group == "all":
+            #     print(f"{CLR_GREEN}RWCs{CLR_END}")
+            #     rwc_signal_dicts = read_signal_groups(
+            #         tensix_debug_bus_desc.register_window_counter_groups, debug_bus, l1_address
+            #     )
+            #     parsed_rwc_signal_dicts = parse_signal_groups(rwc_signal_dicts, "rwc")
+            #     # Dealing with signal that spans accros two groups - rwc0_dst
+            #     if device.is_blackhole():
+            #         signal_desc_lo = debug_bus.get_signal_description("rwc0_dst/0")
+            #         signal_desc_hi = debug_bus.get_signal_description("rwc0_dst/1")
+            #         parsed_rwc_signal_dicts["coordinates_b"]["rwc0_dst"] = hex(
+            #             debug_bus.read_signal(signal_desc_lo)
+            #             + (debug_bus.read_signal(signal_desc_hi) << signal_desc_lo.mask.bit_length())
+            #         )
+            #     tables_rwc = debug_bus_to_tables(parsed_rwc_signal_dicts)
+            #     print_3_tables_side_by_side(tables_rwc)
 
-            if group == "adc" or group == "all":
+            # if group == "adc" or group == "all":
 
-                print(f"{CLR_GREEN}ADCs{CLR_END}")
-                if l1_address is None:
+            #     print(f"{CLR_GREEN}ADCs{CLR_END}")
+            #     if l1_address is None:
 
-                    util.WARN(
-                        "No L1 address provided. Disabling atomic group reading for ADC group. Use -a option to specify L1 address."
-                    )
-                adc_signal_dicts = read_signal_groups(
-                    tensix_debug_bus_desc.address_counter_groups, debug_bus, l1_address
-                )
-                parsed_adc_signal_dicts = parse_signal_groups(adc_signal_dicts)
-                tables_adc = debug_bus_to_tables(parsed_adc_signal_dicts)
+            #         util.WARN(
+            #             "No L1 address provided. Disabling atomic group reading for ADC group. Use -a option to specify L1 address."
+            #         )
+            #     adc_signal_dicts = read_signal_groups(
+            #         tensix_debug_bus_desc.address_counter_groups, debug_bus, l1_address
+            #     )
+            #     parsed_adc_signal_dicts = parse_signal_groups(adc_signal_dicts)
+            #     tables_adc = debug_bus_to_tables(parsed_adc_signal_dicts)
 
-                print_3_tables_side_by_side(tables_adc)
+            #     print_3_tables_side_by_side(tables_adc)
