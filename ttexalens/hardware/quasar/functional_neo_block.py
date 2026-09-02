@@ -195,6 +195,12 @@ class QuasarFunctionalNeoBlock:
                 noc_address=neo_base_address.noc_address + 0x400,
             ),
         )
+
+        self.config_regs = MemoryBlock(
+            size=0x2000,
+            address=DeviceAddress(private_address=neo_base_address.private_address + 0x20000),
+        )
+
         self.noc_memory_list: list[MemoryMapBlockInfo] = [
             MemoryMapBlockInfo(f"neo{neo_id}.trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[union-attr]
             MemoryMapBlockInfo(f"neo{neo_id}.trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[union-attr]
@@ -204,14 +210,9 @@ class QuasarFunctionalNeoBlock:
             MemoryMapBlockInfo(f"neo{neo_id}.pic_regs", self.pic_regs.just_noc_address()),
         ]
 
-        self.config_regs = MemoryBlock(
-            size=0x2000,
-            address=DeviceAddress(private_address=neo_base_address.private_address + 0x20000),
-        )
-
-        self.private_memory_map = MemoryMap.get_memory_map_from_cache(
+        self.risc_memory_map = MemoryMap.get_memory_map_from_cache(
             QuasarFunctionalNeoBlock,
-            f"neo_private_memory_map_{neo_base_address.noc_address:#x}",
+            f"neo_risc_memory_map_{neo_base_address.noc_address:#x}",
             block_list_lambda=lambda: [
                 MemoryMapBlockInfo("l1", noc_block.l1, safe_to_write=True),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
@@ -224,7 +225,7 @@ class QuasarFunctionalNeoBlock:
             ],
         )
         for risc_info in [self.trisc0, self.trisc1, self.trisc2, self.trisc3]:
-            risc_info.memory_map = self.private_memory_map
+            risc_info.memory_map = self.risc_memory_map
 
     @cached_property
     def all_riscs(self) -> list[RiscDebug]:
