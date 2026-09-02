@@ -237,7 +237,7 @@ class QuasarFunctionalNeoBlock:
         ]
 
     def get_default_risc_debug(self) -> RiscDebug:
-        return self.get_risc_debug(self.trisc0.risc_name)
+        return self.get_risc_debug(self.trisc3.risc_name)
 
     @cache
     def get_risc_debug(self, risc_name: str) -> RiscDebug:

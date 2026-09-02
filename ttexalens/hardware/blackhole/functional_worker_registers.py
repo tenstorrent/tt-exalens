@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-from ttexalens.hardware.tensix_registers_description import TensixRegisterDescription
+from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
 from ttexalens.register_store import (
     REGISTER_DATA_TYPE,
     ConfigurationRegisterDescription,
@@ -876,7 +876,7 @@ def get_general_purpose_registers() -> list[dict[str, str]]:
     return register_mapping_by_thread
 
 
-tensix_registers_descriptions = TensixRegisterDescription(
+tensix_registers_descriptions = BlackholeTensixRegisterDescription(
     # ALU CONFIG
     alu_config=[
         {

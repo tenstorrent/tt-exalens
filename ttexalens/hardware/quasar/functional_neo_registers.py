@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
+from ttexalens.hardware.quasar.tensix_register_description import QuasarTensixRegisterDescription
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
@@ -1353,3 +1354,357 @@ register_map: dict[str, RegisterDescription] = {
     "PERF_CNT_CMD_SEC3_Cmd3Start": ConfigurationRegisterDescription(index=367, mask=0x40, shift=6),
     "PERF_CNT_CMD_SEC3_Cmd3Stop": ConfigurationRegisterDescription(index=367, mask=0x80, shift=7),
 }
+
+NUM_UNPACKERS = 3
+NUM_PACKERS = 2
+NUM_BUFFER_DESCRIPTORS = 32
+NUM_WATCHPOINTS = 4
+
+# Configuration sections (the SEC<n> suffix in a register name) are the per-context copies of a
+# configuration register. Address modifiers have 32 of them, everything else has 4.
+NUM_CONFIG_SECTIONS = 4
+NUM_ADDR_MOD_SECTIONS = 32
+
+# Clients of the DEST register bank, each with its own DVALID control register.
+DEST_DVALID_CLIENTS = ["UNPACK_TO", "MATH", "SFPU", "PACK"]
+
+
+def get_alu_config() -> list[dict[str, str]]:
+    struct_name = "ALU"
+    fields = [
+        "FORMAT_SPEC_REG_SrcA_val",
+        "FORMAT_SPEC_REG_SrcA_override",
+        "FORMAT_SPEC_REG_SrcB_val",
+        "FORMAT_SPEC_REG_SrcB_override",
+        "FORMAT_SPEC_REG_Dstacc_val",
+        "FORMAT_SPEC_REG_Dstacc_override",
+        "ROUNDING_MODE_Fpu_srnd_en",
+        "ROUNDING_MODE_Padding",
+        "ROUNDING_MODE_GS_LF",
+        "ROUNDING_MODE_Bfp8_HF",
+        "FORMAT_SPEC_REG0_SrcA",
+        "FORMAT_SPEC_REG1_SrcB",
+        "FORMAT_SPEC_REG2_Dstacc",
+        "ACC_CTRL_Fp32_enabled",
+        "ACC_CTRL_SFPU_Fp32_enabled",
+        "ACC_CTRL_INT8_math_enabled",
+        "ACC_CTRL_Zero_Flag_disabled_src",
+        "ACC_CTRL_Zero_Flag_disabled_dst",
+    ]
+
+    return [{field: f"{struct_name}_{field}" for field in fields}]
+
+
+def get_unpack_config() -> list[dict[str, str]]:
+    struct_name = "THCON_UNPACKER"
+    fields = [
+        "REG0_OUT_DATA_FORMAT",
+        "REG0_TRANSPOSE",
+        "REG0_TILIZE_SRC_ADDR_OFFSET",
+        "REG0_ENABLE_ARG_FIFO",
+        "REG0_ARG_FIFO_MODE",
+        "REG0_SELF_CHECK_EN",
+        "REG0_WRAP_TILE_DIM",
+        "REG0_UNPACR_STRIDE_SET_STRIDE",
+        "REG0_SET_STRIDE_MODE",
+        "REG0_UNUSED1",
+        "REG0_UNPACK_STRIDE_COL_MASK",
+        "REG1_UNPACK_STRIDE_ROW_MASK0",
+        "REG1_UNPACK_STRIDE_ROW_MASK1",
+        "REG1_UNPACK_STRIDE_ROW_MASK2",
+        "REG1_UNPACK_STRIDE_ROW_MASK3",
+        "REG1_UNPACK_STRIDE_ROW_MASK4",
+        "REG1_UNPACK_STRIDE_ROW_MASK5",
+        "REG1_UNPACK_STRIDE_ROW_MASK6",
+        "REG1_UNPACK_STRIDE_ROW_MASK7",
+        "REG1_UNPACK_TILIZE_SRC_Z_STRIDE",
+        "REG1_UNPACK_TILIZE_DST_Z_STRIDE",
+        "REG1_UNPACK_STRIDE_VAL_SOURCE",
+        "REG1_UNPACK_STRIDE_NO_WRITE",
+        "REG1_UNUSED0",
+        "REG1_UNPACK_STRIDE_MASK_VAL",
+        "REG2_UNPACK_STRIDE_OFFSET_0",
+        "REG2_UNPACK_STRIDE_OFFSET_1",
+        "REG2_UNPACK_STRIDE_OFFSET_2",
+        "REG2_UNPACK_STRIDE_OFFSET_3",
+        "REG2_UNPACK_STRIDE_OFFSET_4",
+        "REG2_UNPACK_STRIDE_OFFSET_5",
+        "REG2_UNPACK_STRIDE_OFFSET_6",
+        "REG2_UNPACK_STRIDE_OFFSET_7",
+        "REG0_UNUSED0",
+        "REG0_INSTRN_LOOP_COUNT",
+        "REG0_INSTRN_COUNT",
+        "REG0_UNUSED2",
+    ]
+
+    return [
+        {field: f"{struct_name}{i}_{field}" for field in fields if f"{struct_name}{i}_{field}" in register_map}
+        for i in range(NUM_UNPACKERS)
+    ]
+
+
+def get_pack_config() -> list[dict[str, str]]:
+    struct_name = "THCON_PACKER"
+    fields = [
+        "REG0_IN_DATA_FORMAT",
+        "REG0_READ_MODE",
+        "REG0_DEST_REG_WRAP_MODE",
+        "REG0_L1_ACC",
+        "REG0_ZERO_WRITE",
+        "REG0_EXP_THRESHOLD_EN",
+        "REG0_EXP_THRESHOLD",
+        "REG0_INT_DESCALE_ENABLE",
+        "REG0_INT_DESCALE_MODE",
+        "REG0_STOCH_RND_EN",
+        "REG0_SELF_CHECK_EN",
+        "REG0_UNUSED0",
+        "REG0_SRC_ADDR_OFFSET",
+        "REG0_UNUSED1",
+        "REG0_UNTILIZE_DST_ADDR_OFFSET",
+        "REG0_UNUSED2",
+        "REG0_WRAP_TILE_DIM",
+        "REG1_PACK_UNTILIZE_SRC_Z_STRIDE",
+        "REG1_PACK_UNTILIZE_DST_Z_STRIDE",
+        "REG3_UNUSED0",
+        "REG0_INSTRN_LOOP_COUNT",
+        "REG0_INSTRN_COUNT",
+        "REG0_DISABLE_SRCS_OFFSET",
+        "REG1_UNUSED0",
+    ]
+
+    return [
+        {field: f"{struct_name}{i}_{field}" for field in fields if f"{struct_name}{i}_{field}" in register_map}
+        for i in range(NUM_PACKERS)
+    ]
+
+
+def get_pack_edge_offset() -> list[dict[str, str]]:
+    struct_name = "THCON_PACKER"
+    fields = [
+        "REG1_EDGE_MASK0",
+        "REG1_EDGE_MASK1",
+        "REG1_EDGE_MASK2",
+        "REG1_EDGE_MASK3",
+        "REG1_EDGE_MASK_MODE",
+        "REG2_EDGE_MASK_SELECT_FACE0",
+        "REG2_EDGE_MASK_SELECT_FACE1",
+        "REG2_EDGE_MASK_SELECT_FACE2",
+        "REG2_EDGE_MASK_SELECT_FACE3",
+    ]
+
+    return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(NUM_PACKERS)]
+
+
+def get_pack_strides() -> list[dict[str, str]]:
+    struct_name = "THCON_PACKER"
+    fields = [
+        "REG1_PACK_STRIDE_OFFSET_0",
+        "REG1_PACK_STRIDE_OFFSET_1",
+        "REG3_PACK_STRIDE_VAL_SOURCE",
+        "REG3_PACK_STRIDE_NO_WRITE",
+        "REG3_PACK_STRIDE_ROW_MASK",
+        "REG3_PACK_STRIDE_COL_MASK",
+        "REG3_PACK_STRIDE_MASK_VAL",
+        "REG3_PACK_STRIDE_OFFSET_2",
+        "REG3_PACK_STRIDE_OFFSET_3",
+    ]
+
+    return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(NUM_PACKERS)]
+
+
+def get_relu_config() -> list[dict[str, str]]:
+    struct_name = "THCON_PACKER"
+    fields = [
+        "REG3_RELU_MODE",
+        "REG3_RELU_THRESHOLD",
+    ]
+
+    return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(NUM_PACKERS)]
+
+
+def get_buffer_descriptor_table() -> list[dict[str, str]]:
+    struct_name = "BUFFER_DESCRIPTOR_TABLE_REG"
+    fields = [
+        "L1_BASE_ADDR",
+        "TILE_FORMAT",
+        "UNUSED0",
+        "L1_LIMIT_ADDR",
+        "TILE_X_DIM",
+        "UNUSED1",
+        "TILE_Y_DIM",
+        "TILE_Z_DIM",
+        "UNUSED2",
+        "UNUSED3",
+    ]
+
+    return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(NUM_BUFFER_DESCRIPTORS)]
+
+
+def get_addr_mod() -> list[dict[str, str]]:
+    families = {
+        "ADDR_MOD_AB": ["SrcAIncr", "SrcACR", "SrcAClear", "SrcBIncr", "SrcBCR", "SrcBClear"],
+        "ADDR_MOD_AB2": ["SrcAIncr", "SrcBIncr"],
+        "ADDR_MOD_DST": ["DestIncr", "DestCR", "DestClear", "DestCToCR", "FidelityIncr", "FidelityClear"],
+    }
+
+    return [
+        {f"{family}_{field}": f"{family}_SEC{i}_{field}" for family, fields in families.items() for field in fields}
+        for i in range(NUM_ADDR_MOD_SECTIONS)
+    ]
+
+
+def get_dest_config() -> list[dict[str, str]]:
+    families = {
+        "RISC_DEST_ACCESS_CTRL": ["no_swizzle", "unsigned_int", "fmt"],
+        "DEST_TARGET_REG_CFG_MATH": ["Offset"],
+        "ENABLE_ACC_STATS": ["Enable"],
+        "FP16A_FORCE": ["Enable"],
+    }
+
+    return [
+        {f"{family}_{field}": f"{family}_SEC{i}_{field}" for family, fields in families.items() for field in fields}
+        for i in range(NUM_CONFIG_SECTIONS)
+    ]
+
+
+def get_src_config() -> list[dict[str, str]]:
+    families = {
+        "DISABLE_IMPLIED_SRCA_FMT": ["Base"],
+        "DISABLE_IMPLIED_SRCB_FMT": ["Base"],
+        "CLR_DVALID": ["SrcA_Disable", "SrcB_Disable"],
+        "FIDELITY_BASE": ["Phase"],
+    }
+
+    return [
+        {f"{family}_{field}": f"{family}_SEC{i}_{field}" for family, fields in families.items() for field in fields}
+        for i in range(NUM_CONFIG_SECTIONS)
+    ]
+
+
+def get_sfpu_config() -> list[dict[str, str]]:
+    families = {
+        "SFPU_DEST_FMT": ["Enable", "Base"],
+        "SFPU_STACK": ["Incr"],
+    }
+
+    return [
+        {f"{family}_{field}": f"{family}_SEC{i}_{field}" for family, fields in families.items() for field in fields}
+        for i in range(NUM_CONFIG_SECTIONS)
+    ]
+
+
+def get_dest_dvalid_ctrl() -> list[dict[str, str]]:
+    fields = [
+        "wait_mask",
+        "wait_polarity",
+        "toggle_mask",
+        "disable_auto_bank_id_toggle",
+    ]
+
+    return [{field: f"{client}_DEST_DVALID_CTRL_{field}" for field in fields} for client in DEST_DVALID_CLIENTS]
+
+
+def get_perf_counter_config() -> list[dict[str, str]]:
+    struct_name = "PERF_CNT_CMD_SEC"
+    fields = [
+        "Cmd0Start",
+        "Cmd0Stop",
+        "Cmd1Start",
+        "Cmd1Stop",
+        "Cmd2Start",
+        "Cmd2Stop",
+        "Cmd3Start",
+        "Cmd3Stop",
+    ]
+
+    return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(NUM_CONFIG_SECTIONS)]
+
+
+def get_watchpoints() -> list[dict[str, str]]:
+    struct_name = "CFG_WATCHPOINTS_"
+    fields = [
+        "lo_addr",
+        "hi_addr",
+        "rsvd",
+        "enable",
+    ]
+
+    return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(NUM_WATCHPOINTS)]
+
+
+def get_global_config() -> list[dict[str, str]]:
+    registers = [
+        "UNUSED0",
+        "UNUSED1",
+        "UNUSED2",
+        "STATE_RESET_EN",
+        "DEST_REGW_BASE_Base",
+        "DEST_SP_BASE_Base",
+        "DISABLE_IMPLIED_SRCS_FORMAT",
+        "SFPU_SRCS_BANK0_FORMAT",
+        "SFPU_SRCS_BANK1_FORMAT",
+        "PRNG_SEED_Seed_Val",
+        "PRNG_SEED_OVERRIDE_CTRL_prng_id",
+        "PRNG_SEED_OVERRIDE_CTRL_override_en",
+        "PRNG_SEED_OVERRIDE_DATA_seed_override",
+        "INT_DESCALE_VALUES_SEC0_Value",
+        "INT_DESCALE_VALUES_SEC1_Value",
+        "INT_DESCALE_VALUES_SEC2_Value",
+        "INT_DESCALE_VALUES_SEC3_Value",
+        "INT_DESCALE_VALUES_SEC4_Value",
+        "INT_DESCALE_VALUES_SEC5_Value",
+        "INT_DESCALE_VALUES_SEC6_Value",
+        "INT_DESCALE_VALUES_SEC7_Value",
+        "INT_DESCALE_VALUES_SEC8_Value",
+        "INT_DESCALE_VALUES_SEC9_Value",
+        "INT_DESCALE_VALUES_SEC10_Value",
+        "INT_DESCALE_VALUES_SEC11_Value",
+        "INT_DESCALE_VALUES_SEC12_Value",
+        "INT_DESCALE_VALUES_SEC13_Value",
+        "INT_DESCALE_VALUES_SEC14_Value",
+        "INT_DESCALE_VALUES_SEC15_Value",
+        "SCRATCH_SEC0_val",
+        "SCRATCH_SEC1_val",
+        "SCRATCH_SEC2_val",
+        "SCRATCH_SEC3_val",
+        "DEST_ACCESS_CFG_zeroacc_absolute_tile_mode",
+        "SRC_ACCESS_CFG_math_view_srca_as_one_bank",
+        "SRC_ACCESS_CFG_math_view_srcb_as_one_bank",
+        "SRC_ACCESS_CFG_disable_contig_srca_dvalid_phase",
+        "SRC_ACCESS_CFG_disable_contig_srcb_dvalid_phase",
+        "FMT_CTRL_MXINT_NEGZERO_EQ_NEGINF",
+        "FMT_CTRL_FP8_OVF_EN",
+        "FMT_CTRL_RESET_PACKER0_EXP_STATS",
+        "FMT_CTRL_RESET_PACKER1_EXP_STATS",
+        "FMT_CTRL_MX_BLOCK_EXP_RND_TO_INF",
+    ]
+
+    return [{register: register for register in registers}]
+
+
+tensix_registers_descriptions = QuasarTensixRegisterDescription(
+    # ALU
+    alu_config=get_alu_config(),
+    # UNPACKERS
+    unpack_config=get_unpack_config(),
+    # PACKERS
+    pack_config=get_pack_config(),
+    pack_edge_offset=get_pack_edge_offset(),
+    pack_strides=get_pack_strides(),
+    relu_config=get_relu_config(),
+    # BUFFER DESCRIPTORS
+    buffer_descriptor_table=get_buffer_descriptor_table(),
+    # ADDRESS MODIFIERS
+    addr_mod=get_addr_mod(),
+    # DEST AND SRC REGISTER BANKS
+    dest_config=get_dest_config(),
+    src_config=get_src_config(),
+    sfpu_config=get_sfpu_config(),
+    dest_dvalid_ctrl=get_dest_dvalid_ctrl(),
+    # PERFORMANCE COUNTERS
+    perf_counter_config=get_perf_counter_config(),
+    # DEBUG
+    watchpoints=get_watchpoints(),
+    # GLOBAL
+    global_config=get_global_config(),
+)
