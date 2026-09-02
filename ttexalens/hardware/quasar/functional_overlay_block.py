@@ -247,6 +247,9 @@ class QuasarFunctionalOverlayBlock:
             QuasarRocketCoreDebug(self.rocket7, self.register_store),
         ]
 
+    def get_default_risc_debug(self) -> RiscDebug:
+        return self.get_risc_debug(self.rocket0.risc_name)
+
     @cache
     def get_risc_debug(self, risc_name: str) -> RiscDebug:
         rocket_infos = [

@@ -78,9 +78,10 @@ class NocBlock:
         return [risc.risc_location.risc_name for risc in self.all_riscs]
 
     @cache
-    def get_default_risc_debug(self) -> RiscDebug:
+    def get_default_risc_debug(self, neo_id: int | None = None) -> RiscDebug:
         """
         Returns a default RiscDebug instance for the NocBlock. It is meant to be used by RegisterStore to read/write configuration regusters.
+        If block has NEOs, the caller can specify which one it wants to use.
         This method should be overridden in subclasses to provide a specific implementation.
         """
         raise NotImplementedError(f"Noc block on location {self.location.to_user_str()} doesn't have RISC cores.")

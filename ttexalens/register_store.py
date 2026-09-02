@@ -198,7 +198,7 @@ class RegisterStore:
     @cached_property
     def _max_config_register_index(self) -> int:
         block = self.location.noc_block
-        risc_debug = block.get_default_risc_debug()
+        risc_debug = block.get_default_risc_debug(self.neo_id)
 
         config_regs = risc_debug.risc_info.memory_map.find_by_name("config_regs")
         if config_regs is None:
@@ -310,7 +310,7 @@ class RegisterStore:
             value = self.location.noc_read32(self._data_register_address, safe_mode=safe_mode)
         else:
             # Read using RISC core debugging hardware.
-            risc_debug = self.device.get_block(self.location).get_default_risc_debug()
+            risc_debug = self.device.get_block(self.location).get_default_risc_debug(self.neo_id)
             assert register.private_address is not None, "Register must have a private address for writing."
             with risc_debug.ensure_private_memory_access():
                 value = risc_debug.read_memory(register.private_address)
@@ -352,7 +352,7 @@ class RegisterStore:
             self.location.noc_write32(register.noc_address, value, register.noc_id, safe_mode=safe_mode)
         else:
             # Write using RISC core debugging hardware.
-            risc_debug = self.device.get_block(self.location).get_default_risc_debug()
+            risc_debug = self.device.get_block(self.location).get_default_risc_debug(self.neo_id)
             assert register.private_address is not None, "Register must have a private address for writing."
             with risc_debug.ensure_private_memory_access():
                 if register.mask != 0xFFFFFFFF:
