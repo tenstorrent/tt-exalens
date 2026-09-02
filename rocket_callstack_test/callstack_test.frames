@@ -1,0 +1,73 @@
+Contents of the .debug_frame section:
+
+
+00000000 000000000000000c ffffffff CIE
+  Version:               3
+  Augmentation:          ""
+  Code alignment factor: 1
+  Data alignment factor: -4
+  Return address column: 1
+
+  DW_CFA_def_cfa: r2 (sp) ofs 0
+
+00000010 0000000000000024 00000000 FDE cie=00000000 pc=0000000000000024..0000000000000038
+  DW_CFA_advance_loc: 4 to 0000000000000028
+  DW_CFA_def_cfa_offset: 16
+  DW_CFA_advance_loc: 8 to 0000000000000030
+  DW_CFA_offset: r1 (ra) at cfa-8
+  DW_CFA_offset: r8 (s0) at cfa-16
+  DW_CFA_advance_loc: 4 to 0000000000000034
+  DW_CFA_def_cfa: r8 (s0) ofs 0
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+
+00000038 000000000000002c 00000000 FDE cie=00000000 pc=0000000000000038..0000000000000064
+  DW_CFA_advance_loc: 4 to 000000000000003c
+  DW_CFA_def_cfa_offset: 16
+  DW_CFA_advance_loc: 8 to 0000000000000044
+  DW_CFA_offset: r1 (ra) at cfa-8
+  DW_CFA_offset: r8 (s0) at cfa-16
+  DW_CFA_advance_loc: 4 to 0000000000000048
+  DW_CFA_def_cfa: r8 (s0) ofs 0
+  DW_CFA_advance_loc: 16 to 0000000000000058
+  DW_CFA_restore: r1 (ra)
+  DW_CFA_advance_loc: 4 to 000000000000005c
+  DW_CFA_restore: r8 (s0)
+  DW_CFA_def_cfa: r2 (sp) ofs 16
+  DW_CFA_advance_loc: 4 to 0000000000000060
+  DW_CFA_def_cfa_offset: 0
+  DW_CFA_nop
+  DW_CFA_nop
+
+00000068 000000000000002c 00000000 FDE cie=00000000 pc=0000000000000064..0000000000000098
+  DW_CFA_advance_loc: 4 to 0000000000000068
+  DW_CFA_def_cfa_offset: 16
+  DW_CFA_advance_loc: 8 to 0000000000000070
+  DW_CFA_offset: r1 (ra) at cfa-8
+  DW_CFA_offset: r8 (s0) at cfa-16
+  DW_CFA_advance_loc: 4 to 0000000000000074
+  DW_CFA_def_cfa: r8 (s0) ofs 0
+  DW_CFA_advance_loc: 24 to 000000000000008c
+  DW_CFA_restore: r1 (ra)
+  DW_CFA_advance_loc: 4 to 0000000000000090
+  DW_CFA_restore: r8 (s0)
+  DW_CFA_def_cfa: r2 (sp) ofs 16
+  DW_CFA_advance_loc: 4 to 0000000000000094
+  DW_CFA_def_cfa_offset: 0
+  DW_CFA_nop
+  DW_CFA_nop
+
+00000098 0000000000000024 00000000 FDE cie=00000000 pc=0000000000000098..00000000000000bc
+  DW_CFA_advance_loc: 4 to 000000000000009c
+  DW_CFA_def_cfa_offset: 32
+  DW_CFA_advance_loc: 8 to 00000000000000a4
+  DW_CFA_offset: r1 (ra) at cfa-8
+  DW_CFA_offset: r8 (s0) at cfa-16
+  DW_CFA_advance_loc: 4 to 00000000000000a8
+  DW_CFA_def_cfa: r8 (s0) ofs 0
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop
+  DW_CFA_nop

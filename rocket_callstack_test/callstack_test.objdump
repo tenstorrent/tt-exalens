@@ -1,0 +1,64 @@
+
+callstack_test.elf:     file format elf64-littleriscv
+
+
+Disassembly of section .text.init:
+
+0000000000000000 <_start>:
+   0:	00040137          	lui	sp,0x40
+   4:	0bc00293          	li	t0,188
+   8:	0c000313          	li	t1,192
+   c:	0062f863          	bgeu	t0,t1,1c <_start+0x1c>
+  10:	0002a023          	sw	zero,0(t0)
+  14:	00428293          	addi	t0,t0,4
+  18:	ff5ff06f          	j	c <_start+0xc>
+  1c:	07c000ef          	jal	98 <main>
+  20:	0000006f          	j	20 <_start+0x20>
+
+Disassembly of section .text:
+
+0000000000000024 <f1>:
+  24:	ff010113          	addi	sp,sp,-16 # 3fff0 <__bss_end+0x3ff30>
+  28:	00113423          	sd	ra,8(sp)
+  2c:	00813023          	sd	s0,0(sp)
+  30:	01010413          	addi	s0,sp,16
+  34:	0000006f          	j	34 <f1+0x10>
+
+0000000000000038 <f2>:
+  38:	ff010113          	addi	sp,sp,-16
+  3c:	00113423          	sd	ra,8(sp)
+  40:	00813023          	sd	s0,0(sp)
+  44:	01010413          	addi	s0,sp,16
+  48:	fddff0ef          	jal	24 <f1>
+  4c:	00200793          	li	a5,2
+  50:	00078513          	mv	a0,a5
+  54:	00813083          	ld	ra,8(sp)
+  58:	00013403          	ld	s0,0(sp)
+  5c:	01010113          	addi	sp,sp,16
+  60:	00008067          	ret
+
+0000000000000064 <f3>:
+  64:	ff010113          	addi	sp,sp,-16
+  68:	00113423          	sd	ra,8(sp)
+  6c:	00813023          	sd	s0,0(sp)
+  70:	01010413          	addi	s0,sp,16
+  74:	fc5ff0ef          	jal	38 <f2>
+  78:	00050793          	mv	a5,a0
+  7c:	0017879b          	addiw	a5,a5,1
+  80:	0007879b          	sext.w	a5,a5
+  84:	00078513          	mv	a0,a5
+  88:	00813083          	ld	ra,8(sp)
+  8c:	00013403          	ld	s0,0(sp)
+  90:	01010113          	addi	sp,sp,16
+  94:	00008067          	ret
+
+0000000000000098 <main>:
+  98:	fe010113          	addi	sp,sp,-32
+  9c:	00113c23          	sd	ra,24(sp)
+  a0:	00813823          	sd	s0,16(sp)
+  a4:	02010413          	addi	s0,sp,32
+  a8:	fbdff0ef          	jal	64 <f3>
+  ac:	00050793          	mv	a5,a0
+  b0:	fef42623          	sw	a5,-20(s0)
+  b4:	fec42783          	lw	a5,-20(s0)
+  b8:	0000006f          	j	b8 <main+0x20>

@@ -1,0 +1,36 @@
+Contents of the .debug_line section:
+
+crt0.S:
+File name                        Line number    Starting address    View    Stmt
+crt0.S                                    16                   0               x
+crt0.S                                    19                 0x4       1       x
+crt0.S                                    20                 0x8       2       x
+crt0.S                                    26                 0xc       3       x
+crt0.S                                    27                0x10       4       x
+crt0.S                                    28                0x14       5       x
+crt0.S                                    29                0x18       6       x
+crt0.S                                    31                0x1c       7       x
+crt0.S                                    33                0x20       8       x
+crt0.S                                     -                0x24
+
+
+main.cc:
+File name                        Line number    Starting address    View    Stmt
+main.cc                                   18                0x24               x
+main.cc                                   20                0x34       1       x
+main.cc                                   20                0x34       2
+main.cc                                   24                0x38       3       x
+main.cc                                   25                0x48       4       x
+main.cc                                   26                0x4c       5       x
+main.cc                                   27                0x50       6       x
+main.cc                                   29                0x64       7       x
+main.cc                                   29                0x74       8       x
+main.cc                                   29                0x7c       9       x
+main.cc                                   29                0x84      10       x
+main.cc                                   31                0x98      11       x
+main.cc                                   32                0xa8      12       x
+main.cc                                   32                0xb0      13       x
+main.cc                                   33                0xb4      14       x
+main.cc                                   35                0xb8      15       x
+main.cc                                   35                0xb8      16
+main.cc                                    -                0xbc

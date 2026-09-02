@@ -1,0 +1,36 @@
+diff --git a/ttexalens/hardware/quasar/rocket_core_debug.py b/ttexalens/hardware/quasar/rocket_core_debug.py
+index bb80d8f..776e39d 100644
+--- a/ttexalens/hardware/quasar/rocket_core_debug.py
++++ b/ttexalens/hardware/quasar/rocket_core_debug.py
+@@ -9,6 +9,7 @@ import time
+ from ttexalens import util
+ from ttexalens.exceptions import RiscHaltError
+ from ttexalens.hardware.baby_risc_info import BabyRiscInfo
++from ttexalens.hardware.memory_block import MemoryBlock
+ from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
+ from ttexalens.register_store import RegisterStore
+
+@@ -292,3 +293,23 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
+
+     def set_code_start_address(self, address: int | None) -> None:
+         self.baby_risc_info.set_code_start_address(self.register_store, address if address is not None else 0)
++
++    def can_debug(self) -> bool:
++        return self.baby_risc_info.debug_hardware_present
++
++    def get_l1(self) -> MemoryBlock:
++        return self.risc_info.l1
++
++    def get_data_private_memory(self) -> MemoryBlock | None:
++        return self.baby_risc_info.data_private_memory
++
++    def get_code_private_memory(self) -> MemoryBlock | None:
++        return self.baby_risc_info.code_private_memory
++
++    @contextmanager
++    def ensure_private_memory_access(self) -> Generator[None, Any, None]:
++        # Rocket cores reach L1 through the debug module's System Bus, which
++        # requires nothing beyond the hart being halted -- unlike the baby RISCs,
++        # there is no separate private-memory window to switch in.
++        with self.ensure_halted():
++            yield
