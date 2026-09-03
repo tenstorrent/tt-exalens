@@ -307,16 +307,25 @@ class RegisterStore:
         elif isinstance(register, ConfigurationRegisterDescription):
             self.location.noc_write32(self._control_register_address, register.index, safe_mode=safe_mode)
             value = self.location.noc_read32(self._data_register_address, safe_mode=safe_mode)
+        elif isinstance(register, TensixGeneralPurposeRegisterDescription):
+            block = self.device.get_block(self.location)
+            assert register.private_address is not None, "Register must have a private address for reading."
+            if self.device.is_blackhole() and register.thread_id == 2:  # Workaround for issue #528
+                risc_debug = block.get_default_risc_debug(
+                    neo_id=self.neo_id
+                )  # We cannot use TRISC2 due to hardware bug so we use BRISC
+                address = (
+                    register.private_address + register.thread_id * 64 * 4
+                )  # We need to adjust the address based on the thread ID because we use BRISC
+            else:
+                risc_debug = block.get_risc_debug(f"trisc{register.thread_id}", neo_id=self.neo_id)
+                address = register.private_address
+            with risc_debug.ensure_private_memory_access():
+                value = risc_debug.read_memory(address)
         else:
             # Read using RISC core debugging hardware.
-            block = self.device.get_block(self.location)
-            thread_id = getattr(register, "thread_id", None)
-            risc_debug = (
-                block.get_risc_debug(f"trisc{thread_id}", neo_id=self.neo_id)
-                if thread_id is not None
-                else block.get_default_risc_debug(self.neo_id)
-            )
-            assert register.private_address is not None, "Register must have a private address for writing."
+            risc_debug = self.device.get_block(self.location).get_default_risc_debug(neo_id=self.neo_id)
+            assert register.private_address is not None, "Register must have a private address for reading."
             with risc_debug.ensure_private_memory_access():
                 value = risc_debug.read_memory(register.private_address)
         return (value & register.mask) >> register.shift
@@ -356,7 +365,6 @@ class RegisterStore:
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
             self.location.noc_write32(register.noc_address, value, register.noc_id, safe_mode=safe_mode)
         else:
-            # Write using RISC core debugging hardware.
             block = self.device.get_block(self.location)
             thread_id = getattr(register, "thread_id", None)
             risc_debug = (
