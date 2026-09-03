@@ -438,7 +438,7 @@ register_map: dict[str, RegisterDescription] = {
         index=15, mask=0xFFFF0000, shift=16, data_type=REGISTER_DATA_TYPE.INT_VALUE
     ),
     # GENERAL PURPOSE REGISTERS
-    # https://github.com/tenstorrent/tt-llk/blob/main/tt_llk_wormhole/common/inc/ckernel_gpr_map.h
+    # https://github.com/tenstorrent/tt-metal/blob/main/tt_metal/tt-llk/tt_llk_blackhole/common/inc/ckernel_gpr_map.h
     # THREAD 0
     "ZERO_T0": TensixGeneralPurposeRegisterDescription(index=0, thread_id=0),
     "DBG_RESERVED_T0": TensixGeneralPurposeRegisterDescription(index=1, thread_id=0),

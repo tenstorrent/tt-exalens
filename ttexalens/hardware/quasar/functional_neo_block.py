@@ -22,6 +22,7 @@ from ttexalens.register_store import (
     RegisterDescription,
     RegisterStore,
     RegisterStoreInitialization,
+    TensixGeneralPurposeRegisterDescription,
 )
 
 if TYPE_CHECKING:
@@ -40,6 +41,8 @@ def get_register_base_address_callable(
 
         if isinstance(register_description, ConfigurationRegisterDescription):
             return DeviceAddress(private_address=neo_base_address.private_address + 0x20000)
+        elif isinstance(register_description, TensixGeneralPurposeRegisterDescription):
+            return DeviceAddress(private_address=neo_base_address.private_address + 0xD000)
         elif isinstance(register_description, DebugRegisterDescription):
             return DeviceAddress(
                 private_address=neo_base_address.private_address + 0x0000,
