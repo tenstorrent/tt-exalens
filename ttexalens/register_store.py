@@ -126,8 +126,7 @@ class TensixGeneralPurposeRegisterDescription(RegisterDescription):
     thread_id: int = 0
 
     def __post_init__(self):
-        # Tensix has 64 4 byte general purpose registers per thread.
-        self.offset = self.offset + (self.index + self.thread_id * 64) * 4
+        self.offset = self.offset + self.index * 4
 
 
 @dataclass
@@ -310,7 +309,13 @@ class RegisterStore:
             value = self.location.noc_read32(self._data_register_address, safe_mode=safe_mode)
         else:
             # Read using RISC core debugging hardware.
-            risc_debug = self.device.get_block(self.location).get_default_risc_debug(self.neo_id)
+            block = self.device.get_block(self.location)
+            thread_id = getattr(register, "thread_id", None)
+            risc_debug = (
+                block.get_risc_debug(f"trisc{thread_id}", neo_id=self.neo_id)
+                if thread_id is not None
+                else block.get_default_risc_debug(self.neo_id)
+            )
             assert register.private_address is not None, "Register must have a private address for writing."
             with risc_debug.ensure_private_memory_access():
                 value = risc_debug.read_memory(register.private_address)
