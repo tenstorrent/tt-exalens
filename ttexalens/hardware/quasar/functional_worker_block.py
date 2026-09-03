@@ -93,6 +93,13 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
         return riscs
 
     @cache
+    def get_default_risc_debug(self, neo_id: int | None = None) -> RiscDebug:
+        neo = self.get_sub_block(neo_id)
+        if neo is not None:
+            return neo.get_default_risc_debug()
+        raise ValueError(f"Default RISC debug [neo: {neo_id}] is not supported in Quasar functional worker block.")
+
+    @cache
     def get_risc_debug(self, risc_name: str, neo_id: int | None = None) -> RiscDebug:
         neo = self.get_sub_block(neo_id)
         if neo is not None:

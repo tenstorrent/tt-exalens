@@ -37,6 +37,8 @@ from ttexalens import util
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore, SignalGroupSample
+from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
+from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
 from ttexalens.device import Device
@@ -156,6 +158,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     device: Device
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         tensix_reg_desc = device.get_tensix_registers_description()
+        assert isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription)
         tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
         loc: OnChipCoordinate
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):

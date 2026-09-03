@@ -20,7 +20,9 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context, NocId
 from ttexalens.elf import read_elf, CallstackEntry, ElfFile, ElfVariable, get_callstack, get_frame_callstack
 from ttexalens.exceptions import TTException
+from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
 from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
+from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
 from ttexalens.memory_access import create_memory_access
 
 
@@ -838,6 +840,7 @@ def get_tensix_state(
     coordinate = convert_coordinate(location, device_id, context)
     device = coordinate.device
     tensix_reg_desc = device.get_tensix_registers_description()
+    assert isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription)
     tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
     noc_block = coordinate.noc_block
     if noc_block.block_type != "functional_workers":
