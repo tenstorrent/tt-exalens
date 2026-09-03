@@ -357,7 +357,13 @@ class RegisterStore:
             self.location.noc_write32(register.noc_address, value, register.noc_id, safe_mode=safe_mode)
         else:
             # Write using RISC core debugging hardware.
-            risc_debug = self.device.get_block(self.location).get_default_risc_debug(self.neo_id)
+            block = self.device.get_block(self.location)
+            thread_id = getattr(register, "thread_id", None)
+            risc_debug = (
+                block.get_risc_debug(f"trisc{thread_id}", neo_id=self.neo_id)
+                if thread_id is not None
+                else block.get_default_risc_debug(self.neo_id)
+            )
             assert register.private_address is not None, "Register must have a private address for writing."
             with risc_debug.ensure_private_memory_access():
                 if register.mask != 0xFFFFFFFF:
