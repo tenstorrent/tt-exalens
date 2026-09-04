@@ -311,8 +311,8 @@ class RegisterStore:
             block = self.device.get_block(self.location)
             assert register.private_address is not None, "Register must have a private address for reading."
             if self.device.is_blackhole() and register.thread_id == 2:  # Workaround for issue #528
-                risc_debug = block.get_default_risc_debug(
-                    neo_id=self.neo_id
+                risc_debug = block.get_risc_debug(
+                    "brisc", neo_id=self.neo_id
                 )  # We cannot use TRISC2 due to hardware bug so we use BRISC
                 address = (
                     register.private_address + register.thread_id * 64 * 4
