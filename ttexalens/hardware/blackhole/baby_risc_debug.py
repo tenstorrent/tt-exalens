@@ -39,7 +39,6 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         super().read_memory_bytes(address, buffer, safe_mode=safe_mode)
 
     def write_memory_bytes(self, address: int, data: bytes | bytearray | memoryview, safe_mode: bool | None = None):
-        self.assert_trisc2_address(address)
         super().write_memory_bytes(address, data, safe_mode=safe_mode)
 
     def assert_trisc2_address(self, address: int):
