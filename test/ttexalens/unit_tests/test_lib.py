@@ -786,6 +786,42 @@ class TestReadWrite(unittest.TestCase):
                 _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x11])
             )
 
+    @parameterized.expand(
+        [
+            ("0,0", 0x0),
+            ("0,0", 0x1),
+            ("0,0", 0x8),
+            ("0,0", 0x9),
+            ("1,0", 0x0),
+            ("1,0", 0x1),
+            ("1,0", 0x8),
+            ("1,0", 0x9),
+        ]
+    )
+    def test_trisc2_write_private_memory(self, loc_str: str, offset: int):
+        """Test that writing to trisc2 private memory on Blackhole works for offsets
+        the debug hardware cannot read back due to hardware bug described in #528.
+        """
+        device = self.context.devices[0]
+        if not device.is_blackhole():
+            self.skipTest("This test is only applicable to blackhole devices.")
+        location = OnChipCoordinate.create(loc_str, device)
+        risc_debug = location.device.get_block(location).get_risc_debug("trisc2")
+
+        private_memory = risc_debug.get_data_private_memory()
+        assert private_memory is not None, "Private memory is not available."
+        assert private_memory.address.private_address is not None, "Private memory address is not set."
+        if private_memory.address.noc_address is None:
+            self.skipTest("Private memory is not NOC mapped on this architecture.")
+
+        private_address = private_memory.address.private_address + offset
+        noc_address = private_memory.translate_to_noc_address(private_address)
+        assert noc_address is not None, "Private memory address cannot be translated to a NOC address."
+        data = bytes([0xAA, 0x22, 0x88, 0xBB, 0xCC, 0xDD, 0x77, 0x11])
+        with risc_debug.ensure_private_memory_access():
+            risc_debug.write_memory_bytes(private_address, data)
+            self.assertEqual(lib.read_from_device(location, noc_address, num_bytes=len(data)), data)
+
 
 class TestSafeAccess(unittest.TestCase):
     context: Context
