@@ -25,12 +25,7 @@ telemetry_tags_map: dict[str, int] = {tag.name: tag.value for tag in tt_umd.Tele
 
 
 class FirmwareTelemetry:
-    """Firmware telemetry of a single device.
-
-    Telemetry is served by the device firmware and read through UMD's FirmwareTelemetryReader,
-    so it is not tied to any particular NOC block. Reads are delegated to the device, which
-    keeps NOC failover and reset/retry handling in one place.
-    """
+    """Firmware telemetry of a specific device."""
 
     def __init__(self, device: Device):
         self.device = device
