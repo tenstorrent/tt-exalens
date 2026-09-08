@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 CUTOFF_FIRMWARE_VERSION = FirmwareVersion(18, 4, 0)
 
-# Telemetry tags are defined by UMD (tt::umd::TelemetryTag)
+# Telemetry tags are defined by UMD
 telemetry_tags_map: dict[str, int] = {tag.name: tag.value for tag in tt_umd.TelemetryTag}
 
 

@@ -1445,13 +1445,13 @@ class TestARC(unittest.TestCase):
         ]
     )
     def test_read_firmware_telemetry_entry(self, tag_name, tag_id):
-        """Test if reading ARC telemetry entry by tag name and tag ID gives the same result"""
+        """Test if reading firmware telemetry entry by tag name and tag ID gives the same result"""
 
         if not self.device.is_wormhole() and not self.device.is_blackhole():
-            self.skipTest("ARC telemetry is not supported for this architecture")
+            self.skipTest("Firmware telemetry is not supported for this architecture")
 
         if self.device.firmware_version < CUTOFF_FIRMWARE_VERSION:
-            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device.firmware_version}")
+            self.skipTest(f"Firmware telemetry is not supported for firmware version {self.device.firmware_version}")
 
         ret_from_name = lib.read_firmware_telemetry_entry(self.device.id, tag_name)
         ret_from_id = lib.read_firmware_telemetry_entry(self.device.id, tag_id)
