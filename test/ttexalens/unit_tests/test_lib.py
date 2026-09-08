@@ -29,7 +29,7 @@ from ttexalens.hardware.risc_debug import RiscDebug
 
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.elf_loader import ElfLoader
-from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
+from ttexalens.firmware_telemetry import CUTOFF_FIRMWARE_VERSION
 
 from ttexalens.gdb.gdb_client import get_gdb_callstack
 from ttexalens.gdb.gdb_communication import ServerSocket
@@ -1430,9 +1430,9 @@ class TestARC(unittest.TestCase):
         # Check if heartbeat is increasing
         import time
 
-        heartbeat1 = lib.read_arc_telemetry_entry(self.device.id, tag)
+        heartbeat1 = lib.read_firmware_telemetry_entry(self.device.id, tag)
         time.sleep(0.2)
-        heartbeat2 = lib.read_arc_telemetry_entry(self.device.id, tag)
+        heartbeat2 = lib.read_firmware_telemetry_entry(self.device.id, tag)
         self.assertGreater(heartbeat2, heartbeat1)
 
     @parameterized.expand(
@@ -1444,7 +1444,7 @@ class TestARC(unittest.TestCase):
             ("ARCCLK", 16),
         ]
     )
-    def test_read_arc_telemetry_entry(self, tag_name, tag_id):
+    def test_read_firmware_telemetry_entry(self, tag_name, tag_id):
         """Test if reading ARC telemetry entry by tag name and tag ID gives the same result"""
 
         if not self.device.is_wormhole() and not self.device.is_blackhole():
@@ -1453,8 +1453,8 @@ class TestARC(unittest.TestCase):
         if self.device.firmware_version < CUTOFF_FIRMWARE_VERSION:
             self.skipTest(f"ARC telemetry is not supported for firmware version {self.device.firmware_version}")
 
-        ret_from_name = lib.read_arc_telemetry_entry(self.device.id, tag_name)
-        ret_from_id = lib.read_arc_telemetry_entry(self.device.id, tag_id)
+        ret_from_name = lib.read_firmware_telemetry_entry(self.device.id, tag_name)
+        ret_from_id = lib.read_firmware_telemetry_entry(self.device.id, tag_id)
         self.assertEqual(ret_from_name, ret_from_id)
 
     def test_load_arc_fw(self):

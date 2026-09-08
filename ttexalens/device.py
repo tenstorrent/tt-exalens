@@ -15,6 +15,7 @@ from tabulate import tabulate
 from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.exceptions import CoordinateTranslationError, UnsafeAccessException
+from ttexalens.firmware_telemetry import FirmwareTelemetry
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
@@ -210,7 +211,7 @@ class Device:
         raise RuntimeError("Local device not found in context devices")
 
     @cached_property
-    def firmware_version(self):
+    def firmware_version(self) -> util.FirmwareVersion:
         def noc_operation(noc_id: NocId) -> util.FirmwareVersion:
             fw = self._umd_device.get_firmware_version(noc_id)
             return util.FirmwareVersion(fw.major, fw.minor, fw.patch)
@@ -362,9 +363,9 @@ class Device:
             noc_id = self.active_noc
         return self._umd_device.arc_msg(noc_id, msg_code, wait_for_done=wait_for_done, args=args, timeout=timeout)
 
-    def read_arc_telemetry_entry(self, noc_id: NocId | None, telemetry_tag: int) -> int:
+    def read_firmware_telemetry_entry(self, noc_id: NocId | None, telemetry_tag: int) -> int:
         def noc_operation(noc_id: NocId) -> int:
-            # TODO #1102: ARC telemetry must be read over the NOC selected at initialization
+            # TODO #1102: Firmware telemetry must be read over the NOC selected at initialization
             init_noc_id = self._context.init_noc_id
             if noc_id != init_noc_id:
                 util.WARN(
@@ -372,7 +373,7 @@ class Device:
                     f"initialization. Using {init_noc_id} instead of {noc_id}."
                 )
                 noc_id = init_noc_id
-            return self._umd_device.read_arc_telemetry_entry(noc_id, telemetry_tag)
+            return self._umd_device.read_firmware_telemetry_entry(noc_id, telemetry_tag)
 
         if noc_id is None:
             noc_id = self.active_noc
@@ -468,6 +469,10 @@ class Device:
         for location in self.get_block_locations(block_type):
             blocks.append(self.get_block(location))
         return blocks
+
+    @cached_property
+    def firmware_telemetry(self) -> FirmwareTelemetry:
+        return FirmwareTelemetry(self)
 
     @cached_property
     def arc_block(self) -> ArcBlock:

@@ -2,7 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-from functools import cached_property
 import os
 import re
 from time import sleep
@@ -11,44 +10,11 @@ import tt_umd
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.exceptions import TTException
-from ttexalens.util import FirmwareVersion
-
-# For new firmware version (18.4 or higher) we have same telemetry tags for both wormhole and blackhole
-# We no longer support ARC telemetry for firmware versions 18.3 and lower
-
-CUTOFF_FIRMWARE_VERSION = FirmwareVersion(18, 4, 0)
-
-# ARC telemetry tags are defined by UMD (tt::umd::TelemetryTag)
-telemetry_tags_map: dict[str, int] = {tag.name: tag.value for tag in tt_umd.TelemetryTag}
 
 
 class ArcBlock(NocBlock):
     def __init__(self, location: OnChipCoordinate, block_type: str):
         super().__init__(location, block_type)
-
-    @cached_property
-    def telemetry_tags(self) -> dict[str, int] | None:
-        return telemetry_tags_map if self.location.device.firmware_version >= CUTOFF_FIRMWARE_VERSION else None
-
-    @cached_property
-    def telemetry_tag_ids(self) -> set[int] | None:
-        return set(self.telemetry_tags.values()) if self.telemetry_tags else None
-
-    def has_telemetry_tag_id(self, tag_id: int) -> bool:
-        """Returns the keys of the ARC telemetry tags map."""
-        if self.telemetry_tag_ids is None:
-            raise TTException(
-                f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {self.location.device.firmware_version}"
-            )
-        return tag_id in self.telemetry_tag_ids
-
-    def get_telemetry_tag_id(self, tag_name: str) -> int | None:
-        """Returns the telemetry tag ID for a given tag name."""
-        if self.telemetry_tags is None:
-            raise TTException(
-                f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {self.location.device.firmware_version}"
-            )
-        return self.telemetry_tags.get(tag_name)
 
     def run_arc_core(self, mask: int):
         """Runs the arc core specified by the mask.
