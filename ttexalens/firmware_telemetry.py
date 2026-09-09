@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 CUTOFF_FIRMWARE_VERSION = FirmwareVersion(18, 4, 0)
 
 # Telemetry tags are defined by UMD
-telemetry_tags_map: dict[str, int] = {tag.name: tag.value for tag in tt_umd.TelemetryTag}
+telemetry_tags_map: dict[str, int] = {tag.name.lower(): tag.value for tag in tt_umd.TelemetryTag}
 
 
 class FirmwareTelemetry:
@@ -55,7 +55,7 @@ class FirmwareTelemetry:
 
     def get_telemetry_tag_id(self, tag_name: str) -> int | None:
         """Returns the telemetry tag ID for a given tag name, or None if there is no such tag."""
-        return self.telemetry_tags.get(tag_name)
+        return self.telemetry_tags.get(tag_name.lower())
 
     def read_entry(self, telemetry_tag: int | str, noc_id: NocId | None = None) -> int:
         """Reads a telemetry entry, given either its tag name or its tag ID.
