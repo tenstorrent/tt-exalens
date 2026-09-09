@@ -306,16 +306,16 @@ Sends an ARC message to the device.
 
 
 
-## read_arc_telemetry_entry
+## read_firmware_telemetry_entry
 
 ```
-read_arc_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: NocId | int | None = None) -> int
+read_firmware_telemetry_entry(device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: NocId | int | None = None) -> int
 ```
 
 
 ### Description
 
-Reads an ARC telemetry entry from the device.
+Reads a firmware telemetry entry from the device.
 
 
 ### Args

@@ -366,11 +366,11 @@ def arc_msg(
 
 
 @trace_api
-def read_arc_telemetry_entry(
+def read_firmware_telemetry_entry(
     device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: NocId | int | None = None
 ) -> int:
     """
-    Reads an ARC telemetry entry from the device.
+    Reads a firmware telemetry entry from the device.
 
     Args:
         device_id (int): ID number of device to read telemetry from.
@@ -381,28 +381,11 @@ def read_arc_telemetry_entry(
     Returns:
         int: Value of the telemetry entry.
     """
-    from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
-
     context = check_context(context)
     device = validate_device_id(device_id, context)
     noc_id = check_noc_id(noc_id, context)
-    arc = device.arc_block
 
-    if device.firmware_version < CUTOFF_FIRMWARE_VERSION:
-        raise TTException(
-            f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {device.firmware_version}"
-        )
-
-    if isinstance(telemetry_tag, str):
-        telemetry_tag_id = arc.get_telemetry_tag_id(telemetry_tag)
-        if telemetry_tag_id is None:
-            raise TTException(f"Telemetry tag {telemetry_tag} does not exist.")
-    else:
-        if not arc.has_telemetry_tag_id(telemetry_tag):
-            raise TTException(f"Telemetry tag ID {telemetry_tag} does not exist.")
-        telemetry_tag_id = telemetry_tag
-
-    return device.read_arc_telemetry_entry(noc_id, telemetry_tag_id)
+    return device.firmware_telemetry.read_entry(telemetry_tag, noc_id)
 
 
 @trace_api

@@ -755,14 +755,14 @@ class FirmwareVersion:
     def normalize_major(self):
         return self.major if self.major < 80 else 0
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> bool:
         if not isinstance(other, FirmwareVersion):
             return NotImplemented
         self_major = self.normalize_major()
         other_major = other.normalize_major()
         return (self_major, self.minor, self.patch) < (other_major, other.minor, other.patch)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, FirmwareVersion):
             return NotImplemented
         self_major = self.normalize_major()
