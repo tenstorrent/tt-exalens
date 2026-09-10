@@ -69,6 +69,8 @@ class Context:
         self.safe_mode = safe_mode
 
         self.commands: list[CommandMetadata] = []
+        # Every registered command, including those filtered out of self.commands.
+        self.all_commands: list[CommandMetadata] = []
         self.loaded_elfs: dict[RiscLocation, str] = {}
 
     @property
@@ -85,10 +87,18 @@ class Context:
             device.switch_noc(value)
 
     def assign_commands(self, commands: list[CommandMetadata]):
+        self.all_commands = list(commands)
+        archs = self.device_archs
         self.commands = []
         for cmd in commands:
-            if cmd.context is None or self.short_name in cmd.context or "util" in cmd.context:
-                self.commands.append(cmd)
+            if cmd.context is not None and self.short_name not in cmd.context and "util" not in cmd.context:
+                continue
+            # A command restricted to specific architectures stays visible as long as at least one
+            # device in this session matches. If no architecture could be determined (no device, or
+            # a failure while probing), nothing is hidden.
+            if archs and not any(cmd.supports_arch(arch) for arch in archs):
+                continue
+            self.commands.append(cmd)
 
     @cached_property
     def devices(self) -> dict[int, Device]:
@@ -116,6 +126,22 @@ class Context:
                 util.DEBUG(f"Could not get device IDs from cluster descriptor:\n{traceback.format_exc()}")
             device_ids = []
         return SortedSet(d for d in device_ids)
+
+    @cached_property
+    def device_archs(self) -> set[tt_umd.ARCH]:
+        """Architectures of the devices in this session.
+
+        Read straight from UMD instead of through self.devices, so that asking which
+        architectures are present does not force every Device to be constructed.
+        """
+        archs: set[tt_umd.ARCH] = set()
+        for device_id in self.device_ids:
+            try:
+                archs.add(self.umd_api.get_device(device_id).arch)
+            except Exception:
+                if util.DEBUG_ENABLED:
+                    util.DEBUG(f"Could not determine architecture of device {device_id}:\n{traceback.format_exc()}")
+        return archs
 
     @cached_property
     def device_by_unique_id(self) -> dict[int, Device]:

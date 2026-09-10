@@ -16,9 +16,8 @@ Options:
   --cores <cores>   Comma-separated core indices for the per-core groups (e.g. 0,3,5). Default: all cores.
 
 Description:
-  Dumps Quasar overlay state at the given
-  location and device, grouped by logical block. With no group flag, all
-  groups are dumped; multiple group flags may be combined to dump a subset.
+  Dumps Quasar overlay state at the given location and device, grouped by logical block.
+  With no group flag, all groups are dumped; multiple group flags may be combined to dump a subset.
 
   The core selector (--cores) restricts the per-core groups (cmdbuf, errors, wdt,
   debug, clint, plic) to the given cores; the per-interface LLK tile-counter
@@ -39,6 +38,8 @@ Examples:
 
 from typing import Any
 
+import tt_umd
+
 from ttexalens import util
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
@@ -55,6 +56,7 @@ command_metadata = CommandMetadata(
     type="low-level",
     description=__doc__,
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
+    supported_archs=[tt_umd.ARCH.QUASAR],
 )
 
 GROUPS = ["counters", "cmdbuf", "errors", "wdt", "debug", "clint", "plic"]

@@ -8,6 +8,7 @@ import traceback
 from types import ModuleType
 from typing import Callable
 from docopt import DocoptExit, docopt
+import tt_umd
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device
@@ -33,7 +34,13 @@ class CommandMetadata:
     description: str | None = None
     context: list[str] | None = None
     common_option_names: list[CommonCommandOptions] | None = None
+    # Architectures this command applies to. None means every architecture.
+    supported_archs: list[tt_umd.ARCH] | None = None
     _module: ModuleType | None = None
+
+    def supports_arch(self, arch: tt_umd.ARCH) -> bool:
+        """Whether this command applies to the given device architecture."""
+        return self.supported_archs is None or arch in self.supported_archs
 
     def copy(self):
         return CommandMetadata(
@@ -43,6 +50,7 @@ class CommandMetadata:
             long_name=self.long_name,
             description=self.description,
             common_option_names=self.common_option_names.copy() if self.common_option_names else None,
+            supported_archs=self.supported_archs.copy() if self.supported_archs else None,
             _module=self._module,
         )
 

@@ -63,7 +63,7 @@ from ttexalens.exceptions import TTException
 from ttexalens.context import Context, to_noc_id
 from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.uistate import UIState
-from ttexalens.command_parser import tt_docopt, CommandMetadata, CommandParsingException
+from ttexalens.command_parser import tt_docopt, CommandMetadata, CommandParsingException, find_command
 from ttexalens.gdb.gdb_client import get_gdb_client_path
 
 
@@ -287,17 +287,27 @@ def main_loop(args, context: Context):
                                 break
 
                         if found_command == None:
-                            if cmd_string is not None and isinstance(cmd_string, str):
-                                from difflib import get_close_matches
+                            # The command may exist but be hidden because no device in this session
+                            # has a matching architecture. Say so instead of reporting it as unknown.
+                            hidden_command = find_command(context.all_commands, cmd_string)
+                            if hidden_command is not None and hidden_command.supported_archs is not None:
+                                archs = ", ".join(str(arch) for arch in hidden_command.supported_archs)
+                                util.ERROR(
+                                    f"Command '{cmd_string}' is only available on {archs} devices, "
+                                    f"and none is present in this session."
+                                )
+                            else:
+                                if cmd_string is not None and isinstance(cmd_string, str):
+                                    from difflib import get_close_matches
 
-                                short_names = [c.short_name for c in context.commands if c.short_name is not None]
-                                long_names = [c.long_name for c in context.commands if c.long_name is not None]
-                                all_command_names = short_names + long_names
-                                best_match = get_close_matches(cmd_string, all_command_names)
-                                if len(best_match) > 0:
-                                    suggestion = best_match[0]
-                                    util.WARN(f"Did you mean '{suggestion}'?")
-                            util.ERROR(f"Command '{cmd_string}' not found, use 'help' to list all commands.")
+                                    short_names = [c.short_name for c in context.commands if c.short_name is not None]
+                                    long_names = [c.long_name for c in context.commands if c.long_name is not None]
+                                    all_command_names = short_names + long_names
+                                    best_match = get_close_matches(cmd_string, all_command_names)
+                                    if len(best_match) > 0:
+                                        suggestion = best_match[0]
+                                        util.WARN(f"Did you mean '{suggestion}'?")
+                                util.ERROR(f"Command '{cmd_string}' not found, use 'help' to list all commands.")
                         else:
                             if found_command.long_name == "exit":
                                 exit_code = int(cmd[1]) if len(cmd) > 1 else 0
