@@ -34,8 +34,7 @@ class CommandMetadata:
     description: str | None = None
     context: list[str] | None = None
     common_option_names: list[CommonCommandOptions] | None = None
-    # Architectures this command applies to. None means every architecture.
-    supported_archs: list[tt_umd.ARCH] | None = None
+    supported_archs: list[tt_umd.ARCH] | None = None  # None means all
     _module: ModuleType | None = None
 
     def supports_arch(self, arch: tt_umd.ARCH) -> bool:
