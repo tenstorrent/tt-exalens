@@ -112,11 +112,6 @@ class Device:
                 cores.extend(noc_block.debuggable_riscs)
         return cores
 
-    @property
-    def arch(self) -> tt_umd.ARCH:
-        """Architecture of this device."""
-        return self._arch
-
     def is_wormhole(self) -> bool:
         return False
 

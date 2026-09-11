@@ -48,10 +48,10 @@ class CommandMetadata:
                 util.DEBUG(f"Support check for command '{self.long_name}' failed:\n{traceback.format_exc()}")
             return False
 
-    def unavailable_message(self, ui_state: UIState, name: str | None = None) -> str:
+    def unsupported_message(self, name: str | None = None) -> str:
         """Message explaining that this command does not apply to the current state."""
         name = name or self.long_name or self.short_name
-        message = f"Command '{name}' is not available for current state."
+        message = f"Command '{name}' is not supported for current state."
         if self.requirement:
             message += f" It requires: {self.requirement}."
         return message

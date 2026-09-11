@@ -43,7 +43,7 @@ def format_commands(
     for c in commands:
         if c.type == type and (specific_cmd is None or c.long_name == specific_cmd or c.short_name == specific_cmd):
             # Commands that do not apply to the device in use are still listed, but in red.
-            unavailable = None if ui_state is None or c.supports(ui_state) else c.unavailable_message(ui_state)
+            unavailable = None if ui_state is None or c.supports(ui_state) else c.unsupported_message()
             name_color = util.CLR_ERR if unavailable else util.CLR_INFO
             if verbose:
                 row = [f"{name_color}{c.long_name}{util.CLR_END}", f"{c.short_name}", ""]
