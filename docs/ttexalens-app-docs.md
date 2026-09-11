@@ -37,7 +37,7 @@ Output:
 Reading from device 0
 1-1 (0,0) : 0x00000000 (4 total bytes)
 (l1) : 0x00000000 (4 bytes)
-0x00000000:  00000000
+0x00000000:  00001234
 ```
 16 words at 0x0, current noc location
 ```
@@ -48,10 +48,10 @@ Output:
 Reading from device 0
 1-1 (0,0) : 0x00000000 (64 total bytes)
 (l1) : 0x00000000 (64 bytes)
-0x00000000:  00000000  00800000  00000000  04020000
-0x00000010:  d20c004c  2de70219  b178f3d5  575274d9
-0x00000020:  00000001  00001000  00010000  00000000
-0x00000030:  00020041  084b0100  01808100  40840698
+0x00000000:  00001234  00001234  00001234  00001234
+0x00000010:  00001234  00001234  00001234  00001234
+0x00000020:  00001234  00001234  0062a023  ffb112b7
+0x00000030:  00828293  00000313  00000393  40638333
 ```
 1 word at 0x0, location 0,0
 ```
@@ -62,7 +62,7 @@ Output:
 Reading from device 0
 1-1 (0,0) : 0x00000000 (4 total bytes)
 (l1) : 0x00000000 (4 bytes)
-0x00000000:  00000000
+0x00000000:  00001234
 ```
 16 words at 0x0, location 0,0
 ```
@@ -73,10 +73,10 @@ Output:
 Reading from device 0
 1-1 (0,0) : 0x00000000 (64 total bytes)
 (l1) : 0x00000000 (64 bytes)
-0x00000000:  00000000  00800000  00000000  04020000
-0x00000010:  d20c004c  2de70219  b178f3d5  575274d9
-0x00000020:  00000001  00001000  00010000  00000000
-0x00000030:  00020041  084b0100  01808100  40840698
+0x00000000:  00001234  00001234  00001234  00001234
+0x00000010:  00001234  00001234  00001234  00001234
+0x00000020:  00001234  00001234  0062a023  ffb112b7
+0x00000030:  00828293  00000313  00000393  40638333
 ```
 32 words, i8 format
 ```
@@ -87,14 +87,14 @@ Output:
 Reading from device 0
 1-1 (0,0) : 0x00000000 (128 total bytes)
 (l1) : 0x00000000 (128 bytes)
-0x00000000:  0    0    0    0    0    0    128  0    0    0    0    0    0    0    2    4
-0x00000010:  76   0    12   210  25   2    231  45   213  243  120  177  217  116  82   87
-0x00000020:  1    0    0    0    0    16   0    0    0    0    1    0    0    0    0    0
-0x00000030:  65   0    2    0    0    1    75   8    0    129  128  1    152  6    132  64
-0x00000040:  0    0    0    0    0    0    0    8    0    0    0    0    0    0    0    0
-0x00000050:  206  231  62   241  3    235  204  236  6    178  128  130  232  73   40   218
-0x00000060:  157  148  170  235  100  167  253  26   196  5    8    34   0    100  92   0
-0x00000070:  200  151  149  21   223  221  62   118  112  8    146  132  5    145  33   49
+0x00000000:  52   18   0    0  52   18   0   0  52   18   0    0    52   18   0    0
+0x00000010:  52   18   0    0  52   18   0   0  52   18   0    0    52   18   0    0
+0x00000020:  52   18   0    0  52   18   0   0  35   160  98   0    183  18   177  255
+0x00000030:  147  130  130  0  19   3    0   0  147  3    0    0    51   131  99   64
+0x00000040:  19   83   67   0  35   160  98  0  183  18   177  255  147  130  194  0
+0x00000050:  19   3    16   0  35   160  98  0  183  18   177  255  147  130  2    1
+0x00000060:  19   3    0    4  35   160  98  0  183  18   177  255  147  130  66   1
+0x00000070:  19   3    128  0  147  3    16  0  3    174  2    0    3    174  2    0
 ```
 Sample for 5 seconds
 ```
@@ -104,23 +104,23 @@ Output:
 ```
 Reading from device 0
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000000 (0) => 0x00000000 (0) - 21224 times
+1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 22349 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000004 (4) => 0x00800000 (8388608) - 21432 times
+1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 21757 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000008 (8) => 0x00000000 (0) - 21504 times
+1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 21674 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000000c (12) => 0x04020000 (67239936) - 21578 times
+1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 21915 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000010 (16) => 0xd20c004c (3524001868) - 21450 times
+1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 21833 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000014 (20) => 0x2de70219 (770114073) - 22152 times
+1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 22075 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000018 (24) => 0xb178f3d5 (2977493973) - 21532 times
+1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 22048 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000001c (28) => 0x575274d9 (1465021657) - 21979 times
+1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 22037 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000020 (32) => 0x00000001 (1) - 22037 times
+1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 21738 times
 Sampling for 0.15625 seconds...
 ...
 ```
@@ -180,6 +180,11 @@ Prints callstack using provided elf for a given RiscV core.
 Command:
 ```
 callstack build/riscv-src/wormhole/sample.debug.brisc.elf -r brisc
+```
+Output:
+```
+Location: 1-1 (0,0), core: brisc
+  #0 0x00000240 in main () at /localdev/adjordjevic/work/tt-exalens/riscv-src/sample.cc 42:22
 ```
 Command:
 ```
@@ -310,9 +315,9 @@ There are matches remaining. To see more results, increase the --max value.
 ╭────────────────┬───────────────────────┬────────────╮
 │ Group          │ Name                  │ Value      │
 ├────────────────┼───────────────────────┼────────────┤
-│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x3c61cc52 │
-│ brisc_group_a  │ brisc_pc              │ 0x3c61cc52 │
-│ brisc_group_b  │ brisc_id_ex_pc        │ 0x23f2917a │
+│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x24c      │
+│ brisc_group_a  │ brisc_pc              │ 0x258      │
+│ brisc_group_b  │ brisc_id_ex_pc        │ 0x250      │
 │ ncrisc_group_a │ ncrisc_dbg_obs_cmt_pc │ 0x4f26cf26 │
 │ ncrisc_group_b │ ncrisc_id_ex_pc       │ 0x1dc3afa7 │
 ╰────────────────┴───────────────────────┴────────────╯
@@ -371,16 +376,16 @@ Output:
 ╭────────────────────────┬──────────────────────────────────────────────────╮
 │ Name                   │ Value                                            │
 ├────────────────────────┼──────────────────────────────────────────────────┤
-│ brisc_dbg_obs_cmt_pc   │ [0x3c61cc52, 0x3c61cc52, 0x3c61cc52, 0x3c61cc52] │
+│ brisc_dbg_obs_cmt_pc   │ [0x258, 0x244, 0x24c, 0x258]                     │
 │ brisc_dbg_obs_cmt_vld  │ [False, False, False, False]                     │
-│ brisc_dbg_obs_mem_addr │ [0x189e94f5, 0x189e94f5, 0x189e94f5, 0x189e94f5] │
+│ brisc_dbg_obs_mem_addr │ [0x3fb00fe8, 0x3fb00fe8, 0x3fb00fe8, 0x3fb00fe8] │
 │ brisc_dbg_obs_mem_rden │ [False, False, False, False]                     │
-│ brisc_i_instrn         │ [0x0, 0x0, 0x0, 0x0]                             │
+│ brisc_i_instrn         │ [0x0, 0x7ffff7b7, 0x0, 0x0]                      │
 │ brisc_i_instrn_req_rtr │ [True, True, True, True]                         │
-│ brisc_i_instrn_vld     │ [False, False, False, False]                     │
-│ brisc_o_instrn_addr    │ [0x0, 0x0, 0x0, 0x0]                             │
-│ brisc_o_instrn_req     │ [False, False, False, False]                     │
-│ brisc_pc               │ [0x3c61cc52, 0x3c61cc52, 0x3c61cc52, 0x3c61cc52] │
+│ brisc_i_instrn_vld     │ [False, True, False, False]                      │
+│ brisc_o_instrn_addr    │ [0x25c, 0x24c, 0x250, 0x25c]                     │
+│ brisc_o_instrn_req     │ [True, False, False, True]                       │
+│ brisc_pc               │ [0x258, 0x244, 0x24c, 0x258]                     │
 ╰────────────────────────┴──────────────────────────────────────────────────╯
 
 ```
@@ -391,13 +396,13 @@ debug-bus group brisc_group_a 0x1000 --search *pc
 Output:
 ```
 === Device 0 - location 0,0 - Group: brisc_group_a ===
-            brisc_group_a
-╭──────────────────────┬────────────╮
-│ Name                 │ Value      │
-├──────────────────────┼────────────┤
-│ brisc_dbg_obs_cmt_pc │ 0x3c61cc52 │
-│ brisc_pc             │ 0x3c61cc52 │
-╰──────────────────────┴────────────╯
+         brisc_group_a
+╭──────────────────────┬───────╮
+│ Name                 │ Value │
+├──────────────────────┼───────┤
+│ brisc_dbg_obs_cmt_pc │ 0x244 │
+│ brisc_pc             │ 0x244 │
+╰──────────────────────┴───────╯
 
 ```
 Print values for trisc0_pc and trisc1_pc
@@ -406,8 +411,8 @@ debug-bus trisc0_pc,trisc1_pc
 ```
 Output:
 ```
-device:0 loc:1-1 (0,0)  trisc0_pc: 0x54042d45
-device:0 loc:1-1 (0,0)  trisc1_pc: 0x68930201
+device:0 loc:1-1 (0,0)  trisc0_pc: 0x6000
+device:0 loc:1-1 (0,0)  trisc1_pc: 0xa000
 ```
 Print value for a custom signal and trisc2_pc
 ```
@@ -415,8 +420,8 @@ debug-bus {7,0,12,0x3ffffff},trisc2_pc
 ```
 Output:
 ```
-device:0 loc:1-1 (0,0)  Daisy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff: 0x42d45
-device:0 loc:1-1 (0,0)  trisc2_pc: 0x6d81a6a6
+device:0 loc:1-1 (0,0)  Daisy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff: 0x6000
+device:0 loc:1-1 (0,0)  trisc2_pc: 0xe000
 ```
 
 
@@ -470,7 +475,7 @@ Legend:
 
 ==== Device 0 [n300 / local] (Unique ID: 0x26183216c)
     00     01     02     03     04     05     06     07
-00  -----  -----  -----  -----  -----  -----  -----  -----
+00  R----  -----  -----  -----  -----  -----  -----  -----
 01  -----  -----  -----  -----  -----  -----  -----  -----
 02  -----  -----  -----  -----  -----  -----  -----  -----
 03  -----  -----  -----  -----  -----  -----  -----  -----
@@ -675,7 +680,7 @@ dump-overlay-state
 ```
 Output:
 ```
-Command 'dump-overlay-state' is only available on quasar devices, and none is present in this session.
+Command 'dump-overlay-state' is not supported for current state. It requires: Overlay block with Rocket cores.
 ```
 same (short name)
 ```
@@ -683,7 +688,7 @@ overlay
 ```
 Output:
 ```
-Command 'overlay' is only available on quasar devices, and none is present in this session.
+Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
 ```
 only ROCC command buffers
 ```
@@ -691,7 +696,7 @@ overlay --cmdbuf
 ```
 Output:
 ```
-Command 'overlay' is only available on quasar devices, and none is present in this session.
+Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
 ```
 bus errors + watchdogs together
 ```
@@ -699,7 +704,7 @@ overlay --errors --wdt
 ```
 Output:
 ```
-Command 'overlay' is only available on quasar devices, and none is present in this session.
+Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
 ```
 LLK counters incl. read-mirrors/thresholds
 ```
@@ -707,7 +712,7 @@ overlay --counters -v
 ```
 Output:
 ```
-Command 'overlay' is only available on quasar devices, and none is present in this session.
+Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
 ```
 command buffers for cores 0, 3, 5 only
 ```
@@ -715,7 +720,7 @@ overlay --cmdbuf --cores 0,3,5
 ```
 Output:
 ```
-Command 'overlay' is only available on quasar devices, and none is present in this session.
+Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
 ```
 debug module at location 1,1
 ```
@@ -723,7 +728,7 @@ overlay --debug -l 1,1
 ```
 Output:
 ```
-Command 'overlay' is only available on quasar devices, and none is present in this session.
+Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
 ```
 
 
@@ -1451,26 +1456,26 @@ help --all
 ```
 Output:
 ```
-Full Name          Short    Description
------------------  -------  ------------------------------------------------------------------------------------------------------...
-exit               x        Exits the program. The optional argument represents the exit code. Defaults to 0.
-reload             rl       Reloads files in cli_commands directory. Useful for development of commands.
-help               h        Prints documentation summary. Use -v for details. If a command name is specified, it prints documentat...
-burst-read-xy      brxy     Reads a block of data at <addr> on <noc-loc>, or at the current location when <noc-loc> is omitted.
-callstack          bt       Prints callstack using provided elf for a given RiscV core.
-debug-bus          dbus     Commands for RISC-V debugging:
-dump-tensix-state  tensix   Prints the tensix state group of the given name, at the specified location and device.
-dump-gpr           gpr      Prints all RISC-V registers for BRISC, TRISC0, TRISC1, and TRISC2 on the current core.
-perf-counters      pcnt     Read and control Tensix hardware performance counters on a functional worker core.
-read               r        Reads and prints a block of data from address 'address'.
-riscv              rv       Commands for RISC-V debugging:
-search-memory      search   Searches for a byte pattern in device memory. Pattern elements are encoded as
-tensix-reg         reg      Prints/writes to the specified register, at the specified location and device.
-write              w        Writes a block of data to address 'address'.
-write-xy           wxy      Writes a data word to address <addr> at <noc-loc>, or at the current location when <noc-loc> is omitte...
-device             d        Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
-dump-coverage      cov      Get coverage data for a given ELF. Extract the gcda from the given core
-gdb                gdb      Starts or stops gdb server.
+Full Name           Short    Description
+------------------  -------  -----------------------------------------------------------------------------------------------------...
+exit                x        Exits the program. The optional argument represents the exit code. Defaults to 0.
+reload              rl       Reloads files in cli_commands directory. Useful for development of commands.
+help                h        Prints documentation summary. Use -v for details. If a command name is specified, it prints documenta...
+burst-read-xy       brxy     Reads a block of data at <addr> on <noc-loc>, or at the current location when <noc-loc> is omitted.
+callstack           bt       Prints callstack using provided elf for a given RiscV core.
+debug-bus           dbus     Commands for RISC-V debugging:
+dump-overlay-state  overlay  Dumps Quasar overlay state at the given location and device, grouped by logical block. (not supported...
+dump-tensix-state   tensix   Prints the tensix state group of the given name, at the specified location and device.
+dump-gpr            gpr      Prints all RISC-V registers for BRISC, TRISC0, TRISC1, and TRISC2 on the current core.
+perf-counters       pcnt     Read and control Tensix hardware performance counters on a functional worker core.
+read                r        Reads and prints a block of data from address 'address'.
+riscv               rv       Commands for RISC-V debugging:
+search-memory       search   Searches for a byte pattern in device memory. Pattern elements are encoded as
+tensix-reg          reg      Prints/writes to the specified register, at the specified location and device.
+write               w        Writes a block of data to address 'address'.
+write-xy            wxy      Writes a data word to address <addr> at <noc-loc>, or at the current location when <noc-loc> is omitt...
+device              d        Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
+dump-coverage       cov      Get coverage data for a given ELF. Extract the gcda from the given core
 ...
 ```
 
@@ -1743,19 +1748,19 @@ Output:
 ╭─────┬────────────────────┬────────────────┬───────────╮       ╭─────┬───────────────────────────┬────────────────┬───────────╮ ╭...
 │ ID  │ Counter            │ Value          │ ref_cnt   │       │ ID  │ Counter                   │ Value          │ ref_cnt   │ │...
 ├─────┼────────────────────┼────────────────┼───────────┤       ├─────┼───────────────────────────┼────────────────┼───────────┤ ├...
-│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 174708135 │       │ 0   │ cfg_instrn[0]             │ 0 (0x00000000) │ 174770410 │ │...
-│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 174732612 │       │ 1   │ cfg_instrn[1]             │ 0 (0x00000000) │ 174793022 │ │...
-│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 174756596 │       │ 2   │ cfg_instrn[2]             │ 0 (0x00000000) │ 174816011 │ │...
-╰─────┴────────────────────┴────────────────┴───────────╯       │ 4   │ sync_instrn[0]            │ 0 (0x00000000) │ 174839119 │ │...
-                                                                │ 5   │ sync_instrn[1]            │ 0 (0x00000000) │ 174865031 │ │...
-                                                                │ 6   │ sync_instrn[2]            │ 0 (0x00000000) │ 174888026 │ │...
-                                                                │ 8   │ thcon_instrn[0]           │ 0 (0x00000000) │ 174910937 │ │...
-                                                                │ 9   │ thcon_instrn[1]           │ 0 (0x00000000) │ 174933387 │ │...
-                                                                │ 10  │ thcon_instrn[2]           │ 0 (0x00000000) │ 174956375 │ │...
-                                                                │ 12  │ xsrch_instrn[0]           │ 0 (0x00000000) │ 174979029 │ │...
-                                                                │ 13  │ xsrch_instrn[1]           │ 0 (0x00000000) │ 175001530 │ │...
-                                                                │ 14  │ xsrch_instrn[2]           │ 0 (0x00000000) │ 175024503 │ │...
-                                                                │ 16  │ instissue_instrn[0]       │ 0 (0x00000000) │ 175046733 │ ╰...
+│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 171365006 │       │ 0   │ cfg_instrn[0]             │ 0 (0x00000000) │ 171429664 │ │...
+│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 171390370 │       │ 1   │ cfg_instrn[1]             │ 0 (0x00000000) │ 171453211 │ │...
+│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 171414744 │       │ 2   │ cfg_instrn[2]             │ 0 (0x00000000) │ 171476089 │ │...
+╰─────┴────────────────────┴────────────────┴───────────╯       │ 4   │ sync_instrn[0]            │ 0 (0x00000000) │ 171500343 │ │...
+                                                                │ 5   │ sync_instrn[1]            │ 0 (0x00000000) │ 171527286 │ │...
+                                                                │ 6   │ sync_instrn[2]            │ 0 (0x00000000) │ 171551088 │ │...
+                                                                │ 8   │ thcon_instrn[0]           │ 0 (0x00000000) │ 171574180 │ │...
+                                                                │ 9   │ thcon_instrn[1]           │ 0 (0x00000000) │ 171597548 │ │...
+                                                                │ 10  │ thcon_instrn[2]           │ 0 (0x00000000) │ 171620685 │ │...
+                                                                │ 12  │ xsrch_instrn[0]           │ 0 (0x00000000) │ 171643549 │ │...
+                                                                │ 13  │ xsrch_instrn[1]           │ 0 (0x00000000) │ 171665978 │ │...
+                                                                │ 14  │ xsrch_instrn[2]           │ 0 (0x00000000) │ 171688261 │ │...
+                                                                │ 16  │ instissue_instrn[0]       │ 0 (0x00000000) │ 171710336 │ ╰...
 ...
 ```
 Command:
@@ -1782,9 +1787,9 @@ Output:
 ╭─────┬────────────────────┬────────────────┬───────────╮
 │ ID  │ Counter            │ Value          │ ref_cnt   │
 ├─────┼────────────────────┼────────────────┼───────────┤
-│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 595014899 │
-│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 595040257 │
-│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 595064758 │
+│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 589762697 │
+│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 589787601 │
+│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 589811086 │
 ╰─────┴────────────────────┴────────────────┴───────────╯
 
 ```

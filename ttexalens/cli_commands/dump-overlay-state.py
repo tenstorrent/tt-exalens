@@ -51,7 +51,7 @@ from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOp
 
 
 def is_supported(ui_state: UIState) -> bool:
-    """The overlay block this command dumps only exists on Quasar."""
+    """The overlay block this command dumps only exists on functional workers on Quasar."""
     return hasattr(ui_state.current_block, "overlay")
 
 

@@ -757,14 +757,6 @@ and must be specified explicitly.
 
 
 
-### device_archs
-
-
-
-```
-device_archs(self) -> list[tt_umd.ARCH]
-```
-Set of architectures of the devices in this session.
 
 
 # device
