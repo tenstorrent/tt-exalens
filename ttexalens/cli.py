@@ -298,9 +298,9 @@ def main_loop(args, context: Context):
                                     suggestion = best_match[0]
                                     util.WARN(f"Did you mean '{suggestion}'?")
                             util.ERROR(f"Command '{cmd_string}' not found, use 'help' to list all commands.")
-                        elif not found_command.supports_arch(ui_state.current_device.arch):
+                        elif not found_command.supports_device(ui_state.current_device):
                             # The command is listed, but it does not apply to the device in use.
-                            util.ERROR(found_command.unavailable_message(ui_state.current_device.arch, cmd_string))
+                            util.ERROR(found_command.unavailable_message(ui_state.current_device, cmd_string))
                         else:
                             if found_command.long_name == "exit":
                                 exit_code = int(cmd[1]) if len(cmd) > 1 else 0

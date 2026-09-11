@@ -18,10 +18,10 @@ Examples:
     help --all
 """
 from tabulate import tabulate
-import tt_umd
 import ttexalens.util as util
 from ttexalens.uistate import UIState
 from ttexalens.context import Context
+from ttexalens.device import Device
 from ttexalens.command_parser import CommandMetadata, tt_docopt
 
 command_metadata = CommandMetadata(
@@ -38,13 +38,13 @@ def format_commands(
     type: str,
     specific_cmd: str | None = None,
     verbose: bool = False,
-    arch: tt_umd.ARCH | None = None,
+    device: Device | None = None,
 ):
     rows = []
     for c in commands:
         if c.type == type and (specific_cmd is None or c.long_name == specific_cmd or c.short_name == specific_cmd):
             # Commands that do not apply to the device in use are still listed, but in red.
-            unavailable = None if arch is None or c.supports_arch(arch) else c.unavailable_message(arch)
+            unavailable = None if device is None or c.supports_device(device) else c.unavailable_message(device)
             name_color = util.CLR_ERR if unavailable else util.CLR_INFO
             if verbose:
                 row = [f"{name_color}{c.long_name}{util.CLR_END}", f"{c.short_name}", ""]
@@ -82,17 +82,17 @@ def format_commands(
 
 
 # Print all commands (help)
-def print_help(commands: list[CommandMetadata], dopt: tt_docopt, arch: tt_umd.ARCH | None = None):
+def print_help(commands: list[CommandMetadata], dopt: tt_docopt, device: Device | None = None):
     args = dopt.args
     specific_cmd = args["<command>"] if "<command>" in args else None
     verbose = ("-v" in args and args["-v"]) or specific_cmd is not None
 
     rows = []
-    rows += format_commands(commands, "housekeeping", specific_cmd, verbose, arch)
-    rows += format_commands(commands, "low-level", specific_cmd, verbose, arch)
-    rows += format_commands(commands, "high-level", specific_cmd, verbose, arch)
+    rows += format_commands(commands, "housekeeping", specific_cmd, verbose, device)
+    rows += format_commands(commands, "low-level", specific_cmd, verbose, device)
+    rows += format_commands(commands, "high-level", specific_cmd, verbose, device)
     if args["--all"]:
-        rows += format_commands(commands, "dev", specific_cmd, verbose, arch)
+        rows += format_commands(commands, "dev", specific_cmd, verbose, device)
 
     if not rows:
         util.WARN(f"Command '{specific_cmd}' not found")
@@ -113,4 +113,4 @@ def print_help(commands: list[CommandMetadata], dopt: tt_docopt, arch: tt_umd.AR
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
-    print_help(context.commands, dopt, ui_state.current_device.arch)
+    print_help(context.commands, dopt, ui_state.current_device)

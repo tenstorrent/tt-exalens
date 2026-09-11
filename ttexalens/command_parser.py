@@ -8,7 +8,6 @@ import traceback
 from types import ModuleType
 from typing import Callable
 from docopt import DocoptExit, docopt
-import tt_umd
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.device import Device
@@ -34,28 +33,41 @@ class CommandMetadata:
     description: str | None = None
     context: list[str] | None = None
     common_option_names: list[CommonCommandOptions] | None = None
-    supported_archs: list[tt_umd.ARCH] | None = None  # None means all
+    # Decides whether this command applies to a device. None means every device.
+    is_supported: Callable[[Device], bool] | None = None
+    # What the command needs, shown when it does not apply. For example "Quasar devices".
+    requirement: str | None = None
     _module: ModuleType | None = None
 
-    def supports_arch(self, arch: tt_umd.ARCH) -> bool:
-        """Whether this command applies to the given device architecture."""
-        return self.supported_archs is None or arch in self.supported_archs
+    def supports_device(self, device: Device) -> bool:
+        """Whether this command applies to the given device.
 
-    def supported_archs_str(self) -> str:
-        """Comma separated list of the architectures this command applies to."""
-        return ", ".join(str(arch) for arch in self.supported_archs) if self.supported_archs else "all"
+        A check that raises is treated as unsupported: the command declared a requirement
+        that could not be confirmed, so it should not be presented as usable.
+        """
+        if self.is_supported is None:
+            return True
+        try:
+            return self.is_supported(device)
+        except Exception:
+            if util.DEBUG_ENABLED:
+                util.DEBUG(
+                    f"Support check for command '{self.long_name}' failed on device "
+                    f"{device.id}:\n{traceback.format_exc()}"
+                )
+            return False
 
-    def unavailable_message(self, arch: tt_umd.ARCH, name: str | None = None) -> str:
-        """Message explaining that this command does not apply to the given architecture.
+    def unavailable_message(self, device: Device, name: str | None = None) -> str:
+        """Message explaining that this command does not apply to the given device.
 
         The name defaults to the command's long name; pass the name the user typed to
         echo that instead.
         """
         name = name or self.long_name or self.short_name
-        return (
-            f"Command '{name}' is not available on current device ({arch}). "
-            f"It is only available on: {self.supported_archs_str()}."
-        )
+        message = f"Command '{name}' is not available on current device ({device.arch})."
+        if self.requirement:
+            message += f" It requires: {self.requirement}."
+        return message
 
     def copy(self):
         return CommandMetadata(
@@ -65,7 +77,8 @@ class CommandMetadata:
             long_name=self.long_name,
             description=self.description,
             common_option_names=self.common_option_names.copy() if self.common_option_names else None,
-            supported_archs=self.supported_archs.copy() if self.supported_archs else None,
+            is_supported=self.is_supported,
+            requirement=self.requirement,
             _module=self._module,
         )
 

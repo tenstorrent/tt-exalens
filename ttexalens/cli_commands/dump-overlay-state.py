@@ -38,8 +38,6 @@ Examples:
 
 from typing import Any
 
-import tt_umd
-
 from ttexalens import util
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
@@ -51,12 +49,19 @@ from ttexalens.rich_formatters import formatter, console
 from ttexalens.hardware.quasar.functional_overlay_registers_description import OverlayRegistersDescription
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
+
+def is_supported(device: Device) -> bool:
+    """The functional overlay this command dumps only exists on Quasar."""
+    return device.is_quasar()
+
+
 command_metadata = CommandMetadata(
     short_name="overlay",
     type="low-level",
     description=__doc__,
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
-    supported_archs=[tt_umd.ARCH.QUASAR],
+    is_supported=is_supported,
+    requirement="Quasar devices",
 )
 
 GROUPS = ["counters", "cmdbuf", "errors", "wdt", "debug", "clint", "plic"]
