@@ -50,9 +50,9 @@ from ttexalens.hardware.quasar.functional_overlay_registers_description import O
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
 
-def is_supported(device: Device) -> bool:
-    """The functional overlay this command dumps only exists on Quasar."""
-    return device.is_quasar()
+def is_supported(ui_state: UIState) -> bool:
+    """The overlay block this command dumps only exists on Quasar."""
+    return ui_state.current_device.is_quasar()
 
 
 command_metadata = CommandMetadata(
