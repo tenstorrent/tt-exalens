@@ -18,6 +18,7 @@ Examples:
     help --all
 """
 from tabulate import tabulate
+import tt_umd
 import ttexalens.util as util
 from ttexalens.uistate import UIState
 from ttexalens.context import Context
@@ -32,14 +33,26 @@ command_metadata = CommandMetadata(
 
 
 # Creates rows for tabulate for all commands of a given type
-def format_commands(commands: list[CommandMetadata], type: str, specific_cmd: str | None = None, verbose: bool = False):
+def format_commands(
+    commands: list[CommandMetadata],
+    type: str,
+    specific_cmd: str | None = None,
+    verbose: bool = False,
+    arch: tt_umd.ARCH | None = None,
+):
     rows = []
     for c in commands:
         if c.type == type and (specific_cmd is None or c.long_name == specific_cmd or c.short_name == specific_cmd):
+            # Commands that do not apply to the device in use are still listed, but in red.
+            unavailable = None if arch is None or c.supports_arch(arch) else c.unavailable_message(arch)
+            name_color = util.CLR_ERR if unavailable else util.CLR_INFO
             if verbose:
-                row = [f"{util.CLR_INFO}{c.long_name}{util.CLR_END}", f"{c.short_name}", ""]
+                row = [f"{name_color}{c.long_name}{util.CLR_END}", f"{c.short_name}", ""]
                 rows.append(row)
-                row2 = [f"", f"", f"{c.description}"]
+                description = f"{c.description}"
+                if unavailable:
+                    description = f"{util.CLR_ERR}{unavailable}{util.CLR_END}\n{description}"
+                row2 = [f"", f"", description]
                 rows.append(row2)
                 rows.append(["<--MIDRULE-->", "", ""])
             else:
@@ -57,8 +70,10 @@ def format_commands(commands: list[CommandMetadata], type: str, specific_cmd: st
                 if not found_description:
                     description = descriptions[0]
                 description = description.strip()
+                if unavailable:
+                    description = f"{description} {util.CLR_ERR}(not available on current device){util.CLR_END}"
                 row = [
-                    f"{util.CLR_INFO}{c.long_name}{util.CLR_END}",
+                    f"{name_color}{c.long_name}{util.CLR_END}",
                     f"{c.short_name}",
                     f"{description}",
                 ]
@@ -67,17 +82,17 @@ def format_commands(commands: list[CommandMetadata], type: str, specific_cmd: st
 
 
 # Print all commands (help)
-def print_help(commands: list[CommandMetadata], dopt: tt_docopt):
+def print_help(commands: list[CommandMetadata], dopt: tt_docopt, arch: tt_umd.ARCH | None = None):
     args = dopt.args
     specific_cmd = args["<command>"] if "<command>" in args else None
     verbose = ("-v" in args and args["-v"]) or specific_cmd is not None
 
     rows = []
-    rows += format_commands(commands, "housekeeping", specific_cmd, verbose)
-    rows += format_commands(commands, "low-level", specific_cmd, verbose)
-    rows += format_commands(commands, "high-level", specific_cmd, verbose)
+    rows += format_commands(commands, "housekeeping", specific_cmd, verbose, arch)
+    rows += format_commands(commands, "low-level", specific_cmd, verbose, arch)
+    rows += format_commands(commands, "high-level", specific_cmd, verbose, arch)
     if args["--all"]:
-        rows += format_commands(commands, "dev", specific_cmd, verbose)
+        rows += format_commands(commands, "dev", specific_cmd, verbose, arch)
 
     if not rows:
         util.WARN(f"Command '{specific_cmd}' not found")
@@ -98,4 +113,4 @@ def print_help(commands: list[CommandMetadata], dopt: tt_docopt):
 
 def run(cmd_text: str, context: Context, ui_state: UIState):
     dopt = tt_docopt(command_metadata, cmd_text)
-    print_help(context.commands, dopt)
+    print_help(context.commands, dopt, ui_state.current_device.arch)

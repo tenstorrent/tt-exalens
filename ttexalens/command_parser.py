@@ -41,6 +41,22 @@ class CommandMetadata:
         """Whether this command applies to the given device architecture."""
         return self.supported_archs is None or arch in self.supported_archs
 
+    def supported_archs_str(self) -> str:
+        """Comma separated list of the architectures this command applies to."""
+        return ", ".join(str(arch) for arch in self.supported_archs) if self.supported_archs else "all"
+
+    def unavailable_message(self, arch: tt_umd.ARCH, name: str | None = None) -> str:
+        """Message explaining that this command does not apply to the given architecture.
+
+        The name defaults to the command's long name; pass the name the user typed to
+        echo that instead.
+        """
+        name = name or self.long_name or self.short_name
+        return (
+            f"Command '{name}' is not available on current device ({arch}). "
+            f"It is only available on: {self.supported_archs_str()}."
+        )
+
     def copy(self):
         return CommandMetadata(
             type=self.type,

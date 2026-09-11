@@ -69,7 +69,6 @@ class Context:
         self.safe_mode = safe_mode
 
         self.commands: list[CommandMetadata] = []
-        self.all_commands: list[CommandMetadata] = []
         self.loaded_elfs: dict[RiscLocation, str] = {}
 
     @property
@@ -86,15 +85,10 @@ class Context:
             device.switch_noc(value)
 
     def assign_commands(self, commands: list[CommandMetadata]):
-        self.all_commands = list(commands)
-        archs = self.device_archs
         self.commands = []
         for cmd in commands:
-            if cmd.context is not None and self.short_name not in cmd.context and "util" not in cmd.context:
-                continue
-            if archs and not any(cmd.supports_arch(arch) for arch in archs):
-                continue
-            self.commands.append(cmd)
+            if cmd.context is None or self.short_name in cmd.context or "util" in cmd.context:
+                self.commands.append(cmd)
 
     @cached_property
     def devices(self) -> dict[int, Device]:
@@ -122,14 +116,6 @@ class Context:
                 util.DEBUG(f"Could not get device IDs from cluster descriptor:\n{traceback.format_exc()}")
             device_ids = []
         return SortedSet(d for d in device_ids)
-
-    @cached_property
-    def device_archs(self) -> set[tt_umd.ARCH]:
-        """Set of architectures of the devices in this session."""
-        archs: set[tt_umd.ARCH] = set()
-        for device in self.devices.values():
-            archs.add(device._arch)
-        return archs
 
     @cached_property
     def device_by_unique_id(self) -> dict[int, Device]:
