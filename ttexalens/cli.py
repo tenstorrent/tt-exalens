@@ -298,6 +298,8 @@ def main_loop(args, context: Context):
                                     suggestion = best_match[0]
                                     util.WARN(f"Did you mean '{suggestion}'?")
                             util.ERROR(f"Command '{cmd_string}' not found, use 'help' to list all commands.")
+                        elif not found_command.supports(ui_state):
+                            util.ERROR(found_command.unsupported_message(cmd_string))
                         else:
                             if found_command.long_name == "exit":
                                 exit_code = int(cmd[1]) if len(cmd) > 1 else 0

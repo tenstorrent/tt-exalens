@@ -33,7 +33,28 @@ class CommandMetadata:
     description: str | None = None
     context: list[str] | None = None
     common_option_names: list[CommonCommandOptions] | None = None
+    is_supported: Callable[[UIState], bool] | None = None
+    requirement: str | None = None
     _module: ModuleType | None = None
+
+    def supports(self, ui_state: UIState) -> bool:
+        """Whether this command applies to the current state."""
+        if self.is_supported is None:
+            return True
+        try:
+            return self.is_supported(ui_state)
+        except Exception:
+            if util.DEBUG_ENABLED:
+                util.DEBUG(f"Support check for command '{self.long_name}' failed:\n{traceback.format_exc()}")
+            return False
+
+    def unsupported_message(self, name: str | None = None) -> str:
+        """Message explaining that this command does not apply to the current state."""
+        name = name or self.long_name or self.short_name
+        message = f"Command '{name}' is not supported for current state."
+        if self.requirement:
+            message += f" It requires: {self.requirement}."
+        return message
 
     def copy(self):
         return CommandMetadata(
@@ -43,6 +64,8 @@ class CommandMetadata:
             long_name=self.long_name,
             description=self.description,
             common_option_names=self.common_option_names.copy() if self.common_option_names else None,
+            is_supported=self.is_supported,
+            requirement=self.requirement,
             _module=self._module,
         )
 
