@@ -52,7 +52,7 @@ from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOp
 
 def is_supported(ui_state: UIState) -> bool:
     """The overlay block this command dumps only exists on Quasar."""
-    return ui_state.current_device.is_quasar()
+    return hasattr(ui_state.current_block, "overlay")
 
 
 command_metadata = CommandMetadata(
@@ -61,7 +61,7 @@ command_metadata = CommandMetadata(
     description=__doc__,
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
     is_supported=is_supported,
-    requirement="Quasar devices",
+    requirement="Overlay block with Rocket cores",
 )
 
 GROUPS = ["counters", "cmdbuf", "errors", "wdt", "debug", "clint", "plic"]

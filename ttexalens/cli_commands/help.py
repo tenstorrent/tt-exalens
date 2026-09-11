@@ -43,14 +43,14 @@ def format_commands(
     for c in commands:
         if c.type == type and (specific_cmd is None or c.long_name == specific_cmd or c.short_name == specific_cmd):
             # Commands that do not apply to the device in use are still listed, but in red.
-            unavailable = None if ui_state is None or c.supports(ui_state) else c.unsupported_message()
-            name_color = util.CLR_ERR if unavailable else util.CLR_INFO
+            unsupported = None if ui_state is None or c.supports(ui_state) else c.unsupported_message()
+            name_color = util.CLR_ERR if unsupported else util.CLR_INFO
             if verbose:
                 row = [f"{name_color}{c.long_name}{util.CLR_END}", f"{c.short_name}", ""]
                 rows.append(row)
                 description = f"{c.description}"
-                if unavailable:
-                    description = f"{util.CLR_ERR}{unavailable}{util.CLR_END}\n{description}"
+                if unsupported:
+                    description = f"{util.CLR_ERR}{unsupported}{util.CLR_END}\n{description}"
                 row2 = [f"", f"", description]
                 rows.append(row2)
                 rows.append(["<--MIDRULE-->", "", ""])
@@ -69,8 +69,8 @@ def format_commands(
                 if not found_description:
                     description = descriptions[0]
                 description = description.strip()
-                if unavailable:
-                    description = f"{description} {util.CLR_ERR}(not available on current device){util.CLR_END}"
+                if unsupported:
+                    description = f"{description} {util.CLR_ERR}(not supported for current state){util.CLR_END}"
                 row = [
                     f"{name_color}{c.long_name}{util.CLR_END}",
                     f"{c.short_name}",
