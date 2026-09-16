@@ -15,6 +15,12 @@
 
 namespace ttexalens::native_elf {
 
+// A memory access failure that must not be swallowed.
+class FatalMemoryAccessError : public std::runtime_error {
+   public:
+    using std::runtime_error::runtime_error;
+};
+
 class MemoryAccess {
    public:
     // Access to memory
@@ -33,9 +39,9 @@ class MemoryAccess {
         uint64_t result = 0;
         try {
             read(address, std::span<std::byte>(reinterpret_cast<std::byte*>(&result), pointer_size));
+        } catch (const FatalMemoryAccessError&) {
+            throw;
         } catch (...) {
-            // TODO #1064: Consider rethrowing on timeouts or other non-recoverable errors instead of swallowing all
-            // exceptions.
             return std::nullopt;
         }
         return result;

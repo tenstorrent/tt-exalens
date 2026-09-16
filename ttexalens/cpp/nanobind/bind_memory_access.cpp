@@ -6,6 +6,7 @@
 #include <nanobind/trampoline.h>
 
 #include <cstddef>
+#include <exception>
 #include <span>
 #include <utility>
 #include <vector>
@@ -18,6 +19,39 @@ namespace nb = nanobind;
 namespace ttexalens::native_elf::bindings {
 
 namespace {
+
+// A fatal failure raised by Python, carrying the exception object that caused it.
+class FatalPythonError : public FatalMemoryAccessError {
+   public:
+    explicit FatalPythonError(nb::python_error&& error)
+        : FatalMemoryAccessError("fatal error raised by a Python MemoryAccess"), error_(std::move(error)) {}
+
+    void restore() { error_.restore(); }
+
+   private:
+    nb::python_error error_;
+};
+
+// Rethrows a failure raised by a Python MemoryAccess implementation.
+[[noreturn]] void rethrow_python_error(nb::python_error&& error) {
+    if (!error.matches(PyExc_Exception)) {
+        throw FatalPythonError(std::move(error));
+    }
+    throw std::move(error);
+}
+
+// Raises the original Python exception again when a FatalPythonError makes it
+// back out to Python, instead of reporting the C++ stand-in that carried it
+// through native code.
+void register_fatal_python_error_translator() {
+    nb::register_exception_translator([](const std::exception_ptr& p, void* /*payload*/) {
+        try {
+            std::rethrow_exception(p);
+        } catch (FatalPythonError& e) {
+            e.restore();
+        }
+    });
+}
 
 // Trampoline so Python can subclass MemoryAccess and provide implementations.
 class MemoryAccessTrampoline : public MemoryAccess {
@@ -35,7 +69,11 @@ class MemoryAccessTrampoline : public MemoryAccess {
             throw nb::python_error();
         }
         nb::object py_buf = nb::steal<nb::object>(mv);
-        nb_trampoline.base().attr(nb_ticket.key)(address, py_buf);
+        try {
+            nb_trampoline.base().attr(nb_ticket.key)(address, py_buf);
+        } catch (nb::python_error& e) {
+            rethrow_python_error(std::move(e));
+        }
     }
 
     void write(uint64_t address, std::span<const std::byte> buffer) override {
@@ -49,7 +87,11 @@ class MemoryAccessTrampoline : public MemoryAccess {
             throw nb::python_error();
         }
         nb::object data = nb::steal<nb::object>(mv);
-        nb_trampoline.base().attr(nb_ticket.key)(address, data);
+        try {
+            nb_trampoline.base().attr(nb_ticket.key)(address, data);
+        } catch (nb::python_error& e) {
+            rethrow_python_error(std::move(e));
+        }
     }
 
     uint64_t read_register(uint16_t register_index) const override { NB_OVERRIDE_PURE(read_register, register_index); }
@@ -62,6 +104,8 @@ class MemoryAccessTrampoline : public MemoryAccess {
 }  // namespace
 
 void bind_memory_access(nb::module_& m) {
+    register_fatal_python_error_translator();
+
     nb::class_<MemoryAccess, MemoryAccessTrampoline>(m, "MemoryAccess")
         .def(nb::init<>())
         .def(
