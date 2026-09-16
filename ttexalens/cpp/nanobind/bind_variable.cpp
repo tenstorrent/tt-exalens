@@ -148,8 +148,13 @@ void bind_variable(nb::module_& m) {
                             }
                         }
                         return nb::cast(true);
-                    } catch (...) {
+                    } catch (const TypeMismatchException&) {
                         return nb::cast(false);
+                    } catch (const nb::python_error& e) {
+                        if (e.matches(PyExc_TypeError)) {
+                            return nb::cast(false);
+                        }
+                        throw;
                     }
                 }
                 return try_binop(self, other,
