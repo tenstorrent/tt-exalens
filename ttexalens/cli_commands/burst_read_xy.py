@@ -156,7 +156,7 @@ def print_memory_block(header: str, start_addr: int, data: list[int], bytes_per_
     da.data = data
     if bytes_per_entry != 4:
         da.to_bytes_per_entry(bytes_per_entry)
-    print(f"{da.id}\n{util.dump_memory(start_addr, da.data, bytes_per_entry, 16, is_hex)}")
+    print(f"{da.id}\n{util.dump_memory(start_addr, da.data, bytes_per_entry, 16, in_hex=is_hex)}")
 
 
 def print_a_burst_read(

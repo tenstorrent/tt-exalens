@@ -43,7 +43,7 @@ def init_ttexalens(
     if simulation_directory is not None and noc_id == NocId.NOC1:
         noc_id = NocId.NOC0
 
-    umd_api = local_init(init_jtag, noc_id, simulation_directory)
+    umd_api = local_init(init_jtag=init_jtag, noc_id=noc_id, simulation_directory=simulation_directory)
 
     return load_context(umd_api, FileAccessApi(), noc_id, noc_failover=noc_failover, safe_mode=safe_mode)
 
@@ -68,7 +68,7 @@ def init_ttexalens_remote(
 
     umd_api, file_api = connect_to_server(ip_address, port)
     noc_id = umd_api.initialization_noc_id
-    return load_context(umd_api, file_api, noc_id, noc_failover, safe_mode)
+    return load_context(umd_api, file_api, noc_id, noc_failover=noc_failover, safe_mode=safe_mode)
 
 
 def load_context(

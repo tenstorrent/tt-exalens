@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump-tensix-state [ <group> ] [ -d <device> ] [ -l <loc> ] [ -v ] [ -t <thread-id> ] [ -a <l1-address> ]
+  dump-tensix-state [ <group> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ] [ -v ] [ -t <thread-id> ] [ -a <l1-address> ]
 
 Options:
   <group>           Tensix state group to dump. Options: [all, alu, pack, unpack, gpr, rwc, adc]
@@ -37,9 +37,12 @@ from ttexalens import util
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore, SignalGroupSample
+from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
+from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.util import (
     put_table_list_side_by_side,
     INFO,
@@ -53,7 +56,12 @@ command_metadata = CommandMetadata(
     short_name="tensix",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
+    common_option_names=[
+        CommonCommandOptions.Device,
+        CommonCommandOptions.Location,
+        CommonCommandOptions.Verbose,
+        CommonCommandOptions.Neo,
+    ],
 )
 
 possible_groups = ["all", "alu", "pack", "unpack", "gpr", "rwc", "adc"]
@@ -150,20 +158,23 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     device: Device
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         tensix_reg_desc = device.get_tensix_registers_description()
+        assert isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription)
         tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
         loc: OnChipCoordinate
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            INFO(f"Tensix registers for location {loc} on device {device.id}")
-
             noc_block = device.get_block(loc)
+            neo_id: int | None = dopt.get_neo_id(ui_state, noc_block) if noc_block else None
+            neo_where = f" [neo {neo_id_to_str(neo_id)}]" if noc_block and noc_block.neo_ids else ""
+            INFO(f"Tensix registers for location {loc}{neo_where} on device {device.id}")
+
             if not noc_block:
                 util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have a NOC block.")
                 continue
             if noc_block.block_type != "functional_workers":
                 util.ERROR(f"Device {device.id} at location {loc.to_user_str()} is not a functional worker block.")
                 continue
-            register_store = noc_block.get_register_store()
-            debug_bus = noc_block.debug_bus
+            register_store = noc_block.get_register_store(neo_id=neo_id)
+            debug_bus = noc_block.get_debug_bus(neo_id)
             if debug_bus is None:
                 util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have a debug bus.")
                 continue

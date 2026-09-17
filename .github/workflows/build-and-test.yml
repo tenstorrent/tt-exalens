@@ -85,6 +85,7 @@ jobs:
       - build
       - build-image
     strategy:
+      fail-fast: false
       matrix:
         runner-info: [
           {arch: "blackhole", board: "p150b", runs-on: "tt-ubuntu-2204-p150b-stable"},
@@ -98,6 +99,7 @@ jobs:
       VERBOSE: 5
       LOGGER_LEVEL: DEBUG
     runs-on: ${{ matrix.runner-info.runs-on }}
+    timeout-minutes: 60
     container:
       image: ${{ needs.build-image.outputs.docker-image }}
       options: --device /dev/tenstorrent/0
@@ -108,6 +110,14 @@ jobs:
         - /lib/modules:/lib/modules
     name: Run tests | ${{ matrix.runner-info.arch }} ${{ matrix.runner-info.board }}
     steps:
+      - name: Set reusable strings
+        id: strings
+        shell: bash
+        run: |
+          # Create unique identifier using run_id and matrix parameters
+          JOB_ID="${{ github.run_id }}_ubuntu_${{ inputs.ubuntu-version }}_${{ matrix.runner-info.arch }}_${{ matrix.runner-info.board }}"
+          echo "test_report_path=report_${JOB_ID}.xml" >> "$GITHUB_OUTPUT"
+
       - name: Git safe dir
         run: git config --global --add safe.directory '*'
 
@@ -116,17 +126,22 @@ jobs:
         with:
           submodules: recursive
 
-      - uses: pyTooling/download-artifact@v4
+      - name: Download build artifact
+        id: download-build
+        continue-on-error: true
+        uses: pyTooling/download-artifact@v4
         with:
           name: ttexalens-build-ubuntu-${{ inputs.ubuntu-version }}
 
-      - name: Set reusable strings
-        id: strings
-        shell: bash
-        run: |
-          # Create unique identifier using run_id and matrix parameters
-          JOB_ID="${{ github.run_id }}_ubuntu_${{ inputs.ubuntu-version }}_${{ matrix.runner-info.arch }}_${{ matrix.runner-info.board }}"
-          echo "test_report_path=report_${JOB_ID}.xml" >> "$GITHUB_OUTPUT"
+      - name: Wait before retrying artifact download
+        if: steps.download-build.outcome == 'failure'
+        run: sleep 15
+
+      - name: Download build artifact (retry)
+        if: steps.download-build.outcome == 'failure'
+        uses: pyTooling/download-artifact@v4
+        with:
+          name: ttexalens-build-ubuntu-${{ inputs.ubuntu-version }}
 
       - name: Run tt-exalens in background
         shell: bash
@@ -146,6 +161,7 @@ jobs:
         with:
           name: test-reports-${{ inputs.ubuntu-version }}-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.board }}
           path: ${{ steps.strings.outputs.test_report_path }}
+          if-no-files-found: ignore
 
       - name: Run Python tests for TTExaLens app (using NOC1)
         run: |

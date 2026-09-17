@@ -5,6 +5,8 @@
 
 #include <libdwarf.h>
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/optional.h>
+#include <nanobind/stl/string.h>
 
 #include <exception>
 
@@ -16,6 +18,19 @@ namespace ttexalens::native_elf::bindings {
 
 namespace {
 
+// Raises ttexalens.exceptions.<class_name>(args...). If building it fails the
+// failure must not escape, or it gets reported instead of the error being
+// translated (e.g. SymbolNotFoundError surfacing as "RuntimeError: std::bad_cast").
+template <typename... Args>
+void raise_mapped(const std::exception& source, const char* class_name, Args&&... args) {
+    try {
+        auto exc = nb::module_::import_("ttexalens.exceptions").attr(class_name)(std::forward<Args>(args)...);
+        PyErr_SetObject(PyExceptionInstance_Class(exc.ptr()), exc.ptr());
+    } catch (...) {
+        PyErr_SetString(PyExc_RuntimeError, source.what());
+    }
+}
+
 // Translates the C++ ELF-variable exceptions into the existing Python
 // exception classes so test code that does `except SymbolNotFoundError:`
 // (etc.) keeps working unchanged when the throws originate in C++.
@@ -24,20 +39,13 @@ void register_exception_translators() {
         try {
             std::rethrow_exception(p);
         } catch (const SymbolNotFoundException& e) {
-            auto exc = nb::module_::import_("ttexalens.exceptions").attr("SymbolNotFoundError")(e.member_path());
-            PyErr_SetObject(PyExceptionInstance_Class(exc.ptr()), exc.ptr());
+            raise_mapped(e, "SymbolNotFoundError", e.member_path());
         } catch (const TypeMismatchException& e) {
-            auto exc =
-                nb::module_::import_("ttexalens.exceptions").attr("TypeMismatchError")(e.operation(), e.actual_type());
-            PyErr_SetObject(PyExceptionInstance_Class(exc.ptr()), exc.ptr());
+            raise_mapped(e, "TypeMismatchError", e.operation(), e.actual_type());
         } catch (const InvalidArrayAccessException& e) {
-            auto length = e.length().has_value() ? nb::cast(*e.length()) : nb::cast(nb::none());
-            auto exc = nb::module_::import_("ttexalens.exceptions").attr("InvalidArrayAccessError")(e.index(), length);
-            PyErr_SetObject(PyExceptionInstance_Class(exc.ptr()), exc.ptr());
+            raise_mapped(e, "InvalidArrayAccessError", e.index(), e.length());
         } catch (const DataLossException& e) {
-            auto exc =
-                nb::module_::import_("ttexalens.exceptions").attr("DataLossError")(e.value_repr(), e.type_name());
-            PyErr_SetObject(PyExceptionInstance_Class(exc.ptr()), exc.ptr());
+            raise_mapped(e, "DataLossError", e.value_repr(), e.type_name());
         }
     });
 }

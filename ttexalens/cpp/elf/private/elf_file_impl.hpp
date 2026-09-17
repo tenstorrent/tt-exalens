@@ -3,6 +3,9 @@
 
 #pragma once
 
+// elf_types.hpp (pulled in by elfio.hpp) uses uint16_t and friends but is
+// missing <cstdint> as of Release_3.12; include it first so those names exist.
+#include <cstdint>
 #include <elfio/elfio.hpp>
 #include <filesystem>
 #include <fstream>

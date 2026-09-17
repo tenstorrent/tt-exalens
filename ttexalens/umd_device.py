@@ -160,7 +160,9 @@ class UmdDevice:
                         translated_coord = coord
 
                 # Translate the UMD error into a TimeoutDeviceRegisterError and raise it
-                raise TimeoutDeviceRegisterError(self.device_id, translated_coord, address, len(buffer), True, error)
+                raise TimeoutDeviceRegisterError(
+                    self.device_id, translated_coord, address, len(buffer), is_read=True, umd_error=error
+                )
 
     def __write_to_device_reg(
         self, coord: tt_umd.CoreCoord, address: int, data: bytes | bytearray | memoryview, dma_threshold: int
@@ -180,7 +182,9 @@ class UmdDevice:
                         translated_coord = self._soc_descriptor.translate_coord_to(coord, tt_umd.CoordSystem.NOC0)
                     except Exception:
                         translated_coord = coord
-                raise TimeoutDeviceRegisterError(self.device_id, translated_coord, address, len(data), False, error)
+                raise TimeoutDeviceRegisterError(
+                    self.device_id, translated_coord, address, len(data), is_read=False, umd_error=error
+                )
 
     def __read_from_device_reg_unaligned_helper(
         self,
@@ -422,30 +426,30 @@ class UmdDevice:
             """Send ARC message"""
             self.__select_noc_id(noc_id)
             timeout_ms = timeout.total_seconds() * 1000 if isinstance(timeout, datetime.timedelta) else timeout * 1000
-            return self.__device.arc_msg(msg_code, wait_for_done, args, int(timeout_ms))
+            return self.__device.arc_msg(msg_code, wait_for_done=wait_for_done, args=args, timeout_ms=int(timeout_ms))
         except tt_umd.SigbusError:
             if util.DEBUG_ENABLED:
                 util.DEBUG("Reset detected during arc_msg, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
-            return self.arc_msg(noc_id, msg_code, wait_for_done, args, timeout)
+            return self.arc_msg(noc_id, msg_code, wait_for_done=wait_for_done, args=args, timeout=timeout)
 
-    def read_arc_telemetry_entry(self, noc_id: tt_umd.NocId, telemetry_tag: int) -> int:
-        """Read ARC telemetry entry"""
+    def read_firmware_telemetry_entry(self, noc_id: tt_umd.NocId, telemetry_tag: int) -> int:
+        """Read firmware telemetry entry"""
         self.__select_noc_id(noc_id)
 
         def do_read(telemetry_tag: int) -> int:
-            arc_telemetry_reader = self.__device.get_arc_telemetry_reader()
-            if not arc_telemetry_reader.is_entry_available(telemetry_tag):
+            firmware_telemetry_reader = self.__device.get_firmware_telemetry_reader()
+            if not firmware_telemetry_reader.is_entry_available(telemetry_tag):
                 raise RuntimeError(f"Telemetry tag {telemetry_tag} is not available on device {self.device_id}.")
-            return arc_telemetry_reader.read_entry(telemetry_tag)
+            return firmware_telemetry_reader.read_entry(telemetry_tag)
 
         try:
             return do_read(telemetry_tag)
         except tt_umd.SigbusError:
             if util.DEBUG_ENABLED:
-                util.DEBUG("Reset detected during read_arc_telemetry_entry, reinitializing device and retrying...")
+                util.DEBUG("Reset detected during read_firmware_telemetry_entry, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
-            return self.read_arc_telemetry_entry(noc_id, telemetry_tag)
+            return self.read_firmware_telemetry_entry(noc_id, telemetry_tag)
         except Exception:
             if not self._is_mmio_capable:
                 raise
@@ -457,9 +461,11 @@ class UmdDevice:
                 return do_read(telemetry_tag)
             except tt_umd.SigbusError:
                 if util.DEBUG_ENABLED:
-                    util.DEBUG("Reset detected during read_arc_telemetry_entry, reinitializing device and retrying...")
+                    util.DEBUG(
+                        "Reset detected during read_firmware_telemetry_entry, reinitializing device and retrying..."
+                    )
                 self.__reinit_device_after_sigbus()
-                return self.read_arc_telemetry_entry(noc_id, telemetry_tag)
+                return self.read_firmware_telemetry_entry(noc_id, telemetry_tag)
 
     def get_firmware_version(self, noc_id: tt_umd.NocId) -> tt_umd.FirmwareBundleVersion:
         """Returns firmware version"""

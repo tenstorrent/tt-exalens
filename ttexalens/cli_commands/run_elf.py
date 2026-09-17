@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  run-elf <elf-file> [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ]
+  run-elf <elf-file> [ -v ] [ -d <device> ] [ -r <risc> ] [ -l <loc> ] [ --neo <neo-id> ]
 
 Description:
   Loads an elf file into a brisc and runs it.
@@ -12,7 +12,8 @@ Options:
    -r <risc>           RiscV name (brisc, triscs0, triscs1, triscs2, ncrisc, erisc). [default: first risc]
 
 Examples:
-  run-elf build/riscv-src/wormhole/sample.brisc.elf
+  run-elf build/riscv-src/wormhole/sample.debug.brisc.elf
+  run-elf build/riscv-src/wormhole/sample.debug.brisc.elf -r trisc0 --neo 1
 """
 
 from ttexalens import util as util
@@ -32,6 +33,7 @@ command_metadata = CommandMetadata(
         CommonCommandOptions.Device,
         CommonCommandOptions.Location,
         CommonCommandOptions.Verbose,
+        CommonCommandOptions.Neo,
     ],
 )
 
@@ -62,9 +64,10 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     loc: OnChipCoordinate
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
+            noc_block = device.get_block(loc)
+            neo_id = dopt.get_neo_id(ui_state, noc_block)
             if not risc or risc == "first risc":
-                noc_block = device.get_block(loc)
-                riscs = noc_block.all_riscs
+                riscs = noc_block.get_riscs(neo_id)
                 if len(riscs) > 0:
                     risc_name = riscs[0].risc_location.risc_name
                 else:
@@ -72,4 +75,4 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     return
             else:
                 risc_name = risc
-            run_elf(dopt.args["<elf-file>"], loc, risc_name, None, device.id, context)
+            run_elf(dopt.args["<elf-file>"], loc, risc_name, neo_id, device.id, context)

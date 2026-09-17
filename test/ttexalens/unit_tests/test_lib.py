@@ -29,7 +29,7 @@ from ttexalens.hardware.risc_debug import RiscDebug
 
 from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
 from ttexalens.elf_loader import ElfLoader
-from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
+from ttexalens.firmware_telemetry import CUTOFF_FIRMWARE_VERSION
 
 from ttexalens.gdb.gdb_client import get_gdb_callstack
 from ttexalens.gdb.gdb_communication import ServerSocket
@@ -786,6 +786,42 @@ class TestReadWrite(unittest.TestCase):
                 _read_bytes(risc_debug, address, 8), bytes([0xAA, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x11])
             )
 
+    @parameterized.expand(
+        [
+            ("0,0", 0x0),
+            ("0,0", 0x1),
+            ("0,0", 0x8),
+            ("0,0", 0x9),
+            ("1,0", 0x0),
+            ("1,0", 0x1),
+            ("1,0", 0x8),
+            ("1,0", 0x9),
+        ]
+    )
+    def test_trisc2_write_private_memory(self, loc_str: str, offset: int):
+        """Test that writing to trisc2 private memory on Blackhole works for offsets
+        the debug hardware cannot read back due to hardware bug described in #528.
+        """
+        device = self.context.devices[0]
+        if not device.is_blackhole():
+            self.skipTest("This test is only applicable to blackhole devices.")
+        location = OnChipCoordinate.create(loc_str, device)
+        risc_debug = location.device.get_block(location).get_risc_debug("trisc2")
+
+        private_memory = risc_debug.get_data_private_memory()
+        assert private_memory is not None, "Private memory is not available."
+        assert private_memory.address.private_address is not None, "Private memory address is not set."
+        if private_memory.address.noc_address is None:
+            self.skipTest("Private memory is not NOC mapped on this architecture.")
+
+        private_address = private_memory.address.private_address + offset
+        noc_address = private_memory.translate_to_noc_address(private_address)
+        assert noc_address is not None, "Private memory address cannot be translated to a NOC address."
+        data = bytes([0xAA, 0x22, 0x88, 0xBB, 0xCC, 0xDD, 0x77, 0x11])
+        with risc_debug.ensure_private_memory_access():
+            risc_debug.write_memory_bytes(private_address, data)
+            self.assertEqual(lib.read_from_device(location, noc_address, num_bytes=len(data)), data)
+
 
 class TestSafeAccess(unittest.TestCase):
     context: Context
@@ -1369,7 +1405,9 @@ class TestARC(unittest.TestCase):
         timeout = timedelta(milliseconds=1000)
 
         # Ask for reply, check for reasonable TEST value
-        ret, return_3, _ = lib.arc_msg(self.device.id, msg_code, wait_for_done, args, timeout, context=self.context)
+        ret, return_3, _ = lib.arc_msg(
+            self.device.id, msg_code, wait_for_done=wait_for_done, args=args, timeout=timeout, context=self.context
+        )
 
         print(f"ARC message result={ret}, test={return_3}")
         self.assertEqual(ret, 0)
@@ -1392,9 +1430,9 @@ class TestARC(unittest.TestCase):
         # Check if heartbeat is increasing
         import time
 
-        heartbeat1 = lib.read_arc_telemetry_entry(self.device.id, tag)
+        heartbeat1 = lib.read_firmware_telemetry_entry(self.device.id, tag)
         time.sleep(0.2)
-        heartbeat2 = lib.read_arc_telemetry_entry(self.device.id, tag)
+        heartbeat2 = lib.read_firmware_telemetry_entry(self.device.id, tag)
         self.assertGreater(heartbeat2, heartbeat1)
 
     @parameterized.expand(
@@ -1406,17 +1444,17 @@ class TestARC(unittest.TestCase):
             ("ARCCLK", 16),
         ]
     )
-    def test_read_arc_telemetry_entry(self, tag_name, tag_id):
-        """Test if reading ARC telemetry entry by tag name and tag ID gives the same result"""
+    def test_read_firmware_telemetry_entry(self, tag_name, tag_id):
+        """Test if reading firmware telemetry entry by tag name and tag ID gives the same result"""
 
         if not self.device.is_wormhole() and not self.device.is_blackhole():
-            self.skipTest("ARC telemetry is not supported for this architecture")
+            self.skipTest("Firmware telemetry is not supported for this architecture")
 
         if self.device.firmware_version < CUTOFF_FIRMWARE_VERSION:
-            self.skipTest(f"ARC telemetry is not supported for firmware version {self.device.firmware_version}")
+            self.skipTest(f"Firmware telemetry is not supported for firmware version {self.device.firmware_version}")
 
-        ret_from_name = lib.read_arc_telemetry_entry(self.device.id, tag_name)
-        ret_from_id = lib.read_arc_telemetry_entry(self.device.id, tag_id)
+        ret_from_name = lib.read_firmware_telemetry_entry(self.device.id, tag_name)
+        ret_from_id = lib.read_firmware_telemetry_entry(self.device.id, tag_id)
         self.assertEqual(ret_from_name, ret_from_id)
 
     def test_load_arc_fw(self):
@@ -1547,7 +1585,7 @@ class TestCallStack(unittest.TestCase):
         parsed_elf.get_global("g_MAILBOX", mem_access)
 
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
         )
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -1571,7 +1609,9 @@ class TestCallStack(unittest.TestCase):
         parsed_elf = get_parsed_elf_file(elf_path)
         self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
-        callstack: list[CallstackEntry] = lib.callstack(self.location, elf_path, None, self.risc_name, None, 100, True)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, elf_path, None, self.risc_name, None, 100, stop_on_main=True
+        )
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
         for i in range(1, recursion_count + 1):
@@ -1593,7 +1633,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
         )
         self.assertEqual(len(callstack), 3)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -1620,7 +1660,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFFA)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
         )
 
         # The inlined leaf chain (halt inlined into pc3/pc2/pc1) is reconstructed from the PC alone,
@@ -1655,7 +1695,14 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFFA)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True, expand_tail_call_inline_frames=True
+            self.location,
+            parsed_elf,
+            None,
+            self.risc_name,
+            None,
+            100,
+            stop_on_main=True,
+            expand_tail_call_inline_frames=True,
         )
 
         expected = [
@@ -1689,7 +1736,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFF9)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
         )
 
         # tc_a/tc_b/tc_c are not inlined, so the whole chain appears the same on every build: the
@@ -1734,7 +1781,7 @@ class TestCallStack(unittest.TestCase):
         self.l1_mem_access.write(self.get_mailbox_value_address(parsed_elf), struct.pack("<i", arg))
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
         )
 
         expected = [
@@ -1774,7 +1821,7 @@ class TestCallStack(unittest.TestCase):
         self.l1_mem_access.write(self.get_mailbox_value_address(parsed_elf), struct.pack("<i", arg))
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
         )
 
         expected = [
@@ -1855,7 +1902,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFFF)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
         )
         self.assertEqual(len(callstack), 6)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -1880,7 +1927,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFFE)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
         )
         self.assertEqual(len(callstack), 5)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -1969,7 +2016,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, mailbox)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
         )
 
         # The callstack is: halt, the value-test chain (one frame per type), an optional wrapper
@@ -1992,20 +2039,28 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(len(entry.arguments), 1, f"Unexpected arguments for {function_name}")
             self.assertEqual(len(entry.locals), 1, f"Unexpected locals for {function_name}")
             self.assert_variable(
-                entry.arguments[0], "arg", expected_arg, require_arguments, f"argument of {function_name}"
+                entry.arguments[0],
+                "arg",
+                expected_arg,
+                require_value=require_arguments,
+                message=f"argument of {function_name}",
             )
-            self.assert_variable(entry.locals[0], "local", expected_local, True, f"local of {function_name}")
+            self.assert_variable(
+                entry.locals[0], "local", expected_local, require_value=True, message=f"local of {function_name}"
+            )
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_argument_and_local_values(self, elf_name: str):
         require_arguments = "release" not in elf_name
         # 0xFFFFFFFD selects the value_test chain (separate frames, one per type) in callstack.cc.
-        self.check_chained_value_test(elf_name, 0xFFFFFFFD, "value_test", require_arguments)
+        self.check_chained_value_test(elf_name, 0xFFFFFFFD, "value_test", require_arguments=require_arguments)
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_inlined_argument_and_local_values(self, elf_name: str):
         # 0xFFFFFFFC selects the inline_value_test chain (inlined virtual frames) in callstack.cc.
-        self.check_chained_value_test(elf_name, 0xFFFFFFFC, "inline_value_test", True, wrapper="inline_value_test::run")
+        self.check_chained_value_test(
+            elf_name, 0xFFFFFFFC, "inline_value_test", require_arguments=True, wrapper="inline_value_test::run"
+        )
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, range(len(VALUE_TEST_TYPES))))
     def test_callstack_single_frame_argument_and_local_values(self, elf_name: str, type_index: int):
@@ -2029,7 +2084,7 @@ class TestCallStack(unittest.TestCase):
         )
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
         )
 
         # The callstack is: value_test<T> (top frame), dispatch, main.
@@ -2038,8 +2093,12 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(len(top.arguments), 1)
         self.assertEqual(len(top.locals), 1)
         if struct_format.startswith("<"):
-            self.assert_variable(top.arguments[0], "arg", expected_arg, True, f"argument of {top.function_name}")
-            self.assert_variable(top.locals[0], "local", expected_local, True, f"local of {top.function_name}")
+            self.assert_variable(
+                top.arguments[0], "arg", expected_arg, require_value=True, message=f"argument of {top.function_name}"
+            )
+            self.assert_variable(
+                top.locals[0], "local", expected_local, require_value=True, message=f"local of {top.function_name}"
+            )
         else:
             # A const char* transferred through a register: verify it points at the test string.
             address = self.get_symbol_address(parsed_elf, struct_format)
@@ -2062,7 +2121,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFFB)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
         )
 
         # The callstack is: halt, the callee_saved_test chain (one frame per type), then main.
@@ -2076,11 +2135,39 @@ class TestCallStack(unittest.TestCase):
             self.assertIn(frame.function_name, (function_name, function), f"Unexpected frame: {frame.function_name}")
             self.assertEqual(len(frame.locals), 1, f"Unexpected locals for {function_name}")
             if struct_format.startswith("<"):
-                self.assert_variable(frame.locals[0], "reg_value", value, True, f"reg_value of {function_name}")
+                self.assert_variable(
+                    frame.locals[0], "reg_value", value, require_value=True, message=f"reg_value of {function_name}"
+                )
             else:
                 # A const char* held in a callee-saved register: verify it points at the test string.
                 address = self.get_symbol_address(parsed_elf, struct_format)
                 self.assert_string_pointer(frame.locals[0], "reg_value", address, f"reg_value of {function_name}")
+
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_register_reference_value(self, elf_name: str):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        # reg_value references slot 0 of the value buffer.
+        self.l1_mem_access.write(self.get_mailbox_value_address(parsed_elf), struct.pack("<I", 0x5A5A1234))
+        # 0xFFFFFFF6 selects reference_test::run.
+        self.set_recursion_count(parsed_elf, 0xFFFFFFF6)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, None, 100, True
+        )
+
+        # The callstack is: halt, reference_test::run, main.
+        frame = callstack[1]
+        self.assertIn(frame.function_name, ("reference_test::run", "run"))
+        self.assertEqual(len(frame.locals), 1)
+        reg_value = frame.locals[0]
+        self.assertEqual(reg_value.name, "reg_value")
+        assert reg_value.value is not None
+        # The reference is materialised in the register, so following it reads live memory.
+        self.assertEqual(0x5A5A1234, reg_value.value.dereference().read_value())
 
     @parameterized.expand(
         [
@@ -2111,4 +2198,14 @@ class TestCallStack(unittest.TestCase):
 
         # Check for invalid location
         with self.assertRaises((TTException, ValueError, FileNotFoundError)):
-            lib.callstack(location, elf_paths, offsets, risc_name, None, max_depth, True, device_id, self.context)
+            lib.callstack(
+                location,
+                elf_paths,
+                offsets,
+                risc_name,
+                None,
+                max_depth,
+                stop_on_main=True,
+                device_id=device_id,
+                context=self.context,
+            )

@@ -3,14 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  riscv (halt | step | cont | status)                                             [-d <device>] [-r <risc>] [-l <loc>]
-  riscv rd [<address>]                                                            [-d <device>] [-r <risc>] [-l <loc>]
-  riscv rreg [<index>]                                                            [-d <device>] [-r <risc>] [-l <loc>]
-  riscv wr [<address>] [<data>]                                                   [-d <device>] [-r <risc>] [-l <loc>]
-  riscv wreg [<index>] [<data>]                                                   [-d <device>] [-r <risc>] [-l <loc>]
-  riscv bkpt (set | del) [<address>]                                              [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
-  riscv wchpt (setr | setw | setrw | del) [<address>] [<data>]                    [-d <device>] [-r <risc>] [-l <loc>] [-pt <point>]
-  riscv reset [1 | 0]                                                             [-d <device>] [-r <risc>] [-l <loc>]
+  riscv (halt | step | cont | status)                                             [-d <device>] [-r <risc>] [-l <loc>] [--neo <neo-id>]
+  riscv rd [<address>]                                                            [-d <device>] [-r <risc>] [-l <loc>] [--neo <neo-id>]
+  riscv rreg [<index>]                                                            [-d <device>] [-r <risc>] [-l <loc>] [--neo <neo-id>]
+  riscv wr [<address>] [<data>]                                                   [-d <device>] [-r <risc>] [-l <loc>] [--neo <neo-id>]
+  riscv wreg [<index>] [<data>]                                                   [-d <device>] [-r <risc>] [-l <loc>] [--neo <neo-id>]
+  riscv bkpt (set | del) [<address>]                                              [-d <device>] [-r <risc>] [-l <loc>] [--neo <neo-id>] [-pt <point>]
+  riscv wchpt (setr | setw | setrw | del) [<address>] [<data>]                    [-d <device>] [-r <risc>] [-l <loc>] [--neo <neo-id>] [-pt <point>]
+  riscv reset [1 | 0]                                                             [-d <device>] [-r <risc>] [-l <loc>] [--neo <neo-id>]
 
 Options:
   -pt <point>     Index of the breakpoint or watchpoint register. 8 points are supported (0-7).
@@ -31,6 +31,7 @@ Description:
 
 Examples:
   riscv halt                      # Halt brisc
+  riscv halt --neo 1 -r trisc0    # Halt trisc0 of NEO
   riscv status                    # Print status
   riscv step                      # Step
   riscv cont                      # Continue
@@ -47,6 +48,7 @@ Examples:
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.uistate import UIState
 
@@ -57,18 +59,32 @@ command_metadata = CommandMetadata(
     short_name="rv",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Risc],
+    common_option_names=[
+        CommonCommandOptions.Device,
+        CommonCommandOptions.Location,
+        CommonCommandOptions.Risc,
+        CommonCommandOptions.Neo,
+    ],
 )
 
 
-def run_riscv_command(context: Context, device: Device, loc: OnChipCoordinate, risc_name: str, args, was_all: bool):
+def run_riscv_command(
+    context: Context,
+    device: Device,
+    loc: OnChipCoordinate,
+    risc_name: str,
+    neo_id: int | None,
+    args,
+    was_all: bool,
+):
     """
     Given a command trough args, run the corresponding RISC-V command
     """
-    where = f"{risc_name} {loc.to_str('logical')} [{device.id}]"
-
     noc_block = device.get_block(loc)
-    risc = noc_block.get_risc_debug(risc_name)
+    neo_where = f" neo:{neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""
+    where = f"{neo_where}{risc_name} {loc.to_str('logical')} [{device.id}]"
+
+    risc = noc_block.get_risc_debug(risc_name, neo_id)
     if not risc.can_debug():
         if not was_all:
             util.ERROR(f"Cannot debug {where}, debug hardware is not available.")
@@ -211,6 +227,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     risc_name: str
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            for risc_name in dopt.for_each(CommonCommandOptions.Risc, context, ui_state, device=device, location=loc):
-                run_riscv_command(context, device, loc, risc_name, dopt.args, was_all=dopt.args["-r"] == "all")
+            neo_id = dopt.get_neo_id(ui_state, loc.noc_block)
+            for risc_name in dopt.for_each(
+                CommonCommandOptions.Risc, context, ui_state, device=device, location=loc, neo_id=neo_id
+            ):
+                run_riscv_command(context, device, loc, risc_name, neo_id, dopt.args, was_all=dopt.args["-r"] == "all")
     return None

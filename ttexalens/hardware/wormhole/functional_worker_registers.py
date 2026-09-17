@@ -2,7 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-from ttexalens.hardware.tensix_registers_description import TensixRegisterDescription
+from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
 from ttexalens.register_store import (
     REGISTER_DATA_TYPE,
     ConfigurationRegisterDescription,
@@ -674,7 +674,7 @@ register_map: dict[str, RegisterDescription] = {
         index=11, mask=0xFFFF000, shift=12, data_type=REGISTER_DATA_TYPE.INT_VALUE
     ),
     # GENERAL PURPOSE REGISTERS
-    # https://github.com/tenstorrent/tt-llk/blob/main/tt_llk_wormhole/common/inc/ckernel_gpr_map.h
+    # https://github.com/tenstorrent/tt-metal/blob/main/tt_metal/tt-llk/tt_llk_wormhole_b0/common/inc/ckernel_gpr_map.h
     # THREAD 0
     "ZERO_T0": TensixGeneralPurposeRegisterDescription(index=0, thread_id=0),
     "DBG_RESERVED_T0": TensixGeneralPurposeRegisterDescription(index=1, thread_id=0),
@@ -1084,7 +1084,7 @@ def get_general_purpose_registers() -> list[dict[str, str]]:
     return register_mapping_by_thread
 
 
-tensix_registers_descriptions = TensixRegisterDescription(
+tensix_registers_descriptions = WormholeTensixRegisterDescription(
     # ALU CONFIG
     alu_config=[
         {

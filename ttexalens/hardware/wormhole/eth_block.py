@@ -235,7 +235,7 @@ class WormholeEthBlock(WormholeNocBlock):
         return [self.get_risc_debug(self.erisc.risc_name, self.erisc.neo_id)]
 
     @cache
-    def get_default_risc_debug(self) -> RiscDebug:
+    def get_default_risc_debug(self, neo_id: int | None = None) -> RiscDebug:
         return self.get_risc_debug(self.erisc.risc_name, self.erisc.neo_id)
 
     @cache

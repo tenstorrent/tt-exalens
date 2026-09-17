@@ -152,6 +152,25 @@ GlobalStruct g_global_struct;
 GlobalStruct* const g_global_const_struct_ptr = (GlobalStruct*)(0x30000);
 thread_local GlobalStruct g_global_tls_struct;
 
+[[gnu::used]] GlobalStruct& g_global_struct_ref = g_global_struct;
+[[gnu::used]] uint32_t&& g_uint_rvalue_ref = 0x5A5A1234;
+
+struct RefStruct {
+    uint32_t& a_ref;
+    InnerStruct& inner_ref;
+    uint32_t (&array_ref)[4];
+    const char*& string_pointer_ref;
+    char (&string_buffer_ref)[32];
+};
+
+[[gnu::used]] RefStruct g_ref_struct = {
+    g_global_struct.a,
+    g_global_struct.d[2],
+    g_global_struct.uint_array,
+    g_global_struct.string_pointer,
+    g_global_struct.string_buffer,
+};
+
 void halt() {
     // Halt core with ebrake instruction
     asm volatile("ebreak");

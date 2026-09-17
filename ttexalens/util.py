@@ -156,6 +156,18 @@ def with_hex_if_possible(val):
     return f"{val}{to_hex_if_possible(val)}"
 
 
+def format_hex(value: int | None) -> str:
+    return "-" if value is None else f"0x{value:x}"
+
+
+def format_dec(value: int | None) -> str:
+    return "-" if value is None else str(value)
+
+
+def format_flag(value: int | None) -> str:
+    return "-" if value is None else ("False" if value == 0 else "True")
+
+
 # Cache the result of should_use_color
 _USE_COLOR = sys.stdout.isatty()
 
@@ -743,14 +755,14 @@ class FirmwareVersion:
     def normalize_major(self):
         return self.major if self.major < 80 else 0
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> bool:
         if not isinstance(other, FirmwareVersion):
             return NotImplemented
         self_major = self.normalize_major()
         other_major = other.normalize_major()
         return (self_major, self.minor, self.patch) < (other_major, other.minor, other.patch)
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, FirmwareVersion):
             return NotImplemented
         self_major = self.normalize_major()

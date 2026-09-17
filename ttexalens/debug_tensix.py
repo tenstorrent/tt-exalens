@@ -265,7 +265,7 @@ class TensixDebug:
         return data
 
     def read_regfile(
-        self, regfile: int | str | REGFILE, num_tiles: int | None = None, signed=True
+        self, regfile: int | str | REGFILE, num_tiles: int | None = None, signed: bool = True
     ) -> Sequence[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
@@ -310,9 +310,9 @@ class TensixDebug:
             data = self.read_regfile_data(regfile, df, num_tiles)
         try:
             return (
-                unpack_data_direct_access(data, df, signed)
+                unpack_data_direct_access(data, df, signed=signed)
                 if self._direct_dest_access_enabled(df, regfile)
-                else unpack_data(data, df, signed)
+                else unpack_data(data, df, signed=signed)
             )
         except ValueError as e:
             # If the data format is unsupported, return the raw data.

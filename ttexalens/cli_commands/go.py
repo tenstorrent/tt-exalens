@@ -3,11 +3,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-    go [-n <noc>] [ -d <device> ] [ -l <noc-loc> ]
-    go <noc-loc> [-n <noc>] [ -d <device> ]
+    go [-n <noc>] [ -d <device> ] [ -l <noc-loc> ] [ --neo <neo-id> ]
+    go <noc-loc> [-n <noc>] [ -d <device> ] [ --neo <neo-id> ]
 
 Description:
-    Sets the current device/location/noc.
+    Sets the current device/location/noc/neo.
 Arguments:
     noc-loc     Optional. X-Y or R,C, or dram channel (e.g. ch3). Use interchangeably with -l <loc>.
 
@@ -15,10 +15,11 @@ Options:
     -n <noc>     NOC to use for communication with the device. Accepts a number or name (case-insensitive): 0/NOC0, 1/NOC1, 2/SYSTEM_NOC.
 
 Examples:
-    go -n 1 -d 0 -l 0,0
+    go -n 1 -d 0 -l 0,0 --neo 0
 """
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import to_neo_id
 import ttexalens.util as util
 from ttexalens.uistate import UIState
 from ttexalens.context import Context, to_noc_id
@@ -28,7 +29,7 @@ command_metadata = CommandMetadata(
     short_name="go",
     type="high-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
 )
 
 
@@ -54,3 +55,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         else next(dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device))
     )
     ui_state.current_location = loc
+    if not ui_state.current_block.neo_ids:
+        ui_state.set_current_neo_id(None)
+    if args["--neo"] is not None:
+        ui_state.set_current_neo_id(to_neo_id(args["--neo"], ui_state.current_block))

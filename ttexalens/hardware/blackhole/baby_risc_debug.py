@@ -9,7 +9,7 @@ from ttexalens.exceptions import TTException
 
 class BlackholeBabyRiscDebug(BabyRiscDebug):
     def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool | None = None):
-        super().__init__(risc_info, enable_asserts)
+        super().__init__(risc_info, enable_asserts=enable_asserts)
 
     def step(self):
         # There is a bug in hardware and for blackhole step should be executed twice
@@ -39,7 +39,6 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
         super().read_memory_bytes(address, buffer, safe_mode=safe_mode)
 
     def write_memory_bytes(self, address: int, data: bytes | bytearray | memoryview, safe_mode: bool | None = None):
-        self.assert_trisc2_address(address)
         super().write_memory_bytes(address, data, safe_mode=safe_mode)
 
     def assert_trisc2_address(self, address: int):

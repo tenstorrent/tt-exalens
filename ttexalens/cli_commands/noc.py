@@ -217,7 +217,7 @@ def display_noc_status_registers(
     ]
 
     # Use the shared formatter API
-    display_grouped_data(noc_registers, grouping, simple_print)
+    display_grouped_data(noc_registers, grouping, simple_print=simple_print)
 
 
 def display_all_noc_registers(loc: OnChipCoordinate, device: Device, simple_print: bool = False) -> None:
@@ -237,7 +237,7 @@ def display_all_noc_registers(loc: OnChipCoordinate, device: Device, simple_prin
     grouping = [group_names]
 
     # Use the shared formatter API
-    display_grouped_data(noc_registers, grouping, simple_print)
+    display_grouped_data(noc_registers, grouping, simple_print=simple_print)
 
 
 def display_all_noc_status_registers(loc: OnChipCoordinate, device: Device, simple_print: bool = False) -> None:
@@ -249,8 +249,8 @@ def display_all_noc_status_registers(loc: OnChipCoordinate, device: Device, simp
         device: Device object
         simple_print: Whether to use simplified output format
     """
-    display_noc_status_registers(loc, device, NocId.NOC0, simple_print)
-    display_noc_status_registers(loc, device, NocId.NOC1, simple_print)
+    display_noc_status_registers(loc, device, NocId.NOC0, simple_print=simple_print)
+    display_noc_status_registers(loc, device, NocId.NOC1, simple_print=simple_print)
 
 
 def display_specific_noc_registers(
@@ -291,7 +291,7 @@ def display_specific_noc_registers(
     # Only display if we found at least one valid register
     if valid_registers:
         register_data = {f"{noc_id.name} Registers": get_noc_registers(device, loc, noc_id, valid_registers)}
-        display_grouped_data(register_data, [[f"{noc_id.name} Registers"]], simple_print)
+        display_grouped_data(register_data, [[f"{noc_id.name} Registers"]], simple_print=simple_print)
     elif not invalid_registers:
         # If no registers were found but none were invalid, it's likely an empty list
         util.ERROR(f"No register names provided for {noc_id.name}")

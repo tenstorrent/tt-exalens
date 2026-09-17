@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  read <address> [ <word-count> ] [ --format=hex8 ] [ --unsafe ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ]
+  read <address> [ <word-count> ] [ --format=hex8 ] [ --unsafe ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ]
 
 Arguments:
   address         Address to read from
@@ -22,10 +22,12 @@ Examples:
   read 0x0 16                         # Read 16 words from address 0
   read 0x0 32 --format i8             # Prints 32 bytes in i8 format
   read 0xFFB0000 -r brisc 16          # Read 16 words from brisc private data memory
+  read 0x0 4 -r trisc0 --neo 1        # Read trisc0 private memory of NEO 1 (Quasar)
 """
 
 from ttexalens.context import Context
 from ttexalens.device import Device
+from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -37,7 +39,7 @@ command_metadata = CommandMetadata(
     short_name="r",
     type="low-level",
     description=__doc__,
-    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location],
+    common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
 )
 
 
@@ -67,18 +69,21 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             device_id_str += f" [0x{device.unique_id:x}]"
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             location_str = location.to_user_str()
+            noc_block = location.noc_block
+            neo_id = dopt.get_neo_id(ui_state, noc_block)
+            neo_str = f" | Neo {neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""
             read_bytes = 0
             read_address = address
             while read_bytes < bytes_to_read:
                 if unsafe:
                     bytes, memory_block_name = execute_unsafe_read(
-                        location, read_address, bytes_to_read - read_bytes, risc_name
+                        location, read_address, bytes_to_read - read_bytes, risc_name, neo_id
                     )
                 else:
                     bytes, memory_block_name = execute_safe_read(
-                        location, read_address, bytes_to_read - read_bytes, risc_name
+                        location, read_address, bytes_to_read - read_bytes, risc_name, neo_id
                     )
-                header = f"Device {device_id_str} | Location {location_str} | Block {memory_block_name} : 0x{read_address:08x} ({len(bytes)} bytes)"
+                header = f"Device {device_id_str} | Location {location_str}{neo_str} | Block {memory_block_name} : 0x{read_address:08x} ({len(bytes)} bytes)"
                 da = util.DataArray(header, bytes_per_entry)
                 da.from_bytes(bytes)
                 util.INFO(header)
@@ -88,7 +93,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
 
 def execute_safe_read(
-    location: OnChipCoordinate, address: int, bytes_to_read: int, risc_name: str | None
+    location: OnChipCoordinate, address: int, bytes_to_read: int, risc_name: str | None, neo_id: int | None = None
 ) -> tuple[bytes, str]:
     # Check if we are reading using RISC debugging hardware or directly over NOC
     if risc_name is None:
@@ -104,7 +109,7 @@ def execute_safe_read(
         location.noc_read(address, data)
         return bytes(data), memory_block_info.name
     else:
-        risc_debug = location.noc_block.get_risc_debug(risc_name)
+        risc_debug = location.noc_block.get_risc_debug(risc_name, neo_id)
         memory_block_info = risc_debug.risc_info.memory_map.find_by_private_address(address)
         if not memory_block_info:
             raise TTException(
@@ -128,7 +133,7 @@ def execute_safe_read(
 
 
 def execute_unsafe_read(
-    location: OnChipCoordinate, address: int, bytes_to_read: int, risc_name: str | None
+    location: OnChipCoordinate, address: int, bytes_to_read: int, risc_name: str | None, neo_id: int | None = None
 ) -> tuple[bytes, str]:
     if risc_name is None:
         risc_debug = None
@@ -140,7 +145,7 @@ def execute_unsafe_read(
             location.noc_read(address, data, safe_mode=False)
             return bytes(data), memory_block_info.name
     else:
-        risc_debug = location.noc_block.get_risc_debug(risc_name)
+        risc_debug = location.noc_block.get_risc_debug(risc_name, neo_id)
         memory_block_info = risc_debug.risc_info.memory_map.find_by_private_address(address)
         if memory_block_info is not None and memory_block_info.memory_block.address.private_address is not None:
             memory_block_end = (

@@ -20,6 +20,9 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context, NocId
 from ttexalens.elf import read_elf, CallstackEntry, ElfFile, ElfVariable, get_callstack, get_frame_callstack
 from ttexalens.exceptions import TTException
+from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
+from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
+from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
 from ttexalens.memory_access import create_memory_access
 
 
@@ -51,7 +54,7 @@ def read_word_from_device(
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, coordinate.context)
 
-    return coordinate.noc_read32(addr, noc_id, safe_mode)
+    return coordinate.noc_read32(addr, noc_id, safe_mode=safe_mode)
 
 
 @trace_api
@@ -157,7 +160,7 @@ def write_words_to_device(
     noc_id = check_noc_id(noc_id, coordinate.context)
 
     if isinstance(data, int):
-        coordinate.noc_write32(addr, data, noc_id, safe_mode)
+        coordinate.noc_write32(addr, data, noc_id, safe_mode=safe_mode)
     else:
         byte_data = b"".join(x.to_bytes(4, "little") for x in data)
         coordinate.noc_write(addr, byte_data, noc_id, safe_mode=safe_mode)
@@ -359,15 +362,15 @@ def arc_msg(
     if timeout < datetime.timedelta(0):
         raise TTException("Timeout must be greater than or equal to 0.")
 
-    return list(device.arc_msg(noc_id, msg_code, wait_for_done, args, timeout))
+    return list(device.arc_msg(noc_id, msg_code, wait_for_done=wait_for_done, args=args, timeout=timeout))
 
 
 @trace_api
-def read_arc_telemetry_entry(
+def read_firmware_telemetry_entry(
     device_id: int, telemetry_tag: int | str, context: Context | None = None, noc_id: NocId | int | None = None
 ) -> int:
     """
-    Reads an ARC telemetry entry from the device.
+    Reads a firmware telemetry entry from the device.
 
     Args:
         device_id (int): ID number of device to read telemetry from.
@@ -378,28 +381,11 @@ def read_arc_telemetry_entry(
     Returns:
         int: Value of the telemetry entry.
     """
-    from ttexalens.hardware.arc_block import CUTOFF_FIRMWARE_VERSION
-
     context = check_context(context)
     device = validate_device_id(device_id, context)
     noc_id = check_noc_id(noc_id, context)
-    arc = device.arc_block
 
-    if device.firmware_version < CUTOFF_FIRMWARE_VERSION:
-        raise TTException(
-            f"We no longer support ARC telemetry for firmware versions 18.3 and lower. This device is running firmware version {device.firmware_version}"
-        )
-
-    if isinstance(telemetry_tag, str):
-        telemetry_tag_id = arc.get_telemetry_tag_id(telemetry_tag)
-        if telemetry_tag_id is None:
-            raise TTException(f"Telemetry tag {telemetry_tag} does not exist.")
-    else:
-        if not arc.has_telemetry_tag_id(telemetry_tag):
-            raise TTException(f"Telemetry tag ID {telemetry_tag} does not exist.")
-        telemetry_tag_id = telemetry_tag
-
-    return device.read_arc_telemetry_entry(noc_id, telemetry_tag_id)
+    return device.firmware_telemetry.read_entry(telemetry_tag, noc_id)
 
 
 @trace_api
@@ -579,7 +565,6 @@ def top_callstack(
     context: Context | None = None,
     extract_variables: bool = True,
 ) -> list[CallstackEntry]:
-
     """
     Retrieves the top frame of the callstack for the specified PC on the given ELF.
     There is no stack walking, so the function will return the function at the given PC and all inlined functions on the top frame (if there are any).
@@ -597,7 +582,7 @@ def top_callstack(
 
     context = check_context(context)
     elfs_loaded = parse_elfs(elfs, offsets, context)
-    return get_frame_callstack(elfs_loaded, pc, extract_variables)
+    return get_frame_callstack(elfs_loaded, pc, extract_variables=extract_variables)
 
 
 @trace_api
@@ -650,10 +635,12 @@ def callstack(
         # Reading the program counter from risc register
         pc = risc_debug.read_gpr(32)
 
-        # If ebreak was hit, pc will point to the instruction after it
-        if risc_debug.is_ebreak_hit():
-            # Rewind pc to unwind callstack from the ebreak instruction
-            pc -= 4
+        # TODO: #1071
+        if not isinstance(risc_debug, RocketCoreDebug):
+            # If ebreak was hit, pc will point to the instruction after it
+            if risc_debug.is_ebreak_hit():
+                # Rewind pc to unwind callstack from the ebreak instruction
+                pc -= 4
 
         mem_access = create_memory_access(risc_debug)
 
@@ -665,8 +652,8 @@ def callstack(
             mem_access,
             max_depth,
             "main" if stop_on_main else "",
-            extract_variables,
-            expand_tail_call_inline_frames,
+            extract_variables=extract_variables,
+            expand_tail_call_inline_frames=expand_tail_call_inline_frames,
         )
 
 
@@ -714,7 +701,6 @@ def read_riscv_memory(
     context: Context | None = None,
     safe_mode: bool | None = None,
 ) -> int:
-
     """
     Reads a 32-bit word from the specified RISC-V core's private memory.
 
@@ -837,6 +823,7 @@ def get_tensix_state(
     coordinate = convert_coordinate(location, device_id, context)
     device = coordinate.device
     tensix_reg_desc = device.get_tensix_registers_description()
+    assert isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription)
     tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
     noc_block = coordinate.noc_block
     if noc_block.block_type != "functional_workers":
@@ -871,8 +858,8 @@ def get_tensix_state(
     pack_counters = _read_register_group(tensix_reg_desc.pack_counters)
     pack_strides = _read_register_group(tensix_reg_desc.pack_strides)
     gpr = _read_register_group(tensix_reg_desc.general_purpose_registers)
-    group_reader = (
-        lambda signal_group: debug_bus.read_signal_group(signal_group, l1_address)
+    group_reader = lambda signal_group: (
+        debug_bus.read_signal_group(signal_group, l1_address)
         if l1_address is not None
         else debug_bus.read_signal_group_unsafe(signal_group)
     )
