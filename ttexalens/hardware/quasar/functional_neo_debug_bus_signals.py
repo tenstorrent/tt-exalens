@@ -4,14 +4,11 @@
 
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 
-
 debug_bus_signal_map = {
-    # TRISC0
     "trisc0_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=11, mask=0x3FFFFFFF),
     "trisc0_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x200),
     "trisc0_id_ex_rts_dup": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x100),
     "trisc0_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x80),
-    "trisc0_if_invalid_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x40),
     "trisc0_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x20),
     "trisc0_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=11, mask=0x1F),
     "trisc0_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=11, mask=0xFFFFFFFF),
@@ -43,7 +40,10 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x3800000
     ),
     "trisc0_mop_decode_mop_stage_valid": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x400000),
-    "trisc0_mop_decode_mop_stage_opcode": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x3FFFFF),
+    "trisc0_mop_decode_mop_stage_opcode/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=19, mask=0x3FFFFF),
+    "trisc0_mop_decode_mop_stage_opcode/0": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=7, sig_sel=19, mask=0xFFC00000
+    ),
     "trisc0_mop_decode_math_loop_active": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=19, mask=0x200000),
     "trisc0_mop_decode_unpack_loop_active": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=19, mask=0x100000),
     "trisc0_mop_decode_o_instrn_valid": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=19, mask=0x80000),
@@ -84,19 +84,19 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x3C0
     ),
     "trisc0_risc_wrapper_trisc_o_mailbox_rddata/0": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=18, mask=0xFFFF0000
+        rd_sel=2, daisy_sel=7, sig_sel=18, mask=0xFFFFFFC0
     ),
     "trisc0_risc_wrapper_trisc_o_mailbox_rddata/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x3F
     ),
     "trisc0_risc_wrapper_trisc_intf_wrack_trisc": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x3FFE0000
+        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x3FF8000
     ),
     "trisc0_risc_wrapper_trisc_dmem_tensix_rden": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x10000
+        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x4000
     ),
     "trisc0_risc_wrapper_trisc_dmem_tensix_wren": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x8000
+        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x2000
     ),
     "trisc0_risc_wrapper_trisc_icache_req_fifo_full": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x2
@@ -104,12 +104,30 @@ debug_bus_signal_map = {
     "trisc0_risc_wrapper_trisc_icache_req_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x1
     ),
+    "trisc0_pc_buffer_next_cmd_fifo_data/1": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7FFFFF, across_groups=True
+    ),
+    "trisc0_pc_buffer_next_cmd_fifo_data/0": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=7, sig_sel=18, mask=0xFF800000, across_groups=True
+    ),
+    "trisc0_risc_wrapper_trisc_intf_rden/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=18, mask=0x3F),
+    "trisc0_risc_wrapper_trisc_intf_rden/0": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=7, sig_sel=18, mask=0xF8000000
+    ),
+    "trisc0_risc_wrapper_trisc_intf_wren": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x7FF0000),
+    "trisc0_risc_wrapper_trisc_intf_ready": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=18, mask=0xFFE0),
+    "trisc0_risc_wrapper_trisc_intf_rd_data_vld/1": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=7, sig_sel=18, mask=0x1F
+    ),
+    "trisc0_risc_wrapper_trisc_intf_rd_data_vld/0": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0xFC000000
+    ),
+    "trisc0_risc_wrapper_trisc_target_intf": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x1FFC),
     # TRISC1
     "trisc1_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=13, mask=0x3FFFFFFF),
     "trisc1_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x200),
     "trisc1_id_ex_rts_dup": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x100),
     "trisc1_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x80),
-    "trisc1_if_invalid_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x40),
     "trisc1_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x20),
     "trisc1_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=13, mask=0x1F),
     "trisc1_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=13, mask=0xFFFFFFFF),
@@ -141,7 +159,10 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x3800000
     ),
     "trisc1_mop_decode_mop_stage_valid": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x400000),
-    "trisc1_mop_decode_mop_stage_opcode": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x3FFFFF),
+    "trisc1_mop_decode_mop_stage_opcode/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=21, mask=0x3FFFFF),
+    "trisc1_mop_decode_mop_stage_opcode/0": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=7, sig_sel=21, mask=0xFFC00000
+    ),
     "trisc1_mop_decode_math_loop_active": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=21, mask=0x200000),
     "trisc1_mop_decode_unpack_loop_active": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=21, mask=0x100000),
     "trisc1_mop_decode_o_instrn_valid": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=21, mask=0x80000),
@@ -182,19 +203,19 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x3C0
     ),
     "trisc1_risc_wrapper_trisc_o_mailbox_rddata/0": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=20, mask=0xFFFF0000
+        rd_sel=2, daisy_sel=7, sig_sel=20, mask=0xFFFFFFC0
     ),
     "trisc1_risc_wrapper_trisc_o_mailbox_rddata/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x3F
     ),
     "trisc1_risc_wrapper_trisc_intf_wrack_trisc": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x3FFE0000
+        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x3FF8000
     ),
     "trisc1_risc_wrapper_trisc_dmem_tensix_rden": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x10000
+        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x4000
     ),
     "trisc1_risc_wrapper_trisc_dmem_tensix_wren": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x8000
+        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x2000
     ),
     "trisc1_risc_wrapper_trisc_icache_req_fifo_full": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x2
@@ -202,12 +223,30 @@ debug_bus_signal_map = {
     "trisc1_risc_wrapper_trisc_icache_req_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x1
     ),
+    "trisc1_pc_buffer_next_cmd_fifo_data/1": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x7FFFFF, across_groups=True
+    ),
+    "trisc1_pc_buffer_next_cmd_fifo_data/0": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=7, sig_sel=20, mask=0xFF800000, across_groups=True
+    ),
+    "trisc1_risc_wrapper_trisc_intf_rden/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=20, mask=0x3F),
+    "trisc1_risc_wrapper_trisc_intf_rden/0": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=7, sig_sel=20, mask=0xF8000000
+    ),
+    "trisc1_risc_wrapper_trisc_intf_wren": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=20, mask=0x7FF0000),
+    "trisc1_risc_wrapper_trisc_intf_ready": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=20, mask=0xFFE0),
+    "trisc1_risc_wrapper_trisc_intf_rd_data_vld/1": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=7, sig_sel=20, mask=0x1F
+    ),
+    "trisc1_risc_wrapper_trisc_intf_rd_data_vld/0": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0xFC000000
+    ),
+    "trisc1_risc_wrapper_trisc_target_intf": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x1FFC),
     # TRISC2
     "trisc2_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=15, mask=0x3FFFFFFF),
     "trisc2_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x200),
     "trisc2_id_ex_rts_dup": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x100),
     "trisc2_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x80),
-    "trisc2_if_invalid_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x40),
     "trisc2_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x20),
     "trisc2_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=15, mask=0x1F),
     "trisc2_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=15, mask=0xFFFFFFFF),
@@ -239,7 +278,10 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=23, mask=0x3800000
     ),
     "trisc2_mop_decode_mop_stage_valid": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=23, mask=0x400000),
-    "trisc2_mop_decode_mop_stage_opcode": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=23, mask=0x3FFFFF),
+    "trisc2_mop_decode_mop_stage_opcode/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=23, mask=0x3FFFFF),
+    "trisc2_mop_decode_mop_stage_opcode/0": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=7, sig_sel=23, mask=0xFFC00000
+    ),
     "trisc2_mop_decode_math_loop_active": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=23, mask=0x200000),
     "trisc2_mop_decode_unpack_loop_active": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=23, mask=0x100000),
     "trisc2_mop_decode_o_instrn_valid": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=23, mask=0x80000),
@@ -280,19 +322,19 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=22, mask=0x3C0
     ),
     "trisc2_risc_wrapper_trisc_o_mailbox_rddata/0": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=22, mask=0xFFFF0000
+        rd_sel=2, daisy_sel=7, sig_sel=22, mask=0xFFFFFFC0
     ),
     "trisc2_risc_wrapper_trisc_o_mailbox_rddata/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=22, mask=0x3F
     ),
     "trisc2_risc_wrapper_trisc_intf_wrack_trisc": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x3FFE0000
+        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x3FF8000
     ),
     "trisc2_risc_wrapper_trisc_dmem_tensix_rden": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x10000
+        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x4000
     ),
     "trisc2_risc_wrapper_trisc_dmem_tensix_wren": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x8000
+        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x2000
     ),
     "trisc2_risc_wrapper_trisc_icache_req_fifo_full": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x2
@@ -300,12 +342,30 @@ debug_bus_signal_map = {
     "trisc2_risc_wrapper_trisc_icache_req_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x1
     ),
+    "trisc2_pc_buffer_next_cmd_fifo_data/1": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x7FFFFF, across_groups=True
+    ),
+    "trisc2_pc_buffer_next_cmd_fifo_data/0": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=7, sig_sel=22, mask=0xFF800000, across_groups=True
+    ),
+    "trisc2_risc_wrapper_trisc_intf_rden/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=22, mask=0x3F),
+    "trisc2_risc_wrapper_trisc_intf_rden/0": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=7, sig_sel=22, mask=0xF8000000
+    ),
+    "trisc2_risc_wrapper_trisc_intf_wren": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=22, mask=0x7FF0000),
+    "trisc2_risc_wrapper_trisc_intf_ready": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=22, mask=0xFFE0),
+    "trisc2_risc_wrapper_trisc_intf_rd_data_vld/1": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=7, sig_sel=22, mask=0x1F
+    ),
+    "trisc2_risc_wrapper_trisc_intf_rd_data_vld/0": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0xFC000000
+    ),
+    "trisc2_risc_wrapper_trisc_target_intf": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x1FFC),
     # TRISC3
     "trisc3_pc": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=17, mask=0x3FFFFFFF),
     "trisc3_ex_id_rtr": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x200),
     "trisc3_id_ex_rts_dup": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x100),
     "trisc3_if_rts": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x80),
-    "trisc3_if_invalid_instrn": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x40),
     "trisc3_if_ex_predicted": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x20),
     "trisc3_if_ex_deco/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=17, mask=0x1F),
     "trisc3_if_ex_deco/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=17, mask=0xFFFFFFFF),
@@ -337,7 +397,10 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x3800000
     ),
     "trisc3_mop_decode_mop_stage_valid": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x400000),
-    "trisc3_mop_decode_mop_stage_opcode": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x3FFFFF),
+    "trisc3_mop_decode_mop_stage_opcode/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=25, mask=0x3FFFFF),
+    "trisc3_mop_decode_mop_stage_opcode/0": DebugBusSignalDescription(
+        rd_sel=2, daisy_sel=7, sig_sel=25, mask=0xFFC00000
+    ),
     "trisc3_mop_decode_math_loop_active": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=25, mask=0x200000),
     "trisc3_mop_decode_unpack_loop_active": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=25, mask=0x100000),
     "trisc3_mop_decode_o_instrn_valid": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=25, mask=0x80000),
@@ -378,19 +441,19 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=24, mask=0x3C0
     ),
     "trisc3_risc_wrapper_trisc_o_mailbox_rddata/0": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=24, mask=0xFFFF0000
+        rd_sel=2, daisy_sel=7, sig_sel=24, mask=0xFFFFFFC0
     ),
     "trisc3_risc_wrapper_trisc_o_mailbox_rddata/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=24, mask=0x3F
     ),
     "trisc3_risc_wrapper_trisc_intf_wrack_trisc": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=24, mask=0x3FFE0000
+        rd_sel=0, daisy_sel=7, sig_sel=24, mask=0x3FF8000
     ),
     "trisc3_risc_wrapper_trisc_dmem_tensix_rden": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=24, mask=0x10000
+        rd_sel=0, daisy_sel=7, sig_sel=24, mask=0x4000
     ),
     "trisc3_risc_wrapper_trisc_dmem_tensix_wren": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=24, mask=0x8000
+        rd_sel=0, daisy_sel=7, sig_sel=24, mask=0x2000
     ),
     "trisc3_risc_wrapper_trisc_icache_req_fifo_full": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=24, mask=0x2
@@ -398,4 +461,42 @@ debug_bus_signal_map = {
     "trisc3_risc_wrapper_trisc_icache_req_fifo_empty": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=24, mask=0x1
     ),
+    "trisc3_pc_buffer_next_cmd_fifo_data/1": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=25, mask=0x7FFFFF, across_groups=True
+    ),
+    "trisc3_pc_buffer_next_cmd_fifo_data/0": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=7, sig_sel=24, mask=0xFF800000, across_groups=True
+    ),
+    "trisc3_risc_wrapper_trisc_intf_rden/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=24, mask=0x3F),
+    "trisc3_risc_wrapper_trisc_intf_rden/0": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=7, sig_sel=24, mask=0xF8000000
+    ),
+    "trisc3_risc_wrapper_trisc_intf_wren": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=24, mask=0x7FF0000),
+    "trisc3_risc_wrapper_trisc_intf_ready": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=24, mask=0xFFE0),
+    "trisc3_risc_wrapper_trisc_intf_rd_data_vld/1": DebugBusSignalDescription(
+        rd_sel=1, daisy_sel=7, sig_sel=24, mask=0x1F
+    ),
+    "trisc3_risc_wrapper_trisc_intf_rd_data_vld/0": DebugBusSignalDescription(
+        rd_sel=0, daisy_sel=7, sig_sel=24, mask=0xFC000000
+    ),
+    "trisc3_risc_wrapper_trisc_target_intf": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=24, mask=0x1FFC),
+}
+
+group_map: dict[str, tuple[int, int]] = {
+    "trisc0_group_a": (7, 10),
+    "trisc0_group_b": (7, 11),
+    "trisc0_group_c": (7, 18),
+    "trisc0_group_d": (7, 19),
+    "trisc1_group_a": (7, 12),
+    "trisc1_group_b": (7, 13),
+    "trisc1_group_c": (7, 20),
+    "trisc1_group_d": (7, 21),
+    "trisc2_group_a": (7, 14),
+    "trisc2_group_b": (7, 15),
+    "trisc2_group_c": (7, 22),
+    "trisc2_group_d": (7, 23),
+    "trisc3_group_a": (7, 16),
+    "trisc3_group_b": (7, 17),
+    "trisc3_group_c": (7, 24),
+    "trisc3_group_d": (7, 25),
 }
