@@ -16,9 +16,8 @@ Options:
   --cores <cores>   Comma-separated core indices for the per-core groups (e.g. 0,3,5). Default: all cores.
 
 Description:
-  Dumps Quasar overlay state at the given
-  location and device, grouped by logical block. With no group flag, all
-  groups are dumped; multiple group flags may be combined to dump a subset.
+  Dumps Quasar overlay state at the given location and device, grouped by logical block.
+  With no group flag, all groups are dumped; multiple group flags may be combined to dump a subset.
 
   The core selector (--cores) restricts the per-core groups (cmdbuf, errors, wdt,
   debug, clint, plic) to the given cores; the per-interface LLK tile-counter
@@ -50,11 +49,19 @@ from ttexalens.rich_formatters import formatter, console
 from ttexalens.hardware.quasar.functional_overlay_registers_description import OverlayRegistersDescription
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
+
+def is_supported(ui_state: UIState) -> bool:
+    """The overlay block this command dumps only exists on functional workers on Quasar."""
+    return hasattr(ui_state.current_block, "overlay")
+
+
 command_metadata = CommandMetadata(
     short_name="overlay",
     type="low-level",
     description=__doc__,
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Verbose],
+    is_supported=is_supported,
+    requirement="Overlay block with Rocket cores",
 )
 
 GROUPS = ["counters", "cmdbuf", "errors", "wdt", "debug", "clint", "plic"]

@@ -11,6 +11,7 @@ from prompt_toolkit.formatted_text import HTML, fragment_list_to_text, to_format
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.patch_stdout import patch_stdout
 from ttexalens.context import Context
+from ttexalens.device import Device
 from ttexalens.gdb.gdb_server import GdbServer, ServerSocket
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
@@ -83,7 +84,7 @@ class UIState:
             device.on_noc_switch = self.__invalidate_app_prompt
 
     @property
-    def current_device(self):
+    def current_device(self) -> Device:
         return self.context.devices[self.current_device_id]
 
     @property
