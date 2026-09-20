@@ -8,6 +8,7 @@ Usage:
   tt-exalens --server [--port=<port>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--noc-id=<id>] [--verbosity=<verbosity>]
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-exalens --gdb [gdb_args...]
+  tt-exalens --sim-list
   tt-exalens -h | --help
   tt-exalens --version
 
@@ -22,12 +23,13 @@ Options:
   --start-gdb=<gdb_port>          Start a gdb server on the specified port.
   --start-server=<server_port>    Start a tt-exalens server on the specified port.
   --background                    Start the server in the background detached from console (doesn't require ENTER button for exit, but exit.server file to be created).
-  -s=<simulation_directory>       Specifies build output directory of the simulator.
+  -s=<simulation_directory>       Simulator to use. Either a simulator build to start (a libttsim .so file or an RTL simulator build directory), or the socket directory of an already-running simulation server to attach to. Which one it is is detected from the path; use --sim-list to see running servers. If omitted and no hardware is found, tt-exalens attaches to a running simulation when exactly one is running.
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
   --noc-id=<id>                   NOC to use for device communication. Accepts a number or name (case-insensitive): 0/NOC0, 1/NOC1, 2/SYSTEM_NOC. [default: 1]
   --gdb                           Start RISC-V gdb client with the specified arguments.
+  --sim-list                      List the simulation servers currently running on this machine and exit.
   --unsafe-mode                   Disable safe mode to allow potentially unsafe operations (e.g., writing to certain memory regions) without explicit overrides. Use with caution.
   --disable-noc-failover          Disable automatic NOC failover if communication fails on it (NOC0->NOC1 and vice versa).
 
@@ -43,7 +45,7 @@ Description:
 """
 
 try:
-    import sys, os, traceback, fnmatch, importlib
+    import sys, os, traceback, fnmatch, importlib, tt_umd
     from tabulate import tabulate
     from prompt_toolkit.formatted_text import HTML
     from docopt import DocoptExit, docopt
@@ -377,6 +379,22 @@ def main():
             with open(os.path.join(util.application_path(), "../VERSION"), "r") as version_file:
                 version = version_file.read().strip()
             print(f"tt-exalens version from VERSION file: {version}")
+        return
+
+    if args["--sim-list"]:
+        servers = tt_umd.SimulationConnector.list_servers()
+        if not servers:
+            print("No simulation servers are running on this machine.")
+        else:
+            print(
+                tabulate(
+                    [
+                        [server.index, server.directory, ", ".join(str(chip) for chip in sorted(server.sockets))]
+                        for server in servers
+                    ],
+                    headers=["Index", "Directory (pass to -s to attach)", "Chips"],
+                )
+            )
         return
 
     # SETTING VERBOSITY
