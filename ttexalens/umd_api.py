@@ -226,6 +226,7 @@ class UmdApi:
 
         options = tt_umd.SimulationConnectorOptions()
         options.simulator_directory = path
+        options.serve_over_sockets = True
         try:
             simulation_connection, simulation_devices = tt_umd.SimulationConnector.discover(options)
         except Exception as e:
@@ -239,7 +240,8 @@ class UmdApi:
             )
 
         # Quasar has no NOC1, so fall back to NOC0.
-        if simulation_connection.arch == tt_umd.ARCH.QUASAR and self._initialization_noc_id == NocId.NOC1:
+        # TODO: Current UMD issue #3480 requires us to always fall back to NOC0.
+        if self._initialization_noc_id == NocId.NOC1:
             self._initialization_noc_id = NocId.NOC0
             UmdApi.select_noc_id(NocId.NOC0)
 
