@@ -104,23 +104,23 @@ Output:
 ```
 Reading from device 0
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 22349 times
+1-1 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 21673 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 21757 times
+1-1 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 22192 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 21674 times
+1-1 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 22268 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 21915 times
+1-1 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 22119 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 21833 times
+1-1 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 22338 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 22075 times
+1-1 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 21875 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 22048 times
+1-1 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 21779 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 22037 times
+1-1 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 22182 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 21738 times
+1-1 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 22242 times
 Sampling for 0.15625 seconds...
 ...
 ```
@@ -184,7 +184,7 @@ callstack build/riscv-src/wormhole/sample.debug.brisc.elf -r brisc
 Output:
 ```
 Location: 1-1 (0,0), core: brisc
-  #0 0x00000240 in main () at /localdev/adjordjevic/work/tt-exalens/riscv-src/sample.cc 42:22
+  #0 0x00000254 in main () at /localdev/adjordjevic/work/tt-exalens/riscv-src/sample.cc 42:22
 ```
 Command:
 ```
@@ -315,9 +315,9 @@ There are matches remaining. To see more results, increase the --max value.
 ╭────────────────┬───────────────────────┬────────────╮
 │ Group          │ Name                  │ Value      │
 ├────────────────┼───────────────────────┼────────────┤
-│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x24c      │
-│ brisc_group_a  │ brisc_pc              │ 0x258      │
-│ brisc_group_b  │ brisc_id_ex_pc        │ 0x250      │
+│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x244      │
+│ brisc_group_a  │ brisc_pc              │ 0x244      │
+│ brisc_group_b  │ brisc_id_ex_pc        │ 0x24c      │
 │ ncrisc_group_a │ ncrisc_dbg_obs_cmt_pc │ 0x4f26cf26 │
 │ ncrisc_group_b │ ncrisc_id_ex_pc       │ 0x1dc3afa7 │
 ╰────────────────┴───────────────────────┴────────────╯
@@ -376,16 +376,16 @@ Output:
 ╭────────────────────────┬──────────────────────────────────────────────────╮
 │ Name                   │ Value                                            │
 ├────────────────────────┼──────────────────────────────────────────────────┤
-│ brisc_dbg_obs_cmt_pc   │ [0x258, 0x244, 0x24c, 0x258]                     │
-│ brisc_dbg_obs_cmt_vld  │ [False, False, False, False]                     │
+│ brisc_dbg_obs_cmt_pc   │ [0x24c, 0x25c, 0x244, 0x24c]                     │
+│ brisc_dbg_obs_cmt_vld  │ [True, False, False, True]                       │
 │ brisc_dbg_obs_mem_addr │ [0x3fb00fe8, 0x3fb00fe8, 0x3fb00fe8, 0x3fb00fe8] │
 │ brisc_dbg_obs_mem_rden │ [False, False, False, False]                     │
-│ brisc_i_instrn         │ [0x0, 0x7ffff7b7, 0x0, 0x0]                      │
+│ brisc_i_instrn         │ [0xf707b3, 0x0, 0x0, 0xf707b3]                   │
 │ brisc_i_instrn_req_rtr │ [True, True, True, True]                         │
-│ brisc_i_instrn_vld     │ [False, True, False, False]                      │
-│ brisc_o_instrn_addr    │ [0x25c, 0x24c, 0x250, 0x25c]                     │
-│ brisc_o_instrn_req     │ [True, False, False, True]                       │
-│ brisc_pc               │ [0x258, 0x244, 0x24c, 0x258]                     │
+│ brisc_i_instrn_vld     │ [True, False, False, True]                       │
+│ brisc_o_instrn_addr    │ [0x254, 0x260, 0x24c, 0x254]                     │
+│ brisc_o_instrn_req     │ [False, False, False, False]                     │
+│ brisc_pc               │ [0x24c, 0x25c, 0x244, 0x24c]                     │
 ╰────────────────────────┴──────────────────────────────────────────────────╯
 
 ```
@@ -680,7 +680,7 @@ dump-overlay-state
 ```
 Output:
 ```
-Command 'dump-overlay-state' is not supported for current state. It requires: Overlay block with Rocket cores.
+Device 0 at location 1-1 (0,0) does not have an overlay block.
 ```
 same (short name)
 ```
@@ -688,7 +688,7 @@ overlay
 ```
 Output:
 ```
-Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
+Device 0 at location 1-1 (0,0) does not have an overlay block.
 ```
 only ROCC command buffers
 ```
@@ -696,7 +696,7 @@ overlay --cmdbuf
 ```
 Output:
 ```
-Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
+Device 0 at location 1-1 (0,0) does not have an overlay block.
 ```
 bus errors + watchdogs together
 ```
@@ -704,7 +704,7 @@ overlay --errors --wdt
 ```
 Output:
 ```
-Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
+Device 0 at location 1-1 (0,0) does not have an overlay block.
 ```
 LLK counters incl. read-mirrors/thresholds
 ```
@@ -712,7 +712,7 @@ overlay --counters -v
 ```
 Output:
 ```
-Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
+Device 0 at location 1-1 (0,0) does not have an overlay block.
 ```
 command buffers for cores 0, 3, 5 only
 ```
@@ -720,7 +720,7 @@ overlay --cmdbuf --cores 0,3,5
 ```
 Output:
 ```
-Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
+Device 0 at location 1-1 (0,0) does not have an overlay block.
 ```
 debug module at location 1,1
 ```
@@ -728,7 +728,7 @@ overlay --debug -l 1,1
 ```
 Output:
 ```
-Command 'overlay' is not supported for current state. It requires: Overlay block with Rocket cores.
+Device 0 at location 2-2 (1,1) does not have an overlay block.
 ```
 
 
@@ -1456,6 +1456,7 @@ help --all
 ```
 Output:
 ```
+functional_workers
 Full Name           Short    Description
 ------------------  -------  -----------------------------------------------------------------------------------------------------...
 exit                x        Exits the program. The optional argument represents the exit code. Defaults to 0.
@@ -1475,7 +1476,6 @@ tensix-reg          reg      Prints/writes to the specified register, at the spe
 write               w        Writes a block of data to address 'address'.
 write-xy            wxy      Writes a data word to address <addr> at <noc-loc>, or at the current location when <noc-loc> is omitt...
 device              d        Shows a device summary. When no argument is supplied, shows the status of the RISC-V for all devices.
-dump-coverage       cov      Get coverage data for a given ELF. Extract the gcda from the given core
 ...
 ```
 
@@ -1744,23 +1744,23 @@ Output:
 
 === Perf Counter Read: chip=0 core=1-1 (0,0) ===
 
-                           FPU                                                           INSTRN_THREAD                            ...
-╭─────┬────────────────────┬────────────────┬───────────╮       ╭─────┬───────────────────────────┬────────────────┬───────────╮ ╭...
-│ ID  │ Counter            │ Value          │ ref_cnt   │       │ ID  │ Counter                   │ Value          │ ref_cnt   │ │...
-├─────┼────────────────────┼────────────────┼───────────┤       ├─────┼───────────────────────────┼────────────────┼───────────┤ ├...
-│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 171365006 │       │ 0   │ cfg_instrn[0]             │ 0 (0x00000000) │ 171429664 │ │...
-│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 171390370 │       │ 1   │ cfg_instrn[1]             │ 0 (0x00000000) │ 171453211 │ │...
-│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 171414744 │       │ 2   │ cfg_instrn[2]             │ 0 (0x00000000) │ 171476089 │ │...
-╰─────┴────────────────────┴────────────────┴───────────╯       │ 4   │ sync_instrn[0]            │ 0 (0x00000000) │ 171500343 │ │...
-                                                                │ 5   │ sync_instrn[1]            │ 0 (0x00000000) │ 171527286 │ │...
-                                                                │ 6   │ sync_instrn[2]            │ 0 (0x00000000) │ 171551088 │ │...
-                                                                │ 8   │ thcon_instrn[0]           │ 0 (0x00000000) │ 171574180 │ │...
-                                                                │ 9   │ thcon_instrn[1]           │ 0 (0x00000000) │ 171597548 │ │...
-                                                                │ 10  │ thcon_instrn[2]           │ 0 (0x00000000) │ 171620685 │ │...
-                                                                │ 12  │ xsrch_instrn[0]           │ 0 (0x00000000) │ 171643549 │ │...
-                                                                │ 13  │ xsrch_instrn[1]           │ 0 (0x00000000) │ 171665978 │ │...
-                                                                │ 14  │ xsrch_instrn[2]           │ 0 (0x00000000) │ 171688261 │ │...
-                                                                │ 16  │ instissue_instrn[0]       │ 0 (0x00000000) │ 171710336 │ ╰...
+                           FPU                                                      INSTRN_THREAD
+╭─────┬────────────────────┬────────────────┬───────────╮  ╭─────┬───────────────────────────┬────────────────┬───────────╮
+│ ID  │ Counter            │ Value          │ ref_cnt   │  │ ID  │ Counter                   │ Value          │ ref_cnt   │
+├─────┼────────────────────┼────────────────┼───────────┤  ├─────┼───────────────────────────┼────────────────┼───────────┤
+│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 173508666 │  │ 0   │ cfg_instrn[0]             │ 0 (0x00000000) │ 173572130 │
+│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 173533758 │  │ 1   │ cfg_instrn[1]             │ 0 (0x00000000) │ 173595897 │
+│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 173557570 │  │ 2   │ cfg_instrn[2]             │ 0 (0x00000000) │ 173618900 │
+╰─────┴────────────────────┴────────────────┴───────────╯  │ 4   │ sync_instrn[0]            │ 0 (0x00000000) │ 173642106 │
+                                                           │ 5   │ sync_instrn[1]            │ 0 (0x00000000) │ 173664810 │
+                                                           │ 6   │ sync_instrn[2]            │ 0 (0x00000000) │ 173687116 │
+                                                           │ 8   │ thcon_instrn[0]           │ 0 (0x00000000) │ 173709702 │
+                                                           │ 9   │ thcon_instrn[1]           │ 0 (0x00000000) │ 173732088 │
+                                                           │ 10  │ thcon_instrn[2]           │ 0 (0x00000000) │ 173754451 │
+                                                           │ 12  │ xsrch_instrn[0]           │ 0 (0x00000000) │ 173776952 │
+                                                           │ 13  │ xsrch_instrn[1]           │ 0 (0x00000000) │ 173799161 │
+                                                           │ 14  │ xsrch_instrn[2]           │ 0 (0x00000000) │ 173821590 │
+                                                           │ 16  │ instissue_instrn[0]       │ 0 (0x00000000) │ 173844085 │
 ...
 ```
 Command:
@@ -1787,9 +1787,9 @@ Output:
 ╭─────┬────────────────────┬────────────────┬───────────╮
 │ ID  │ Counter            │ Value          │ ref_cnt   │
 ├─────┼────────────────────┼────────────────┼───────────┤
-│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 589762697 │
-│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 589787601 │
-│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 589811086 │
+│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 592808694 │
+│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 592833670 │
+│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 592857234 │
 ╰─────┴────────────────────┴────────────────┴───────────╯
 
 ```
