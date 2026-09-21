@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def create_simulation_cluster_descriptor(arch: tt_umd.ARCH, chip_ids: Sequence[int] = (0,)) -> str:
-    # TODO: Remove this method when UMD provides a proper way to get a cluster descriptor for simulations.
+    # TODO: Remove this method when UMD provides a proper way to get a cluster descriptor for simulations (UMD #3471).
     arch_lines = "\n".join(f"   {chip_id}: {arch}" for chip_id in chip_ids)
     chip_lines = "\n".join(f"   {chip_id}: [{chip_id},0,0,0]" for chip_id in chip_ids)
     mmio_lines = "\n".join(f"   - {chip_id}: {chip_id}" for chip_id in chip_ids)
