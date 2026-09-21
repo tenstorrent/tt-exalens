@@ -95,10 +95,6 @@ class UIState:
     def current_neo_ids(self) -> list[int]:
         return self.current_block.neo_ids
 
-    @property
-    def has_neos(self) -> bool:
-        return len(self.current_neo_ids) > 0
-
     def set_current_neo_id(self, neo_id: int | None) -> None:
         if neo_id is not None and neo_id not in self.current_neo_ids:
             util.WARN(

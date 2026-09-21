@@ -7,6 +7,8 @@ from functools import cached_property
 import traceback
 from types import ModuleType
 from typing import Callable
+from ttexalens.device import Device
+from ttexalens.coordinate import OnChipCoordinate
 from docopt import DocoptExit, docopt
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
@@ -33,8 +35,7 @@ class CommandMetadata:
     description: str | None = None
     context: list[str] | None = None
     common_option_names: list[CommonCommandOptions] | None = None
-    is_supported: Callable[[UIState], bool] | None = None
-    requirement: str | None = None
+    is_supported: Callable[[Device, OnChipCoordinate, int | None], bool] | None = None
     _module: ModuleType | None = None
 
     def supports(self, ui_state: UIState) -> bool:
@@ -42,7 +43,7 @@ class CommandMetadata:
         if self.is_supported is None:
             return True
         try:
-            return self.is_supported(ui_state)
+            return self.is_supported(ui_state.current_device, ui_state.current_location, ui_state.current_neo_id)
         except Exception:
             if util.DEBUG_ENABLED:
                 util.DEBUG(f"Support check for command '{self.long_name}' failed:\n{traceback.format_exc()}")
@@ -51,10 +52,7 @@ class CommandMetadata:
     def unsupported_message(self, name: str | None = None) -> str:
         """Message explaining that this command does not apply to the current state."""
         name = name or self.long_name or self.short_name
-        message = f"Command '{name}' is not supported for current state."
-        if self.requirement:
-            message += f" It requires: {self.requirement}."
-        return message
+        return f"Command '{name}' is not supported for current state."
 
     def copy(self):
         return CommandMetadata(
@@ -65,7 +63,6 @@ class CommandMetadata:
             description=self.description,
             common_option_names=self.common_option_names.copy() if self.common_option_names else None,
             is_supported=self.is_supported,
-            requirement=self.requirement,
             _module=self._module,
         )
 
