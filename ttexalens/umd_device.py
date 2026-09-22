@@ -20,7 +20,7 @@ class UmdDevice:
         active_eth_coords_on_mmio_chip: list[tuple[int, int]] = [],
         soc_descriptor: tt_umd.SocDescriptor | None = None,
         cluster_descriptor: tt_umd.ClusterDescriptor | None = None,
-        is_simulation: bool = False,
+        simulation_backend_type: tt_umd.SimulationBackendType | None = None,
     ):
         # IMPORTANT:
         # This class is a wrapper around tt_umd.TTDevice that allows us to use it over tt-exalens server.
@@ -34,8 +34,8 @@ class UmdDevice:
         self._soc_descriptor = soc_descriptor if soc_descriptor is not None else tt_umd.SocDescriptor(device)
         self._device_id = device_id
         self._unique_id = unique_id
+        self._simulation_backend_type = simulation_backend_type
         self._active_eth_coords_on_mmio_chip = active_eth_coords_on_mmio_chip  # in translated coords
-        self._is_simulation = is_simulation
         self.__device_coords = UmdDevice.initialize_device_coords_cache(self._soc_descriptor, self._arch)
 
         # On T3K we observed slower communication over default active ETH, so we try to switch to another active ETH if available.
@@ -109,11 +109,15 @@ class UmdDevice:
 
     @property
     def is_simulation(self) -> bool:
-        return self._is_simulation
+        return self._simulation_backend_type is not None
+
+    @property
+    def simulation_backend_type(self) -> tt_umd.SimulationBackendType | None:
+        return self._simulation_backend_type
 
     @property
     def can_use_dma(self) -> bool:
-        return self._arch != tt_umd.ARCH.BLACKHOLE and self._is_mmio_capable and not self._is_simulation
+        return self._arch != tt_umd.ARCH.BLACKHOLE and self._is_mmio_capable and not self.is_simulation
 
     def __select_noc_id(self, noc_id: tt_umd.NocId):
         UmdApi.select_noc_id(noc_id, self._arch)
@@ -241,7 +245,7 @@ class UmdDevice:
         except TimeoutDeviceRegisterError:
             raise
         except Exception:
-            if self._is_simulation or self._is_mmio_capable:
+            if self.is_simulation or self._is_mmio_capable:
                 raise
             if util.DEBUG_ENABLED:
                 util.DEBUG(f"Read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
@@ -311,7 +315,7 @@ class UmdDevice:
         except TimeoutDeviceRegisterError:
             raise
         except Exception:
-            if self._is_simulation or self._is_mmio_capable:
+            if self.is_simulation or self._is_mmio_capable:
                 raise
             if util.DEBUG_ENABLED:
                 util.DEBUG(f"Write failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")

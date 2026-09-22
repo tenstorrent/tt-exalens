@@ -284,7 +284,7 @@ class UmdApi:
                 unique_id,
                 soc_descriptor=tt_device.get_soc_descriptor(),
                 cluster_descriptor=self.cluster_descriptor,
-                is_simulation=True,
+                simulation_backend_type=simulation_connection.backend,
             )
             self.devices[chip_id] = wrapped_device
             self.devices[unique_id] = wrapped_device
