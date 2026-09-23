@@ -162,7 +162,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         # When the hart is halted it is parked in the debug ROM, so the write-back
         # PC tap no longer reflects the program PC (it shows the debug-ROM park
         # loop). In that case read the saved PC (dpc) through the debug module.
-        if self.is_halted():
+        if not self.is_debug_module_in_reset() and self.is_halted():
             return self._read_pc_through_debug_module()
         assert (
             self.register_store.read_register("TT_CLUSTER_CTRL_WB_PC_CTRL") == 1
