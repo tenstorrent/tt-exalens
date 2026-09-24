@@ -18,7 +18,11 @@ Interfacing device is local, through pybind.
 - `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
 - `noc_id` *(NocId)*: NOC used for all communication with the device, including topology discovery
 (NocId.NOC0, NocId.NOC1, or NocId.SYSTEM_NOC). Default is NocId.NOC1 except for Quasar which uses NocId.NOC0 as default.
-- `simulation_directory` *(str, optional)*: If specified, starts the simulator from the given build output directory.
+- `simulation_directory` *(str, optional)*: If specified, describes the simulator. Either a path to
+simulator to start (a libttsim .so file or an RTL simulator build output directory) or the socket
+directory of an already running simulation server to attach to. If omitted and no Tenstorrent hardware
+is found, tt-exalens attaches to a running simulation instead. If several are running it raises and
+asks for an explicit choice.
 - `safe_mode` *(bool)*: Whether to enable safe mode for memory access. Default is True.
 
 

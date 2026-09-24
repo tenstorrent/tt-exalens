@@ -31,7 +31,11 @@ def init_ttexalens(
         init_jtag (bool): Whether to initialize JTAG interface. Default is False.
         noc_id (NocId): NOC used for all communication with the device, including topology discovery
             (NocId.NOC0, NocId.NOC1, or NocId.SYSTEM_NOC). Default is NocId.NOC1 except for Quasar which uses NocId.NOC0 as default.
-        simulation_directory (str, optional): If specified, starts the simulator from the given build output directory.
+        simulation_directory (str, optional): If specified, describes the simulator. Either a path to
+            simulator to start (a libttsim .so file or an RTL simulator build output directory) or the socket
+            directory of an already running simulation server to attach to. If omitted and no Tenstorrent hardware
+            is found, tt-exalens attaches to a running simulation instead. If several are running it raises and
+            asks for an explicit choice.
         safe_mode (bool): Whether to enable safe mode for memory access. Default is True.
 
     Returns:
@@ -39,13 +43,11 @@ def init_ttexalens(
     """
     noc_id = to_noc_id(noc_id)
 
-    # Since Quasar is only available through simulation as workaround if we are using simulator we switch to NOC0
-    if simulation_directory is not None and noc_id == NocId.NOC1:
-        noc_id = NocId.NOC0
-
     umd_api = local_init(init_jtag=init_jtag, noc_id=noc_id, simulation_directory=simulation_directory)
 
-    return load_context(umd_api, FileAccessApi(), noc_id, noc_failover=noc_failover, safe_mode=safe_mode)
+    return load_context(
+        umd_api, FileAccessApi(), umd_api.initialization_noc_id, noc_failover=noc_failover, safe_mode=safe_mode
+    )
 
 
 def init_ttexalens_remote(
