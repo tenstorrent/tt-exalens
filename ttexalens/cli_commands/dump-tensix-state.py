@@ -54,7 +54,6 @@ from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOp
 
 
 def is_supported(device: Device, location: OnChipCoordinate, neo_id: int | None = None) -> bool:
-    print(device.get_block_type(location))
     return device.get_block_type(location) == "functional_workers"
 
 
