@@ -65,12 +65,18 @@ from ttexalens.perf_counters import (
 from ttexalens.rich_formatters import formatter
 from ttexalens.uistate import UIState
 
+
+def is_supported(device: Device, location: OnChipCoordinate, neo_id: int | None = None) -> bool:
+    return location.noc_block.get_perf_counters(neo_id) is not None
+
+
 command_metadata = CommandMetadata(
     short_name="pcnt",
     long_name="perf-counters",
     type="low-level",
     description=__doc__,
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
+    is_supported=is_supported,
 )
 
 

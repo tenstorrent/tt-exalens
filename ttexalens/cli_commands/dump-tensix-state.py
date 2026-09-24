@@ -52,6 +52,11 @@ from ttexalens.util import (
 )
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
+
+def is_supported(device: Device, location: OnChipCoordinate, neo_id: int | None = None) -> bool:
+    return device.get_block_type(location) == "functional_workers"
+
+
 command_metadata = CommandMetadata(
     short_name="tensix",
     type="low-level",
@@ -62,6 +67,7 @@ command_metadata = CommandMetadata(
         CommonCommandOptions.Verbose,
         CommonCommandOptions.Neo,
     ],
+    is_supported=is_supported,
 )
 
 possible_groups = ["all", "alu", "pack", "unpack", "gpr", "rwc", "adc"]

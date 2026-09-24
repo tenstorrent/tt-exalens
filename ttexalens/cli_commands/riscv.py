@@ -55,6 +55,11 @@ from ttexalens.uistate import UIState
 from ttexalens import util as util
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
+
+def is_supported(device: Device, location: OnChipCoordinate, neo_id: int | None = None) -> bool:
+    return len(location.noc_block.get_riscs(neo_id)) > 0
+
+
 command_metadata = CommandMetadata(
     short_name="rv",
     type="low-level",
@@ -65,6 +70,7 @@ command_metadata = CommandMetadata(
         CommonCommandOptions.Risc,
         CommonCommandOptions.Neo,
     ],
+    is_supported=is_supported,
 )
 
 

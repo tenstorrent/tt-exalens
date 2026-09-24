@@ -32,11 +32,17 @@ from ttexalens import util
 import ttexalens.tt_exalens_lib as lib
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
+
+def is_supported(device: Device, location: OnChipCoordinate, neo_id: int | None = None) -> bool:
+    return len(location.noc_block.get_riscs(neo_id)) > 0
+
+
 command_metadata = CommandMetadata(
     short_name="bt",
     type="low-level",
     description=__doc__,
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
+    is_supported=is_supported,
 )
 
 

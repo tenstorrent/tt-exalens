@@ -64,12 +64,18 @@ from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
+
+def is_supported(device: Device, location: OnChipCoordinate, neo_id: int | None = None) -> bool:
+    return location.noc_block.get_debug_bus(neo_id) is not None
+
+
 command_metadata = CommandMetadata(
     short_name="dbus",
     long_name="debug-bus",
     type="low-level",
     description=__doc__,
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
+    is_supported=is_supported,
 )
 
 

@@ -48,12 +48,18 @@ from ttexalens.uistate import UIState
 from ttexalens.util import INFO, WARN
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
+
+def is_supported(device: Device, location: OnChipCoordinate, neo_id: int | None = None) -> bool:
+    return device.get_block_type(location) == "functional_workers"
+
+
 command_metadata = CommandMetadata(
     short_name="reg",
     long_name="tensix-reg",
     type="low-level",
     description=__doc__,
     common_option_names=[CommonCommandOptions.Device, CommonCommandOptions.Location, CommonCommandOptions.Neo],
+    is_supported=is_supported,
 )
 
 # Possible values
