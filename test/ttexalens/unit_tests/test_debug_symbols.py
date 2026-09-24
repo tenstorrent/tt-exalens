@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from typing import Callable
+import traceback
 import unittest
 
 import tt_umd
@@ -10,7 +11,7 @@ from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.elf import ElfFile, ElfVariable
+from ttexalens.elf import ElfFile, ElfVariable, FrameInspection
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.memory_access import MemoryAccess, create_memory_access
 from ttexalens.exceptions import DataLossError, RestrictedMemoryAccessError, SymbolNotFoundError, TypeMismatchError
@@ -745,10 +746,47 @@ class TestDebugSymbols(unittest.TestCase):
 
         # These methods all have fallback, but for Timeout error we should not swallow the error
         if expected_error == TimeoutDeviceRegisterError:
+            self.assertRaises(expected_error, lambda: g_global_struct.c == list(range(16)))
             self.assertRaises(expected_error, lambda: str(g_global_struct_var))
             self.assertRaises(expected_error, lambda: repr(g_global_struct_var))
             self.assertRaises(expected_error, lambda: hash(g_global_struct_var))
             self.assertRaises(expected_error, lambda: format(g_global_struct_var, "x"))
+
+    def test_try_read_word_propagates_hardware_error(self):
+        """A hung NOC must not be silently unwound into a plausible-looking frame.
+
+        FrameInspection.read_memory goes through MemoryAccess::try_read_word,
+        whose catch-all used to turn every failure into None. The native layer
+        carries the Python exception through C++ and raises that same object
+        again, so nothing about it may change in transit: callers (ttexalens
+        itself and tt-metal's triage) read its attributes.
+        """
+        frame = FrameInspection(TimeoutMemoryAccess())
+        # Not assertRaises: it stores the exception with_traceback(None).
+        try:
+            frame.read_memory(0x10000, 4)
+        except TimeoutDeviceRegisterError as error:
+            self.assertEqual(0x10000, error.address)
+            self.assertEqual(4, error.size)
+            self.assertTrue(error.is_read)
+            # The live UMD object survived the trip, rather than being rebuilt
+            # from a copy of the payload.
+            self.assertIsInstance(error.coord, tt_umd.CoreCoord)
+            # Same for the traceback: it still points at the frame that raised,
+            # not at the native boundary that carried it.
+            frames = [frame_summary.name for frame_summary in traceback.extract_tb(error.__traceback__)]
+            self.assertIn("read", frames)
+        else:
+            self.fail("read_memory swallowed the timeout")
+
+    def test_try_read_word_swallows_recoverable_errors(self):
+        """The frame unwinder probes addresses that may not be readable.
+
+        Those failures must still degrade to None, or every callstack over a
+        partially saved frame would start raising.
+        """
+        frame = FrameInspection(RiscHaltErrorMemoryAccess())
+        self.assertIsNone(frame.read_memory(0x10000, 4))
 
     def test_elf_variable_type_errors(self):
         """Test that all operators handle type incompatibility correctly"""

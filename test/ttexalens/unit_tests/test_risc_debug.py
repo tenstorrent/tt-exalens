@@ -941,7 +941,7 @@ class TestDebugging(unittest.TestCase):
         # Layout: ebreak@0, `padding` NOPs, LUI(addr), LUI(value), SW, while(true)@(16 + 4*padding).
         # Watch a NOP within the padding and the final infinite loop.
         loop_offset = 16 + 4 * self.program_writer.ebreak_nop_padding
-        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(0, self.core_sim.program_base_address + 12)
+        self.core_sim.debug_hardware.set_watchpoint_on_pc_address(0, self.core_sim.program_base_address + 8)
         self.core_sim.debug_hardware.set_watchpoint_on_pc_address(1, self.core_sim.program_base_address + loop_offset)
 
         # Continue and verify that we hit first watchpoint

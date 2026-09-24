@@ -10,7 +10,7 @@ from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.quasar.baby_risc_debug import QuasarBabyRiscDebug
-from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import debug_bus_signal_map
+from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import debug_bus_signal_map, group_map
 from ttexalens.hardware.quasar.functional_neo_registers import register_map
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from typing import TYPE_CHECKING
@@ -27,9 +27,6 @@ from ttexalens.register_store import (
 
 if TYPE_CHECKING:
     from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
-
-# TODO(#650) Once signals are grouped, we can remove type hint
-group_map: dict[str, tuple[int, int]] = {}
 
 
 def get_register_base_address_callable(
