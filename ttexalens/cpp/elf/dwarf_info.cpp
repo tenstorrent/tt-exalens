@@ -163,6 +163,11 @@ DwarfDiePtr DwarfInfo::get_die_by_name(std::string_view name,
         auto current = cu.get_die()->find_child_by_name(parts[0], filter_for(0));
         bool matched_all = static_cast<bool>(current);
         for (size_t i = 1; matched_all && i < parts.size(); ++i) {
+            if (current->get_tag() == DwarfDieTag::typedef_) {
+                if (auto aliased = current->get_resolved_type()) {
+                    current = std::move(aliased);
+                }
+            }
             auto next = current->find_child_by_name(parts[i], filter_for(i));
             if (!next) {
                 matched_all = false;

@@ -179,6 +179,7 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(0x22222222, g_global_struct.uint_pointer[1].read_value())
         self.assertEqual(2, g_global_struct.enum_class_field.read_value())
         self.assertEqual(20, g_global_struct.enum_type_field.read_value())
+        self.assertEqual(1, g_global_struct.typedef_enum_field.read_value())
         self.assertEqual(-123456789, g_global_struct.signed_int_field.read_value())
         # A char array is read as its text (it lives inside the struct, so no extra memory read).
         self.assertEqual("Hello, struct!", g_global_struct.string_buffer.read_value())
@@ -233,6 +234,8 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual("EnumClass::VALUE_C", str(g_global_struct.enum_class_field))
         self.assertEqual(20, g_global_struct.enum_type_field)
         self.assertEqual("EnumType::TYPE_Y", str(g_global_struct.enum_type_field))
+        self.assertEqual(1, g_global_struct.typedef_enum_field)
+        self.assertEqual("TypedefEnum::TD_W", str(g_global_struct.typedef_enum_field))
         self.assertEqual(-123456789, g_global_struct.signed_int_field)
         # A char array compares as its text (it lives inside the struct, so no extra memory read).
         self.assertEqual("Hello, struct!", g_global_struct.string_buffer)
@@ -628,6 +631,15 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertRaises(
             Exception, g_global_struct.enum_class_field.write_value, 0xFFFFFFFFFFFFFFFF
         )  # Overflow uint64 on byte enum
+
+        # Check typedef enum
+        enum_value = self.parsed_elf.get_enum_value("TypedefEnum::TD_E")
+        assert enum_value is not None
+        self.assertEqual(enum_value, 2)
+        g_global_struct.typedef_enum_field.write_value(enum_value)
+        self.assertEqual(2, g_global_struct.typedef_enum_field)
+        self.assertEqual("TypedefEnum::TD_E", str(g_global_struct.typedef_enum_field))
+        g_global_struct.typedef_enum_field.write_value(1)  # Restore original value
 
         # C-style string: write into the char[32] buffer and read it back.
         g_global_struct.string_buffer.write_value("rewritten string")

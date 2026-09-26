@@ -38,6 +38,35 @@ std::optional<uint64_t> attr_as_uint(const DwarfAttribute* attr) {
     return std::nullopt;
 }
 
+// Name of the typedef that names an unnamed struct / class / union / enum
+// (`typedef enum {...} Name;`), which C++ also uses as the type's name for
+// linkage. Empty when no typedef in the same scope refers to `type`.
+std::string_view find_naming_typedef(const DwarfDie& type) {
+    switch (type.get_tag()) {
+        case DwarfDieTag::structure_type:
+        case DwarfDieTag::class_type:
+        case DwarfDieTag::union_type:
+        case DwarfDieTag::enumeration_type:
+            break;
+        default:
+            return {};
+    }
+    auto scope = type.get_parent();
+    if (!scope) {
+        return {};
+    }
+    for (auto child = scope->get_first_child(); child; child = child->get_next_sibling()) {
+        if (child->get_tag() == DwarfDieTag::typedef_) {
+            // DIE references are stored as global .debug_info offsets.
+            const auto* target = child->get_attribute_value<uint64_t>(DwarfAttributeTag::type);
+            if (target != nullptr && *target == type.get_offset()) {
+                return child->get_name();
+            }
+        }
+    }
+    return {};
+}
+
 }  // namespace
 
 DwarfDie::DwarfDie(DwarfDieHandle die, std::weak_ptr<details::DwarfInfoImpl> info)
@@ -184,6 +213,8 @@ std::string DwarfDie::get_readable_name() const {
             return origin->get_path();
         }
         return origin->get_readable_name();
+    } else if (auto typedef_name = find_naming_typedef(*this); !typedef_name.empty()) {
+        return std::string(typedef_name);
     } else {
         return "tag (" + std::to_string(static_cast<uint64_t>(get_tag())) + ") at offset " +
                std::to_string(get_offset());
