@@ -14,6 +14,7 @@
 #include <utility>
 
 #include "bindings.hpp"
+#include "dwarf_cu.hpp"
 #include "dwarf_die.hpp"
 #include "dwarf_frame.hpp"
 
@@ -205,16 +206,23 @@ void bind_dwarf_die(nb::module_& m) {
                      })
         .def_prop_ro("offset", &DwarfDie::get_offset)
         .def_prop_ro("tag", &DwarfDie::get_tag)
+        .def_prop_ro("cu", &DwarfDie::get_cu, nb::rv_policy::reference_internal,
+                     nb::sig("def cu(self) -> DwarfCompileUnit | None"))
         .def_prop_ro("attributes", &DwarfDie::get_attributes, nb::rv_policy::reference_internal)
+        .def_prop_ro("is_type", &DwarfDie::is_type)
         .def_prop_ro("is_signed_type", &DwarfDie::is_signed_type)
+        .def_prop_ro("is_char_type", &DwarfDie::is_char_type)
+        .def_prop_ro("is_string_type", &DwarfDie::is_string_type)
         .def_prop_ro("is_declaration", &DwarfDie::is_declaration)
         .def("get_attribute", &DwarfDie::get_attribute, nb::arg("attribute_tag"), nb::rv_policy::reference_internal,
              nb::sig("def get_attribute(self, attribute_tag: DwarfAttributeTag) -> DwarfAttribute | None"))
         .def("has_attribute", &DwarfDie::has_attribute, nb::arg("attribute_tag"))
+        .def("get_readable_name", &DwarfDie::get_readable_name)
         .def("get_path", &DwarfDie::get_path)
         .def("get_search_path", &DwarfDie::get_search_path)
         .def("get_size", &DwarfDie::get_size)
         .def("get_address", &DwarfDie::get_address)
+        .def("get_data_member_location", &DwarfDie::get_data_member_location)
         .def(
             "get_constant_value",
             [](const DwarfDie& d) -> nb::object {

@@ -70,10 +70,12 @@ NB_MODULE(_native_ttexalens, m) {
     // populated before any binding that mentions them.
     bind_dwarf_attribute(m);
     bind_dwarf_die(m);
+    bind_dwarf_cu(m);
     bind_memory_access(m);
     bind_elf_file(m);
     bind_dwarf_info(m);
     bind_dwarf_frame(m);
+    bind_dwarf_location(m);
     bind_variable(m);
     bind_callstack(m);
 }

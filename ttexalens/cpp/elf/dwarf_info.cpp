@@ -32,6 +32,8 @@ DwarfInfo::~DwarfInfo() = default;
 DwarfInfo::DwarfInfo(DwarfInfo&&) noexcept = default;
 DwarfInfo& DwarfInfo::operator=(DwarfInfo&&) noexcept = default;
 
+std::span<const DwarfCompileUnit> DwarfInfo::get_compile_units() const { return impl->get_cus(); }
+
 std::optional<DwarfFileLine> DwarfInfo::find_file_line_by_address(uint64_t address) const {
     const Dwarf_Addr target = static_cast<Dwarf_Addr>(address);
     const auto& ranges = impl->get_line_ranges();
@@ -217,6 +219,10 @@ std::optional<FrameDescription> DwarfInfo::get_frame_description(uint64_t pc,
 }
 
 const ElfSymbol* DwarfInfo::find_symbol_by_name(std::string_view name) const { return impl->find_symbol_by_name(name); }
+
+const ElfSymbol* DwarfInfo::find_symbol_by_demangled_name(std::string_view demangled_name) const {
+    return impl->find_symbol_by_demangled_name(demangled_name);
+}
 
 std::optional<uint64_t> DwarfInfo::get_enum_value(std::string_view name) const {
     auto die = get_die_by_name(name);

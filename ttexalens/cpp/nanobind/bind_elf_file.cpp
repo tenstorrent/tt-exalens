@@ -50,6 +50,7 @@ class ElfSectionIterator {
 void bind_elf_file(nb::module_& m) {
     nb::class_<ElfSection>(m, "ElfSection")
         .def_prop_ro("name", &ElfSection::name)
+        .def_prop_ro("index", &ElfSection::index)
         .def_prop_ro("address", &ElfSection::address)
         .def_prop_ro("size", &ElfSection::size)
         .def_prop_ro(
@@ -91,6 +92,7 @@ void bind_elf_file(nb::module_& m) {
 
     nb::class_<ElfSymbol>(m, "ElfSymbol")
         .def_ro("name", &ElfSymbol::name)
+        .def_ro("demangled_name", &ElfSymbol::demangled_name)
         .def_ro("value", &ElfSymbol::value)
         .def_ro("size", &ElfSymbol::size)
         .def_ro("type", &ElfSymbol::type)

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <nanobind/nanobind.h>
+#include <nanobind/stl/optional.h>
 #include <nanobind/stl/shared_ptr.h>
 #include <nanobind/trampoline.h>
 
@@ -141,7 +142,8 @@ void bind_memory_access(nb::module_& m) {
             nb::arg("address"), nb::arg("data"),
             nb::sig("def write(self, address: int, data: bytes | bytearray | memoryview) -> None"))
         .def("read_register", &MemoryAccess::read_register, nb::arg("register_index"))
-        .def("write_register", &MemoryAccess::write_register, nb::arg("register_index"), nb::arg("value"));
+        .def("write_register", &MemoryAccess::write_register, nb::arg("register_index"), nb::arg("value"))
+        .def("try_read_word", &MemoryAccess::try_read_word, nb::arg("address"), nb::arg("pointer_size"));
 
     // MemoryAccess that raises on every operation. There's no per-instance
     // state, so a single process-wide shared_ptr (NoMemoryAccess.instance())
