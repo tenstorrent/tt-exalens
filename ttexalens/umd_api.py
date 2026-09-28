@@ -2,7 +2,9 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
+from collections.abc import Sequence
 import os
+from pathlib import Path
 import Pyro5.api
 import threading
 import tt_umd
@@ -10,36 +12,46 @@ from typing import TYPE_CHECKING
 
 from ttexalens import util as util
 from ttexalens.context import NocId
+from ttexalens.exceptions import TTFatalException
 
 if TYPE_CHECKING:
     from ttexalens.umd_device import UmdDevice
 
 
-def create_simulation_cluster_descriptor(arch: tt_umd.ARCH) -> str:
+def create_simulation_cluster_descriptor(arch: tt_umd.ARCH, chip_ids: Sequence[int] = (0,)) -> str:
+    # TODO: Remove this method when UMD provides a proper way to get a cluster descriptor for simulations (UMD #3471).
+    arch_lines = "\n".join(f"   {chip_id}: {arch}" for chip_id in chip_ids)
+    chip_lines = "\n".join(f"   {chip_id}: [{chip_id},0,0,0]" for chip_id in chip_ids)
+    mmio_lines = "\n".join(f"   - {chip_id}: {chip_id}" for chip_id in chip_ids)
+    harvesting_lines = "\n".join(f"   {chip_id}: {{noc_translation: false, harvest_mask: 0}}," for chip_id in chip_ids)
+    board_lines = "\n".join(
+        f"    -\n"
+        f"        - board_id: {hex(0x36000000000 + chip_id)}\n"
+        f"        - board_type: UNKNOWN\n"
+        f"        - chips:\n"
+        f"            - {chip_id}"
+        for chip_id in chip_ids
+    )
     return f"""\
 arch:
-   0: {arch}
+{arch_lines}
 
 chips:
-   0: [0,0,0,0]
+{chip_lines}
 
 ethernet_connections: []
 
 chips_with_mmio:
-   - 0: 0
+{mmio_lines}
 
 # harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first tensix row; bit 1 = second tensix row etc...
 harvesting: {{
-   0: {{noc_translation: false, harvest_mask: 0}},
+{harvesting_lines}
 }}
 
 # This value will be null if the boardtype is unknown, should never happen in practice but to be defensive it would be useful to throw an error on this case.
 boards:
-    -
-        - board_id: 0x36000000000
-        - board_type: UNKNOWN
-        - chips:
-            - 0
+{board_lines}
 io_device_type: SIMULATION
 """
 
@@ -83,6 +95,7 @@ class UmdApi:
         self.devices: dict[int, UmdDevice] = {}
         self.reset_lock = threading.Lock()
         self._initialization_noc_id = noc_id
+        self.discovery_options: tt_umd.TopologyDiscoveryOptions | None = None
 
         # Respect UMD's existing environment variable for logging level.
         # If it's not set, set it based on ttexalens' verbosity level.
@@ -100,37 +113,7 @@ class UmdApi:
 
         UmdApi.select_noc_id(noc_id)
         if simulation_directory is not None:
-            tt_device: tt_umd.TTDevice
-            rtl_simulation = False
-            if simulation_directory.endswith(".so"):
-                tt_device = tt_umd.TTSimTTDevice.create(simulation_directory)
-            else:
-                tt_device = tt_umd.RtlSimulationTTDevice.create(simulation_directory)
-                rtl_simulation = True
-            soc_descriptor = tt_device.get_soc_descriptor()
-            if rtl_simulation:
-                # Fix for simulator: write an infinite-loop stub to each Tensix core's reset vector
-                # and take all cores out of reset. Downstream test harnesses then re-assert specific
-                # cores, load their ELFs, and re-deassert. This keeps cores from executing garbage
-                # between tt-exalens init and the harness taking over.
-                for core in soc_descriptor.get_cores(tt_umd.CoreType.TENSIX):
-                    core_noc0 = soc_descriptor.translate_coord_to(core, tt_umd.CoordSystem.NOC0)
-                    if tt_device.get_arch() == tt_umd.ARCH.BLACKHOLE:
-                        tt_device.noc_write32(core_noc0.x, core_noc0.y, 0, 0x6F)
-                        tt_device.deassert_risc_reset(core, tt_umd.RiscType.BRISC)
-                    elif tt_device.get_arch() == tt_umd.ARCH.QUASAR:
-                        tt_device.deassert_risc_reset(core, tt_umd.RiscType.ALL)
-            cluster_descriptor_content = create_simulation_cluster_descriptor(tt_device.get_arch())
-            self.cluster_descriptor = tt_umd.ClusterDescriptor.create_from_yaml_content(cluster_descriptor_content)
-            self.devices[0] = UmdDevice(
-                self,
-                tt_device,
-                0,
-                0,
-                soc_descriptor=soc_descriptor,
-                cluster_descriptor=self.cluster_descriptor,
-                is_simulation=True,
-            )
+            self._init_simulation(simulation_directory)
         else:
             self.discovery_options = tt_umd.TopologyDiscoveryOptions()
             self.discovery_options.cmfw_mismatch_action = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
@@ -156,7 +139,30 @@ class UmdApi:
                         f"All {len(unhealthy_devices)} detected Tenstorrent device(s) failed to initialize and are "
                         f"unhealthy: {_format_device_health(unhealthy_devices, health_errors)}"
                     )
-                raise RuntimeError("No Tenstorrent devices were detected on this system.")
+
+                # No hardware devices, try to fall back to a simulation that is already running.
+                servers = tt_umd.SimulationConnector.list_servers()
+                if not servers:
+                    raise RuntimeError(
+                        "No Tenstorrent devices were detected on this system, and no UMD simulation servers "
+                        "are running."
+                    )
+                if len(servers) > 1:
+                    listed = ", ".join(str(server.directory) for server in servers)
+                    raise RuntimeError(
+                        f"No Tenstorrent devices were detected on this system, and {len(servers)} simulation "
+                        f"servers are running. Choose one with -s <directory>: {listed}"
+                    )
+
+                simulation_directory = str(servers[0].directory)
+                if util.VERBOSE_ENABLED:
+                    util.VERBOSE(
+                        f"No Tenstorrent devices were detected; attaching to the simulation server at "
+                        f"'{simulation_directory}'."
+                    )
+                self.discovery_options = None
+                self._init_simulation(simulation_directory)
+                return
 
             # Setup used devices
             eth_connections = self.cluster_descriptor.get_ethernet_connections()
@@ -207,11 +213,89 @@ class UmdApi:
                 )
             tt_umd.MmioTimeoutConfig.set_op_timeout(0.002)  # 2ms timeout for MMIO operations
 
+    def _init_simulation(self, simulation_directory: str) -> None:
+        from ttexalens.umd_device import UmdDevice
+
+        path = Path(simulation_directory).expanduser()
+        if not path.exists():
+            raise TTFatalException(
+                f"Simulator path '{simulation_directory}' does not exist. Pass a simulator build to start "
+                f"one (a libttsim .so file or an RTL build directory), or a server directory to attach to a "
+                f"running simulation (see 'tt-exalens --sim-list')."
+            )
+
+        options = tt_umd.SimulationConnectorOptions()
+        options.simulator_directory = path
+        options.serve_over_sockets = True
+        try:
+            simulation_connection, simulation_devices = tt_umd.SimulationConnector.discover(options)
+        except Exception as e:
+            raise TTFatalException(f"Failed to open simulation at '{path}': {e}") from e
+
+        if util.DEBUG_ENABLED:
+            util.DEBUG(
+                f"Simulation: role={simulation_connection.role.name}, "
+                f"backend={simulation_connection.backend.name}, arch={simulation_connection.arch}, "
+                f"chips={sorted(simulation_devices.keys())}"
+            )
+
+        # Quasar has no NOC1, so fall back to NOC0.
+        # TODO: Current UMD issue #3480 requires us to always fall back to NOC0.
+        if self._initialization_noc_id == NocId.NOC1:
+            self._initialization_noc_id = NocId.NOC0
+            UmdApi.select_noc_id(NocId.NOC0)
+
+        # Check if we need to fix RTL simulator that we started.
+        if (
+            simulation_connection.role == tt_umd.SimulationConnector.Role.HOST
+            and simulation_connection.backend == tt_umd.SimulationBackendType.RTL
+        ):
+            # Fix for simulator: write an infinite-loop stub to each Tensix core's reset vector
+            # and take all cores out of reset. Downstream test harnesses then re-assert specific
+            # cores, load their ELFs, and re-deassert. This keeps cores from executing garbage
+            # between tt-exalens init and the harness taking over.
+            for tt_device in simulation_devices.values():
+                assert isinstance(
+                    tt_device, tt_umd.RtlSimulationTTDevice
+                ), f"Expected an RTL simulation device, got {type(tt_device).__name__}."
+                soc_descriptor = tt_device.get_soc_descriptor()
+                for core in soc_descriptor.get_cores(tt_umd.CoreType.TENSIX):
+                    core_noc0 = soc_descriptor.translate_coord_to(core, tt_umd.CoordSystem.NOC0)
+                    if simulation_connection.arch == tt_umd.ARCH.BLACKHOLE:
+                        tt_device.noc_write32(core_noc0.x, core_noc0.y, 0, 0x6F)
+                        tt_device.deassert_risc_reset(core, tt_umd.RiscType.BRISC)
+                    elif simulation_connection.arch == tt_umd.ARCH.QUASAR:
+                        tt_device.deassert_risc_reset(core, tt_umd.RiscType.ALL)
+
+        cluster_descriptor_content = create_simulation_cluster_descriptor(
+            simulation_connection.arch, sorted(simulation_devices.keys())
+        )
+        self.cluster_descriptor = tt_umd.ClusterDescriptor.create_from_yaml_content(cluster_descriptor_content)
+
+        unique_ids = self.cluster_descriptor.get_chip_unique_ids()
+        for chip_id, tt_device in simulation_devices.items():
+            unique_id = unique_ids.get(chip_id, None)
+            assert unique_id is not None, f"Unique ID for simulated device {chip_id} not found."
+
+            wrapped_device = UmdDevice(
+                self,
+                tt_device,
+                chip_id,
+                unique_id,
+                soc_descriptor=tt_device.get_soc_descriptor(),
+                cluster_descriptor=self.cluster_descriptor,
+                simulation_backend_type=simulation_connection.backend,
+            )
+            self.devices[chip_id] = wrapped_device
+            self.devices[unique_id] = wrapped_device
+
     @property
     def initialization_noc_id(self) -> NocId:
         return self._initialization_noc_id
 
     def _reinit_devices_after_sigbus(self):
+        if self.discovery_options is None:
+            raise RuntimeError("SIGBUS recovery is not supported for simulation sessions.")
         with self.reset_lock:
             cluster_descriptor, devices = tt_umd.TopologyDiscovery.discover(
                 self.discovery_options, tt_umd.IODeviceType.PCIe
@@ -252,10 +336,6 @@ class UmdApi:
 
 
 def local_init(init_jtag=False, noc_id: NocId = NocId.NOC1, simulation_directory: str | None = None):
-    if simulation_directory is not None:
-        noc_id = (
-            NocId.NOC0
-        )  # Quasar is only available through simulation and does not have NOC1, so we switch to NOC0 as a workaround.
     communicator = UmdApi(init_jtag=init_jtag, noc_id=noc_id, simulation_directory=simulation_directory)
     if util.VERBOSE_ENABLED:
         util.VERBOSE("Device opened successfully.")
