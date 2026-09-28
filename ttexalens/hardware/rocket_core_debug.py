@@ -130,4 +130,5 @@ class RocketCoreDebug(RiscDebug):
         raise NotImplementedError("get_data_private_memory must be implemented by subclasses of RocketCoreDebug")
 
     def get_code_private_memory(self) -> MemoryBlock | None:
-        raise NotImplementedError("get_code_private_memory must be implemented by subclasses of RocketCoreDebug")
+        # We don't have special place like WH NCRISC where code private memory is located, so return None.
+        return None
