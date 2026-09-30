@@ -62,19 +62,28 @@ def parse_register_value(value: str) -> int:
 
 @dataclass
 class RegisterDescription:
-    base_address: DeviceAddress | None = None
-    offset: int = 0
-    mask: int = 0xFFFFFFFF
-    shift: int = 0
-    data_type: REGISTER_DATA_TYPE = REGISTER_DATA_TYPE.INT_VALUE
-    size: int = 4  # Register size in bytes; 64-bit registers (size=8) are always accessed as a whole
+    base_address: DeviceAddress | None
+    offset: int
+    mask: int
+    shift: int
+    data_type: REGISTER_DATA_TYPE
+    size: int
 
-    def __post_init__(self):
-        if self.size not in (4, 8):
-            raise ValueError(f"Invalid register size {self.size}. Register size must be 4 or 8 bytes.")
-        if self.size == 8 and self.mask == 0xFFFFFFFF:
-            # Default mask covers the whole 64-bit register
-            self.mask = 0xFFFFFFFFFFFFFFFF
+    def __init__(
+        self,
+        base_address: DeviceAddress | None = None,
+        offset: int = 0,
+        mask: int | None = None,
+        shift: int = 0,
+        data_type: REGISTER_DATA_TYPE = REGISTER_DATA_TYPE.INT_VALUE,
+        size: int = 4,
+    ):
+        self.base_address = base_address
+        self.offset = offset
+        self.shift = shift
+        self.data_type = data_type
+        self.size = size
+        self.mask = mask if mask is not None else (1 << (self.size * 8)) - 1
 
     @property
     def full_mask(self) -> int:
@@ -129,7 +138,6 @@ class ConfigurationRegisterDescription(RegisterDescription):
     index: int = 0
 
     def __post_init__(self):
-        super().__post_init__()
         self.offset = self.offset + self.index * 4
 
 
@@ -139,7 +147,6 @@ class TensixGeneralPurposeRegisterDescription(RegisterDescription):
     thread_id: int = 0
 
     def __post_init__(self):
-        super().__post_init__()
         self.offset = self.offset + self.index * 4
 
 
@@ -237,25 +244,25 @@ class RegisterStore:
                 f"Unknown register name '{register_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device.id}."
             )
 
-    def get_register_noc_address(self, register_name: str) -> int | None:
-        register = self._get_whole_32bit_register_description(register_name)
-        return register.noc_address
-
-    def get_register_private_address(self, register_name: str) -> int | None:
-        register = self._get_whole_32bit_register_description(register_name)
-        return register.private_address
-
-    def get_register_bar0_address(self, register_name: str) -> int | None:
-        register = self._get_whole_32bit_register_description(register_name)
-        return register.bar0_address
-
-    def _get_whole_32bit_register_description(self, register_name: str) -> RegisterDescription:
+    def _get_32_bit_register_description(self, register_name: str) -> RegisterDescription:
         register = self.get_register_description(register_name)
         assert (
             register.size == 4
         ), f"Register {register_name} is {register.size * 8}-bit, use read_register/write_register"
         assert register.mask == 0xFFFFFFFF
         return register
+
+    def get_register_noc_address(self, register_name: str) -> int | None:
+        register = self._get_32_bit_register_description(register_name)
+        return register.noc_address
+
+    def get_register_private_address(self, register_name: str) -> int | None:
+        register = self._get_32_bit_register_description(register_name)
+        return register.private_address
+
+    def get_register_bar0_address(self, register_name: str) -> int | None:
+        register = self._get_32_bit_register_description(register_name)
+        return register.bar0_address
 
     def parse_register_description(self, input_string: str) -> tuple[RegisterDescription, str]:
         # Check if the input string is a register name
