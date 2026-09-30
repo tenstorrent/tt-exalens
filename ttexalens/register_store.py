@@ -67,6 +67,18 @@ class RegisterDescription:
     mask: int = 0xFFFFFFFF
     shift: int = 0
     data_type: REGISTER_DATA_TYPE = REGISTER_DATA_TYPE.INT_VALUE
+    size: int = 4  # Register size in bytes; 64-bit registers (size=8) are always accessed as a whole
+
+    def __post_init__(self):
+        if self.size not in (4, 8):
+            raise ValueError(f"Invalid register size {self.size}. Register size must be 4 or 8 bytes.")
+        if self.size == 8 and self.mask == 0xFFFFFFFF:
+            # Default mask covers the whole 64-bit register
+            self.mask = 0xFFFFFFFFFFFFFFFF
+
+    @property
+    def full_mask(self) -> int:
+        return (1 << (self.size * 8)) - 1
 
     @property
     def noc_address(self) -> int | None:
@@ -117,6 +129,7 @@ class ConfigurationRegisterDescription(RegisterDescription):
     index: int = 0
 
     def __post_init__(self):
+        super().__post_init__()
         self.offset = self.offset + self.index * 4
 
 
@@ -126,6 +139,7 @@ class TensixGeneralPurposeRegisterDescription(RegisterDescription):
     thread_id: int = 0
 
     def __post_init__(self):
+        super().__post_init__()
         self.offset = self.offset + self.index * 4
 
 
@@ -224,19 +238,24 @@ class RegisterStore:
             )
 
     def get_register_noc_address(self, register_name: str) -> int | None:
-        register = self.get_register_description(register_name)
-        assert register.mask == 0xFFFFFFFF
+        register = self._get_whole_32bit_register_description(register_name)
         return register.noc_address
 
     def get_register_private_address(self, register_name: str) -> int | None:
-        register = self.get_register_description(register_name)
-        assert register.mask == 0xFFFFFFFF
+        register = self._get_whole_32bit_register_description(register_name)
         return register.private_address
 
     def get_register_bar0_address(self, register_name: str) -> int | None:
-        register = self.get_register_description(register_name)
-        assert register.mask == 0xFFFFFFFF
+        register = self._get_whole_32bit_register_description(register_name)
         return register.bar0_address
+
+    def _get_whole_32bit_register_description(self, register_name: str) -> RegisterDescription:
+        register = self.get_register_description(register_name)
+        assert (
+            register.size == 4
+        ), f"Register {register_name} is {register.size * 8}-bit, use read_register/write_register"
+        assert register.mask == 0xFFFFFFFF
+        return register
 
     def parse_register_description(self, input_string: str) -> tuple[RegisterDescription, str]:
         # Check if the input string is a register name
@@ -286,10 +305,14 @@ class RegisterStore:
         if isinstance(register, str):
             register = self.get_register_description(register)
         else:
-            if register.mask < 0 or register.mask > 0xFFFFFFFF:
-                raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
-            if register.shift < 0 or register.shift > 31:
-                raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
+            if register.mask < 0 or register.mask > register.full_mask:
+                raise ValueError(
+                    f"Invalid mask value {register.mask}. Mask must be between 0 and 0x{register.full_mask:X}."
+                )
+            if register.shift < 0 or register.shift >= register.size * 8:
+                raise ValueError(
+                    f"Invalid shift value {register.shift}. Shift must be between 0 and {register.size * 8 - 1}."
+                )
             if isinstance(register, ConfigurationRegisterDescription):
                 if register.index < 0:
                     raise ValueError(f"Register index must be positive, but got {register.index}.")
@@ -299,11 +322,12 @@ class RegisterStore:
                     )
             if register.base_address is None:
                 register = register.clone(self._get_register_base_address(register))
+        self._validate_access_width(register)
 
         if register.bar0_address is not None:
             value = self.device.bar0_read32(register.bar0_address)
         elif register.noc_address is not None:
-            value = self.location.noc_read32(register.noc_address, register.noc_id, safe_mode=safe_mode)
+            value = self._read_noc_register(register, safe_mode)
         elif isinstance(register, ConfigurationRegisterDescription):
             self.location.noc_write32(self._control_register_address, register.index, safe_mode=safe_mode)
             value = self.location.noc_read32(self._data_register_address, safe_mode=safe_mode)
@@ -336,10 +360,14 @@ class RegisterStore:
         else:
             if isinstance(register, ConfigurationRegisterDescription):
                 register = register.clone(self._get_register_base_address(register))
-            if register.mask < 0 or register.mask > 0xFFFFFFFF:
-                raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
-            if register.shift < 0 or register.shift > 31:
-                raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
+            if register.mask < 0 or register.mask > register.full_mask:
+                raise ValueError(
+                    f"Invalid mask value {register.mask}. Mask must be between 0 and 0x{register.full_mask:X}."
+                )
+            if register.shift < 0 or register.shift >= register.size * 8:
+                raise ValueError(
+                    f"Invalid shift value {register.shift}. Shift must be between 0 and {register.size * 8 - 1}."
+                )
             if isinstance(register, ConfigurationRegisterDescription):
                 if register.index < 0:
                     raise ValueError(f"Register index must be positive, but got {register.index}.")
@@ -353,17 +381,18 @@ class RegisterStore:
             raise ValueError(
                 f"Value must be greater than 0 and inside the mask 0x{register.mask:x}, but got {value} (0x{value:x})"
             )
+        self._validate_access_width(register)
 
         if register.bar0_address is not None:
-            if register.mask != 0xFFFFFFFF:
+            if register.mask != register.full_mask:
                 old_value = self.device.bar0_read32(register.bar0_address)
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
             self.device.bar0_write32(register.bar0_address, value)
         elif register.noc_address is not None:
-            if register.mask != 0xFFFFFFFF:
-                old_value = self.location.noc_read32(register.noc_address, register.noc_id, safe_mode=safe_mode)
+            if register.mask != register.full_mask:
+                old_value = self._read_noc_register(register, safe_mode)
                 value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            self.location.noc_write32(register.noc_address, value, register.noc_id, safe_mode=safe_mode)
+            self._write_noc_register(register, value, safe_mode)
         else:
             block = self.device.get_block(self.location)
             thread_id = getattr(register, "thread_id", None)
@@ -374,10 +403,32 @@ class RegisterStore:
             )
             assert register.private_address is not None, "Register must have a private address for writing."
             with risc_debug.ensure_private_memory_access():
-                if register.mask != 0xFFFFFFFF:
+                if register.mask != register.full_mask:
                     old_value = risc_debug.read_memory(register.private_address)
                     value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
                 risc_debug.write_memory(register.private_address, value)
+
+    @staticmethod
+    def _validate_access_width(register: RegisterDescription) -> None:
+        # Only NOC access knows how to read/write whole 64-bit registers, other access paths are 32-bit
+        if register.size == 8 and (register.bar0_address is not None or register.noc_address is None):
+            raise NotImplementedError("64-bit registers can only be accessed over NOC.")
+
+    def _read_noc_register(self, register: RegisterDescription, safe_mode: bool | None) -> int:
+        assert register.noc_address is not None
+        if register.size == 8:
+            buffer = bytearray(8)
+            self.location.noc_read(register.noc_address, buffer, register.noc_id, safe_mode=safe_mode)
+            return int.from_bytes(buffer, byteorder="little")
+        return self.location.noc_read32(register.noc_address, register.noc_id, safe_mode=safe_mode)
+
+    def _write_noc_register(self, register: RegisterDescription, value: int, safe_mode: bool | None) -> None:
+        assert register.noc_address is not None
+        if register.size == 8:
+            data = value.to_bytes(8, byteorder="little")
+            self.location.noc_write(register.noc_address, data, register.noc_id, safe_mode=safe_mode)
+        else:
+            self.location.noc_write32(register.noc_address, value, register.noc_id, safe_mode=safe_mode)
 
     @staticmethod
     def create_initialization(
