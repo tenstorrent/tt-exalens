@@ -62,28 +62,16 @@ def parse_register_value(value: str) -> int:
 
 @dataclass
 class RegisterDescription:
-    base_address: DeviceAddress | None
-    offset: int
-    mask: int
-    shift: int
-    data_type: REGISTER_DATA_TYPE
-    size: int
+    base_address: DeviceAddress | None = None
+    offset: int = 0
+    mask: int = -1  # -1 means whole register, resolved from size in __post_init__
+    shift: int = 0
+    data_type: REGISTER_DATA_TYPE = REGISTER_DATA_TYPE.INT_VALUE
+    size: int = 4
 
-    def __init__(
-        self,
-        base_address: DeviceAddress | None = None,
-        offset: int = 0,
-        mask: int | None = None,
-        shift: int = 0,
-        data_type: REGISTER_DATA_TYPE = REGISTER_DATA_TYPE.INT_VALUE,
-        size: int = 4,
-    ):
-        self.base_address = base_address
-        self.offset = offset
-        self.shift = shift
-        self.data_type = data_type
-        self.size = size
-        self.mask = mask if mask is not None else (1 << (self.size * 8)) - 1
+    def __post_init__(self):
+        if self.mask == -1:
+            self.mask = self.full_mask
 
     @property
     def full_mask(self) -> int:
@@ -138,6 +126,7 @@ class ConfigurationRegisterDescription(RegisterDescription):
     index: int = 0
 
     def __post_init__(self):
+        super().__post_init__()
         self.offset = self.offset + self.index * 4
 
 
@@ -147,6 +136,7 @@ class TensixGeneralPurposeRegisterDescription(RegisterDescription):
     thread_id: int = 0
 
     def __post_init__(self):
+        super().__post_init__()
         self.offset = self.offset + self.index * 4
 
 
