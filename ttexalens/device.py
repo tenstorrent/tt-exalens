@@ -352,26 +352,16 @@ class Device:
         return self._umd_device.bar0_write32(address, data)
 
     def bar0_read(self, address: int, buffer: bytearray | memoryview) -> None:
-        """Reads len(buffer) bytes from PCI address using 4-byte reads in increasing address order."""
-        self._validate_bar0_access(address, len(buffer))
-        for offset in range(0, len(buffer), 4):
-            buffer[offset : offset + 4] = self.bar0_read32(address + offset).to_bytes(4, byteorder="little")
+        """Reads len(buffer) bytes from PCI address using aligned 4-byte reads."""
+        util.read_bytes_by_words(address, buffer, self.bar0_read32)
 
     def bar0_write(self, address: int, data: bytes | bytearray | memoryview) -> None:
         """
-        Writes data to PCI address using 4-byte writes in increasing address order.
+        Writes data to PCI address using aligned 4-byte writes in increasing address order.
         Registers wider than 4 bytes commit on the write of their most significant word, so the order matters.
+        Words only partially covered by data are read, patched and written back.
         """
-        self._validate_bar0_access(address, len(data))
-        for offset in range(0, len(data), 4):
-            self.bar0_write32(address + offset, int.from_bytes(data[offset : offset + 4], byteorder="little"))
-
-    @staticmethod
-    def _validate_bar0_access(address: int, num_bytes: int) -> None:
-        if address % 4 != 0 or num_bytes % 4 != 0:
-            raise ValueError(
-                f"BAR0 access must be 4-byte aligned, but got address 0x{address:x} and size {num_bytes} bytes."
-            )
+        util.write_bytes_by_words(address, data, self.bar0_read32, self.bar0_write32)
 
     def arc_msg(
         self,

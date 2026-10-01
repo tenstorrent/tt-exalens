@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 from contextlib import nullcontext, AbstractContextManager, contextmanager
-from typing import Any, Iterator, TYPE_CHECKING
+from typing import Any, Callable, Iterator, TYPE_CHECKING
 import sys, os, zipfile, pprint, time
 from tabulate import tabulate
 from sortedcontainers import SortedSet
@@ -776,6 +776,63 @@ def is_iterable(obj):
         return True
     except TypeError:
         return False
+
+
+def read_bytes_by_words(address: int, buffer: bytearray | memoryview, read_word: Callable[[int], int]) -> None:
+    """Reads len(buffer) bytes from address using only aligned 4-byte reads."""
+    word_size = 4
+    size = len(buffer)
+    pos = 0
+    while pos < size:
+        addr = address + pos
+        word_addr = addr - (addr % word_size)
+        word_bytes = read_word(word_addr).to_bytes(word_size, byteorder="little")
+        start_in_word = addr - word_addr
+        n = min(word_size - start_in_word, size - pos)
+        buffer[pos : pos + n] = word_bytes[start_in_word : start_in_word + n]
+        pos += n
+
+
+def write_bytes_by_words(
+    address: int,
+    data: bytes | bytearray | memoryview,
+    read_word: Callable[[int], int],
+    write_word: Callable[[int, int], None],
+) -> None:
+    """
+    Writes data to address using only aligned 4-byte writes in increasing address order.
+    Words only partially covered by data (unaligned start or end) are read, patched and written back.
+    """
+    word_size = 4
+    data = memoryview(data)
+    size = len(data)
+    if size == 0:
+        return
+
+    # Unaligned prefix
+    first_unaligned = address % word_size
+    if first_unaligned != 0:
+        aligned_address = address - first_unaligned
+        word_bytes = bytearray(read_word(aligned_address).to_bytes(word_size, byteorder="little"))
+        n = min(word_size - first_unaligned, size)
+        word_bytes[first_unaligned : first_unaligned + n] = data[:n]
+        write_word(aligned_address, int.from_bytes(word_bytes, byteorder="little"))
+        data = data[n:]
+        address += n
+        size -= n
+
+    aligned_size = size - (size % word_size)
+    for offset in range(0, aligned_size, word_size):
+        write_word(address + offset, int.from_bytes(data[offset : offset + word_size], byteorder="little"))
+    data = data[aligned_size:]
+    address += aligned_size
+    size -= aligned_size
+
+    # Unaligned suffix
+    if size != 0:
+        word_bytes = bytearray(read_word(address).to_bytes(word_size, byteorder="little"))
+        word_bytes[:size] = data[:size]
+        write_word(address, int.from_bytes(word_bytes, byteorder="little"))
 
 
 def set(*args, **kwargs):
