@@ -64,7 +64,7 @@ def parse_register_value(value: str) -> int:
 class RegisterDescription:
     base_address: DeviceAddress | None = None
     offset: int = 0
-    mask: int = -1  # -1 means whole register, resolved from size in __post_init__
+    mask: int = 0  # 0 means whole register, resolved from size in __post_init__
     shift: int = 0
     data_type: REGISTER_DATA_TYPE = REGISTER_DATA_TYPE.INT_VALUE
     size: int = 4
@@ -72,7 +72,7 @@ class RegisterDescription:
     def __post_init__(self):
         if self.size <= 0 or self.size % 4 != 0:
             raise ValueError(f"Invalid register size {self.size}. Register size must be a multiple of 4 bytes.")
-        if self.mask == -1:
+        if self.mask == 0:
             self.mask = self.full_mask
 
     @property
