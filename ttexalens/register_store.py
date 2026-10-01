@@ -70,6 +70,8 @@ class RegisterDescription:
     size: int = 4
 
     def __post_init__(self):
+        if self.size <= 0 or self.size % 4 != 0:
+            raise ValueError(f"Invalid register size {self.size}. Register size must be a multiple of 4 bytes.")
         if self.mask == -1:
             self.mask = self.full_mask
 
@@ -319,15 +321,19 @@ class RegisterStore:
                     )
             if register.base_address is None:
                 register = register.clone(self._get_register_base_address(register))
-        self._validate_access_width(register)
 
+        buffer = bytearray(register.size)
         if register.bar0_address is not None:
-            value = self.device.bar0_read32(register.bar0_address)
+            self.device.bar0_read(register.bar0_address, buffer)
         elif register.noc_address is not None:
-            value = self._read_noc_register(register, safe_mode)
+            self.location.noc_read(register.noc_address, buffer, register.noc_id, safe_mode=safe_mode)
         elif isinstance(register, ConfigurationRegisterDescription):
-            self.location.noc_write32(self._control_register_address, register.index, safe_mode=safe_mode)
-            value = self.location.noc_read32(self._data_register_address, safe_mode=safe_mode)
+            for offset in range(0, register.size, 4):
+                self.location.noc_write32(
+                    self._control_register_address, register.index + offset // 4, safe_mode=safe_mode
+                )
+                word = self.location.noc_read32(self._data_register_address, safe_mode=safe_mode)
+                buffer[offset : offset + 4] = word.to_bytes(4, byteorder="little")
         elif isinstance(register, TensixGeneralPurposeRegisterDescription):
             block = self.device.get_block(self.location)
             assert register.private_address is not None, "Register must have a private address for reading."
@@ -342,13 +348,14 @@ class RegisterStore:
                 risc_debug = block.get_risc_debug(f"trisc{register.thread_id}", neo_id=self.neo_id)
                 address = register.private_address
             with risc_debug.ensure_private_memory_access():
-                value = risc_debug.read_memory(address)
+                risc_debug.read_memory_bytes(address, buffer, safe_mode=safe_mode)
         else:
             # Read using RISC core debugging hardware.
             risc_debug = self.device.get_block(self.location).get_default_risc_debug(neo_id=self.neo_id)
             assert register.private_address is not None, "Register must have a private address for reading."
             with risc_debug.ensure_private_memory_access():
-                value = risc_debug.read_memory(register.private_address)
+                risc_debug.read_memory_bytes(register.private_address, buffer, safe_mode=safe_mode)
+        value = int.from_bytes(buffer, byteorder="little")
         return (value & register.mask) >> register.shift
 
     def write_register(self, register: str | RegisterDescription, value: int, safe_mode: bool | None = None) -> None:
@@ -378,18 +385,19 @@ class RegisterStore:
             raise ValueError(
                 f"Value must be greater than 0 and inside the mask 0x{register.mask:x}, but got {value} (0x{value:x})"
             )
-        self._validate_access_width(register)
-
+        old_data = bytearray(register.size)
         if register.bar0_address is not None:
             if register.mask != register.full_mask:
-                old_value = self.device.bar0_read32(register.bar0_address)
-                value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            self.device.bar0_write32(register.bar0_address, value)
+                self.device.bar0_read(register.bar0_address, old_data)
+                value = self._merge_masked_value(register, old_data, value)
+            data = value.to_bytes(register.size, byteorder="little")
+            self.device.bar0_write(register.bar0_address, data)
         elif register.noc_address is not None:
             if register.mask != register.full_mask:
-                old_value = self._read_noc_register(register, safe_mode)
-                value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            self._write_noc_register(register, value, safe_mode)
+                self.location.noc_read(register.noc_address, old_data, register.noc_id, safe_mode=safe_mode)
+                value = self._merge_masked_value(register, old_data, value)
+            data = value.to_bytes(register.size, byteorder="little")
+            self.location.noc_write(register.noc_address, data, register.noc_id, safe_mode=safe_mode)
         else:
             block = self.device.get_block(self.location)
             thread_id = getattr(register, "thread_id", None)
@@ -401,31 +409,15 @@ class RegisterStore:
             assert register.private_address is not None, "Register must have a private address for writing."
             with risc_debug.ensure_private_memory_access():
                 if register.mask != register.full_mask:
-                    old_value = risc_debug.read_memory(register.private_address)
-                    value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-                risc_debug.write_memory(register.private_address, value)
+                    risc_debug.read_memory_bytes(register.private_address, old_data, safe_mode=safe_mode)
+                    value = self._merge_masked_value(register, old_data, value)
+                data = value.to_bytes(register.size, byteorder="little")
+                risc_debug.write_memory_bytes(register.private_address, data, safe_mode=safe_mode)
 
     @staticmethod
-    def _validate_access_width(register: RegisterDescription) -> None:
-        # Only NOC access knows how to read/write whole 64-bit registers, other access paths are 32-bit
-        if register.size == 8 and (register.bar0_address is not None or register.noc_address is None):
-            raise NotImplementedError("64-bit registers can only be accessed over NOC.")
-
-    def _read_noc_register(self, register: RegisterDescription, safe_mode: bool | None) -> int:
-        assert register.noc_address is not None
-        if register.size == 8:
-            buffer = bytearray(8)
-            self.location.noc_read(register.noc_address, buffer, register.noc_id, safe_mode=safe_mode)
-            return int.from_bytes(buffer, byteorder="little")
-        return self.location.noc_read32(register.noc_address, register.noc_id, safe_mode=safe_mode)
-
-    def _write_noc_register(self, register: RegisterDescription, value: int, safe_mode: bool | None) -> None:
-        assert register.noc_address is not None
-        if register.size == 8:
-            data = value.to_bytes(8, byteorder="little")
-            self.location.noc_write(register.noc_address, data, register.noc_id, safe_mode=safe_mode)
-        else:
-            self.location.noc_write32(register.noc_address, value, register.noc_id, safe_mode=safe_mode)
+    def _merge_masked_value(register: RegisterDescription, old_data: bytes | bytearray, value: int) -> int:
+        old_value = int.from_bytes(old_data, byteorder="little")
+        return (old_value & ~register.mask) | ((value << register.shift) & register.mask)
 
     @staticmethod
     def create_initialization(
