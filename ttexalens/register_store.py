@@ -64,7 +64,7 @@ def parse_register_value(value: str) -> int:
 class RegisterDescription:
     base_address: DeviceAddress | None = None
     offset: int = 0
-    mask: int = 0  # 0 means whole register, resolved from size in __post_init__
+    mask: int = -1  # full mask
     shift: int = 0
     data_type: REGISTER_DATA_TYPE = REGISTER_DATA_TYPE.INT_VALUE
     size: int = 4
@@ -72,7 +72,7 @@ class RegisterDescription:
     def __post_init__(self):
         if self.size <= 0 or self.size % 4 != 0:
             raise ValueError(f"Invalid register size {self.size}. Register size must be a multiple of 4 bytes.")
-        if self.mask == 0:
+        if self.mask == -1:
             self.mask = self.full_mask
 
     @property
@@ -274,19 +274,22 @@ class RegisterStore:
             raise ValueError(f"Invalid input string format: {input_string}")
 
         # Create register description based on the parsed name and arguments
-        mask = arguments[1] if len(arguments) > 1 else 0xFFFFFFFF
+        size = arguments[3] if len(arguments) > 3 else 4
+        if size <= 0 or size % 4 != 0:
+            raise ValueError(f"Invalid size value {size}. Size must be a positive multiple of 4.")
+        mask = arguments[1] if len(arguments) > 1 and arguments[1] != -1 else (1 << (size * 8)) - 1
         shift = arguments[2] if len(arguments) > 2 else 0
-        if mask < 0 or mask > 0xFFFFFFFF:
-            raise ValueError(f"Invalid mask value {mask}. Mask must be between 0 and 0xFFFFFFFF.")
-        if shift < 0 or shift > 31:
-            raise ValueError(f"Invalid shift value {shift}. Shift must be between 0 and 31.")
+        if mask < 0 or mask > (1 << (size * 8)) - 1:
+            raise ValueError(f"Invalid mask value {mask}. Mask must be between 0 and 0x{((1 << (size * 8)) - 1):X}.")
+        if shift < 0 or shift > size * 8:
+            raise ValueError(f"Invalid shift value {shift}. Shift must be between 0 and {size * 8 - 1}.")
         register: RegisterDescription
         if name == "cfg":
-            # Configuration register. Parameters: index, mask, shift
-            register = ConfigurationRegisterDescription(index=arguments[0], mask=mask, shift=shift)
+            # Configuration register. Parameters: index, mask, shift, size
+            register = ConfigurationRegisterDescription(index=arguments[0], mask=mask, shift=shift, size=size)
         elif name == "dbg":
-            # Debug register. Parameters: address, mask, shift
-            register = DebugRegisterDescription(offset=arguments[0], mask=mask, shift=shift)
+            # Debug register. Parameters: address, mask, shift, size
+            register = DebugRegisterDescription(offset=arguments[0], mask=mask, shift=shift, size=size)
         else:
             raise ValueError(f"Unknown register type: {name}. Possible values: [cfg,dbg]")
         register = register.clone(self._get_register_base_address(register))
