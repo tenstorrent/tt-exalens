@@ -268,7 +268,7 @@ class RegisterStore:
             arguments = [int(param.strip(), 0) for param in match.group(2).split(",")]
             if len(arguments) < 1:
                 raise ValueError(f"No arguments specified for register descriptiong: {input_string}")
-            if len(arguments) > 3:
+            if len(arguments) > 4:
                 raise ValueError(f"Too many arguments for register description: {input_string}")
         else:
             raise ValueError(f"Invalid input string format: {input_string}")
