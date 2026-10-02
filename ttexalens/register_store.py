@@ -72,8 +72,12 @@ class RegisterDescription:
     def __post_init__(self):
         if self.size <= 0 or self.size % 4 != 0:
             raise ValueError(f"Invalid register size {self.size}. Register size must be a multiple of 4 bytes.")
+        if self.shift < 0 or self.shift >= self.size * 8:
+            raise ValueError(f"Invalid shift value {self.shift}. Shift must be between 0 and {self.size * 8 - 1}.")
         if self.mask == -1:
             self.mask = self.full_mask
+        if self.mask < 0 or self.mask > self.full_mask:
+            raise ValueError(f"Invalid mask value {self.mask}. Mask must be between 0 and {self.full_mask}.")
 
     @property
     def full_mask(self) -> int:
@@ -275,14 +279,8 @@ class RegisterStore:
 
         # Create register description based on the parsed name and arguments
         size = arguments[3] if len(arguments) > 3 else 4
-        if size <= 0 or size % 4 != 0:
-            raise ValueError(f"Invalid size value {size}. Size must be a positive multiple of 4.")
         mask = arguments[1] if len(arguments) > 1 and arguments[1] != -1 else (1 << (size * 8)) - 1
         shift = arguments[2] if len(arguments) > 2 else 0
-        if mask < 0 or mask > (1 << (size * 8)) - 1:
-            raise ValueError(f"Invalid mask value {mask}. Mask must be between 0 and 0x{((1 << (size * 8)) - 1):X}.")
-        if shift < 0 or shift > size * 8:
-            raise ValueError(f"Invalid shift value {shift}. Shift must be between 0 and {size * 8 - 1}.")
         register: RegisterDescription
         if name == "cfg":
             # Configuration register. Parameters: index, mask, shift, size
@@ -296,7 +294,7 @@ class RegisterStore:
 
         if isinstance(register, ConfigurationRegisterDescription):
             max_index = self._max_config_register_index
-            if register.index < 0 or register.index > max_index:
+            if register.index < 0 or register.index + register.size // 1 - 1 > max_index:
                 raise ValueError(
                     f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
                 )
@@ -307,14 +305,6 @@ class RegisterStore:
         if isinstance(register, str):
             register = self.get_register_description(register)
         else:
-            if register.mask < 0 or register.mask > register.full_mask:
-                raise ValueError(
-                    f"Invalid mask value {register.mask}. Mask must be between 0 and 0x{register.full_mask:X}."
-                )
-            if register.shift < 0 or register.shift >= register.size * 8:
-                raise ValueError(
-                    f"Invalid shift value {register.shift}. Shift must be between 0 and {register.size * 8 - 1}."
-                )
             if isinstance(register, ConfigurationRegisterDescription):
                 if register.index < 0:
                     raise ValueError(f"Register index must be positive, but got {register.index}.")
@@ -367,14 +357,6 @@ class RegisterStore:
         else:
             if isinstance(register, ConfigurationRegisterDescription):
                 register = register.clone(self._get_register_base_address(register))
-            if register.mask < 0 or register.mask > register.full_mask:
-                raise ValueError(
-                    f"Invalid mask value {register.mask}. Mask must be between 0 and 0x{register.full_mask:X}."
-                )
-            if register.shift < 0 or register.shift >= register.size * 8:
-                raise ValueError(
-                    f"Invalid shift value {register.shift}. Shift must be between 0 and {register.size * 8 - 1}."
-                )
             if isinstance(register, ConfigurationRegisterDescription):
                 if register.index < 0:
                     raise ValueError(f"Register index must be positive, but got {register.index}.")
