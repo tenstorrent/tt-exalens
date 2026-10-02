@@ -190,22 +190,10 @@ class RiscDebug:
     ) -> None:
         if util.DEBUG_ENABLED:
             read_word = self._read_word_debug(read_word)
-        size_bytes = len(buffer)
         safe_mode = safe_mode if safe_mode is not None else self.context.safe_mode
         if safe_mode:
-            self._validate_safe_access(address, size_bytes)
-
-        word_size = 4
-        pos = 0
-        while pos < size_bytes:
-            addr = address + pos
-            word_addr = addr - (addr % word_size)
-            word = read_word(word_addr)
-            word_bytes = word.to_bytes(word_size, byteorder="little")
-            start_in_word = addr - word_addr
-            n = min(word_size - start_in_word, size_bytes - pos)
-            buffer[pos : pos + n] = word_bytes[start_in_word : start_in_word + n]
-            pos += n
+            self._validate_safe_access(address, len(buffer))
+        util.read_bytes_by_words(address, buffer, read_word)
 
     def _write_memory_bytes(
         self,
@@ -221,38 +209,7 @@ class RiscDebug:
         safe_mode = safe_mode if safe_mode is not None else self.context.safe_mode
         if safe_mode:
             self._validate_safe_access(address, len(data))
-
-        word_size = 4
-        data = memoryview(data)
-        size = len(data)
-        if size == 0:
-            return
-
-        # Unaligned prefix
-        first_unaligned = address % word_size
-        if first_unaligned != 0:
-            aligned_address = address - first_unaligned
-            word_bytes = bytearray(read_word(aligned_address).to_bytes(word_size, byteorder="little"))
-            n = min(word_size - first_unaligned, size)
-            word_bytes[first_unaligned : first_unaligned + n] = data[:n]
-            write_word(aligned_address, int.from_bytes(word_bytes, byteorder="little"))
-            data = data[n:]
-            address += n
-            size -= n
-
-        aligned_size = size - (size % word_size)
-        for offset in range(0, aligned_size, word_size):
-            word = int.from_bytes(data[offset : offset + word_size], byteorder="little")
-            write_word(address + offset, word)
-        data = data[aligned_size:]
-        address += aligned_size
-        size -= aligned_size
-
-        # Unaligned suffix
-        if size != 0:
-            word_bytes = bytearray(read_word(address).to_bytes(word_size, byteorder="little"))
-            word_bytes[:size] = data[:size]
-            write_word(address, int.from_bytes(word_bytes, byteorder="little"))
+        util.write_bytes_by_words(address, data, read_word, write_word)
 
     @abstractmethod
     def _read_memory(self, address: int) -> int:

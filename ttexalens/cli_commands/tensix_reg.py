@@ -9,7 +9,7 @@ Usage:
 Arguments:
   <register>            Register to dump/write to. Format: <reg-type>(<reg-parameters>) or register name.
   <reg-type>            Register type. Options: [cfg, dbg].
-  <reg-parameters>      Register parameters, comma separated integers. For cfg: index,mask,shift. For dbg: address.
+  <reg-parameters>      Register parameters, comma separated integers. For cfg: index,mask,shift,size. For dbg: address,mask,shift,size. Mask=-1 means full mask. Defaults: mask=full mask, shift=0, size=4.
   <register-pattern>    Register pattern used to print register names that match it. Format: wildcard.
 
 Options:
@@ -22,20 +22,20 @@ Description:
   Prints/writes to the specified register, at the specified location and device.
 
 Examples:
-  reg cfg(1,0x1E000000,25)                            # Prints configuration register with index 1, mask 0x1E000000, shift 25
-  reg dbg(0x54)                                       # Prints debug register with address 0x54
-  reg --search PACK*                                  # Prints names of first 10 registers that start with PACK
-  reg --search ALU* --max 5                           # Prints names of first 5 registers that start with ALU
-  reg --search *format* --max all                     # Prints names of all registers that include word format
-  reg UNPACK_CONFIG0_out_data_format                  # Prints register with name UNPACK_CONFIG0_out_data_format
-  reg cfg(1,0x1E000000,25) --type TENSIX_DATA_FORMAT  # Prints configuration register with index 60, mask 0xf, shift 0 in tensix data format
-  reg dbg(0x54) --type INT_VALUE                      # Prints debug register with address 0x54 in integer format
-  reg dbg(0x54) --write 18                            # Writes 18 to debug register with address 0x54
-  reg cfg(1,0x1E000000,25) --write 0x0                # Writes 0 to configuration register with index 1, mask 0x1E000000, shift 25
-  reg dbg(0x54) -d 0 -l 0,0                           # Prints debug register with address 0x54 for device 0 and core at location 0,0
-  reg dbg(0x54) -l 0,0                                # Prints debug register with address 0x54 for core at location 0,0
-  reg dbg(0x54) -d 0                                  # Prints debug register with address 0x54 for device 0
-  reg dbg(0x54) --neo 1                               # Prints debug register 0x54 of NEO 1 (Quasar)
+  reg cfg(1,0x1E000000,25,4)                           # Prints configuration register with index 1, mask 0x1E000000, shift 25, size 4
+  reg dbg(0x54)                                        # Prints debug register with address 0x54
+  reg --search PACK*                                   # Prints names of first 10 registers that start with PACK
+  reg --search ALU* --max 5                            # Prints names of first 5 registers that start with ALU
+  reg --search *format* --max all                      # Prints names of all registers that include word format
+  reg UNPACK_CONFIG0_out_data_format                   # Prints register with name UNPACK_CONFIG0_out_data_format
+  reg cfg(1,0x1E000000,25,4) --type TENSIX_DATA_FORMAT # Prints configuration register with index 1, mask 0x1E000000, shift 25, size 4 in tensix data format
+  reg dbg(0x54) --type INT_VALUE                       # Prints debug register with address 0x54 in integer format
+  reg dbg(0x54) --write 18                             # Writes 18 to debug register with address 0x54
+  reg cfg(1,0x1E000000,25, 4) --write 0x0              # Writes 0 to configuration register with index 1, mask 0x1E000000, shift 25, size 4
+  reg dbg(0x54) -d 0 -l 0,0                            # Prints debug register with address 0x54 for device 0 and core at location 0,0
+  reg dbg(0x54) -l 0,0                                 # Prints debug register with address 0x54 for core at location 0,0
+  reg dbg(0x54) -d 0                                   # Prints debug register with address 0x54 for device 0
+  reg dbg(0x54) --neo 1                                # Prints debug register 0x54 of NEO 1 (Quasar)
 """
 
 from fnmatch import fnmatch
