@@ -357,8 +357,7 @@ class Device:
 
     def bar0_write(self, address: int, data: bytes | bytearray | memoryview) -> None:
         """
-        Writes data to PCI address using aligned 4-byte writes in increasing address order.
-        Registers wider than 4 bytes commit on the write of their most significant word, so the order matters.
+        Writes data to PCI address using aligned 4-byte writes.
         Words only partially covered by data are read, patched and written back.
         """
         util.write_bytes_by_words(address, data, self.bar0_read32, self.bar0_write32)
