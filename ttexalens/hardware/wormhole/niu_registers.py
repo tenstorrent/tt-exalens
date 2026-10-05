@@ -32,8 +32,8 @@ niu_register_map = {
     "NIU_MST_POSTED_WR_REQ_STARTED": NocStatusRegisterDescription(offset=0x34),
     "NIU_MST_RD_REQ_STARTED": NocStatusRegisterDescription(offset=0x38),
     "NIU_MST_NONPOSTED_ATOMIC_STARTED": NocStatusRegisterDescription(offset=0x3C),
-    "NIU_MST_REQS_OUTSTANDING_ID": NocStatusRegisterDescription(offset=0x40),  # 16 registers
-    "NIU_MST_WRITE_REQS_OUTGOING_ID": NocStatusRegisterDescription(offset=0x80),  # 16 registers
+    "NIU_MST_REQS_OUTSTANDING_ID": NocStatusRegisterDescription(offset=0x40, size=64),
+    "NIU_MST_WRITE_REQS_OUTGOING_ID": NocStatusRegisterDescription(offset=0x80, size=64),
     "NIU_SLV_ATOMIC_RESP_SENT": NocStatusRegisterDescription(offset=0xC0),
     "NIU_SLV_WR_ACK_SENT": NocStatusRegisterDescription(offset=0xC4),
     "NIU_SLV_RD_RESP_SENT": NocStatusRegisterDescription(offset=0xC8),
