@@ -27,7 +27,7 @@ from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.elf import CallstackEntry, CallstackEntryVariable
 from ttexalens.hardware.risc_debug import RiscDebug
 
-from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
+from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription, RegisterDescription
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.firmware_telemetry import CUTOFF_FIRMWARE_VERSION
 
@@ -460,10 +460,6 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", ConfigurationRegisterDescription(index=-1), 0, 0),  # Invalid index (negative)
             ("0,0", ConfigurationRegisterDescription(index=2**14), 0, 0),  # Invalid index (too high)
             ("0,0", 0xFFB12345, 0, 0),  # Address alone is not enough to represent index)
-            ("0,0", ConfigurationRegisterDescription(mask=-2), 0, 0),  # Invalid mask (negative, not -1)
-            ("0,0", ConfigurationRegisterDescription(mask=2**32), 0, 0),  # Invalid mask (too high)
-            ("0,0", ConfigurationRegisterDescription(shift=-1), 0, 0),  # Invalid shift (negative)
-            ("0,0", ConfigurationRegisterDescription(shift=32), 0, 0),  # Invalid shift (too high)
         ]
     )
     def test_invalid_write_read_tensix_register(self, location, register, value, device_id):
@@ -474,6 +470,20 @@ class TestReadWrite(unittest.TestCase):
                 lib.read_register(location, register, device_id)
         with self.assertRaises((TTException, ValueError)):
             lib.write_register(location, register, value, device_id)
+
+    @parameterized.expand(
+        [
+            ({"mask": -2},),  # Invalid mask (negative, not -1)
+            ({"mask": 2**32},),  # Invalid mask (too high)
+            ({"shift": -1},),  # Invalid shift (negative)
+            ({"shift": 32},),  # Invalid shift (too high)
+        ]
+    )
+    def test_invalid_register_description(self, arguments):
+        """Test that invalid mask and shift values are rejected when creating a register description."""
+
+        with self.assertRaises(ValueError):
+            RegisterDescription(**arguments)
 
     @parameterized.expand(
         [
