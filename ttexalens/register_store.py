@@ -133,6 +133,8 @@ class ConfigurationRegisterDescription(RegisterDescription):
 
     def __post_init__(self):
         super().__post_init__()
+        if self.index < 0:
+            raise ValueError(f"Register index must be positive, but got {self.index}.")
         self.offset = self.offset + self.index * 4
 
 
@@ -143,6 +145,8 @@ class TensixGeneralPurposeRegisterDescription(RegisterDescription):
 
     def __post_init__(self):
         super().__post_init__()
+        if self.index < 0 or self.index > 63:
+            raise ValueError(f"Register index must be between 0 and 63, but got {self.index}.")
         self.offset = self.offset + self.index * 4
 
 
@@ -225,6 +229,12 @@ class RegisterStore:
         # Block size is in bytes, each register is 4 bytes.
         return (config_regs.memory_block.size // 4) - 1
 
+    def _validate_config_register_index(self, register: ConfigurationRegisterDescription) -> None:
+        # Registers wider than 32 bits span multiple consecutive indices, all of which must be in range.
+        max_index = self._max_config_register_index - (register.size // 4 - 1)
+        if register.index > max_index:
+            raise ValueError(f"Register index must be less than or equal to {max_index}, but got {register.index}.")
+
     def get_register_names(self) -> list[str]:
         return list(self.registers.keys())
 
@@ -271,7 +281,7 @@ class RegisterStore:
             name = match.group(1)
             arguments = [int(param.strip(), 0) for param in match.group(2).split(",")]
             if len(arguments) < 1:
-                raise ValueError(f"No arguments specified for register descriptiong: {input_string}")
+                raise ValueError(f"No arguments specified for register description: {input_string}")
             if len(arguments) > 4:
                 raise ValueError(f"Too many arguments for register description: {input_string}")
         else:
@@ -292,13 +302,6 @@ class RegisterStore:
             raise ValueError(f"Unknown register type: {name}. Possible values: [cfg,dbg]")
         register = register.clone(self._get_register_base_address(register))
 
-        if isinstance(register, ConfigurationRegisterDescription):
-            max_index = self._max_config_register_index
-            if register.index < 0 or register.index + register.size // 1 - 1 > max_index:
-                raise ValueError(
-                    f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
-                )
-
         return register, register.__str__()
 
     def read_register(self, register: str | RegisterDescription, safe_mode: bool | None = None) -> int:
@@ -306,12 +309,7 @@ class RegisterStore:
             register = self.get_register_description(register)
         else:
             if isinstance(register, ConfigurationRegisterDescription):
-                if register.index < 0:
-                    raise ValueError(f"Register index must be positive, but got {register.index}.")
-                if register.index > self._max_config_register_index:
-                    raise ValueError(
-                        f"Register index must be less than or equal to {self._max_config_register_index}, but got {register.index}."
-                    )
+                self._validate_config_register_index(register)
             if register.base_address is None:
                 register = register.clone(self._get_register_base_address(register))
 
@@ -356,14 +354,8 @@ class RegisterStore:
             register = self.get_register_description(register)
         else:
             if isinstance(register, ConfigurationRegisterDescription):
+                self._validate_config_register_index(register)
                 register = register.clone(self._get_register_base_address(register))
-            if isinstance(register, ConfigurationRegisterDescription):
-                if register.index < 0:
-                    raise ValueError(f"Register index must be positive, but got {register.index}.")
-                if register.index > self._max_config_register_index:
-                    raise ValueError(
-                        f"Register index must be less than or equal to {self._max_config_register_index}, but got {register.index}."
-                    )
             if register.base_address is None:
                 register = register.clone(self._get_register_base_address(register))
         if value < 0 or ((value << register.shift) & ~register.mask) != 0:

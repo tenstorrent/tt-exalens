@@ -27,7 +27,12 @@ from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.elf import CallstackEntry, CallstackEntryVariable
 from ttexalens.hardware.risc_debug import RiscDebug
 
-from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription, RegisterDescription
+from ttexalens.register_store import (
+    ConfigurationRegisterDescription,
+    DebugRegisterDescription,
+    RegisterDescription,
+    TensixGeneralPurposeRegisterDescription,
+)
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.firmware_telemetry import CUTOFF_FIRMWARE_VERSION
 
@@ -457,7 +462,6 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", "invalid_register_name", 0, 0),  # Invalid register name
             ("0,0", ConfigurationRegisterDescription(), 0, -1),  # Invalid value (negative)
             ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 0, 2**32),  # Invalid value (too high)
-            ("0,0", ConfigurationRegisterDescription(index=-1), 0, 0),  # Invalid index (negative)
             ("0,0", ConfigurationRegisterDescription(index=2**14), 0, 0),  # Invalid index (too high)
             ("0,0", 0xFFB12345, 0, 0),  # Address alone is not enough to represent index)
         ]
@@ -473,17 +477,20 @@ class TestReadWrite(unittest.TestCase):
 
     @parameterized.expand(
         [
-            ({"mask": -2},),  # Invalid mask (negative, not -1)
-            ({"mask": 2**32},),  # Invalid mask (too high)
-            ({"shift": -1},),  # Invalid shift (negative)
-            ({"shift": 32},),  # Invalid shift (too high)
+            (RegisterDescription, {"mask": -2}),  # Invalid mask (negative, not -1)
+            (RegisterDescription, {"mask": 2**32}),  # Invalid mask (too high)
+            (RegisterDescription, {"shift": -1}),  # Invalid shift (negative)
+            (RegisterDescription, {"shift": 32}),  # Invalid shift (too high)
+            (ConfigurationRegisterDescription, {"index": -1}),  # Invalid index (negative)
+            (TensixGeneralPurposeRegisterDescription, {"index": -1}),  # Invalid index (negative)
+            (TensixGeneralPurposeRegisterDescription, {"index": 64}),  # Invalid index (too high)
         ]
     )
-    def test_invalid_register_description(self, arguments):
-        """Test that invalid mask and shift values are rejected when creating a register description."""
+    def test_invalid_register_description(self, register_class, arguments):
+        """Test that invalid mask, shift and index values are rejected when creating a register description."""
 
         with self.assertRaises(ValueError):
-            RegisterDescription(**arguments)
+            register_class(**arguments)
 
     @parameterized.expand(
         [
@@ -545,11 +552,11 @@ class TestReadWrite(unittest.TestCase):
         [
             ("0,0", 1),
             ("1,1", 1),
-            ("0,0", -1),
-            ("1,1", -1),
+            ("0,0", 0, 8),  # 64-bit register starting at the last index
+            ("1,1", 0, 8),  # 64-bit register starting at the last index
         ]
     )
-    def test_cfg_register_index_out_of_bounds(self, location, delta):
+    def test_cfg_register_index_out_of_bounds(self, location, delta, size=4):
         """Test that reading/writing a configuration register with index beyond valid range raises ValueError."""
 
         loc = OnChipCoordinate.create(location, device=self.context.devices[0])
@@ -559,8 +566,7 @@ class TestReadWrite(unittest.TestCase):
         max_index = register_store._max_config_register_index
 
         # Create a ConfigurationRegisterDescription with an invalid index (too high)
-        index = max_index + delta if delta > 0 else delta
-        invalid_cfg_reg = ConfigurationRegisterDescription(index=index)
+        invalid_cfg_reg = ConfigurationRegisterDescription(index=max_index + delta, size=size)
 
         # Test that reading raises ValueError
         with self.assertRaises(ValueError):
