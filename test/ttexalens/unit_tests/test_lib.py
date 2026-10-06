@@ -552,8 +552,10 @@ class TestReadWrite(unittest.TestCase):
         [
             ("0,0", 1),
             ("1,1", 1),
-            ("0,0", 0, 8),  # 64-bit register starting at the last index
-            ("1,1", 0, 8),  # 64-bit register starting at the last index
+            ("0,0", -1),
+            ("1,1", -1),
+            ("0,0", 0, 8),
+            ("1,1", 0, 8),
         ]
     )
     def test_cfg_register_index_out_of_bounds(self, location, delta, size=4):
