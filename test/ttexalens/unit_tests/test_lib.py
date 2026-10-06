@@ -381,9 +381,11 @@ class TestReadWrite(unittest.TestCase):
                 ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
                 2,
             ),  # ALU_FORMAT_SPEC_REG2_Dstacc
-            ("0,0", ConfigurationRegisterDescription(index=52, size=32), (1 << 32 * 4) - 1),
+            ("0,0", ConfigurationRegisterDescription(index=1, mask=0x000000FFFF000000, shift=24, size=8), 0xFFFF),
+            ("0,0", ConfigurationRegisterDescription(index=64, size=28), (1 << (28 * 4)) - 1),
             ("0,0", DebugRegisterDescription(offset=0x54), 18),  # RISCV_DEBUG_REG_DBG_BUS_CNTL_REG
-            ("0,0", DebugRegisterDescription(offset=0x50, size=12), (1 << 12 * 4) - 1),
+            ("0,0", DebugRegisterDescription(offset=0x0, size=12), (1 << (12 * 4)) - 1),
+            ("0,0", DebugRegisterDescription(offset=0x0, mask=0x000000CFFC000000, shift=26, size=8), 0x1234),
             ("0,0", "UNPACK_CONFIG0_out_data_format", 6),
             ("0,0", "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1),
             ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 9),
@@ -483,6 +485,8 @@ class TestReadWrite(unittest.TestCase):
             (RegisterDescription, {"mask": 2**32}),  # Invalid mask (too high)
             (RegisterDescription, {"shift": -1}),  # Invalid shift (negative)
             (RegisterDescription, {"shift": 32}),  # Invalid shift (too high)
+            (RegisterDescription, {"size": -1}),  # Invalid size (negative)
+            (RegisterDescription, {"size": 2}),  # Invalid size (not divisible by 4)
             (ConfigurationRegisterDescription, {"index": -1}),  # Invalid index (negative)
             (TensixGeneralPurposeRegisterDescription, {"index": -1}),  # Invalid index (negative)
             (TensixGeneralPurposeRegisterDescription, {"index": 64}),  # Invalid index (too high)
