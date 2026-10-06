@@ -32,8 +32,8 @@ niu_register_map = {
     "NIU_MST_POSTED_WR_REQ_STARTED": NocStatusRegisterDescription(offset=0x34),
     "NIU_MST_RD_REQ_STARTED": NocStatusRegisterDescription(offset=0x38),
     "NIU_MST_NONPOSTED_ATOMIC_STARTED": NocStatusRegisterDescription(offset=0x3C),
-    "NIU_MST_REQS_OUTSTANDING_ID": NocStatusRegisterDescription(offset=0x40, size=64),
-    "NIU_MST_WRITE_REQS_OUTGOING_ID": NocStatusRegisterDescription(offset=0x80, size=64),
+    "NIU_MST_REQS_OUTSTANDING_ID": NocStatusRegisterDescription(offset=0x40),  # 16 registers
+    "NIU_MST_WRITE_REQS_OUTGOING_ID": NocStatusRegisterDescription(offset=0x80),  # 16 registers
     "NIU_SLV_ATOMIC_RESP_SENT": NocStatusRegisterDescription(offset=0xC0),
     "NIU_SLV_WR_ACK_SENT": NocStatusRegisterDescription(offset=0xC4),
     "NIU_SLV_RD_RESP_SENT": NocStatusRegisterDescription(offset=0xC8),
@@ -158,13 +158,15 @@ niu_register_map = {
     "NUM_HEADER_2B_ERR": NocControlRegisterDescription(offset=0x58),
     "ECC_CTRL": NocControlRegisterDescription(offset=0x5C),
     "NOC_CLEAR_OUTSTANDING_REQ_CNT": NocControlRegisterDescription(offset=0x60),
-    "NOC_SEC_FENCE_RANGE": NocControlRegisterDescription(offset=0x400, size=128),
-    "NOC_SEC_FENCE_ATTRIBUTE": NocControlRegisterDescription(offset=0x480, size=32),
+    "NOC_SEC_FENCE_RANGE": NocControlRegisterDescription(offset=0x400),  # 32 instances
+    "NOC_SEC_FENCE_ATTRIBUTE": NocControlRegisterDescription(offset=0x480),  # 8 instances
     "NOC_SEC_FENCE_MASTER_LEVEL": NocControlRegisterDescription(offset=0x4A0),
     "NOC_SEC_FENCE_FIFO_STATUS": NocControlRegisterDescription(offset=0x4A4),
     "NOC_SEC_FENCE_FIFO_RDDATA": NocControlRegisterDescription(offset=0x4A8),
-    "PORT1_FLIT_COUNTER": NocControlRegisterDescription(offset=0x500, size=128),
-    "PORT2_FLIT_COUNTER": NocControlRegisterDescription(offset=0x580, size=128),
+    "PORT1_FLIT_COUNTER_LOWER": NocControlRegisterDescription(offset=0x500),  # 16 instances
+    "PORT1_FLIT_COUNTER_UPPER": NocControlRegisterDescription(offset=0x540),  # 16 instances
+    "PORT2_FLIT_COUNTER_LOWER": NocControlRegisterDescription(offset=0x580),  # 16 instances
+    "PORT2_FLIT_COUNTER_UPPER": NocControlRegisterDescription(offset=0x5C0),  # 16 instances
 }
 
 

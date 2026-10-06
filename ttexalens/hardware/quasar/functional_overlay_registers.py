@@ -130,6 +130,7 @@ register_map: dict[str, RegisterDescription] = {
     "TT_CLUSTER_CTRL_CLOCK_GATING_HYST": ClusterControlRegisterDescription(offset=0x0D0),
     # ---------------------------------------------------------------------------
     # WB (write-back) PC registers — 64-bit, 8-byte stride (cores 0-7).
+    # Lower 32 bits hold the instruction address for programs < 4 GB.
     # ---------------------------------------------------------------------------
     "TT_CLUSTER_CTRL_WB_PC_REG_C0": ClusterControlRegisterDescription(offset=0x0D8, size=8, mask=(1 << 58) - 1),
     "TT_CLUSTER_CTRL_WB_PC_REG_C1": ClusterControlRegisterDescription(offset=0x0E0, size=8, mask=(1 << 58) - 1),
