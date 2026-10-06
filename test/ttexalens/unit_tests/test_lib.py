@@ -382,6 +382,7 @@ class TestReadWrite(unittest.TestCase):
                 2,
             ),  # ALU_FORMAT_SPEC_REG2_Dstacc
             ("0,0", DebugRegisterDescription(offset=0x54), 18),  # RISCV_DEBUG_REG_DBG_BUS_CNTL_REG
+            ("0,0", DebugRegisterDescription(offset=0x54, size=8), 0x123456789ABCDEF),
             ("0,0", "UNPACK_CONFIG0_out_data_format", 6),
             ("0,0", "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1),
             ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 9),
