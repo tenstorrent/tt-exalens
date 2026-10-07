@@ -500,6 +500,67 @@ class TestReadWrite(unittest.TestCase):
 
     @parameterized.expand(
         [
+            ("cfg(1)", ConfigurationRegisterDescription(index=1)),
+            ("cfg(1,0x1E000000)", ConfigurationRegisterDescription(index=1, mask=0x1E000000)),
+            ("cfg(1,0x1E000000,25)", ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25)),
+            ("cfg(1, 0x1E000000, 25, 4)", ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25)),
+            ("cfg(1,-1,0,8)", ConfigurationRegisterDescription(index=1, size=8)),  # Mask -1 means full mask
+            (
+                "cfg(1,0x000000FFFF000000,24,8)",
+                ConfigurationRegisterDescription(index=1, mask=0x000000FFFF000000, shift=24, size=8),
+            ),
+            ("dbg(0x54)", DebugRegisterDescription(offset=0x54)),
+            ("dbg(84)", DebugRegisterDescription(offset=0x54)),  # Decimal address
+            ("dbg(0x0,-1,0,12)", DebugRegisterDescription(offset=0x0, size=12)),
+            (
+                "dbg(0x0,0x000000CFFC000000,26,8)",
+                DebugRegisterDescription(offset=0x0, mask=0x000000CFFC000000, shift=26, size=8),
+            ),
+            (
+                "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG",
+                DebugRegisterDescription(offset=0x54),
+                "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG",
+            ),  # Register name is returned as is
+        ]
+    )
+    def test_parse_register_description(self, register_string, expected_register, expected_name=None):
+        """Test parsing register names and descriptions in <reg-type>(<reg-parameters>) format."""
+
+        loc = OnChipCoordinate.create("0,0", device=self.context.devices[0])
+        register_store = self.context.devices[0].get_block(loc).get_register_store()
+
+        register, register_name = register_store.parse_register_description(register_string)
+
+        expected_register = expected_register.clone(register_store._get_register_base_address(expected_register))
+        self.assertEqual(register, expected_register)
+        self.assertEqual(register_name, expected_name or str(expected_register))
+
+    @parameterized.expand(
+        [
+            ("invalid_register_name",),  # Neither a register name nor a register description
+            ("cfg(1",),  # Missing closing parenthesis
+            ("cfg()",),  # No arguments
+            ("cfg(abc)",),  # Argument is not an integer
+            ("cfg(1,0xFF,0,4,0)",),  # Too many arguments
+            ("abc(1)",),  # Unknown register type
+            ("cfg(-1)",),  # Invalid index (negative)
+            ("cfg(1,-2)",),  # Invalid mask (negative, not -1)
+            ("cfg(1,0x100000000)",),  # Invalid mask (too high for 4 byte register)
+            ("dbg(0x54,0xFF,32)",),  # Invalid shift (too high for 4 byte register)
+            ("dbg(0x54,0xFF,0,6)",),  # Invalid size (not divisible by 4)
+        ]
+    )
+    def test_invalid_parse_register_description(self, register_string):
+        """Test that invalid register names and descriptions are rejected when parsing."""
+
+        loc = OnChipCoordinate.create("0,0", device=self.context.devices[0])
+        register_store = self.context.devices[0].get_block(loc).get_register_store()
+
+        with self.assertRaises(ValueError):
+            register_store.parse_register_description(register_string)
+
+    @parameterized.expand(
+        [
             ("0,0",),
             ("1,1",),
             ("2,2",),

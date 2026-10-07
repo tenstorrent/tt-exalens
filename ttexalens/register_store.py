@@ -138,6 +138,9 @@ class ConfigurationRegisterDescription(RegisterDescription):
         self.offset = self.offset + self.index * 4
 
 
+TENSIX_GPRS_PER_THREAD = 64
+
+
 @dataclass
 class TensixGeneralPurposeRegisterDescription(RegisterDescription):
     index: int = 0
@@ -145,8 +148,10 @@ class TensixGeneralPurposeRegisterDescription(RegisterDescription):
 
     def __post_init__(self):
         super().__post_init__()
-        if self.index < 0 or self.index > 63:
-            raise ValueError(f"Register index must be between 0 and 63, but got {self.index}.")
+        if self.index < 0 or self.index >= TENSIX_GPRS_PER_THREAD:
+            raise ValueError(
+                f"Register index must be between 0 and {TENSIX_GPRS_PER_THREAD - 1}, but got {self.index}."
+            )
         self.offset = self.offset + self.index * 4
 
 
@@ -333,7 +338,7 @@ class RegisterStore:
                     "brisc", neo_id=self.neo_id
                 )  # We cannot use TRISC2 due to hardware bug so we use BRISC
                 address = (
-                    register.private_address + register.thread_id * 64 * 4
+                    register.private_address + register.thread_id * TENSIX_GPRS_PER_THREAD * 4
                 )  # We need to adjust the address based on the thread ID because we use BRISC
             else:
                 risc_debug = block.get_risc_debug(f"trisc{register.thread_id}", neo_id=self.neo_id)
@@ -366,13 +371,13 @@ class RegisterStore:
         if register.bar0_address is not None:
             if register.mask != register.full_mask:
                 self.device.bar0_read(register.bar0_address, old_data)
-                value = self._merge_masked_value(register, old_data, value)
+                value = RegisterStore._merge_masked_value(register, old_data, value)
             data = value.to_bytes(register.size, byteorder="little")
             self.device.bar0_write(register.bar0_address, data)
         elif register.noc_address is not None:
             if register.mask != register.full_mask:
                 self.location.noc_read(register.noc_address, old_data, register.noc_id, safe_mode=safe_mode)
-                value = self._merge_masked_value(register, old_data, value)
+                value = RegisterStore._merge_masked_value(register, old_data, value)
             data = value.to_bytes(register.size, byteorder="little")
             self.location.noc_write(register.noc_address, data, register.noc_id, safe_mode=safe_mode)
         else:
@@ -387,7 +392,7 @@ class RegisterStore:
             with risc_debug.ensure_private_memory_access():
                 if register.mask != register.full_mask:
                     risc_debug.read_memory_bytes(register.private_address, old_data, safe_mode=safe_mode)
-                    value = self._merge_masked_value(register, old_data, value)
+                    value = RegisterStore._merge_masked_value(register, old_data, value)
                 data = value.to_bytes(register.size, byteorder="little")
                 risc_debug.write_memory_bytes(register.private_address, data, safe_mode=safe_mode)
 
