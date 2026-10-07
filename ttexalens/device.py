@@ -351,6 +351,17 @@ class Device:
     def bar0_write32(self, address: int, data: int):
         return self._umd_device.bar0_write32(address, data)
 
+    def bar0_read(self, address: int, buffer: bytearray | memoryview) -> None:
+        """Reads len(buffer) bytes from PCI address using aligned 4-byte reads."""
+        util.read_bytes_by_words(address, buffer, self.bar0_read32)
+
+    def bar0_write(self, address: int, data: bytes | bytearray | memoryview) -> None:
+        """
+        Writes data to PCI address using aligned 4-byte writes.
+        Words only partially covered by data are read, patched and written back.
+        """
+        util.write_bytes_by_words(address, data, self.bar0_read32, self.bar0_write32)
+
     def arc_msg(
         self,
         noc_id: NocId | None,

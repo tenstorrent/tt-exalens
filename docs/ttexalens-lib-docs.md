@@ -769,6 +769,23 @@ and must be specified explicitly.
 
 
 
+### bar0_read
+
+
+
+```
+bar0_read(self, address: int, buffer: bytearray | memoryview)
+```
+Reads len(buffer) bytes from PCI address using aligned 4-byte reads.
+### bar0_write
+
+
+
+```
+bar0_write(self, address: int, data: bytes | bytearray | memoryview)
+```
+Writes data to PCI address using aligned 4-byte writes.
+Words only partially covered by data are read, patched and written back.
 ### get_block
 
 

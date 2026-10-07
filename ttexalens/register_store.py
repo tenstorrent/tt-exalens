@@ -64,9 +64,24 @@ def parse_register_value(value: str) -> int:
 class RegisterDescription:
     base_address: DeviceAddress | None = None
     offset: int = 0
-    mask: int = 0xFFFFFFFF
+    mask: int = -1  # full mask
     shift: int = 0
     data_type: REGISTER_DATA_TYPE = REGISTER_DATA_TYPE.INT_VALUE
+    size: int = 4
+
+    def __post_init__(self):
+        if self.size <= 0 or self.size % 4 != 0:
+            raise ValueError(f"Invalid register size {self.size}. Register size must be a multiple of 4 bytes.")
+        if self.shift < 0 or self.shift >= self.size * 8:
+            raise ValueError(f"Invalid shift value {self.shift}. Shift must be between 0 and {self.size * 8 - 1}.")
+        if self.mask == -1:
+            self.mask = self.full_mask
+        if self.mask < 0 or self.mask > self.full_mask:
+            raise ValueError(f"Invalid mask value {self.mask}. Mask must be between 0 and {self.full_mask}.")
+
+    @property
+    def full_mask(self) -> int:
+        return (1 << (self.size * 8)) - 1
 
     @property
     def noc_address(self) -> int | None:
@@ -117,7 +132,13 @@ class ConfigurationRegisterDescription(RegisterDescription):
     index: int = 0
 
     def __post_init__(self):
+        super().__post_init__()
+        if self.index < 0:
+            raise ValueError(f"Register index must be positive, but got {self.index}.")
         self.offset = self.offset + self.index * 4
+
+
+TENSIX_GPRS_PER_THREAD = 64
 
 
 @dataclass
@@ -126,6 +147,11 @@ class TensixGeneralPurposeRegisterDescription(RegisterDescription):
     thread_id: int = 0
 
     def __post_init__(self):
+        super().__post_init__()
+        if self.index < 0 or self.index >= TENSIX_GPRS_PER_THREAD:
+            raise ValueError(
+                f"Register index must be between 0 and {TENSIX_GPRS_PER_THREAD - 1}, but got {self.index}."
+            )
         self.offset = self.offset + self.index * 4
 
 
@@ -208,6 +234,12 @@ class RegisterStore:
         # Block size is in bytes, each register is 4 bytes.
         return (config_regs.memory_block.size // 4) - 1
 
+    def _validate_config_register_index(self, register: ConfigurationRegisterDescription) -> None:
+        # Registers wider than 32 bits span multiple consecutive indices, all of which must be in range.
+        max_index = self._max_config_register_index - (register.size // 4 - 1)
+        if register.index > max_index:
+            raise ValueError(f"Register index must be less than or equal to {max_index}, but got {register.index}.")
+
     def get_register_names(self) -> list[str]:
         return list(self.registers.keys())
 
@@ -223,19 +255,24 @@ class RegisterStore:
                 f"Unknown register name '{register_name}' on {self.location.to_user_str()} [NEO {self.neo_id}] for device {self.device.id}."
             )
 
-    def get_register_noc_address(self, register_name: str) -> int | None:
+    def _get_32_bit_register_description(self, register_name: str) -> RegisterDescription:
         register = self.get_register_description(register_name)
+        assert (
+            register.size == 4
+        ), f"Register {register_name} is {register.size * 8}-bit, use read_register/write_register"
         assert register.mask == 0xFFFFFFFF
+        return register
+
+    def get_register_noc_address(self, register_name: str) -> int | None:
+        register = self._get_32_bit_register_description(register_name)
         return register.noc_address
 
     def get_register_private_address(self, register_name: str) -> int | None:
-        register = self.get_register_description(register_name)
-        assert register.mask == 0xFFFFFFFF
+        register = self._get_32_bit_register_description(register_name)
         return register.private_address
 
     def get_register_bar0_address(self, register_name: str) -> int | None:
-        register = self.get_register_description(register_name)
-        assert register.mask == 0xFFFFFFFF
+        register = self._get_32_bit_register_description(register_name)
         return register.bar0_address
 
     def parse_register_description(self, input_string: str) -> tuple[RegisterDescription, str]:
@@ -249,36 +286,26 @@ class RegisterStore:
             name = match.group(1)
             arguments = [int(param.strip(), 0) for param in match.group(2).split(",")]
             if len(arguments) < 1:
-                raise ValueError(f"No arguments specified for register descriptiong: {input_string}")
-            if len(arguments) > 3:
+                raise ValueError(f"No arguments specified for register description: {input_string}")
+            if len(arguments) > 4:
                 raise ValueError(f"Too many arguments for register description: {input_string}")
         else:
             raise ValueError(f"Invalid input string format: {input_string}")
 
         # Create register description based on the parsed name and arguments
-        mask = arguments[1] if len(arguments) > 1 else 0xFFFFFFFF
+        size = arguments[3] if len(arguments) > 3 else 4
+        mask = arguments[1] if len(arguments) > 1 and arguments[1] != -1 else (1 << (size * 8)) - 1
         shift = arguments[2] if len(arguments) > 2 else 0
-        if mask < 0 or mask > 0xFFFFFFFF:
-            raise ValueError(f"Invalid mask value {mask}. Mask must be between 0 and 0xFFFFFFFF.")
-        if shift < 0 or shift > 31:
-            raise ValueError(f"Invalid shift value {shift}. Shift must be between 0 and 31.")
         register: RegisterDescription
         if name == "cfg":
-            # Configuration register. Parameters: index, mask, shift
-            register = ConfigurationRegisterDescription(index=arguments[0], mask=mask, shift=shift)
+            # Configuration register. Parameters: index, mask, shift, size
+            register = ConfigurationRegisterDescription(index=arguments[0], mask=mask, shift=shift, size=size)
         elif name == "dbg":
-            # Debug register. Parameters: address, mask, shift
-            register = DebugRegisterDescription(offset=arguments[0], mask=mask, shift=shift)
+            # Debug register. Parameters: address, mask, shift, size
+            register = DebugRegisterDescription(offset=arguments[0], mask=mask, shift=shift, size=size)
         else:
             raise ValueError(f"Unknown register type: {name}. Possible values: [cfg,dbg]")
         register = register.clone(self._get_register_base_address(register))
-
-        if isinstance(register, ConfigurationRegisterDescription):
-            max_index = self._max_config_register_index
-            if register.index < 0 or register.index > max_index:
-                raise ValueError(
-                    f"Register index must be positive and less than or equal to {max_index}, but got {register.index}"
-                )
 
         return register, register.__str__()
 
@@ -286,27 +313,23 @@ class RegisterStore:
         if isinstance(register, str):
             register = self.get_register_description(register)
         else:
-            if register.mask < 0 or register.mask > 0xFFFFFFFF:
-                raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
-            if register.shift < 0 or register.shift > 31:
-                raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
             if isinstance(register, ConfigurationRegisterDescription):
-                if register.index < 0:
-                    raise ValueError(f"Register index must be positive, but got {register.index}.")
-                if register.index > self._max_config_register_index:
-                    raise ValueError(
-                        f"Register index must be less than or equal to {self._max_config_register_index}, but got {register.index}."
-                    )
+                self._validate_config_register_index(register)
             if register.base_address is None:
                 register = register.clone(self._get_register_base_address(register))
 
+        buffer = bytearray(register.size)
         if register.bar0_address is not None:
-            value = self.device.bar0_read32(register.bar0_address)
+            self.device.bar0_read(register.bar0_address, buffer)
         elif register.noc_address is not None:
-            value = self.location.noc_read32(register.noc_address, register.noc_id, safe_mode=safe_mode)
+            self.location.noc_read(register.noc_address, buffer, register.noc_id, safe_mode=safe_mode)
         elif isinstance(register, ConfigurationRegisterDescription):
-            self.location.noc_write32(self._control_register_address, register.index, safe_mode=safe_mode)
-            value = self.location.noc_read32(self._data_register_address, safe_mode=safe_mode)
+            for offset in range(0, register.size, 4):
+                self.location.noc_write32(
+                    self._control_register_address, register.index + offset // 4, safe_mode=safe_mode
+                )
+                word = self.location.noc_read32(self._data_register_address, safe_mode=safe_mode)
+                buffer[offset : offset + 4] = word.to_bytes(4, byteorder="little")
         elif isinstance(register, TensixGeneralPurposeRegisterDescription):
             block = self.device.get_block(self.location)
             assert register.private_address is not None, "Register must have a private address for reading."
@@ -315,19 +338,20 @@ class RegisterStore:
                     "brisc", neo_id=self.neo_id
                 )  # We cannot use TRISC2 due to hardware bug so we use BRISC
                 address = (
-                    register.private_address + register.thread_id * 64 * 4
+                    register.private_address + register.thread_id * TENSIX_GPRS_PER_THREAD * 4
                 )  # We need to adjust the address based on the thread ID because we use BRISC
             else:
                 risc_debug = block.get_risc_debug(f"trisc{register.thread_id}", neo_id=self.neo_id)
                 address = register.private_address
             with risc_debug.ensure_private_memory_access():
-                value = risc_debug.read_memory(address)
+                risc_debug.read_memory_bytes(address, buffer, safe_mode=safe_mode)
         else:
             # Read using RISC core debugging hardware.
             risc_debug = self.device.get_block(self.location).get_default_risc_debug(neo_id=self.neo_id)
             assert register.private_address is not None, "Register must have a private address for reading."
             with risc_debug.ensure_private_memory_access():
-                value = risc_debug.read_memory(register.private_address)
+                risc_debug.read_memory_bytes(register.private_address, buffer, safe_mode=safe_mode)
+        value = int.from_bytes(buffer, byteorder="little")
         return (value & register.mask) >> register.shift
 
     def write_register(self, register: str | RegisterDescription, value: int, safe_mode: bool | None = None) -> None:
@@ -335,35 +359,27 @@ class RegisterStore:
             register = self.get_register_description(register)
         else:
             if isinstance(register, ConfigurationRegisterDescription):
+                self._validate_config_register_index(register)
                 register = register.clone(self._get_register_base_address(register))
-            if register.mask < 0 or register.mask > 0xFFFFFFFF:
-                raise ValueError(f"Invalid mask value {register.mask}. Mask must be between 0 and 0xFFFFFFFF.")
-            if register.shift < 0 or register.shift > 31:
-                raise ValueError(f"Invalid shift value {register.shift}. Shift must be between 0 and 31.")
-            if isinstance(register, ConfigurationRegisterDescription):
-                if register.index < 0:
-                    raise ValueError(f"Register index must be positive, but got {register.index}.")
-                if register.index > self._max_config_register_index:
-                    raise ValueError(
-                        f"Register index must be less than or equal to {self._max_config_register_index}, but got {register.index}."
-                    )
             if register.base_address is None:
                 register = register.clone(self._get_register_base_address(register))
         if value < 0 or ((value << register.shift) & ~register.mask) != 0:
             raise ValueError(
                 f"Value must be greater than 0 and inside the mask 0x{register.mask:x}, but got {value} (0x{value:x})"
             )
-
+        old_data = bytearray(register.size)
         if register.bar0_address is not None:
-            if register.mask != 0xFFFFFFFF:
-                old_value = self.device.bar0_read32(register.bar0_address)
-                value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            self.device.bar0_write32(register.bar0_address, value)
+            if register.mask != register.full_mask:
+                self.device.bar0_read(register.bar0_address, old_data)
+                value = RegisterStore._merge_masked_value(register, old_data, value)
+            data = value.to_bytes(register.size, byteorder="little")
+            self.device.bar0_write(register.bar0_address, data)
         elif register.noc_address is not None:
-            if register.mask != 0xFFFFFFFF:
-                old_value = self.location.noc_read32(register.noc_address, register.noc_id, safe_mode=safe_mode)
-                value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-            self.location.noc_write32(register.noc_address, value, register.noc_id, safe_mode=safe_mode)
+            if register.mask != register.full_mask:
+                self.location.noc_read(register.noc_address, old_data, register.noc_id, safe_mode=safe_mode)
+                value = RegisterStore._merge_masked_value(register, old_data, value)
+            data = value.to_bytes(register.size, byteorder="little")
+            self.location.noc_write(register.noc_address, data, register.noc_id, safe_mode=safe_mode)
         else:
             block = self.device.get_block(self.location)
             thread_id = getattr(register, "thread_id", None)
@@ -374,10 +390,16 @@ class RegisterStore:
             )
             assert register.private_address is not None, "Register must have a private address for writing."
             with risc_debug.ensure_private_memory_access():
-                if register.mask != 0xFFFFFFFF:
-                    old_value = risc_debug.read_memory(register.private_address)
-                    value = (old_value & ~register.mask) | ((value << register.shift) & register.mask)
-                risc_debug.write_memory(register.private_address, value)
+                if register.mask != register.full_mask:
+                    risc_debug.read_memory_bytes(register.private_address, old_data, safe_mode=safe_mode)
+                    value = RegisterStore._merge_masked_value(register, old_data, value)
+                data = value.to_bytes(register.size, byteorder="little")
+                risc_debug.write_memory_bytes(register.private_address, data, safe_mode=safe_mode)
+
+    @staticmethod
+    def _merge_masked_value(register: RegisterDescription, old_data: bytes | bytearray, value: int) -> int:
+        old_value = int.from_bytes(old_data, byteorder="little")
+        return (old_value & ~register.mask) | ((value << register.shift) & register.mask)
 
     @staticmethod
     def create_initialization(

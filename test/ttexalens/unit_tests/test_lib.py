@@ -27,7 +27,12 @@ from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
 from ttexalens.elf import CallstackEntry, CallstackEntryVariable
 from ttexalens.hardware.risc_debug import RiscDebug
 
-from ttexalens.register_store import ConfigurationRegisterDescription, DebugRegisterDescription
+from ttexalens.register_store import (
+    ConfigurationRegisterDescription,
+    DebugRegisterDescription,
+    RegisterDescription,
+    TensixGeneralPurposeRegisterDescription,
+)
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.firmware_telemetry import CUTOFF_FIRMWARE_VERSION
 
@@ -376,7 +381,11 @@ class TestReadWrite(unittest.TestCase):
                 ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
                 2,
             ),  # ALU_FORMAT_SPEC_REG2_Dstacc
+            ("0,0", ConfigurationRegisterDescription(index=1, mask=0x000000FFFF000000, shift=24, size=8), 0xFFFF),
+            ("0,0", ConfigurationRegisterDescription(index=64, size=28), (1 << (28 * 4)) - 1),
             ("0,0", DebugRegisterDescription(offset=0x54), 18),  # RISCV_DEBUG_REG_DBG_BUS_CNTL_REG
+            ("0,0", DebugRegisterDescription(offset=0x0, size=12), (1 << (12 * 4)) - 1),
+            ("0,0", DebugRegisterDescription(offset=0x0, mask=0x000000CFFC000000, shift=26, size=8), 0x1234),
             ("0,0", "UNPACK_CONFIG0_out_data_format", 6),
             ("0,0", "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1),
             ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 9),
@@ -457,13 +466,8 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", "invalid_register_name", 0, 0),  # Invalid register name
             ("0,0", ConfigurationRegisterDescription(), 0, -1),  # Invalid value (negative)
             ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 0, 2**32),  # Invalid value (too high)
-            ("0,0", ConfigurationRegisterDescription(index=-1), 0, 0),  # Invalid index (negative)
             ("0,0", ConfigurationRegisterDescription(index=2**14), 0, 0),  # Invalid index (too high)
             ("0,0", 0xFFB12345, 0, 0),  # Address alone is not enough to represent index)
-            ("0,0", ConfigurationRegisterDescription(mask=-1), 0, 0),  # Invalid mask (negative)
-            ("0,0", ConfigurationRegisterDescription(mask=2**32), 0, 0),  # Invalid mask (too high)
-            ("0,0", ConfigurationRegisterDescription(shift=-1), 0, 0),  # Invalid shift (negative)
-            ("0,0", ConfigurationRegisterDescription(shift=32), 0, 0),  # Invalid shift (too high)
         ]
     )
     def test_invalid_write_read_tensix_register(self, location, register, value, device_id):
@@ -474,6 +478,86 @@ class TestReadWrite(unittest.TestCase):
                 lib.read_register(location, register, device_id)
         with self.assertRaises((TTException, ValueError)):
             lib.write_register(location, register, value, device_id)
+
+    @parameterized.expand(
+        [
+            (RegisterDescription, {"mask": -2}),  # Invalid mask (negative, not -1)
+            (RegisterDescription, {"mask": 2**32}),  # Invalid mask (too high)
+            (RegisterDescription, {"shift": -1}),  # Invalid shift (negative)
+            (RegisterDescription, {"shift": 32}),  # Invalid shift (too high)
+            (RegisterDescription, {"size": -1}),  # Invalid size (negative)
+            (RegisterDescription, {"size": 2}),  # Invalid size (not divisible by 4)
+            (ConfigurationRegisterDescription, {"index": -1}),  # Invalid index (negative)
+            (TensixGeneralPurposeRegisterDescription, {"index": -1}),  # Invalid index (negative)
+            (TensixGeneralPurposeRegisterDescription, {"index": 64}),  # Invalid index (too high)
+        ]
+    )
+    def test_invalid_register_description(self, register_class, arguments):
+        """Test that invalid mask, shift and index values are rejected when creating a register description."""
+
+        with self.assertRaises(ValueError):
+            register_class(**arguments)
+
+    @parameterized.expand(
+        [
+            ("cfg(1)", ConfigurationRegisterDescription(index=1)),
+            ("cfg(1,0x1E000000)", ConfigurationRegisterDescription(index=1, mask=0x1E000000)),
+            ("cfg(1,0x1E000000,25)", ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25)),
+            ("cfg(1, 0x1E000000, 25, 4)", ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25)),
+            ("cfg(1,-1,0,8)", ConfigurationRegisterDescription(index=1, size=8)),  # Mask -1 means full mask
+            (
+                "cfg(1,0x000000FFFF000000,24,8)",
+                ConfigurationRegisterDescription(index=1, mask=0x000000FFFF000000, shift=24, size=8),
+            ),
+            ("dbg(0x54)", DebugRegisterDescription(offset=0x54)),
+            ("dbg(84)", DebugRegisterDescription(offset=0x54)),  # Decimal address
+            ("dbg(0x0,-1,0,12)", DebugRegisterDescription(offset=0x0, size=12)),
+            (
+                "dbg(0x0,0x000000CFFC000000,26,8)",
+                DebugRegisterDescription(offset=0x0, mask=0x000000CFFC000000, shift=26, size=8),
+            ),
+            (
+                "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG",
+                DebugRegisterDescription(offset=0x54),
+                "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG",
+            ),  # Register name is returned as is
+        ]
+    )
+    def test_parse_register_description(self, register_string, expected_register, expected_name=None):
+        """Test parsing register names and descriptions in <reg-type>(<reg-parameters>) format."""
+
+        loc = OnChipCoordinate.create("0,0", device=self.context.devices[0])
+        register_store = self.context.devices[0].get_block(loc).get_register_store()
+
+        register, register_name = register_store.parse_register_description(register_string)
+
+        expected_register = expected_register.clone(register_store._get_register_base_address(expected_register))
+        self.assertEqual(register, expected_register)
+        self.assertEqual(register_name, expected_name or str(expected_register))
+
+    @parameterized.expand(
+        [
+            ("invalid_register_name",),  # Neither a register name nor a register description
+            ("cfg(1",),  # Missing closing parenthesis
+            ("cfg()",),  # No arguments
+            ("cfg(abc)",),  # Argument is not an integer
+            ("cfg(1,0xFF,0,4,0)",),  # Too many arguments
+            ("abc(1)",),  # Unknown register type
+            ("cfg(-1)",),  # Invalid index (negative)
+            ("cfg(1,-2)",),  # Invalid mask (negative, not -1)
+            ("cfg(1,0x100000000)",),  # Invalid mask (too high for 4 byte register)
+            ("dbg(0x54,0xFF,32)",),  # Invalid shift (too high for 4 byte register)
+            ("dbg(0x54,0xFF,0,6)",),  # Invalid size (not divisible by 4)
+        ]
+    )
+    def test_invalid_parse_register_description(self, register_string):
+        """Test that invalid register names and descriptions are rejected when parsing."""
+
+        loc = OnChipCoordinate.create("0,0", device=self.context.devices[0])
+        register_store = self.context.devices[0].get_block(loc).get_register_store()
+
+        with self.assertRaises(ValueError):
+            register_store.parse_register_description(register_string)
 
     @parameterized.expand(
         [
@@ -535,11 +619,11 @@ class TestReadWrite(unittest.TestCase):
         [
             ("0,0", 1),
             ("1,1", 1),
-            ("0,0", -1),
-            ("1,1", -1),
+            ("0,0", 0, 8),
+            ("1,1", 0, 8),
         ]
     )
-    def test_cfg_register_index_out_of_bounds(self, location, delta):
+    def test_cfg_register_index_out_of_bounds(self, location, delta, size=4):
         """Test that reading/writing a configuration register with index beyond valid range raises ValueError."""
 
         loc = OnChipCoordinate.create(location, device=self.context.devices[0])
@@ -549,8 +633,7 @@ class TestReadWrite(unittest.TestCase):
         max_index = register_store._max_config_register_index
 
         # Create a ConfigurationRegisterDescription with an invalid index (too high)
-        index = max_index + delta if delta > 0 else delta
-        invalid_cfg_reg = ConfigurationRegisterDescription(index=index)
+        invalid_cfg_reg = ConfigurationRegisterDescription(index=max_index + delta, size=size)
 
         # Test that reading raises ValueError
         with self.assertRaises(ValueError):
