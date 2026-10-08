@@ -93,6 +93,16 @@ class RiscDebug:
         """
         pass
 
+    def assert_not_in_reset(self, message: str = "") -> None:
+        """
+        Make sure that the RISC-V core is not in reset.
+        """
+        if self.is_in_reset():
+            exception_message = f"{self.risc_info.risc_name} is in reset"
+            if message:
+                exception_message += f": {message}"
+            raise ValueError(exception_message)
+
     @abstractmethod
     def is_halted(self) -> bool:
         """Check if the RISC core is halted."""

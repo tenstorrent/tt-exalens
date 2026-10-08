@@ -540,16 +540,6 @@ class BabyRiscDebug(RiscDebug):
         )
         self.__write(self.RISC_DBG_SOFT_RESET0, reset_reg)
 
-    def assert_not_in_reset(self, message=""):
-        """
-        Make sure that the RISC-V core is not in reset.
-        """
-        if self.is_in_reset():
-            exception_message = f"{self.risc_info.risc_name} is in reset"
-            if message:
-                exception_message += f": {message}"
-            raise ValueError(exception_message)
-
     def invalidate_instruction_cache(self):
         """
         Invalidates the instruction cache of the RISC-V core.
