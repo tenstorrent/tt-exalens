@@ -27,7 +27,7 @@ struct CompileUnitDims {
 };
 
 std::optional<CompileUnitDims> cu_dims_for(const DwarfDie& die) {
-    const DwarfCompileUnit* cu = die.get_cu();
+    auto cu = die.get_cu();
     if (cu == nullptr) {
         return std::nullopt;
     }

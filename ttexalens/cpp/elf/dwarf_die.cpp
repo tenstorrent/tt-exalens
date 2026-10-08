@@ -380,12 +380,17 @@ DwarfDie::ConstantValue DwarfDie::get_constant_value() const {
     return std::monostate{};
 }
 
-const DwarfCompileUnit* DwarfDie::get_cu() const {
+std::shared_ptr<const DwarfCompileUnit> DwarfDie::get_cu() const {
     auto info_ptr = info.lock();
     if (!info_ptr) {
         return nullptr;
     }
-    return info_ptr->get_die_cu(get_offset());
+    const DwarfCompileUnit* cu = info_ptr->get_die_cu(get_offset());
+    if (cu == nullptr) {
+        return nullptr;
+    }
+    // Aliasing constructor: points at the CU, shares ownership of info_ptr.
+    return std::shared_ptr<const DwarfCompileUnit>(std::move(info_ptr), cu);
 }
 
 DwarfDiePtr DwarfDie::get_resolved_type() const {

@@ -177,9 +177,10 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     Dwarf_Debug get_state() const { return die.get_state(); }
 
     // Returns the compile unit that owns this DIE, or nullptr if the
-    // owning DwarfInfo has been destroyed. The pointer is valid only
-    // while the owning ElfFile is alive — do not store it.
-    const DwarfCompileUnit* get_cu() const;
+    // owning DwarfInfo has been destroyed. The result is an aliasing
+    // shared_ptr: it points at the CU but shares ownership of the
+    // DwarfInfoImpl that owns it, so the CU stays valid while it is held.
+    std::shared_ptr<const DwarfCompileUnit> get_cu() const;
 
     // Lazily reads DW_AT_name off this DIE. First call invokes dwarf_diename
     // and caches the result; later calls return the cached view. Returns an
