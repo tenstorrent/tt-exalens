@@ -64,6 +64,9 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
     def set_reset_signal(self, value: bool) -> None:
         reset_bit = 1 << self.baby_risc_info.reset_flag_shift
         current = self.register_store.read_register("SMN_RISC_RESET_REG")
+        # TODO: #1190
+        if value and current & reset_bit and not self.is_debug_module_in_reset(current):
+            assert not self.is_halted(), "Cannot set reset signal while core is halted"
         new_value = (current & ~reset_bit) if value else (current | reset_bit)
         self.register_store.write_register("SMN_RISC_RESET_REG", new_value)
 
