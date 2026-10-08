@@ -11,6 +11,7 @@ from ttexalens._native_ttexalens import (
     DwarfAttribute,
     DwarfAttributeForm,
     DwarfAttributeTag,
+    DwarfCompileUnit,
     DwarfDie,
     DwarfDieTag,
     DwarfFileLine,
@@ -24,8 +25,13 @@ from ttexalens._native_ttexalens import (
     FrameDescription,
     FrameInspection,
     FrameSnapshot,
+    LocationResult,
+    RegisterRule,
+    RegisterRuleKind,
+    evaluate_die_location,
     get_callstack,
     get_frame_callstack,
+    get_tail_call_frames,
 )
 from ttexalens.server import FileAccessApi
 
@@ -54,6 +60,7 @@ __all__ = [
     "DwarfAttribute",
     "DwarfAttributeForm",
     "DwarfAttributeTag",
+    "DwarfCompileUnit",
     "DwarfDie",
     "DwarfDieTag",
     "DwarfFileLine",
@@ -67,7 +74,12 @@ __all__ = [
     "FrameDescription",
     "FrameInspection",
     "FrameSnapshot",
+    "LocationResult",
+    "RegisterRule",
+    "RegisterRuleKind",
+    "evaluate_die_location",
     "get_callstack",
     "get_frame_callstack",
+    "get_tail_call_frames",
     "read_elf",
 ]

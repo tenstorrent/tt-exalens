@@ -13,9 +13,11 @@ namespace ttexalens::native_elf::bindings {
 // readable limit and pairs each binding with the cpp/elf header it wraps.
 void bind_callstack(nanobind::module_& m);
 void bind_dwarf_attribute(nanobind::module_& m);
+void bind_dwarf_cu(nanobind::module_& m);
 void bind_dwarf_die(nanobind::module_& m);
 void bind_dwarf_frame(nanobind::module_& m);
 void bind_dwarf_info(nanobind::module_& m);
+void bind_dwarf_location(nanobind::module_& m);
 void bind_elf_file(nanobind::module_& m);
 void bind_memory_access(nanobind::module_& m);
 void bind_variable(nanobind::module_& m);

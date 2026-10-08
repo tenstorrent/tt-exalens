@@ -7,9 +7,11 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 
+#include "dwarf_cu.hpp"
 #include "dwarf_die.hpp"
 #include "dwarf_frame.hpp"
 #include "variable.hpp"
@@ -30,6 +32,10 @@ class DwarfInfo {
     DwarfInfo& operator=(const DwarfInfo&) = delete;
     DwarfInfo(DwarfInfo&& other) noexcept;
     DwarfInfo& operator=(DwarfInfo&& other) noexcept;
+
+    // Every compile unit in .debug_info, in section order. Loaded on first
+    // call; the span stays valid for the DwarfInfo's lifetime.
+    std::span<const DwarfCompileUnit> get_compile_units() const;
 
     // Maps a PC to its source location via the .debug_line program. Returns
     // std::nullopt if no line entry covers the address.
@@ -61,6 +67,10 @@ class DwarfInfo {
     // lifetime. Don't change fields of the returned read-only symbol to avoid
     // internal state corruption.
     const ElfSymbol* find_symbol_by_name(std::string_view name) const;
+
+    // Like find_symbol_by_name, but matches the demangled name (e.g.
+    // `func(int)::counter` for a function-local static).
+    const ElfSymbol* find_symbol_by_demangled_name(std::string_view demangled_name) const;
 
     // Looks up `name` as an enumerator / constexpr int constant. Returns
     // nullopt when the DIE doesn't exist or doesn't carry a numeric constant
