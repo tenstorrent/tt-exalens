@@ -64,6 +64,8 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
     def set_reset_signal(self, value: bool) -> None:
         reset_bit = 1 << self.baby_risc_info.reset_flag_shift
         current = self.register_store.read_register("SMN_RISC_RESET_REG")
+        if value and current & reset_bit and not self.is_debug_module_in_reset(current):
+            assert not self.is_halted(), "Cannot set reset signal while core is halted"
         new_value = (current & ~reset_bit) if value else (current | reset_bit)
         self.register_store.write_register("SMN_RISC_RESET_REG", new_value)
 
@@ -96,11 +98,15 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             self.take_debug_module_out_of_reset(value)
 
     def is_halted(self) -> bool:
+        if self.enable_asserts:
+            self.assert_not_in_reset()
         self.ensure_debug_module_is_active()
         haltsummary = self.register_store.read_register("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
         return bool(haltsummary & (1 << self.baby_risc_info.risc_id))
 
     def halt(self) -> None:
+        if self.enable_asserts:
+            self.assert_not_in_reset()
         self.ensure_debug_module_is_active()
         if self.is_halted():
             util.WARN(f"Halt: {self.risc_location.risc_name} at {self.risc_location.location} is already halted")
@@ -112,6 +118,8 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
 
     def cont(self) -> None:
+        if self.enable_asserts:
+            self.assert_not_in_reset()
         self.ensure_debug_module_is_active()
         if not self.is_halted():
             util.WARN(f"Continue: {self.risc_location.risc_name} at {self.risc_location.location} is already running")
@@ -122,6 +130,8 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
 
     @contextmanager
     def ensure_halted(self) -> Generator[None, Any, None]:
+        if self.enable_asserts:
+            self.assert_not_in_reset()
         was_halted = self.is_halted()
         if not was_halted:
             self.halt()
@@ -133,6 +143,8 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
 
     def step(self) -> None:
         """Execute a single instruction on the hart, then re-enter Debug Mode."""
+        if self.enable_asserts:
+            self.assert_not_in_reset()
         self.ensure_debug_module_is_active()
         assert self.is_halted(), "Hart must be halted before single-stepping"
         self._set_single_step(True)
@@ -173,6 +185,8 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         """Read a general purpose register (x0-x31), or the program counter (index 32)."""
         if not 0 <= register_index <= 32:
             raise ValueError(f"Invalid register index {register_index}. Must be between 0 and 32.")
+        if self.enable_asserts:
+            self.assert_not_in_reset()
         # Reading GPR with index 32 returns PC to align with other architectures
         if register_index == 32:
             return self.get_pc()
@@ -187,6 +201,8 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             raise ValueError(f"Invalid register index {register_index}. Must be between 0 and 32.")
         if not 0 <= value <= 0xFFFFFFFFFFFFFFFF:
             raise ValueError(f"Value out of range: 0x{value:x}. Must fit within 64 bits.")
+        if self.enable_asserts:
+            self.assert_not_in_reset()
         if register_index == 32:
             self._write_csr_through_debug_module(value, INSN_CSRW_DPC_X5)
         else:
