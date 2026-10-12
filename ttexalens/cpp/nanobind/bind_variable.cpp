@@ -58,6 +58,8 @@ void bind_variable(nb::module_& m) {
         .def("get_member", &ElfVariable::get_member, nb::arg("member_name"))
         .def("dereference", &ElfVariable::dereference)
         .def("get_address", &ElfVariable::get_address)
+        .def("get_type_die", &ElfVariable::get_type_die, nb::rv_policy::reference_internal)
+        .def("get_memory_access", &ElfVariable::get_memory_access)
         .def("get_size", &ElfVariable::get_size)
         .def("read_bytes",
              [](const ElfVariable& self) {

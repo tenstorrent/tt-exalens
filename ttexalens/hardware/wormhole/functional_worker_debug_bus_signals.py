@@ -138,10 +138,10 @@ debug_bus_signal_map = {
     "trisc0_pc_buffer_i_mops_outstanding": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x2000000),
     "trisc0_pc_buffer_cmd_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x1000000),
     "trisc0_pc_buffer_cmd_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x800000),
-    "trisc0_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
+    "trisc0_pc_buffer_next_cmd_fifo_data/1": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
         rd_sel=0, daisy_sel=7, sig_sel=19, mask=0x7FFFFF, across_groups=True
     ),
-    "trisc0_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
+    "trisc0_pc_buffer_next_cmd_fifo_data/0": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically." are duplicates
         rd_sel=3, daisy_sel=7, sig_sel=18, mask=0xFF800000, across_groups=True
     ),
     "trisc0_risc_wrapper_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
@@ -248,10 +248,10 @@ debug_bus_signal_map = {
     "trisc1_pc_buffer_i_mops_outstanding": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x2000000),
     "trisc1_pc_buffer_cmd_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x1000000),
     "trisc1_pc_buffer_cmd_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x800000),
-    "trisc1_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    "trisc1_pc_buffer_next_cmd_fifo_data/1": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
         rd_sel=3, daisy_sel=7, sig_sel=20, mask=0xFF800000, across_groups=True
     ),
-    "trisc1_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    "trisc1_pc_buffer_next_cmd_fifo_data/0": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
         rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x7FFFFF, across_groups=True
     ),
     "trisc1_risc_wrapper_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
@@ -327,10 +327,10 @@ debug_bus_signal_map = {
     "trisc2_pc_buffer_i_mops_outstanding": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x2000000),
     "trisc2_pc_buffer_cmd_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x1000000),
     "trisc2_pc_buffer_cmd_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x800000),
-    "trisc2_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    "trisc2_pc_buffer_next_cmd_fifo_data/1": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
         rd_sel=3, daisy_sel=7, sig_sel=22, mask=0xFF800000, across_groups=True
     ),
-    "trisc2_pc_buffer_next_cmd_fifo_data": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    "trisc2_pc_buffer_next_cmd_fifo_data/0": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
         rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x7FFFFF, across_groups=True
     ),
     "trisc2_risc_wrapper_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(

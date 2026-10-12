@@ -12,9 +12,11 @@ nanobind_add_module(
     bindings.cpp
     bind_callstack.cpp
     bind_dwarf_attribute.cpp
+    bind_dwarf_cu.cpp
     bind_dwarf_die.cpp
     bind_dwarf_frame.cpp
     bind_dwarf_info.cpp
+    bind_dwarf_location.cpp
     bind_elf_file.cpp
     bind_memory_access.cpp
     bind_variable.cpp

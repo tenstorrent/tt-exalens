@@ -75,6 +75,19 @@ void bind_callstack(nb::module_& m) {
     // extract_variables is false the per-frame variable DIE lists are skipped.
     m.def("get_frame_callstack", &get_frame_callstack, nb::arg("elfs"), nb::arg("pc"),
           nb::arg("extract_variables") = true);
+
+    // append_tail_call_frames() only appends to the vector it is given, so
+    // Python gets the synthesized frames back as a new list instead.
+    m.def(
+        "get_tail_call_frames",
+        [](const ElfFile& elf, const DwarfDiePtr& callee_subprogram, uint64_t return_address,
+           bool expand_inline_frames) {
+            std::vector<CallstackEntry> frames;
+            append_tail_call_frames(elf, callee_subprogram, return_address, frames, expand_inline_frames);
+            return frames;
+        },
+        nb::arg("elf"), nb::arg("callee_subprogram"), nb::arg("return_address"),
+        nb::arg("expand_inline_frames") = false);
 }
 
 }  // namespace ttexalens::native_elf::bindings
