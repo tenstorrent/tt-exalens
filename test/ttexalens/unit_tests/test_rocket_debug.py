@@ -97,12 +97,6 @@ class TestDebugging(unittest.TestCase):
             f"PC should be {expected} + program base address ({PROGRAM_BASE_ADDRESS + expected}).",
         )
 
-    def continue_from_breakpoint(self):
-        """Release halted core from breakpoint loop and continue its execution."""
-        self.assertTrue(self.rocket_debug.is_halted(), "Core should be halted in breakpoint loop.")
-        self.rocket_debug.write_gpr(BREAKPOINT_REGISTER, 0)
-        self.rocket_debug.cont()
-
     def test_core_reset(self):
         """Test asserting and deasserting core reset."""
         addr = 0x10000
