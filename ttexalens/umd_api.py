@@ -226,7 +226,7 @@ class UmdApi:
 
         options = tt_umd.SimulationConnectorOptions()
         options.simulator_directory = path
-        options.serve_over_sockets = True
+        options.serve_over_sockets = False
         try:
             simulation_connection, simulation_devices = tt_umd.SimulationConnector.discover(options)
         except Exception as e:
