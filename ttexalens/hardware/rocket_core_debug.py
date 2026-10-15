@@ -29,6 +29,11 @@ class RocketCoreDebug(RiscDebug):
     def set_reset_signal(self, value: bool) -> None:
         raise NotImplementedError("set_reset_signal must be implemented by subclasses of RocketCoreDebug")
 
+    def deassert_reset_with_ebreak_enabled(self) -> None:
+        raise NotImplementedError(
+            "deassert_reset_with_ebreak_enabled must be implemented by subclasses of RocketCoreDebug"
+        )
+
     def ensure_debug_module_is_active(self) -> None:
         raise NotImplementedError("ensure_debug_module_is_active must be implemented by subclasses of RocketCoreDebug")
 
