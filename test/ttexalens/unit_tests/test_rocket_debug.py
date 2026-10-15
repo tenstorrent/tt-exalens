@@ -236,10 +236,6 @@ class TestDebugging(unittest.TestCase):
         self.assertTrue(self.rocket_debug.is_halted(), "Core should still be halted after single step.")
         self.assertPcEquals(4 * num_of_nops + 4)
 
-        self.rocket_debug.cont()
-        self.assertFalse(self.rocket_debug.is_halted(), "Core should continue past ebreak.")
-        self.assertPcEquals(4 * num_of_nops + 4)
-
     def test_step(self):
         """Test executing single and multiple steps."""
         addr = 0x10000

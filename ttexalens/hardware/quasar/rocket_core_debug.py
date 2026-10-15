@@ -83,7 +83,9 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         self.ensure_debug_module_is_active()
         reset_bit = 1 << self.baby_risc_info.reset_flag_shift
         hartsel = self.baby_risc_info.risc_id << 16
+        # Stage halt request
         self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | HALTREQ)
+        # Deassert reset
         current = self.register_store.read_register("SMN_RISC_RESET_REG")
         self.register_store.write_register("SMN_RISC_RESET_REG", current | reset_bit)
         start_time = time.time()
@@ -91,8 +93,8 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             if time.time() - start_time > timeout:
                 raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
             time.sleep(0.01)
-        self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
         self._write_csr_through_debug_module(DCSR_EBREAKM, INSN_CSRRS_DCSR_X5)
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
         self.cont()
 
     def is_debug_module_in_reset(self, value: int | None = None) -> bool:
