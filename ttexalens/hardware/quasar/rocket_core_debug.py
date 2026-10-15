@@ -203,9 +203,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         pc = self._read_pc_through_debug_module()
         instruction = bytearray(4)
         self.read_memory_bytes(pc, instruction)
-        if int.from_bytes(instruction[:2], byteorder="little") == INSN_C_EBREAK:
-            self._write_csr_through_debug_module(pc + 2, INSN_CSRW_DPC_X5)
-        elif int.from_bytes(instruction, byteorder="little") == INSN_EBREAK:
+        if int.from_bytes(instruction, byteorder="little") == INSN_EBREAK:
             self._write_csr_through_debug_module(pc + 4, INSN_CSRW_DPC_X5)
 
     def get_pc(self) -> int:
