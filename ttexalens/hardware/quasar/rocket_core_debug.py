@@ -83,7 +83,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         hartsel = self.baby_risc_info.risc_id << 16
         # Stage halt request
         self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | HALTREQ)
-        # Deassert reset
+        # Take risc out of reset
         current = self.register_store.read_register("SMN_RISC_RESET_REG")
         self.register_store.write_register("SMN_RISC_RESET_REG", current | reset_bit)
         start_time = time.time()
