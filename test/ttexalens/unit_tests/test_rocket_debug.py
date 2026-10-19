@@ -22,14 +22,12 @@ class RocketProgramWriter(RiscvProgramWriter):
         self.rocket_debug = rocket_debug
         self.start_address = start_address
         self.instructions: list[int] = []
+        self.ebreak_nop_padding = 0
 
     def write_program(self):
         # We write programs through SBA to ensure coherency
         data = b"".join(instruction.to_bytes(4, byteorder="little") for instruction in self.instructions)
         self.rocket_debug.write_memory_bytes(self.start_address, data)
-
-    def append_ebreak(self):
-        raise NotImplementedError("EBREAK not working on Rocket cores, see #1071.")
 
     # Workaround for #1071
     def append_breakpoint(self) -> int:
@@ -211,6 +209,32 @@ class TestDebugging(unittest.TestCase):
         self.rocket_debug.cont()
         self.assertFalse(self.rocket_debug.is_halted(), "Core should be running.")
         self.assertPcEquals(4 * num_of_nops)
+
+    def test_ebreak(self):
+        """Test that ebreak halts the core when it is taken out of reset with ebreak enabled."""
+        num_of_nops = 3
+        # C++:
+        #   asm volatile ("nop");
+        #   asm volatile ("nop");
+        #   asm volatile ("nop");
+        #   asm volatile ("ebreak");
+        #   while (true);
+        for _ in range(num_of_nops):
+            self.program_writer.append_nop()
+        self.program_writer.append_ebreak()
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+
+        self.rocket_debug.set_reset_signal_with_ebreak_enabled(False)
+        self.assertFalse(self.rocket_debug.is_in_reset(), "Core should be out of reset.")
+
+        self.assertTrue(self.rocket_debug.is_halted(), "Core should be halted on ebreak.")
+        self.assertTrue(self.rocket_debug.is_ebreak_hit(), "ebreak should be the cause.")
+        self.assertPcEquals(4 * num_of_nops)
+
+        self.rocket_debug.step()
+        self.assertTrue(self.rocket_debug.is_halted(), "Core should still be halted after single step.")
+        self.assertPcEquals(4 * num_of_nops + 4)
 
     def test_step(self):
         """Test executing single and multiple steps."""

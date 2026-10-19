@@ -29,6 +29,11 @@ class RocketCoreDebug(RiscDebug):
     def set_reset_signal(self, value: bool) -> None:
         raise NotImplementedError("set_reset_signal must be implemented by subclasses of RocketCoreDebug")
 
+    def set_reset_signal_with_ebreak_enabled(self, value: bool, timeout: int = 10) -> None:
+        raise NotImplementedError(
+            "set_reset_signal_with_ebreak_enabled must be implemented by subclasses of RocketCoreDebug"
+        )
+
     def ensure_debug_module_is_active(self) -> None:
         raise NotImplementedError("ensure_debug_module_is_active must be implemented by subclasses of RocketCoreDebug")
 
@@ -71,14 +76,6 @@ class RocketCoreDebug(RiscDebug):
     def _write_word(self, address: int, data: int) -> None:
         """Write a single 32-bit word. Address must be 4-byte aligned."""
         raise NotImplementedError("_write_word must be implemented by subclasses of RocketCoreDebug")
-
-    def _read_memory(self, address: int, safe_mode: bool | None = None) -> int:
-        buffer = bytearray(4)
-        self.read_memory_bytes(address, buffer, safe_mode=safe_mode)
-        return int.from_bytes(buffer, byteorder="little")
-
-    def _write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
-        self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"), safe_mode=safe_mode)
 
     def read_memory_bytes(self, address: int, buffer: bytearray | memoryview, safe_mode: bool | None = None) -> None:
         self._read_memory_bytes(address, buffer, self._read_word, safe_mode=safe_mode)

@@ -31,6 +31,12 @@ INSN_EBREAK = 0x00100073  # ebreak
 INSN_CSRSI_DCSR_STEP = 0x7B026073  # csrrsi x0, dcsr, 4
 INSN_CSRCI_DCSR_STEP = 0x7B027073  # csrrci x0, dcsr, 4
 INSN_CSRW_DPC_X5 = 0x7B129073  # csrrw x0, dpc, x5
+INSN_CSRRS_DCSR_X5 = 0x7B02A073  # csrrs x0, dcsr, x5
+INSN_CSRR_X5_DCSR = 0x7B0022F3  # csrrs x5, dcsr, x0
+
+DCSR_EBREAKM = 1 << 15
+DCSR_CAUSE_MASK = 0x7 << 6
+DCSR_CAUSE_EBREAK = 1 << 6
 
 # Access Register abstract command, 64-bit, postexec=1, no register transfer.
 CMD_EXEC_PROGBUF = (3 << 20) | (1 << 18)
@@ -70,6 +76,30 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         new_value = (current & ~reset_bit) if value else (current | reset_bit)
         self.register_store.write_register("SMN_RISC_RESET_REG", new_value)
 
+    def set_reset_signal_with_ebreak_enabled(self, value: bool, timeout: int = 10) -> None:
+        """Setting reset signal with enabling ebreak."""
+        if value:
+            self.set_reset_signal(True)
+            return
+        self.ensure_debug_module_is_active()
+        reset_bit = 1 << self.baby_risc_info.reset_flag_shift
+        hartsel = self.baby_risc_info.risc_id << 16
+        # Stage halt request
+        self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | HALTREQ)
+        try:
+            # Take risc out of reset
+            current = self.register_store.read_register("SMN_RISC_RESET_REG")
+            self.register_store.write_register("SMN_RISC_RESET_REG", current | reset_bit)
+            start_time = time.time()
+            while not self.is_halted():
+                if time.time() - start_time > timeout:
+                    raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
+                time.sleep(0.01)
+            self._write_csr_through_debug_module(DCSR_EBREAKM, INSN_CSRRS_DCSR_X5)
+        finally:
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
+        self.cont()
+
     def is_debug_module_in_reset(self, value: int | None = None) -> bool:
         if value is None:
             value = self.register_store.read_register("SMN_RISC_RESET_REG")
@@ -103,6 +133,14 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         haltsummary = self.register_store.read_register("TT_DEBUG_MODULE_APB_HALTSUMMARY0")
         return bool(haltsummary & (1 << self.baby_risc_info.risc_id))
 
+    def is_ebreak_hit(self) -> bool:
+        if not self.is_halted():
+            return False
+        scratch = self._read_gpr_via_debug_module(SCRATCH_GPR_INDEX)
+        dcsr = self._read_csr_through_debug_module(INSN_CSRR_X5_DCSR)
+        self._write_gpr_via_debug_module(SCRATCH_GPR_INDEX, scratch)
+        return dcsr & DCSR_CAUSE_MASK == DCSR_CAUSE_EBREAK
+
     def halt(self) -> None:
         self.ensure_debug_module_is_active()
         if self.is_halted():
@@ -119,6 +157,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         if not self.is_halted():
             util.WARN(f"Continue: {self.risc_location.risc_name} at {self.risc_location.location} is already running")
             return
+        self._step_over_ebreak()
         hartsel = self.baby_risc_info.risc_id << 16
         self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | RESUMEREQ)
         self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
@@ -138,6 +177,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         """Execute a single instruction on the hart, then re-enter Debug Mode."""
         self.ensure_debug_module_is_active()
         assert self.is_halted(), "Hart must be halted before single-stepping"
+        self._step_over_ebreak()
         self._set_single_step(True)
         hartsel = self.baby_risc_info.risc_id << 16
         self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | RESUMEREQ)
@@ -160,6 +200,14 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             if time.time() - start_time > timeout:
                 raise Exception(f"Timeout waiting for single step to complete (dmstatus=0x{dmstatus:x})")
             time.sleep(0.01)
+
+    def _step_over_ebreak(self) -> None:
+        """Move PC past ebreak the hart halted on, otherwise resuming would execute it again."""
+        if not self.is_ebreak_hit():
+            return
+        pc = self._read_pc_through_debug_module()
+        if self.read_memory(pc) == INSN_EBREAK:
+            self._write_csr_through_debug_module(pc + 4, INSN_CSRW_DPC_X5)
 
     def get_pc(self) -> int:
         # When the hart is halted it is parked in the debug ROM, so the write-back
