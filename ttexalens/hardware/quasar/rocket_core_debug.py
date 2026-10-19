@@ -76,8 +76,11 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         new_value = (current & ~reset_bit) if value else (current | reset_bit)
         self.register_store.write_register("SMN_RISC_RESET_REG", new_value)
 
-    def deassert_reset_with_ebreak_enabled(self, timeout: int = 10) -> None:
-        """Take the core out of reset with enabling ebreak."""
+    def set_reset_signal_with_ebreak_enabled(self, value: bool, timeout: int = 10) -> None:
+        """Setting reset signal with enabling ebreak."""
+        if value:
+            self.set_reset_signal(True)
+            return
         self.ensure_debug_module_is_active()
         reset_bit = 1 << self.baby_risc_info.reset_flag_shift
         hartsel = self.baby_risc_info.risc_id << 16
@@ -150,7 +153,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         if not self.is_halted():
             util.WARN(f"Continue: {self.risc_location.risc_name} at {self.risc_location.location} is already running")
             return
-        self._skip_ebreak()
+        self._step_over_ebreak()
         hartsel = self.baby_risc_info.risc_id << 16
         self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | RESUMEREQ)
         self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
@@ -170,7 +173,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         """Execute a single instruction on the hart, then re-enter Debug Mode."""
         self.ensure_debug_module_is_active()
         assert self.is_halted(), "Hart must be halted before single-stepping"
-        self._skip_ebreak()
+        self._step_over_ebreak()
         self._set_single_step(True)
         hartsel = self.baby_risc_info.risc_id << 16
         self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | RESUMEREQ)
@@ -194,7 +197,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
                 raise Exception(f"Timeout waiting for single step to complete (dmstatus=0x{dmstatus:x})")
             time.sleep(0.01)
 
-    def _skip_ebreak(self) -> None:
+    def _step_over_ebreak(self) -> None:
         """Move PC past ebreak the hart halted on, otherwise resuming would execute it again."""
         if not self.is_ebreak_hit():
             return

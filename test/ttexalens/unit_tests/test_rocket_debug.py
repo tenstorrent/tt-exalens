@@ -225,7 +225,7 @@ class TestDebugging(unittest.TestCase):
         self.program_writer.append_while_true()
         self.program_writer.write_program()
 
-        self.rocket_debug.deassert_reset_with_ebreak_enabled()
+        self.rocket_debug.set_reset_signal_with_ebreak_enabled(False)
         self.assertFalse(self.rocket_debug.is_in_reset(), "Core should be out of reset.")
 
         self.assertTrue(self.rocket_debug.is_halted(), "Core should be halted on ebreak.")
