@@ -35,9 +35,8 @@ INSN_CSRRS_DCSR_X5 = 0x7B02A073  # csrrs x0, dcsr, x5
 INSN_CSRR_X5_DCSR = 0x7B0022F3  # csrrs x5, dcsr, x0
 
 DCSR_EBREAKM = 1 << 15
-DCSR_CAUSE_SHIFT = 6
-DCSR_CAUSE_MASK = 0x7
-DCSR_CAUSE_EBREAK = 1
+DCSR_CAUSE_MASK = 0x7 << 6
+DCSR_CAUSE_EBREAK = 1 << 6
 
 # Access Register abstract command, 64-bit, postexec=1, no register transfer.
 CMD_EXEC_PROGBUF = (3 << 20) | (1 << 18)
