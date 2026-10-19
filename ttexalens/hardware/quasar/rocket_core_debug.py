@@ -86,16 +86,18 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         hartsel = self.baby_risc_info.risc_id << 16
         # Stage halt request
         self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel | HALTREQ)
-        # Take risc out of reset
-        current = self.register_store.read_register("SMN_RISC_RESET_REG")
-        self.register_store.write_register("SMN_RISC_RESET_REG", current | reset_bit)
-        start_time = time.time()
-        while not self.is_halted():
-            if time.time() - start_time > timeout:
-                raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
-            time.sleep(0.01)
-        self._write_csr_through_debug_module(DCSR_EBREAKM, INSN_CSRRS_DCSR_X5)
-        self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
+        try:
+            # Take risc out of reset
+            current = self.register_store.read_register("SMN_RISC_RESET_REG")
+            self.register_store.write_register("SMN_RISC_RESET_REG", current | reset_bit)
+            start_time = time.time()
+            while not self.is_halted():
+                if time.time() - start_time > timeout:
+                    raise RiscHaltError(self.risc_location.risc_name, self.risc_location.location)
+                time.sleep(0.01)
+            self._write_csr_through_debug_module(DCSR_EBREAKM, INSN_CSRRS_DCSR_X5)
+        finally:
+            self.register_store.write_register("TT_DEBUG_MODULE_APB_DMCONTROL", DMACTIVE | hartsel)
         self.cont()
 
     def is_debug_module_in_reset(self, value: int | None = None) -> bool:
@@ -134,7 +136,9 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
     def is_ebreak_hit(self) -> bool:
         if not self.is_halted():
             return False
+        scratch = self._read_gpr_via_debug_module(SCRATCH_GPR_INDEX)
         dcsr = self._read_csr_through_debug_module(INSN_CSRR_X5_DCSR)
+        self._write_gpr_via_debug_module(SCRATCH_GPR_INDEX, scratch)
         return dcsr & DCSR_CAUSE_MASK == DCSR_CAUSE_EBREAK
 
     def halt(self) -> None:
