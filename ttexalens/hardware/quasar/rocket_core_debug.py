@@ -132,7 +132,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         if not self.is_halted():
             return False
         dcsr = self._read_csr_through_debug_module(INSN_CSRR_X5_DCSR)
-        return (dcsr >> DCSR_CAUSE_SHIFT) & DCSR_CAUSE_MASK == DCSR_CAUSE_EBREAK
+        return dcsr & DCSR_CAUSE_MASK == DCSR_CAUSE_EBREAK
 
     def halt(self) -> None:
         self.ensure_debug_module_is_active()
