@@ -14,6 +14,8 @@ from ttexalens.hardware.risc_debug import (
     RiscLocation,
 )
 
+TIMEOUT = 20
+
 
 class RocketCoreDebug(RiscDebug):
     def __init__(self, risc_info: BabyRiscInfo, enable_asserts: bool = True):
@@ -29,7 +31,7 @@ class RocketCoreDebug(RiscDebug):
     def set_reset_signal(self, value: bool) -> None:
         raise NotImplementedError("set_reset_signal must be implemented by subclasses of RocketCoreDebug")
 
-    def set_reset_signal_with_ebreak_enabled(self, value: bool, timeout: int = 10) -> None:
+    def set_reset_signal_with_ebreak_enabled(self, value: bool, timeout: int = TIMEOUT) -> None:
         raise NotImplementedError(
             "set_reset_signal_with_ebreak_enabled must be implemented by subclasses of RocketCoreDebug"
         )
