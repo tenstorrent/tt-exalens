@@ -9,7 +9,7 @@ import time
 from ttexalens import util
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
-from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
+from ttexalens.hardware.rocket_core_debug import RocketCoreDebug, TIMEOUT
 from ttexalens.register_store import RegisterStore
 
 # RISC-V Debug Spec 0.13 — DMCONTROL bit fields
@@ -76,7 +76,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         new_value = (current & ~reset_bit) if value else (current | reset_bit)
         self.register_store.write_register("SMN_RISC_RESET_REG", new_value)
 
-    def set_reset_signal_with_ebreak_enabled(self, value: bool, timeout: int = 20) -> None:
+    def set_reset_signal_with_ebreak_enabled(self, value: bool, timeout: int = TIMEOUT) -> None:
         """Setting reset signal with enabling ebreak."""
         if value:
             self.set_reset_signal(True)
@@ -105,7 +105,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
             value = self.register_store.read_register("SMN_RISC_RESET_REG")
         return not bool(value & DM_OUT_OF_RESET_BIT)
 
-    def _wait_for_debug_module_to_be_active(self, timeout=20) -> None:
+    def _wait_for_debug_module_to_be_active(self, timeout=TIMEOUT) -> None:
         start_time = time.time()
         while self.register_store.read_register("TT_CLUSTER_CTRL_DEBUG_DMACTIVE") != 1:
             if time.time() - start_time > timeout:
@@ -190,7 +190,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         insn = INSN_CSRSI_DCSR_STEP if enable else INSN_CSRCI_DCSR_STEP
         self._execute_program_buffer(insn, INSN_EBREAK)
 
-    def _wait_for_step_to_complete(self, timeout: int = 20) -> None:
+    def _wait_for_step_to_complete(self, timeout: int = TIMEOUT) -> None:
         """Wait until the hart has resumed (acknowledged the step) and halted again."""
         start_time = time.time()
         while True:
@@ -243,7 +243,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         else:
             self._write_gpr_via_debug_module(register_index, value)
 
-    def _abstract_wait_not_busy(self, timeout: int = 20) -> int:
+    def _abstract_wait_not_busy(self, timeout: int = TIMEOUT) -> int:
         """Poll ABSTRACTCS until the abstract command engine is idle. Return the command error code."""
         start_time = time.time()
         while True:
@@ -309,7 +309,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         """Read the program counter (dpc) of a halted hart through the debug module."""
         return self._read_csr_through_debug_module(INSN_CSRR_X5_DPC)
 
-    def _sba_wait_not_busy(self, timeout: int = 20) -> None:
+    def _sba_wait_not_busy(self, timeout: int = TIMEOUT) -> None:
         """Poll SBCS until the system bus manager is idle. Raise on timeout."""
         start_time = time.time()
         while self.register_store.read_register("TT_DEBUG_MODULE_APB_SBCS") & SBCS_SBBUSY:
