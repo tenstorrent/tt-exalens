@@ -211,9 +211,10 @@ class RiscDebug:
             self._validate_safe_access(address, len(data))
         util.write_bytes_by_words(address, data, read_word, write_word)
 
-    @abstractmethod
-    def _read_memory(self, address: int) -> int:
-        raise NotImplementedError("_read_memory must be implemented by subclasses of RiscDebug")
+    def _read_memory(self, address: int, safe_mode: bool | None = None) -> int:
+        buffer = bytearray(4)
+        self.read_memory_bytes(address, buffer, safe_mode=safe_mode)
+        return int.from_bytes(buffer, byteorder="little")
 
     def read_memory(self, address: int, safe_mode: bool | None = None) -> int:
         """
@@ -225,7 +226,7 @@ class RiscDebug:
             int: Value at the memory address.
         """
         self._validate_32_bit_value(address)
-        return self._read_memory(address)
+        return self._read_memory(address, safe_mode=safe_mode)
 
     @abstractmethod
     def read_memory_bytes(self, address: int, buffer: bytearray | memoryview, safe_mode: bool | None = None) -> None:
@@ -238,9 +239,8 @@ class RiscDebug:
         """
         pass
 
-    @abstractmethod
-    def _write_memory(self, address: int, data: int) -> None:
-        raise NotImplementedError("_write_memory must be implemented by subclasses of RiscDebug")
+    def _write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
+        self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"), safe_mode=safe_mode)
 
     def write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
         """
@@ -252,7 +252,7 @@ class RiscDebug:
         """
         self._validate_32_bit_value(address)
         self._validate_32_bit_value(data)
-        self._write_memory(address, data)
+        self._write_memory(address, data, safe_mode=safe_mode)
 
     @abstractmethod
     def write_memory_bytes(

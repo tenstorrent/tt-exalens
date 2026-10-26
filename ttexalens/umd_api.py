@@ -2,7 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
-from collections.abc import Sequence
 import os
 from pathlib import Path
 import Pyro5.api
@@ -16,44 +15,6 @@ from ttexalens.exceptions import TTFatalException
 
 if TYPE_CHECKING:
     from ttexalens.umd_device import UmdDevice
-
-
-def create_simulation_cluster_descriptor(arch: tt_umd.ARCH, chip_ids: Sequence[int] = (0,)) -> str:
-    # TODO: Remove this method when UMD provides a proper way to get a cluster descriptor for simulations (UMD #3471).
-    arch_lines = "\n".join(f"   {chip_id}: {arch}" for chip_id in chip_ids)
-    chip_lines = "\n".join(f"   {chip_id}: [{chip_id},0,0,0]" for chip_id in chip_ids)
-    mmio_lines = "\n".join(f"   - {chip_id}: {chip_id}" for chip_id in chip_ids)
-    harvesting_lines = "\n".join(f"   {chip_id}: {{noc_translation: false, harvest_mask: 0}}," for chip_id in chip_ids)
-    board_lines = "\n".join(
-        f"    -\n"
-        f"        - board_id: {hex(0x36000000000 + chip_id)}\n"
-        f"        - board_type: UNKNOWN\n"
-        f"        - chips:\n"
-        f"            - {chip_id}"
-        for chip_id in chip_ids
-    )
-    return f"""\
-arch:
-{arch_lines}
-
-chips:
-{chip_lines}
-
-ethernet_connections: []
-
-chips_with_mmio:
-{mmio_lines}
-
-# harvest_mask is the bit indicating which tensix row is harvested. So bit 0 = first tensix row; bit 1 = second tensix row etc...
-harvesting: {{
-{harvesting_lines}
-}}
-
-# This value will be null if the boardtype is unknown, should never happen in practice but to be defensive it would be useful to throw an error on this case.
-boards:
-{board_lines}
-io_device_type: SIMULATION
-"""
 
 
 TLS_FOR_NOC_ID = threading.local()
@@ -228,7 +189,7 @@ class UmdApi:
         options.simulator_directory = path
         options.serve_over_sockets = True
         try:
-            simulation_connection, simulation_devices = tt_umd.SimulationConnector.discover(options)
+            simulation_connection, simulation_devices, cluster_descriptor = tt_umd.SimulationConnector.discover(options)
         except Exception as e:
             raise TTFatalException(f"Failed to open simulation at '{path}': {e}") from e
 
@@ -267,10 +228,7 @@ class UmdApi:
                     elif simulation_connection.arch == tt_umd.ARCH.QUASAR:
                         tt_device.deassert_risc_reset(core, tt_umd.RiscType.ALL)
 
-        cluster_descriptor_content = create_simulation_cluster_descriptor(
-            simulation_connection.arch, sorted(simulation_devices.keys())
-        )
-        self.cluster_descriptor = tt_umd.ClusterDescriptor.create_from_yaml_content(cluster_descriptor_content)
+        self.cluster_descriptor = cluster_descriptor
 
         unique_ids = self.cluster_descriptor.get_chip_unique_ids()
         for chip_id, tt_device in simulation_devices.items():

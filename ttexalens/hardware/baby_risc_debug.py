@@ -714,14 +714,6 @@ class BabyRiscDebug(RiscDebug):
         with self.ensure_halted():
             return self.read_gpr(32)
 
-    def _read_memory(self, address: int, safe_mode: bool | None = None) -> int:
-        buffer = bytearray(4)
-        self.read_memory_bytes(address, buffer, safe_mode=safe_mode)
-        return int.from_bytes(buffer, byteorder="little")
-
-    def _write_memory(self, address: int, data: int, safe_mode: bool | None = None) -> None:
-        self.write_memory_bytes(address, data.to_bytes(4, byteorder="little"), safe_mode=safe_mode)
-
     def read_memory_bytes(self, address: int, buffer: bytearray | memoryview, safe_mode: bool | None = None) -> None:
         if self.enable_asserts:
             self.assert_not_in_reset()

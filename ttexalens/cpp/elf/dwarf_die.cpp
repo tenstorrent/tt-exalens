@@ -38,6 +38,35 @@ std::optional<uint64_t> attr_as_uint(const DwarfAttribute* attr) {
     return std::nullopt;
 }
 
+// Name of the typedef that names an unnamed struct / class / union / enum
+// (`typedef enum {...} Name;`), which C++ also uses as the type's name for
+// linkage. Empty when no typedef in the same scope refers to `type`.
+std::string_view find_naming_typedef(const DwarfDie& type) {
+    switch (type.get_tag()) {
+        case DwarfDieTag::structure_type:
+        case DwarfDieTag::class_type:
+        case DwarfDieTag::union_type:
+        case DwarfDieTag::enumeration_type:
+            break;
+        default:
+            return {};
+    }
+    auto scope = type.get_parent();
+    if (!scope) {
+        return {};
+    }
+    for (auto child = scope->get_first_child(); child; child = child->get_next_sibling()) {
+        if (child->get_tag() == DwarfDieTag::typedef_) {
+            // DIE references are stored as global .debug_info offsets.
+            const auto* target = child->get_attribute_value<uint64_t>(DwarfAttributeTag::type);
+            if (target != nullptr && *target == type.get_offset()) {
+                return child->get_name();
+            }
+        }
+    }
+    return {};
+}
+
 }  // namespace
 
 DwarfDie::DwarfDie(DwarfDieHandle die, std::weak_ptr<details::DwarfInfoImpl> info)
@@ -155,11 +184,37 @@ std::string DwarfDie::get_readable_name() const {
             return inner->get_readable_name() + " mutable";
         }
         return "<mutable unknown>";
+    } else if (get_tag() == DwarfDieTag::array_type) {
+        std::string dimensions;
+        DwarfDiePtr element;
+        for (const DwarfDie* array = this;; array = element.get()) {
+            for (auto child = array->get_first_child(); child; child = child->get_next_sibling()) {
+                if (child->get_tag() != DwarfDieTag::subrange_type) {
+                    continue;
+                }
+                dimensions += '[';
+                if (const auto* count = child->get_attribute_value<uint64_t>(DwarfAttributeTag::count)) {
+                    dimensions += std::to_string(*count);
+                } else if (const auto* upper_bound =
+                               child->get_attribute_value<uint64_t>(DwarfAttributeTag::upper_bound)) {
+                    dimensions += std::to_string(*upper_bound + 1);
+                }
+                dimensions += ']';
+            }
+            // Dimensions may also be split across nested array_type DIEs.
+            element = array->get_die_from_attribute(DwarfAttributeTag::type);
+            if (!element || element->get_tag() != DwarfDieTag::array_type) {
+                break;
+            }
+        }
+        return (element ? element->get_readable_name() : std::string("<unknown type>")) + " " + dimensions;
     } else if (auto origin = get_die_from_attribute(DwarfAttributeTag::abstract_origin)) {
         if (get_tag() == DwarfDieTag::inlined_subroutine) {
             return origin->get_path();
         }
         return origin->get_readable_name();
+    } else if (auto typedef_name = find_naming_typedef(*this); !typedef_name.empty()) {
+        return std::string(typedef_name);
     } else {
         return "tag (" + std::to_string(static_cast<uint64_t>(get_tag())) + ") at offset " +
                std::to_string(get_offset());
@@ -325,12 +380,17 @@ DwarfDie::ConstantValue DwarfDie::get_constant_value() const {
     return std::monostate{};
 }
 
-const DwarfCompileUnit* DwarfDie::get_cu() const {
+std::shared_ptr<const DwarfCompileUnit> DwarfDie::get_cu() const {
     auto info_ptr = info.lock();
     if (!info_ptr) {
         return nullptr;
     }
-    return info_ptr->get_die_cu(get_offset());
+    const DwarfCompileUnit* cu = info_ptr->get_die_cu(get_offset());
+    if (cu == nullptr) {
+        return nullptr;
+    }
+    // Aliasing constructor: points at the CU, shares ownership of info_ptr.
+    return std::shared_ptr<const DwarfCompileUnit>(std::move(info_ptr), cu);
 }
 
 DwarfDiePtr DwarfDie::get_resolved_type() const {

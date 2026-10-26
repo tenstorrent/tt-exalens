@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: © 2026 Tenstorrent AI ULC
 // SPDX-License-Identifier: Apache-2.0
 
+#include <nanobind/make_iterator.h>
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/function.h>
 #include <nanobind/stl/optional.h>
@@ -20,6 +21,16 @@ namespace ttexalens::native_elf::bindings {
 
 void bind_dwarf_info(nb::module_& m) {
     nb::class_<DwarfInfo>(m, "DwarfInfo")
+        // Compile units in .debug_info order, by reference: they're owned by
+        // self and live as long as it does.
+        .def(
+            "iter_compile_units",
+            [](const DwarfInfo& self) {
+                auto units = self.get_compile_units();
+                return nb::make_iterator<nb::rv_policy::reference_internal>(
+                    nb::type<DwarfInfo>(), "DwarfCompileUnitIterator", units.begin(), units.end());
+            },
+            nb::rv_policy::reference_internal)
         .def("find_file_line_by_address", &DwarfInfo::find_file_line_by_address, nb::arg("address"))
         .def(
             "get_die_by_name",
@@ -40,6 +51,9 @@ void bind_dwarf_info(nb::module_& m) {
              nb::rv_policy::reference_internal)
         .def("find_symbol_by_name", &DwarfInfo::find_symbol_by_name, nb::arg("name"), nb::rv_policy::reference_internal,
              nb::sig("def find_symbol_by_name(self, name: str) -> ElfSymbol | None"))
+        .def("find_symbol_by_demangled_name", &DwarfInfo::find_symbol_by_demangled_name, nb::arg("demangled_name"),
+             nb::rv_policy::reference_internal,
+             nb::sig("def find_symbol_by_demangled_name(self, demangled_name: str) -> ElfSymbol | None"))
         .def("get_enum_value", &DwarfInfo::get_enum_value, nb::arg("name"))
         // Like DwarfDie::get_constant_value, the variant alternatives
         // map to bool / int / float; monostate is unreachable here because

@@ -15,8 +15,24 @@ namespace nb = nanobind;
 namespace ttexalens::native_elf::bindings {
 
 void bind_dwarf_frame(nb::module_& m) {
+    // How one frame's CFI says to recover a register (see RegisterRuleKind in
+    // dwarf_frame.hpp); saved_address is only meaningful for Saved.
+    nb::enum_<RegisterRuleKind>(m, "RegisterRuleKind")
+        .value("Saved", RegisterRuleKind::Saved)
+        .value("SameValue", RegisterRuleKind::SameValue)
+        .value("Undefined", RegisterRuleKind::Undefined)
+        .value("Unknown", RegisterRuleKind::Unknown);
+
+    nb::class_<RegisterRule>(m, "RegisterRule")
+        .def_ro("kind", &RegisterRule::kind)
+        .def_ro("saved_address", &RegisterRule::saved_address);
+
     nb::class_<FrameDescription>(m, "FrameDescription")
         .def_prop_ro("pc", &FrameDescription::get_pc)
+        .def_prop_ro("pointer_size", &FrameDescription::get_pointer_size)
+        .def("get_return_address_register", &FrameDescription::get_return_address_register)
+        .def("classify_register_rule", &FrameDescription::classify_register_rule, nb::arg("register_index"),
+             nb::arg("cfa"))
         .def("read_register", &FrameDescription::read_register, nb::arg("register_index"), nb::arg("cfa"))
         .def("try_read_register", &FrameDescription::try_read_register, nb::arg("register_index"),
              nb::arg("cfa").none())
@@ -45,7 +61,8 @@ void bind_dwarf_frame(nb::module_& m) {
         .def("read_register", &FrameInspection::read_register, nb::arg("register_index"))
         .def("read_memory", &FrameInspection::read_memory, nb::arg("address"), nb::arg("register_size"))
         .def_prop_ro("cfa", &FrameInspection::get_cfa)
-        .def_prop_ro("pc", &FrameInspection::get_pc);
+        .def_prop_ro("pc", &FrameInspection::get_pc)
+        .def_prop_ro("memory_access", &FrameInspection::get_memory_access);
 }
 
 }  // namespace ttexalens::native_elf::bindings

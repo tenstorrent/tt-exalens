@@ -68,6 +68,12 @@ enum class EnumClass : uint32_t { VALUE_A = 0, VALUE_B = 1, VALUE_C = 2, VALUE_D
 
 enum EnumType : uint32_t { TYPE_X = 10, TYPE_Y = 20, TYPE_Z = 30 };
 
+typedef enum {
+    TD_Q = 0,
+    TD_W = 1,
+    TD_E = 2,
+} TypedefEnum;
+
 enum shadowed_const : uint8_t { SHADOWED_A = 0, SHADOWED_B = 1, SHADOWED_C = 2 };
 volatile enum shadowed_const g_shadowed_enum_user = SHADOWED_B;
 constexpr uint8_t shadowed_const = 42;
@@ -141,6 +147,7 @@ struct GlobalStruct : public BaseStruct, public BaseStruct2 {
     uint32_t* uint_pointer;
     EnumClass enum_class_field;
     EnumType enum_type_field;
+    TypedefEnum typedef_enum_field;
     uint32_t* invalid_memory_ptr;
     InnerStruct* wrong_type_ptr;
     int64_t signed_int_field;
@@ -210,6 +217,7 @@ void update_struct(GlobalStruct* gs) {
     gs->uint_pointer = &gs->uint_array[0];
     gs->enum_class_field = EnumClass::VALUE_C;
     gs->enum_type_field = TYPE_Y;
+    gs->typedef_enum_field = TD_W;
     gs->invalid_memory_ptr = reinterpret_cast<uint32_t*>(0xFFFF0000);
     gs->wrong_type_ptr = reinterpret_cast<InnerStruct*>(&gs->uint_array[0]);
     gs->signed_int_field = -123456789;
