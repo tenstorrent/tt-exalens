@@ -280,6 +280,18 @@ class Device:
 
             bytes_checked += access_size
 
+    def _is_register_access(self, location: OnChipCoordinate, address: int, num_bytes: int) -> bool:
+        """Returns True unless the whole access lies in L1 or DRAM."""
+        try:
+            noc_memory_map = location.noc_block.noc_memory_map
+        except Exception:
+            # If we do not have memory map we go the safe route and assume we are accessing a register
+            return True
+        memory_block_info = noc_memory_map.find_by_noc_address(address)
+        if memory_block_info is None or memory_block_info.name not in ("l1", "dram_bank"):
+            return True
+        return not memory_block_info.memory_block.contains_noc_address(address + num_bytes - 1)
+
     def noc_read(
         self,
         location: OnChipCoordinate,
@@ -298,9 +310,12 @@ class Device:
 
         if safe_mode:
             self._validate_noc_access_is_safe(location, address, len(buffer), is_write=False)
+        register_access = self._is_register_access(location, address, len(buffer))
 
         def noc_operation(noc_id: NocId) -> None:
-            self._umd_device.noc_read(noc_id, noc_x, noc_y, address, buffer, dma_threshold)
+            self._umd_device.noc_read(
+                noc_id, noc_x, noc_y, address, buffer, dma_threshold, register_access=register_access
+            )
 
         self._with_noc_failover(noc_operation, noc_id)
 
@@ -329,9 +344,12 @@ class Device:
 
         if safe_mode:
             self._validate_noc_access_is_safe(location, address, len(data), is_write=True)
+        register_access = self._is_register_access(location, address, len(data))
 
         def noc_operation(noc_id: NocId) -> None:
-            self._umd_device.noc_write(noc_id, noc_x, noc_y, address, data, dma_threshold)
+            self._umd_device.noc_write(
+                noc_id, noc_x, noc_y, address, data, dma_threshold, register_access=register_access
+            )
 
         self._with_noc_failover(noc_operation, noc_id)
 

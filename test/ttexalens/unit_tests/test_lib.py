@@ -30,6 +30,7 @@ from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
     DebugRegisterDescription,
+    NocControlRegisterDescription,
     RegisterDescription,
     TensixGeneralPurposeRegisterDescription,
 )
@@ -386,6 +387,18 @@ class TestReadWrite(unittest.TestCase):
             ("0,0", DebugRegisterDescription(offset=0x54), 18),  # RISCV_DEBUG_REG_DBG_BUS_CNTL_REG
             ("0,0", DebugRegisterDescription(offset=0x0, size=12), (1 << (12 * 4)) - 1),
             ("0,0", DebugRegisterDescription(offset=0x0, mask=0x000000CFFC000000, shift=26, size=8), 0x1234),
+            (
+                "0,0",
+                DebugRegisterDescription(offset=0x0, size=32),
+                0x00000800_07000000_00000000_00000500_04000000_00000000_00000200_01000000,
+            ),  # RISCV_DEBUG_REG_PERF_CNT_INSTRN_THREAD0..FPU1, start/stop registers stay 0
+            ("0,0", "NIU_MST_REQS_OUTSTANDING_ID", 0),  # Read-only counters, 0 on an idle core
+            ("0,0", "NIU_MST_WRITE_REQS_OUTGOING_ID", 0),
+            (
+                "0,0",
+                NocControlRegisterDescription(offset=0x0, size=24),
+                0x00000000_05000000_04000000_00000000_02000000_01000000,
+            ),  # NOC_TARG_ADDR_*_CB0 and NOC_RET_ADDR_*_CB0, HI registers stay 0 as Wormhole doesn't store them
             ("0,0", "UNPACK_CONFIG0_out_data_format", 6),
             ("0,0", "RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1),
             ("0,0", "RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 9),
@@ -400,15 +413,15 @@ class TestReadWrite(unittest.TestCase):
         # Storing the original value of the register
         original_value = lib.read_register(location, register)
 
-        # Writing a value to the register and reading it back
-        lib.write_register(location, register, value)
+        # Writing a value to the register and reading it back. Safe mode blocks writes to NOC registers.
+        lib.write_register(location, register, value, safe_mode=False)
         ret = lib.read_register(location, register)
 
         # Checking if the value was written and read correctly
         self.assertEqual(ret, value)
 
         # Writing the original value back to the register and reading it
-        lib.write_register(location, register, original_value)
+        lib.write_register(location, register, original_value, safe_mode=False)
         ret = lib.read_register(location, register)
 
         # Checking if read value is equal to the original value
