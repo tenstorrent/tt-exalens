@@ -282,8 +282,11 @@ class RemoteUmdDevice:
         address: int,
         buffer: bytearray | memoryview,
         dma_threshold: int,
+        register_access: bool,
     ) -> None:
-        data = self._proxy.noc_read_bytes(noc_id, noc0_x, noc0_y, address, len(buffer), dma_threshold)
+        data = self._proxy.noc_read_bytes(
+            noc_id, noc0_x, noc0_y, address, len(buffer), dma_threshold, register_access=register_access
+        )
         # Pyro5/serpent returns bytes either as real bytes or as a base64-encoded dict.
         buffer[:] = serpent.tobytes(data) if isinstance(data, dict) else data
 

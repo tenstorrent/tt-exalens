@@ -319,8 +319,11 @@ class OnChipCoordinate:
         noc_id: NocId | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
+        register_access: bool | None = None,
     ) -> None:
-        self.device.noc_read(self, address, buffer, noc_id, dma_threshold, safe_mode=safe_mode)
+        self.device.noc_read(
+            self, address, buffer, noc_id, dma_threshold, safe_mode=safe_mode, register_access=register_access
+        )
 
     def noc_read32(self, address: int, noc_id: NocId | None = None, safe_mode: bool | None = None) -> int:
         return self.device.noc_read32(self, address, noc_id, safe_mode=safe_mode)
@@ -332,8 +335,11 @@ class OnChipCoordinate:
         noc_id: NocId | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
+        register_access: bool | None = None,
     ):
-        self.device.noc_write(self, address, data, noc_id, dma_threshold, safe_mode=safe_mode)
+        self.device.noc_write(
+            self, address, data, noc_id, dma_threshold, safe_mode=safe_mode, register_access=register_access
+        )
 
     def noc_write32(self, address: int, data: int, noc_id: NocId | None = None, safe_mode: bool | None = None):
         self.device.noc_write32(self, address, data, noc_id, safe_mode=safe_mode)
