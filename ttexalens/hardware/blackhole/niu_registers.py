@@ -163,8 +163,12 @@ niu_register_map = {
     "NOC_SEC_FENCE_MASTER_LEVEL": NocControlRegisterDescription(offset=0x4A0),
     "NOC_SEC_FENCE_FIFO_STATUS": NocControlRegisterDescription(offset=0x4A4),
     "NOC_SEC_FENCE_FIFO_RDDATA": NocControlRegisterDescription(offset=0x4A8),
-    "PORT1_FLIT_COUNTER": NocControlRegisterDescription(offset=0x500, size=32 * 4),
-    "PORT2_FLIT_COUNTER": NocControlRegisterDescription(offset=0x580, size=32 * 4),
+    "PORT1_FLIT_COUNTER": NocControlRegisterDescription(offset=0x500, size=128),
+    "PORT1_FLIT_COUNTER_LOWER": NocControlRegisterDescription(offset=0x500),
+    "PORT1_FLIT_COUNTER_UPPER": NocControlRegisterDescription(offset=0x540),
+    "PORT2_FLIT_COUNTER": NocControlRegisterDescription(offset=0x580, size=128),
+    "PORT2_FLIT_COUNTER_LOWER": NocControlRegisterDescription(offset=0x580),
+    "PORT2_FLIT_COUNTER_UPPER": NocControlRegisterDescription(offset=0x5C0),
 }
 
 

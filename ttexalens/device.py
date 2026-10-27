@@ -281,7 +281,11 @@ class Device:
             bytes_checked += access_size
 
     def _is_register_access(self, location: OnChipCoordinate, address: int, num_bytes: int) -> bool:
-        """Returns True unless the whole access lies in L1 or DRAM."""
+        """
+        Returns True unless the whole access lies in L1 or DRAM.
+
+        Used to switch NOC read/write from bulk to 4 byte read/writes which is required for registers.
+        """
         try:
             noc_memory_map = location.noc_block.noc_memory_map
         except Exception:
