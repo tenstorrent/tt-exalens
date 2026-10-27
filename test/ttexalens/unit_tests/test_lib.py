@@ -382,21 +382,25 @@ class TestReadWrite(unittest.TestCase):
                 ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25),
                 2,
             ),  # ALU_FORMAT_SPEC_REG2_Dstacc
-            ("0,0", ConfigurationRegisterDescription(index=1, mask=0x000000FFFF000000, shift=24, size=8), 0xFFFF),
-            ("0,0", ConfigurationRegisterDescription(index=64, size=28), (1 << (28 * 4)) - 1),
+            ("0,0", ConfigurationRegisterDescription(index=1, mask=0x000000FFFF000000, shift=24, size=2 * 4), 0xFFFF),
+            ("0,0", ConfigurationRegisterDescription(index=64, size=7 * 4), (1 << (28 * 4)) - 1),
             ("0,0", DebugRegisterDescription(offset=0x54), 18),  # RISCV_DEBUG_REG_DBG_BUS_CNTL_REG
-            ("0,0", DebugRegisterDescription(offset=0x0, size=12), (1 << (12 * 4)) - 1),
-            ("0,0", DebugRegisterDescription(offset=0x0, mask=0x000000CFFC000000, shift=26, size=8), 0x1234),
+            ("0,0", DebugRegisterDescription(offset=0x0, size=3 * 4), (1 << (12 * 4)) - 1),
             (
                 "0,0",
-                DebugRegisterDescription(offset=0x0, size=32),
+                DebugRegisterDescription(offset=0x0, mask=0x000000CFFC000000, shift=26, size=2 * 4),
+                0x1234,
+            ),  # ja sam mali Acko
+            (
+                "0,0",
+                DebugRegisterDescription(offset=0x0, size=8 * 4),
                 0x00000800_07000000_00000000_00000500_04000000_00000000_00000200_01000000,
             ),  # RISCV_DEBUG_REG_PERF_CNT_INSTRN_THREAD0..FPU1, start/stop registers stay 0
             ("0,0", "NIU_MST_REQS_OUTSTANDING_ID", 0),  # Read-only counters, 0 on an idle core
             ("0,0", "NIU_MST_WRITE_REQS_OUTGOING_ID", 0),
             (
                 "0,0",
-                NocControlRegisterDescription(offset=0x0, size=24),
+                NocControlRegisterDescription(offset=0x0, size=6 * 4),
                 0x00000000_05000000_04000000_00000000_02000000_01000000,
             ),  # NOC_TARG_ADDR_*_CB0 and NOC_RET_ADDR_*_CB0, HI registers stay 0 as Wormhole doesn't store them
             ("0,0", "UNPACK_CONFIG0_out_data_format", 6),
@@ -517,17 +521,17 @@ class TestReadWrite(unittest.TestCase):
             ("cfg(1,0x1E000000)", ConfigurationRegisterDescription(index=1, mask=0x1E000000)),
             ("cfg(1,0x1E000000,25)", ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25)),
             ("cfg(1, 0x1E000000, 25, 4)", ConfigurationRegisterDescription(index=1, mask=0x1E000000, shift=25)),
-            ("cfg(1,-1,0,8)", ConfigurationRegisterDescription(index=1, size=8)),  # Mask -1 means full mask
+            ("cfg(1,-1,0,8)", ConfigurationRegisterDescription(index=1, size=2 * 4)),  # Mask -1 means full mask
             (
                 "cfg(1,0x000000FFFF000000,24,8)",
-                ConfigurationRegisterDescription(index=1, mask=0x000000FFFF000000, shift=24, size=8),
+                ConfigurationRegisterDescription(index=1, mask=0x000000FFFF000000, shift=24, size=2 * 4),
             ),
             ("dbg(0x54)", DebugRegisterDescription(offset=0x54)),
             ("dbg(84)", DebugRegisterDescription(offset=0x54)),  # Decimal address
-            ("dbg(0x0,-1,0,12)", DebugRegisterDescription(offset=0x0, size=12)),
+            ("dbg(0x0,-1,0,12)", DebugRegisterDescription(offset=0x0, size=3 * 4)),
             (
                 "dbg(0x0,0x000000CFFC000000,26,8)",
-                DebugRegisterDescription(offset=0x0, mask=0x000000CFFC000000, shift=26, size=8),
+                DebugRegisterDescription(offset=0x0, mask=0x000000CFFC000000, shift=26, size=2 * 4),
             ),
             (
                 "RISCV_DEBUG_REG_DBG_BUS_CNTL_REG",
@@ -632,8 +636,8 @@ class TestReadWrite(unittest.TestCase):
         [
             ("0,0", 1),
             ("1,1", 1),
-            ("0,0", 0, 8),
-            ("1,1", 0, 8),
+            ("0,0", 0, 2 * 4),
+            ("1,1", 0, 2 * 4),
         ]
     )
     def test_cfg_register_index_out_of_bounds(self, location, delta, size=4):

@@ -300,6 +300,7 @@ class Device:
         noc_id: NocId | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
+        register_access: bool | None = None,
     ) -> None:
         noc_x, noc_y = location._noc0_coord
 
@@ -310,7 +311,8 @@ class Device:
 
         if safe_mode:
             self._validate_noc_access_is_safe(location, address, len(buffer), is_write=False)
-        register_access = self._is_register_access(location, address, len(buffer))
+        if register_access is None:
+            register_access = self._is_register_access(location, address, len(buffer))
 
         def noc_operation(noc_id: NocId) -> None:
             self._umd_device.noc_read(
@@ -334,6 +336,7 @@ class Device:
         noc_id: NocId | None = None,
         dma_threshold: int | None = None,
         safe_mode: bool | None = None,
+        register_access: bool | None = None,
     ):
         noc_x, noc_y = location._noc0_coord
 
@@ -344,7 +347,8 @@ class Device:
 
         if safe_mode:
             self._validate_noc_access_is_safe(location, address, len(data), is_write=True)
-        register_access = self._is_register_access(location, address, len(data))
+        if register_access is None:
+            register_access = self._is_register_access(location, address, len(data))
 
         def noc_operation(noc_id: NocId) -> None:
             self._umd_device.noc_write(
