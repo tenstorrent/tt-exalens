@@ -1,6 +1,23 @@
 // SPDX-FileCopyrightText: (c) 2024 Tenstorrent AI ULC
 //
 // SPDX-License-Identifier: Apache-2.0
+
+// Pointer-sized loads and stores (init_array entries, argv slots) depend on XLEN; everything else
+// works on 32-bit words, so the same code serves 32-bit and 64-bit cores.
+#if __riscv_xlen == 64
+#define REG_L ld
+#define REG_S sd
+#define SZREG 8
+#else
+#define REG_L lw
+#define REG_S sw
+#define SZREG 4
+#endif
+
+// sections.ld aligns the pointer arrays (init_array, ...) to this.
+.global __crt0_pointer_size
+.set    __crt0_pointer_size, SZREG
+
 .section .init
 .global _start
 .type   _start, @function
@@ -21,7 +38,7 @@ CRT_START:
 
   # Copy memory from .loader_code to .init (we cannot use direct memory copy since NCRISC cannot write to IRAM, but tensix DMA xmov can)
   # Trigger tensix DMA xmov
-  # We are using hardcoded values that work on all architectures
+  # We are using hardcoded values that work on every core with IRAM
 
   # *RISCV_TDMA_REG_XMOV_SRC_ADDR = source_address; // RISCV_TDMA_REG_XMOV_SRC_ADDR = 0xFFB11000; source_address = __loader_code_start << 4;
   li      t0, 0xFFB11000               # Load RISCV_TDMA_REG_XMOV_SRC_ADDR to t0
@@ -97,6 +114,13 @@ address_fix:
   la gp, __global_pointer$
   .option pop                          # Restore the previous assembler options
 
+#if __riscv_xlen == 64
+  # Rocket cores reset mtvec to 0, which holds another core's code in the shared L1.
+  # Trap into a local loop instead; mepc and mcause keep the trap state.
+  la      t0, 13f
+  csrw    mtvec, t0
+#endif
+
 /* set stack pointer */
   la sp, __stack_top
 
@@ -142,24 +166,24 @@ address_fix:
 7:la      s2, __init_array_start       # Load the address of __init_array_start into s2
   la      s3, __init_array_end         # Load the address of __init_array_end into s3
   j       9f                           # Jump to label 9
-8:lw      a0, 0(s2)                    # Load word from address pointed by s2 into a0
+8:REG_L   a0, 0(s2)                    # Load the function pointer at s2 into a0
   jalr    a0                           # Jump and link register to the address in a0
-  addi    s2, s2, 4                    # Move to the next word in the init array
+  addi    s2, s2, SZREG                # Move to the next pointer in the init array
 9:bne     s2, s3, 8b                   # If s2 != s3, jump back to label 8
 
   /* Pass in the tensix coordinates as argv[0][0] through argv[0][3].
      argc = 1, envp = NULL. In memory, we'll have
-   * sp+0: argv[0] -> sp+8
-   * sp+4: argv[1] = NULL
-   * sp+8: s1
-   * sp+c: 0
+   * sp+0:         argv[0] -> sp+2*SZREG
+   * sp+SZREG:     argv[1] = NULL
+   * sp+2*SZREG:   s1
+   * sp+2*SZREG+4: 0
    */
-  addi    sp, sp, -16 /* (stack is aligned to 16 bytes in riscv calling convention) */
-  addi    a0, sp, 8
-  sw      a0, 0(sp)
-  sw      zero, 4(sp)
-  sw      s1, 8(sp)
-  sw      zero, 12(sp)
+  addi    sp, sp, -4*SZREG /* (stack is aligned to 16 bytes in riscv calling convention) */
+  addi    a0, sp, 2*SZREG
+  REG_S   a0, 0(sp)
+  REG_S   zero, SZREG(sp)
+  sw      s1, 2*SZREG(sp)
+  sw      zero, 2*SZREG+4(sp)
 
   li      a0, 1 # argc = 1
   mv      a1, sp
@@ -179,6 +203,12 @@ address_fix:
 
   # Loop infinitely.
   10: j 10b
+
+#if __riscv_xlen == 64
+  # Trap loop that mtvec points to (direct mode needs a 4-byte aligned address).
+  .align 2
+  13: j 13b
+#endif
 
   .size  _start, .-_start
 

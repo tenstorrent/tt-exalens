@@ -7,15 +7,14 @@ __firmware_stack_size = LENGTH(REGION_STACK);
 __firmware_start = DEFINED(__fw_export_end_text) ? __fw_export_end_text : ORIGIN(REGION_CODE);
 __ldm_start = DEFINED(__fw_export_ldm_end) ? __fw_export_ldm_end : ORIGIN(REGION_DATA);
 
-OUTPUT_FORMAT("elf32-littleriscv", "elf32-littleriscv",
-       "elf32-littleriscv")
+/* No OUTPUT_FORMAT: the compiler driver picks ELF32 or ELF64 from -march (which -mcpu implies), so 32-bit and 64-bit cores share this script. */
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
 SEARCH_DIR("/opt/riscv32i/riscv-tt-elf/lib");
 SECTIONS
 {
   /*
-   * This section is used to transfer .ldm_data section into private memory (0xffb00000).
+   * This section is used to transfer .ldm_data section into private memory (LDM).
    * Since loader cannot access private core memory from NOC, it copies .ldm_data section into .loader_init section,
    * and we embed code into CRT library that copies .loader_init section into .ldm_data section before main starts.
    */
@@ -82,26 +81,28 @@ SECTIONS
      *(.rodata .rodata.* .gnu.linkonce.r.*)
      *(.rodata1)
     /*
-     * Align before each array boundary symbol. These arrays hold 4-byte function pointers that
-     * tmu-crt0 walks with a `start; while (s != end) { call *s; s += 4; }` loop. Because everything
+     * Align before each array boundary symbol. These arrays hold pointer-sized function pointers
+     * (4 bytes on 32-bit cores, 8 on 64-bit cores) that tmu-crt0 walks with a
+     * `start; while (s != end) { call *s; s += SZREG; }` loop. Because everything
      * lives in one .ldm_data output section (instead of dedicated .init_array/etc. sections that
      * carry their own alignment), the *_start symbols are captured at the bare location counter.
-     * If preceding .rodata (e.g. the gcov filename string in coverage builds) ends off a 4-byte
-     * boundary, the linker still places the pointer data 4-aligned, leaving *_start a few bytes
+     * If preceding .rodata (e.g. the gcov filename string in coverage builds) ends off a pointer-size
+     * boundary, the linker still places the pointer data pointer-aligned, leaving *_start a few bytes
      * below the real data: the crt0 loop then reads misaligned garbage and `s` steps right past
-     * `end` without ever equalling it, looping forever into garbage. ALIGN(4) keeps each *_start
-     * consistent with the aligned pointer data so start + 4*N == end exactly.
+     * `end` without ever equalling it, looping forever into garbage. Aligning to the pointer size
+     * (__crt0_pointer_size from tmu-crt0; 8, which suits both, with any other start file) keeps
+     * each *_start consistent with the aligned pointer data so start + SZREG*N == end exactly.
      */
-    . = ALIGN(4);
+    . = ALIGN(DEFINED(__crt0_pointer_size) ? __crt0_pointer_size : 8);
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array))
     PROVIDE_HIDDEN (__preinit_array_end = .);
-    . = ALIGN(4);
+    . = ALIGN(DEFINED(__crt0_pointer_size) ? __crt0_pointer_size : 8);
     PROVIDE_HIDDEN (__init_array_start = .);
     KEEP (*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
     KEEP (*(.init_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .ctors))
     PROVIDE_HIDDEN (__init_array_end = .);
-    . = ALIGN(4);
+    . = ALIGN(DEFINED(__crt0_pointer_size) ? __crt0_pointer_size : 8);
     PROVIDE_HIDDEN (__fini_array_start = .);
     KEEP (*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))
     KEEP (*(.fini_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .dtors))

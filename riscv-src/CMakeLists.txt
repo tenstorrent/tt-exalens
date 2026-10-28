@@ -12,13 +12,19 @@ set(OBJDUMP "${TOOL_PATH}/riscv-tt-elf-objdump")
 set(OBJCOPY "${TOOL_PATH}/riscv-tt-elf-objcopy")
 set(READELF "${TOOL_PATH}/riscv-tt-elf-readelf")
 
+# Each core is built for one ISA: rv32 (ilp32) or rv64 (lp64, the Quasar rocket cores). LTO objects are ABI
+# specific, so each ISA gets its own objects. -mcpu=tt-qsr64 also selects the matching libgcc and libgcov.
+set(RISCV_ISAS "rv32" "rv64")
+
 # Compiler options for optimized builds
-set(OPTIMIZED_OPTIONS_ALL -O3 -mabi=ilp32 -std=c++17 -g -ffast-math -flto)
+set(OPTIMIZED_OPTIONS_ALL_rv32 -O3 -mabi=ilp32 -std=c++17 -g -ffast-math -flto)
+set(OPTIMIZED_OPTIONS_ALL_rv64 -O3 -mcpu=tt-qsr64 -mabi=lp64 -std=c++17 -g -ffast-math -flto)
 set(OPTIMIZED_OPTIONS_COMPILE -fno-use-cxa-atexit -Wall -fno-exceptions -fno-rtti -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable -DTENSIX_FIRMWARE)
 set(OPTIMIZED_OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
 # Compiler options
-set(OPTIONS_ALL -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math)
+set(OPTIONS_ALL_rv32 -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-math)
+set(OPTIONS_ALL_rv64 -O0 -mcpu=tt-qsr64 -mabi=lp64 -std=c++17 -g -flto -ffast-math)
 set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
 set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
 
@@ -29,22 +35,26 @@ set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section -DCOVERAGE)
 # Define project paths: source files, ELFs, and object files
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
 set(RISCV_OUTPUT "${CMAKE_SOURCE_DIR}/build/riscv-src")
-set(RISCV_OBJECT "${CMAKE_SOURCE_DIR}/build/riscv-src/obj")
+set(RISCV_OBJECT_rv32 "${CMAKE_SOURCE_DIR}/build/riscv-src/obj")
+set(RISCV_OBJECT_rv64 "${CMAKE_SOURCE_DIR}/build/riscv-src/obj/rv64")
 
-# Define architectures, applications, and cores
-set(RISCV_ARCHITECTURES "wormhole" "blackhole")
-set(RISCV_CORES "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc" "erisc0" "erisc1" "drisc")
+# Define architectures, the cores of each architecture per ISA, and applications
+set(RISCV_ARCHITECTURES "wormhole" "blackhole" "quasar")
+set(RISCV_CORES_wormhole_rv32 "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc")
+set(RISCV_CORES_blackhole_rv32 "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc0" "erisc1" "drisc")
+set(RISCV_CORES_quasar_rv32 "trisc0" "trisc1" "trisc2" "trisc3")
+set(RISCV_CORES_quasar_rv64 "rocket0" "rocket1" "rocket2" "rocket3" "rocket4" "rocket5" "rocket6" "rocket7")
 set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "edge_mem_test")
 
-# Create the object file output directory
-file(MAKE_DIRECTORY ${RISCV_OBJECT})
+# Create the object file output directories
+file(MAKE_DIRECTORY ${RISCV_OBJECT_rv32} ${RISCV_OBJECT_rv64})
 
 # Helper function to add object files for each source
-function(add_riscv_object OBJECT_NAME SOURCE_FILE BUILD_TYPE)
+function(add_riscv_object OBJECT_NAME SOURCE_FILE BUILD_TYPE ISA)
     if(BUILD_TYPE STREQUAL "release")
-        set(COMPILE_OPTIONS ${OPTIMIZED_OPTIONS_ALL} ${OPTIMIZED_OPTIONS_COMPILE})
+        set(COMPILE_OPTIONS ${OPTIMIZED_OPTIONS_ALL_${ISA}} ${OPTIMIZED_OPTIONS_COMPILE})
     else()
-        set(COMPILE_OPTIONS ${OPTIONS_ALL} ${OPTIONS_COMPILE})
+        set(COMPILE_OPTIONS ${OPTIONS_ALL_${ISA}} ${OPTIONS_COMPILE})
         if(BUILD_TYPE STREQUAL "coverage")
             list(APPEND COMPILE_OPTIONS ${GCOV_FLAGS})
         endif()
@@ -58,41 +68,43 @@ function(add_riscv_object OBJECT_NAME SOURCE_FILE BUILD_TYPE)
     )
 endfunction()
 
-# Compile the coverage support file (always optimized and without instrumentation).
-set(COVERAGE_OBJ "${RISCV_OBJECT}/coverage.o")
+foreach(ISA ${RISCV_ISAS})
+    set(OBJECT_DIR ${RISCV_OBJECT_${ISA}})
 
-# Compile coverage.c with -fno-strict-aliasing, the tricks done in the code necessitate it.
-add_custom_command(
-    OUTPUT ${COVERAGE_OBJ}
-    COMMAND ${GXX}
-            ${OPTIMIZED_OPTIONS_ALL}
-            ${OPTIMIZED_OPTIONS_COMPILE}
-            -fno-strict-aliasing
-            -fno-builtin
-            -c -o ${COVERAGE_OBJ}
-            ${RISCV_SOURCE}/coverage.c
-    DEPENDS ${RISCV_SOURCE}/coverage.c
-)
+    # Compile the coverage support file (always optimized and without instrumentation).
+    # Compile coverage.c with -fno-strict-aliasing, the tricks done in the code necessitate it.
+    add_custom_command(
+        OUTPUT ${OBJECT_DIR}/coverage.o
+        COMMAND ${GXX}
+                ${OPTIMIZED_OPTIONS_ALL_${ISA}}
+                ${OPTIMIZED_OPTIONS_COMPILE}
+                -fno-strict-aliasing
+                -fno-builtin
+                -c -o ${OBJECT_DIR}/coverage.o
+                ${RISCV_SOURCE}/coverage.c
+        DEPENDS ${RISCV_SOURCE}/coverage.c
+    )
 
-# Add the CRT object (assembly file)
-# The "coverage" build just adds a call to gcov_dump into the CRT.
-add_riscv_object("${RISCV_OBJECT}/tmu-crt0.debug.o" "${RISCV_SOURCE}/tmu-crt0.S" "debug")
-add_riscv_object("${RISCV_OBJECT}/tmu-crt0.release.o" "${RISCV_SOURCE}/tmu-crt0.S" "release")
-add_riscv_object("${RISCV_OBJECT}/tmu-crt0.coverage.o" "${RISCV_SOURCE}/tmu-crt0.S" "coverage")
+    # Add the CRT object (assembly file)
+    # The "coverage" build just adds a call to gcov_dump into the CRT.
+    add_riscv_object("${OBJECT_DIR}/tmu-crt0.debug.o" "${RISCV_SOURCE}/tmu-crt0.S" "debug" ${ISA})
+    add_riscv_object("${OBJECT_DIR}/tmu-crt0.release.o" "${RISCV_SOURCE}/tmu-crt0.S" "release" ${ISA})
+    add_riscv_object("${OBJECT_DIR}/tmu-crt0.coverage.o" "${RISCV_SOURCE}/tmu-crt0.S" "coverage" ${ISA})
 
-# Add C++ compile target
-foreach(app ${RISCV_APPS})
-    add_riscv_object("${RISCV_OBJECT}/${app}.debug.o" "${RISCV_SOURCE}/${app}.cc" "debug")
-    add_riscv_object("${RISCV_OBJECT}/${app}.release.o" "${RISCV_SOURCE}/${app}.cc" "release")
-    add_riscv_object("${RISCV_OBJECT}/${app}.coverage.o" "${RISCV_SOURCE}/${app}.cc" "coverage")
+    # Add C++ compile target
+    foreach(app ${RISCV_APPS})
+        add_riscv_object("${OBJECT_DIR}/${app}.debug.o" "${RISCV_SOURCE}/${app}.cc" "debug" ${ISA})
+        add_riscv_object("${OBJECT_DIR}/${app}.release.o" "${RISCV_SOURCE}/${app}.cc" "release" ${ISA})
+        add_riscv_object("${OBJECT_DIR}/${app}.coverage.o" "${RISCV_SOURCE}/${app}.cc" "coverage" ${ISA})
+    endforeach()
 endforeach()
 
 # Define function to create targets for a specific architecture, application, and core
-function(create_riscv_target ARCH APP CORE BUILD_TYPE)
+function(create_riscv_target ARCH APP CORE BUILD_TYPE ISA)
     if(BUILD_TYPE STREQUAL "release")
-        set(LINK_OPTIONS ${OPTIMIZED_OPTIONS_ALL} ${OPTIMIZED_OPTIONS_LINK})
+        set(LINK_OPTIONS ${OPTIMIZED_OPTIONS_ALL_${ISA}} ${OPTIMIZED_OPTIONS_LINK})
     else()
-        set(LINK_OPTIONS ${OPTIONS_ALL} ${OPTIONS_LINK})
+        set(LINK_OPTIONS ${OPTIONS_ALL_${ISA}} ${OPTIONS_LINK})
     endif()
 
     # -mtt-fix-whbhebreak emits the Wormhole/Blackhole ebreak hardware-bug workaround
@@ -107,8 +119,8 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
     set(OUTPUT_DWARF "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.dwarf")
 
     set(LINK_OBJECTS
-        ${RISCV_OBJECT}/tmu-crt0.${BUILD_TYPE}.o
-        ${RISCV_OBJECT}/${APP}.${BUILD_TYPE}.o
+        ${RISCV_OBJECT_${ISA}}/tmu-crt0.${BUILD_TYPE}.o
+        ${RISCV_OBJECT_${ISA}}/${APP}.${BUILD_TYPE}.o
     )
 
     # Handle memory.${ARCH}.debug.ld and memory.${ARCH}.release.ld
@@ -116,7 +128,7 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
     set(LINK_LIBS)
 
     if(BUILD_TYPE STREQUAL "coverage")
-        list(APPEND LINK_OBJECTS ${COVERAGE_OBJ})
+        list(APPEND LINK_OBJECTS ${RISCV_OBJECT_${ISA}}/coverage.o)
         list(APPEND LINK_LIBS -lgcov)
         # Debug ld script should be used in coverage builds
         set(LDSCRIPT_EXTENSION "debug")
@@ -158,20 +170,14 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE)
     endif()
 endfunction()
 
-# Create targets for all architectures, applications, and cores
-foreach(CORE ${RISCV_CORES})
-    foreach(APP ${RISCV_APPS})
-        foreach(ARCH ${RISCV_ARCHITECTURES})
-            if (ARCH STREQUAL "blackhole" AND CORE MATCHES "^erisc$")
-                # Skip invalid combinations of blackhole architecture with erisc cores
-                continue()
-            endif()
-            if (ARCH STREQUAL "wormhole" AND (CORE MATCHES "^erisc0$" OR CORE MATCHES "^erisc1$" OR CORE MATCHES "^drisc$"))
-                # Skip invalid combinations of wormhole architecture with erisc0, erisc1, and drisc cores
-                continue()
-            endif()
-            foreach(BUILD_TYPE debug release coverage)
-                create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE})
+# Create targets for all architectures, their cores, and applications
+foreach(ARCH ${RISCV_ARCHITECTURES})
+    foreach(ISA ${RISCV_ISAS})
+        foreach(CORE IN LISTS RISCV_CORES_${ARCH}_${ISA})
+            foreach(APP ${RISCV_APPS})
+                foreach(BUILD_TYPE debug release coverage)
+                    create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE} ${ISA})
+                endforeach()
             endforeach()
         endforeach()
     endforeach()
