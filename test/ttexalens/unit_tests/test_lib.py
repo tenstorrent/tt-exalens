@@ -390,7 +390,7 @@ class TestReadWrite(unittest.TestCase):
                 "0,0",
                 DebugRegisterDescription(offset=0x0, mask=0x000000CFFC000000, shift=26, size=2 * 4),
                 0x1234,
-            ),  # ja sam mali Acko
+            ),
             (
                 "0,0",
                 DebugRegisterDescription(offset=0x0, size=8 * 4),
