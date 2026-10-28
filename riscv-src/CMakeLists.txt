@@ -12,8 +12,7 @@ set(OBJDUMP "${TOOL_PATH}/riscv-tt-elf-objdump")
 set(OBJCOPY "${TOOL_PATH}/riscv-tt-elf-objcopy")
 set(READELF "${TOOL_PATH}/riscv-tt-elf-readelf")
 
-# Each core is built for one ISA: rv32 (ilp32) or rv64 (lp64, the Quasar rocket cores). LTO objects are ABI
-# specific, so each ISA gets its own objects. -mcpu=tt-qsr64 also selects the matching libgcc and libgcov.
+# rv64 (lp64) is used for Rocket cores on Quasar, rv32 (ilp32) for the other cores
 set(RISCV_ISAS "rv32" "rv64")
 
 # Compiler options for optimized builds

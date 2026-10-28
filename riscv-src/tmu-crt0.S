@@ -204,12 +204,6 @@ address_fix:
   # Loop infinitely.
   10: j 10b
 
-#if __riscv_xlen == 64
-  # Trap loop that mtvec points to (direct mode needs a 4-byte aligned address).
-  .align 2
-  13: j 13b
-#endif
-
   .size  _start, .-_start
 
   .global _init
