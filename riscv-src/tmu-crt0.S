@@ -204,6 +204,11 @@ address_fix:
   # Loop infinitely.
   10: j 10b
 
+#if __riscv_xlen == 64
+  # Trap loop that mtvec points to.
+  13: j 13b
+#endif
+
   .size  _start, .-_start
 
   .global _init
