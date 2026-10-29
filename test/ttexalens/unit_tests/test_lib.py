@@ -161,6 +161,27 @@ class TestReadWrite(unittest.TestCase):
             location.noc_read(address, read_data, dma_threshold=0)
             self.assertEqual(read_data, data)
 
+    @parameterized.expand([(None,), (True,), (False,)])
+    def test_write_read_register_access(self, register_access: bool | None):
+        """Test write -- read with register access forced on/off or decided based on memory map."""
+        location = "0,0"
+        address = 0x102  # Unaligned to also exercise read-modify-write in register mode
+
+        data = bytes(range(1, 11))
+        lib.write_to_device(location, address, data, register_access=register_access)
+        self.assertEqual(
+            lib.read_from_device(location, address, num_bytes=len(data), register_access=register_access), data
+        )
+
+        words = [0x11223344, 0x55667788, 0x99AABBCC]
+        lib.write_words_to_device(location, 0x200, words, register_access=register_access)
+        self.assertEqual(
+            lib.read_words_from_device(location, 0x200, word_count=len(words), register_access=register_access), words
+        )
+
+        lib.write_words_to_device(location, 0x200, 0xDEADBEEF, register_access=register_access)
+        self.assertEqual(lib.read_word_from_device(location, 0x200, register_access=register_access), 0xDEADBEEF)
+
     @parameterized.expand(
         [
             ("1,0", 1024, 0x100, 0),  # 1KB from device 0 at location 1,0

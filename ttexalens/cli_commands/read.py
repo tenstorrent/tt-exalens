@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  read <address> [ <word-count> ] [ --format=hex8 ] [ --unsafe ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ]
+  read <address> [ <word-count> ] [ --format=hex8 ] [ --unsafe ] [ --register-access | --no-register-access ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ]
 
 Arguments:
   address         Address to read from
@@ -13,6 +13,9 @@ Options:
   --format=<F>    Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: hex8]
   -r <risc_name>  RISC core name if you want to read memory that is not exposed on NOC.
   --unsafe        Experts mode, allow reading everything (bypass safety checks).
+  --register-access     Read over NOC as registers, 4 bytes at a time and without DMA.
+  --no-register-access  Read over NOC in bulk, even outside of L1 and DRAM.
+                        If neither is given, access type is decided based on memory map.
 
 Description:
   Reads and prints a block of data from address 'address'.
@@ -23,6 +26,7 @@ Examples:
   read 0x0 32 --format i8             # Prints 32 bytes in i8 format
   read 0xFFB0000 -r brisc 16          # Read 16 words from brisc private data memory
   read 0x0 4 -r trisc0 --neo 1        # Read trisc0 private memory of NEO 1 (Quasar)
+  read 0x0 16 --register-access       # Read 16 words from address 0, 4 bytes at a time
 """
 
 from ttexalens.context import Context
@@ -53,6 +57,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         util.ERROR(f"Number of words to read must be at least 1, but specified {word_count}")
         return
     unsafe = args["--unsafe"]
+    register_access = True if args["--register-access"] else False if args["--no-register-access"] else None
     risc_name = args["-r"]
     format = args["--format"] if args["--format"] else "hex8"
     if format not in util.PRINT_FORMATS:
@@ -77,11 +82,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             while read_bytes < bytes_to_read:
                 if unsafe:
                     bytes, memory_block_name = execute_unsafe_read(
-                        location, read_address, bytes_to_read - read_bytes, risc_name, neo_id
+                        location, read_address, bytes_to_read - read_bytes, risc_name, neo_id, register_access
                     )
                 else:
                     bytes, memory_block_name = execute_safe_read(
-                        location, read_address, bytes_to_read - read_bytes, risc_name, neo_id
+                        location, read_address, bytes_to_read - read_bytes, risc_name, neo_id, register_access
                     )
                 header = f"Device {device_id_str} | Location {location_str}{neo_str} | Block {memory_block_name} : 0x{read_address:08x} ({len(bytes)} bytes)"
                 da = util.DataArray(header, bytes_per_entry)
@@ -93,7 +98,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
 
 def execute_safe_read(
-    location: OnChipCoordinate, address: int, bytes_to_read: int, risc_name: str | None, neo_id: int | None = None
+    location: OnChipCoordinate,
+    address: int,
+    bytes_to_read: int,
+    risc_name: str | None,
+    neo_id: int | None = None,
+    register_access: bool | None = None,
 ) -> tuple[bytes, str]:
     # Check if we are reading using RISC debugging hardware or directly over NOC
     if risc_name is None:
@@ -106,7 +116,7 @@ def execute_safe_read(
         memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
         read_size = min(bytes_to_read, memory_block_end - address)
         data = bytearray(read_size)
-        location.noc_read(address, data)
+        location.noc_read(address, data, register_access=register_access)
         return bytes(data), memory_block_info.name
     else:
         risc_debug = location.noc_block.get_risc_debug(risc_name, neo_id)
@@ -125,7 +135,7 @@ def execute_safe_read(
                 address - memory_block_info.memory_block.address.private_address
             )
             data = bytearray(read_size)
-            location.noc_read(noc_address, data)
+            location.noc_read(noc_address, data, register_access=register_access)
         else:
             data = bytearray(read_size)
             risc_debug.read_memory_bytes(address, data)
@@ -133,7 +143,12 @@ def execute_safe_read(
 
 
 def execute_unsafe_read(
-    location: OnChipCoordinate, address: int, bytes_to_read: int, risc_name: str | None, neo_id: int | None = None
+    location: OnChipCoordinate,
+    address: int,
+    bytes_to_read: int,
+    risc_name: str | None,
+    neo_id: int | None = None,
+    register_access: bool | None = None,
 ) -> tuple[bytes, str]:
     if risc_name is None:
         risc_debug = None
@@ -142,7 +157,7 @@ def execute_unsafe_read(
             memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
             read_size = min(bytes_to_read, memory_block_end - address)
             data = bytearray(read_size)
-            location.noc_read(address, data, safe_mode=False)
+            location.noc_read(address, data, safe_mode=False, register_access=register_access)
             return bytes(data), memory_block_info.name
     else:
         risc_debug = location.noc_block.get_risc_debug(risc_name, neo_id)
@@ -158,7 +173,7 @@ def execute_unsafe_read(
                     address - memory_block_info.memory_block.address.private_address
                 )
                 data = bytearray(read_size)
-                location.noc_read(noc_address, data, safe_mode=False)
+                location.noc_read(noc_address, data, safe_mode=False, register_access=register_access)
             else:
                 data = bytearray(read_size)
                 risc_debug.read_memory_bytes(address, data)
@@ -182,5 +197,5 @@ def execute_unsafe_read(
         with risc_debug.ensure_private_memory_access():
             risc_debug.read_memory_bytes(address, data, safe_mode=False)
     else:
-        location.noc_read(address, data, safe_mode=False)
+        location.noc_read(address, data, safe_mode=False, register_access=register_access)
     return bytes(data), "???"

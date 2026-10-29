@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  write <address> <data>... [ --width=<width> ] [ --repeat=<repeat> ] [ --unsafe ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ]
+  write <address> <data>... [ --width=<width> ] [ --repeat=<repeat> ] [ --unsafe ] [ --register-access | --no-register-access ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ]
 
 Arguments:
   address         Address to write to
@@ -15,6 +15,9 @@ Options:
   --repeat=<repeat>  Number of times to repeat the write, advancing the address each time. [default: 1]
   -r <risc_name>     RISC core name if you want to write memory that is not exposed on NOC.
   --unsafe           Experts mode, allow writing everything (bypass safety checks).
+  --register-access     Write over NOC as registers, 4 bytes at a time and without DMA.
+  --no-register-access  Write over NOC in bulk, even outside of L1 and DRAM.
+                        If neither is given, access type is decided based on memory map.
 
 Description:
   Writes a block of data to address 'address'.
@@ -26,6 +29,7 @@ Examples:
   write 0x0 0xdeadbeef --repeat 4             # Write the same word to 4 consecutive addresses
   write 0xFFB0000 0xdeadbeef -r brisc         # Write 1 word to brisc private data memory
   write 0x0 0xdeadbeef -r trisc0 --neo 1      # Write to trisc0 private memory of NEO 1
+  write 0x0 0xdeadbeef --register-access      # Write 1 word to address 0, 4 bytes at a time
 """
 
 from ttexalens.context import Context
@@ -75,6 +79,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         util.WARN("Repeat count must be a positive integer, defaulting to 1")
         repeat = 1
     unsafe = args["--unsafe"]
+    register_access = True if args["--register-access"] else False if args["--no-register-access"] else None
     risc_name = args["-r"]
 
     # Convert data arguments to bytes using little-endian packing
@@ -104,11 +109,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                 chunk = bytes(write_data[data_offset : data_offset + (total_bytes - written_bytes)])
                 if unsafe:
                     chunk_written, memory_block_name = execute_unsafe_write(
-                        location, write_address, chunk, risc_name, neo_id
+                        location, write_address, chunk, risc_name, neo_id, register_access
                     )
                 else:
                     chunk_written, memory_block_name = execute_safe_write(
-                        location, write_address, chunk, risc_name, neo_id
+                        location, write_address, chunk, risc_name, neo_id, register_access
                     )
                 util.INFO(
                     f"Device {device_id_str} | Location {location_str}{neo_str} | Block {memory_block_name} : 0x{write_address:08x} ({chunk_written} bytes written)"
@@ -119,7 +124,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
 
 def execute_safe_write(
-    location: OnChipCoordinate, address: int, data: bytes, risc_name: str | None, neo_id: int | None = None
+    location: OnChipCoordinate,
+    address: int,
+    data: bytes,
+    risc_name: str | None,
+    neo_id: int | None = None,
+    register_access: bool | None = None,
 ) -> tuple[int, str]:
     if risc_name is None:
         memory_block_info = location.noc_block.noc_memory_map.find_by_noc_address(address)
@@ -129,7 +139,7 @@ def execute_safe_write(
             raise TTException(f"Memory block '{memory_block_info.name}' does not have a NOC address")
         memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
         write_size = min(len(data), memory_block_end - address)
-        location.noc_write(address, data[:write_size])
+        location.noc_write(address, data[:write_size], register_access=register_access)
         return write_size, memory_block_info.name
     else:
         risc_debug = location.noc_block.get_risc_debug(risc_name, neo_id)
@@ -147,14 +157,19 @@ def execute_safe_write(
             noc_address = memory_block_info.memory_block.address.noc_address + (
                 address - memory_block_info.memory_block.address.private_address
             )
-            location.noc_write(noc_address, data[:write_size])
+            location.noc_write(noc_address, data[:write_size], register_access=register_access)
         else:
             risc_debug.write_memory_bytes(address, data[:write_size])
         return write_size, memory_block_info.name
 
 
 def execute_unsafe_write(
-    location: OnChipCoordinate, address: int, data: bytes, risc_name: str | None, neo_id: int | None = None
+    location: OnChipCoordinate,
+    address: int,
+    data: bytes,
+    risc_name: str | None,
+    neo_id: int | None = None,
+    register_access: bool | None = None,
 ) -> tuple[int, str]:
     if risc_name is None:
         risc_debug = None
@@ -162,7 +177,7 @@ def execute_unsafe_write(
         if memory_block_info is not None and memory_block_info.memory_block.address.noc_address is not None:
             memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
             write_size = min(len(data), memory_block_end - address)
-            location.noc_write(address, data[:write_size], safe_mode=False)
+            location.noc_write(address, data[:write_size], safe_mode=False, register_access=register_access)
             return write_size, memory_block_info.name
     else:
         risc_debug = location.noc_block.get_risc_debug(risc_name, neo_id)
@@ -177,7 +192,7 @@ def execute_unsafe_write(
                 noc_address = memory_block_info.memory_block.address.noc_address + (
                     address - memory_block_info.memory_block.address.private_address
                 )
-                location.noc_write(noc_address, data[:write_size], safe_mode=False)
+                location.noc_write(noc_address, data[:write_size], safe_mode=False, register_access=register_access)
             else:
                 risc_debug.write_memory_bytes(address, data[:write_size], safe_mode=False)
             return write_size, memory_block_info.name
@@ -199,5 +214,5 @@ def execute_unsafe_write(
         with risc_debug.ensure_private_memory_access():
             risc_debug.write_memory_bytes(address, data, safe_mode=False)
     else:
-        location.noc_write(address, data, safe_mode=False)
+        location.noc_write(address, data, safe_mode=False, register_access=register_access)
     return len(data), "???"
