@@ -320,7 +320,9 @@ def display_grouped_data(
         for row in sorted_rows:
             # Convert each tuple (str, int, int) to (str, str, str) with hex values
             name, addr, value = row
-            transformed_row = (name, f"0x{addr:08x}", f"0x{value:08x}")
+            # Values wider than 32 bits are shown one word per line, lowest address first
+            words = [(value >> shift) & 0xFFFFFFFF for shift in range(0, max(value.bit_length(), 1), 32)]
+            transformed_row = (name, f"0x{addr:08x}", "\n".join(f"0x{word:08x}" for word in words))
             transformed_rows.append(transformed_row)
         transformed_data[group_name] = transformed_rows
 

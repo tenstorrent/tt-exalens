@@ -129,7 +129,7 @@ class UmdDevice:
         for translated_coord in self._active_eth_coords_on_mmio_chip:
             self.__device.get_remote_communication().set_remote_transfer_ethernet_cores([translated_coord])
             try:
-                self.__read_from_device_reg(tensix_translated_coord, 0, buffer, 8)
+                self.__read_from_device_reg(tensix_translated_coord, 0, buffer, 8, register_access=False)
                 return
             except Exception:
                 if util.DEBUG_ENABLED:
@@ -145,14 +145,22 @@ class UmdDevice:
         return noc_coords[noc0_x][noc0_y]
 
     def __read_from_device_reg(
-        self, coord: tt_umd.CoreCoord, address: int, buffer: bytearray | memoryview, dma_threshold: int
+        self,
+        coord: tt_umd.CoreCoord,
+        address: int,
+        buffer: bytearray | memoryview,
+        dma_threshold: int,
+        register_access: bool,
     ) -> None:
         # Check if we can use DMA read
-        if len(buffer) >= dma_threshold and self.can_use_dma:
+        if not register_access and len(buffer) >= dma_threshold and self.can_use_dma:
             self.__device.dma_read_from_device(0, coord.x, coord.y, address, buffer)
         else:
             try:
-                self.__device.noc_read(0, coord.x, coord.y, address, buffer)
+                if register_access:
+                    buffer[:] = self.__device.read_from_device_reg(coord.x, coord.y, address, len(buffer))
+                else:
+                    self.__device.noc_read(0, coord.x, coord.y, address, buffer)
             except tt_umd.error.DeviceTimeoutError as error:
                 # Translate the coordinates to a more user-friendly representation for the error message
                 try:
@@ -169,14 +177,22 @@ class UmdDevice:
                 )
 
     def __write_to_device_reg(
-        self, coord: tt_umd.CoreCoord, address: int, data: bytes | bytearray | memoryview, dma_threshold: int
+        self,
+        coord: tt_umd.CoreCoord,
+        address: int,
+        data: bytes | bytearray | memoryview,
+        dma_threshold: int,
+        register_access: bool,
     ):
         # Check if we can use DMA write
-        if len(data) >= dma_threshold and self.can_use_dma:
+        if not register_access and len(data) >= dma_threshold and self.can_use_dma:
             self.__device.dma_write_to_device(coord.x, coord.y, address, data)
         else:
             try:
-                self.__device.noc_write(coord.x, coord.y, address, data)
+                if register_access:
+                    self.__device.write_to_device_reg(coord.x, coord.y, address, data)
+                else:
+                    self.__device.noc_write(coord.x, coord.y, address, data)
             except tt_umd.error.DeviceTimeoutError as error:
                 # Translate the coordinates to a more user-friendly representation for the error message
                 try:
@@ -196,6 +212,7 @@ class UmdDevice:
         address: int,
         buffer: bytearray | memoryview,
         dma_threshold: int,
+        register_access: bool,
     ) -> None:
         # Read first unaligned word
         first_unaligned_index = address % 4
@@ -203,7 +220,9 @@ class UmdDevice:
         offset = 0
         if first_unaligned_index != 0:
             temp = bytearray(4)
-            self.__read_from_device_reg(coord, address - first_unaligned_index, temp, dma_threshold)
+            self.__read_from_device_reg(
+                coord, address - first_unaligned_index, temp, dma_threshold, register_access=register_access
+            )
             if first_unaligned_index + size <= 4:
                 buffer[:size] = temp[first_unaligned_index : first_unaligned_index + size]
                 return
@@ -217,7 +236,9 @@ class UmdDevice:
         view = memoryview(buffer)
         aligned_size = size - (size % 4)
         if aligned_size > 0:
-            self.__read_from_device_reg(coord, address, view[offset : offset + aligned_size], dma_threshold)
+            self.__read_from_device_reg(
+                coord, address, view[offset : offset + aligned_size], dma_threshold, register_access=register_access
+            )
             offset += aligned_size
             address += aligned_size
             size -= aligned_size
@@ -226,7 +247,7 @@ class UmdDevice:
         last_unaligned_size = size
         if last_unaligned_size != 0:
             temp = bytearray(4)
-            self.__read_from_device_reg(coord, address, temp, dma_threshold)
+            self.__read_from_device_reg(coord, address, temp, dma_threshold, register_access=register_access)
             buffer[offset : offset + last_unaligned_size] = temp[:last_unaligned_size]
 
     def __read_from_device_reg_unaligned(
@@ -237,11 +258,14 @@ class UmdDevice:
         address: int,
         buffer: bytearray | memoryview,
         dma_threshold: int,
+        register_access: bool,
     ) -> None:
         coord = self.__convert_noc0_to_device_coords(noc_id, noc0_x, noc0_y)
         assert coord is not None, f"Invalid NoC0 coordinates: ({noc0_x}, {noc0_y})"
         try:
-            self.__read_from_device_reg_unaligned_helper(coord, address, buffer, dma_threshold)
+            self.__read_from_device_reg_unaligned_helper(
+                coord, address, buffer, dma_threshold, register_access=register_access
+            )
         except TimeoutDeviceRegisterError:
             raise
         except Exception:
@@ -250,7 +274,9 @@ class UmdDevice:
             if util.DEBUG_ENABLED:
                 util.DEBUG(f"Read failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
             self.__configure_working_active_eth()
-            self.__read_from_device_reg_unaligned_helper(coord, address, buffer, dma_threshold)
+            self.__read_from_device_reg_unaligned_helper(
+                coord, address, buffer, dma_threshold, register_access=register_access
+            )
 
     def __write_to_device_reg_unaligned_helper(
         self,
@@ -258,6 +284,7 @@ class UmdDevice:
         address: int,
         data: bytes | bytearray | memoryview,
         dma_threshold: int,
+        register_access: bool,
     ):
         size_in_bytes = len(data)
 
@@ -266,17 +293,17 @@ class UmdDevice:
         if first_unaligned_index != 0:
             aligned_address = address - first_unaligned_index
             temp = bytearray(4)
-            self.__read_from_device_reg(coord, aligned_address, temp, dma_threshold)
+            self.__read_from_device_reg(coord, aligned_address, temp, dma_threshold, register_access=register_access)
             if first_unaligned_index + size_in_bytes <= 4:
                 temp = (
                     temp[0:first_unaligned_index]
                     + data[0:size_in_bytes]
                     + temp[first_unaligned_index + size_in_bytes : 4]
                 )
-                self.__write_to_device_reg(coord, aligned_address, temp, dma_threshold)
+                self.__write_to_device_reg(coord, aligned_address, temp, dma_threshold, register_access=register_access)
                 return
             temp = temp[0:first_unaligned_index] + data[0 : 4 - first_unaligned_index]
-            self.__write_to_device_reg(coord, aligned_address, temp, dma_threshold)
+            self.__write_to_device_reg(coord, aligned_address, temp, dma_threshold, register_access=register_access)
             data = data[4 - first_unaligned_index :]
             address += 4 - first_unaligned_index
             size_in_bytes -= 4 - first_unaligned_index
@@ -285,7 +312,9 @@ class UmdDevice:
         aligned_size = size_in_bytes - (size_in_bytes % 4)
         offset = 0
         if aligned_size > 0:
-            self.__write_to_device_reg(coord, address, data[offset : offset + aligned_size], dma_threshold)
+            self.__write_to_device_reg(
+                coord, address, data[offset : offset + aligned_size], dma_threshold, register_access=register_access
+            )
             offset += aligned_size
             address += aligned_size
             size_in_bytes -= aligned_size
@@ -295,9 +324,9 @@ class UmdDevice:
         last_unaligned_size = size_in_bytes
         if last_unaligned_size != 0:
             temp = bytearray(4)
-            self.__read_from_device_reg(coord, address, temp, dma_threshold)
+            self.__read_from_device_reg(coord, address, temp, dma_threshold, register_access=register_access)
             temp[0:last_unaligned_size] = data[0:last_unaligned_size]
-            self.__write_to_device_reg(coord, address, temp, dma_threshold)
+            self.__write_to_device_reg(coord, address, temp, dma_threshold, register_access=register_access)
 
     def __write_to_device_reg_unaligned(
         self,
@@ -307,11 +336,14 @@ class UmdDevice:
         address: int,
         data: bytes | bytearray | memoryview,
         dma_threshold: int,
+        register_access: bool,
     ):
         coord = self.__convert_noc0_to_device_coords(noc_id, noc0_x, noc0_y)
         assert coord is not None, f"Invalid NoC0 coordinates: ({noc0_x}, {noc0_y})"
         try:
-            self.__write_to_device_reg_unaligned_helper(coord, address, data, dma_threshold)
+            self.__write_to_device_reg_unaligned_helper(
+                coord, address, data, dma_threshold, register_access=register_access
+            )
         except TimeoutDeviceRegisterError:
             raise
         except Exception:
@@ -320,7 +352,9 @@ class UmdDevice:
             if util.DEBUG_ENABLED:
                 util.DEBUG(f"Write failed, retrying via ETH reconfiguration:\n{traceback.format_exc()}")
             self.__configure_working_active_eth()
-            self.__write_to_device_reg_unaligned_helper(coord, address, data, dma_threshold)
+            self.__write_to_device_reg_unaligned_helper(
+                coord, address, data, dma_threshold, register_access=register_access
+            )
 
     def _update_device_after_sigbus(self, new_device: tt_umd.TTDevice):
         # Device was reset, we did new topology discovery, but we want to reuse the same UmdDevice instance to make it easier for users.
@@ -339,16 +373,19 @@ class UmdDevice:
         address: int,
         buffer: bytearray | memoryview,
         dma_threshold: int,
+        register_access: bool,
     ) -> None:
         try:
             """Reads data from address"""
             self.__select_noc_id(noc_id)
-            self.__read_from_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, buffer, dma_threshold)
+            self.__read_from_device_reg_unaligned(
+                noc_id, noc0_x, noc0_y, address, buffer, dma_threshold, register_access=register_access
+            )
         except tt_umd.SigbusError:
             if util.DEBUG_ENABLED:
                 util.DEBUG("Reset detected during noc_read, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
-            self.noc_read(noc_id, noc0_x, noc0_y, address, buffer, dma_threshold)
+            self.noc_read(noc_id, noc0_x, noc0_y, address, buffer, dma_threshold, register_access=register_access)
 
     def noc_read_bytes(
         self,
@@ -358,10 +395,11 @@ class UmdDevice:
         address: int,
         size: int,
         dma_threshold: int,
+        register_access: bool,
     ) -> bytes:
         """Reads 'size' bytes from address and returns them. Avoid using this method if caller can provide buffer, to save extra copy."""
         buffer = bytearray(size)
-        self.noc_read(noc_id, noc0_x, noc0_y, address, buffer, dma_threshold)
+        self.noc_read(noc_id, noc0_x, noc0_y, address, buffer, dma_threshold, register_access=register_access)
         return bytes(buffer)
 
     def noc_write(
@@ -372,16 +410,19 @@ class UmdDevice:
         address: int,
         data: bytes | bytearray | memoryview,
         dma_threshold: int,
+        register_access: bool,
     ):
         try:
             """Writes data to address"""
             self.__select_noc_id(noc_id)
-            self.__write_to_device_reg_unaligned(noc_id, noc0_x, noc0_y, address, data, dma_threshold)
+            self.__write_to_device_reg_unaligned(
+                noc_id, noc0_x, noc0_y, address, data, dma_threshold, register_access=register_access
+            )
         except tt_umd.SigbusError:
             if util.DEBUG_ENABLED:
                 util.DEBUG("Reset detected during noc_write, reinitializing device and retrying...")
             self.__reinit_device_after_sigbus()
-            self.noc_write(noc_id, noc0_x, noc0_y, address, data, dma_threshold)
+            self.noc_write(noc_id, noc0_x, noc0_y, address, data, dma_threshold, register_access=register_access)
 
     def bar0_read32(self, address: int) -> int:
         """Reads 4 bytes from PCI address"""

@@ -57,14 +57,14 @@ register_map: dict[str, RegisterDescription] = {
     # Reset vectors — 64-bit, 8-byte stride (cores 0-7)
     # Each register contains the address of the first instruction executed by corresponding core after reset.
     # ---------------------------------------------------------------------------
-    "TT_CLUSTER_CTRL_RESET_VECTOR_0": ClusterControlRegisterDescription(offset=0x000, size=8, mask=(1 << 52) - 1),
-    "TT_CLUSTER_CTRL_RESET_VECTOR_1": ClusterControlRegisterDescription(offset=0x008, size=8, mask=(1 << 52) - 1),
-    "TT_CLUSTER_CTRL_RESET_VECTOR_2": ClusterControlRegisterDescription(offset=0x010, size=8, mask=(1 << 52) - 1),
-    "TT_CLUSTER_CTRL_RESET_VECTOR_3": ClusterControlRegisterDescription(offset=0x018, size=8, mask=(1 << 52) - 1),
-    "TT_CLUSTER_CTRL_RESET_VECTOR_4": ClusterControlRegisterDescription(offset=0x020, size=8, mask=(1 << 52) - 1),
-    "TT_CLUSTER_CTRL_RESET_VECTOR_5": ClusterControlRegisterDescription(offset=0x028, size=8, mask=(1 << 52) - 1),
-    "TT_CLUSTER_CTRL_RESET_VECTOR_6": ClusterControlRegisterDescription(offset=0x030, size=8, mask=(1 << 52) - 1),
-    "TT_CLUSTER_CTRL_RESET_VECTOR_7": ClusterControlRegisterDescription(offset=0x038, size=8, mask=(1 << 52) - 1),
+    "TT_CLUSTER_CTRL_RESET_VECTOR_0": ClusterControlRegisterDescription(offset=0x000, size=2 * 4, mask=(1 << 52) - 1),
+    "TT_CLUSTER_CTRL_RESET_VECTOR_1": ClusterControlRegisterDescription(offset=0x008, size=2 * 4, mask=(1 << 52) - 1),
+    "TT_CLUSTER_CTRL_RESET_VECTOR_2": ClusterControlRegisterDescription(offset=0x010, size=2 * 4, mask=(1 << 52) - 1),
+    "TT_CLUSTER_CTRL_RESET_VECTOR_3": ClusterControlRegisterDescription(offset=0x018, size=2 * 4, mask=(1 << 52) - 1),
+    "TT_CLUSTER_CTRL_RESET_VECTOR_4": ClusterControlRegisterDescription(offset=0x020, size=2 * 4, mask=(1 << 52) - 1),
+    "TT_CLUSTER_CTRL_RESET_VECTOR_5": ClusterControlRegisterDescription(offset=0x028, size=2 * 4, mask=(1 << 52) - 1),
+    "TT_CLUSTER_CTRL_RESET_VECTOR_6": ClusterControlRegisterDescription(offset=0x030, size=2 * 4, mask=(1 << 52) - 1),
+    "TT_CLUSTER_CTRL_RESET_VECTOR_7": ClusterControlRegisterDescription(offset=0x038, size=2 * 4, mask=(1 << 52) - 1),
     # ---------------------------------------------------------------------------
     # Scratch registers — 32-bit, 4-byte stride
     # Per-core postcode/scratch layout:
@@ -132,14 +132,14 @@ register_map: dict[str, RegisterDescription] = {
     # WB (write-back) PC registers — 64-bit, 8-byte stride (cores 0-7).
     # Lower 32 bits hold the instruction address for programs < 4 GB.
     # ---------------------------------------------------------------------------
-    "TT_CLUSTER_CTRL_WB_PC_REG_C0": ClusterControlRegisterDescription(offset=0x0D8, size=8, mask=(1 << 58) - 1),
-    "TT_CLUSTER_CTRL_WB_PC_REG_C1": ClusterControlRegisterDescription(offset=0x0E0, size=8, mask=(1 << 58) - 1),
-    "TT_CLUSTER_CTRL_WB_PC_REG_C2": ClusterControlRegisterDescription(offset=0x0E8, size=8, mask=(1 << 58) - 1),
-    "TT_CLUSTER_CTRL_WB_PC_REG_C3": ClusterControlRegisterDescription(offset=0x0F0, size=8, mask=(1 << 58) - 1),
-    "TT_CLUSTER_CTRL_WB_PC_REG_C4": ClusterControlRegisterDescription(offset=0x0F8, size=8, mask=(1 << 58) - 1),
-    "TT_CLUSTER_CTRL_WB_PC_REG_C5": ClusterControlRegisterDescription(offset=0x100, size=8, mask=(1 << 58) - 1),
-    "TT_CLUSTER_CTRL_WB_PC_REG_C6": ClusterControlRegisterDescription(offset=0x108, size=8, mask=(1 << 58) - 1),
-    "TT_CLUSTER_CTRL_WB_PC_REG_C7": ClusterControlRegisterDescription(offset=0x110, size=8, mask=(1 << 58) - 1),
+    "TT_CLUSTER_CTRL_WB_PC_REG_C0": ClusterControlRegisterDescription(offset=0x0D8, size=2 * 4, mask=(1 << 58) - 1),
+    "TT_CLUSTER_CTRL_WB_PC_REG_C1": ClusterControlRegisterDescription(offset=0x0E0, size=2 * 4, mask=(1 << 58) - 1),
+    "TT_CLUSTER_CTRL_WB_PC_REG_C2": ClusterControlRegisterDescription(offset=0x0E8, size=2 * 4, mask=(1 << 58) - 1),
+    "TT_CLUSTER_CTRL_WB_PC_REG_C3": ClusterControlRegisterDescription(offset=0x0F0, size=2 * 4, mask=(1 << 58) - 1),
+    "TT_CLUSTER_CTRL_WB_PC_REG_C4": ClusterControlRegisterDescription(offset=0x0F8, size=2 * 4, mask=(1 << 58) - 1),
+    "TT_CLUSTER_CTRL_WB_PC_REG_C5": ClusterControlRegisterDescription(offset=0x100, size=2 * 4, mask=(1 << 58) - 1),
+    "TT_CLUSTER_CTRL_WB_PC_REG_C6": ClusterControlRegisterDescription(offset=0x108, size=2 * 4, mask=(1 << 58) - 1),
+    "TT_CLUSTER_CTRL_WB_PC_REG_C7": ClusterControlRegisterDescription(offset=0x110, size=2 * 4, mask=(1 << 58) - 1),
     # Capture enable/disable (enable by default)
     "TT_CLUSTER_CTRL_WB_PC_CTRL": ClusterControlRegisterDescription(offset=0x118),
     # ---------------------------------------------------------------------------
@@ -174,28 +174,28 @@ register_map: dict[str, RegisterDescription] = {
     # Default value: 0x0000000000000000
     # ---------------------------------------------------------------------------
     "TT_CLUSTER_CTRL_BUS_ERROR_UNIT_DATA_C0": ClusterControlRegisterDescription(
-        offset=0x130, size=8, mask=(1 << 60) - 1
+        offset=0x130, size=2 * 4, mask=(1 << 60) - 1
     ),
     "TT_CLUSTER_CTRL_BUS_ERROR_UNIT_DATA_C1": ClusterControlRegisterDescription(
-        offset=0x138, size=8, mask=(1 << 60) - 1
+        offset=0x138, size=2 * 4, mask=(1 << 60) - 1
     ),
     "TT_CLUSTER_CTRL_BUS_ERROR_UNIT_DATA_C2": ClusterControlRegisterDescription(
-        offset=0x140, size=8, mask=(1 << 60) - 1
+        offset=0x140, size=2 * 4, mask=(1 << 60) - 1
     ),
     "TT_CLUSTER_CTRL_BUS_ERROR_UNIT_DATA_C3": ClusterControlRegisterDescription(
-        offset=0x148, size=8, mask=(1 << 60) - 1
+        offset=0x148, size=2 * 4, mask=(1 << 60) - 1
     ),
     "TT_CLUSTER_CTRL_BUS_ERROR_UNIT_DATA_C4": ClusterControlRegisterDescription(
-        offset=0x150, size=8, mask=(1 << 60) - 1
+        offset=0x150, size=2 * 4, mask=(1 << 60) - 1
     ),
     "TT_CLUSTER_CTRL_BUS_ERROR_UNIT_DATA_C5": ClusterControlRegisterDescription(
-        offset=0x158, size=8, mask=(1 << 60) - 1
+        offset=0x158, size=2 * 4, mask=(1 << 60) - 1
     ),
     "TT_CLUSTER_CTRL_BUS_ERROR_UNIT_DATA_C6": ClusterControlRegisterDescription(
-        offset=0x160, size=8, mask=(1 << 60) - 1
+        offset=0x160, size=2 * 4, mask=(1 << 60) - 1
     ),
     "TT_CLUSTER_CTRL_BUS_ERROR_UNIT_DATA_C7": ClusterControlRegisterDescription(
-        offset=0x168, size=8, mask=(1 << 60) - 1
+        offset=0x168, size=2 * 4, mask=(1 << 60) - 1
     ),
     # ---------------------------------------------------------------------------
     # L2 directory error status — 4 registers, one per directory slice.
