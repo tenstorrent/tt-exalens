@@ -33,7 +33,6 @@ INSN_CSRSI_DCSR_STEP = 0x7B026073  # csrrsi x0, dcsr, 4
 INSN_CSRCI_DCSR_STEP = 0x7B027073  # csrrci x0, dcsr, 4
 INSN_CSRW_DPC_X5 = 0x7B129073  # csrrw x0, dpc, x5
 INSN_CSRRS_DCSR_X5 = 0x7B02A073  # csrrs x0, dcsr, x5
-INSN_CSRRC_DCSR_X5 = 0x7B02B073  # csrrc x0, dcsr, x5
 INSN_CSRR_X5_DCSR = 0x7B0022F3  # csrrs x5, dcsr, x0
 
 DCSR_EBREAKM = 1 << 15
