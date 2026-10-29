@@ -11,6 +11,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.gdb.gdb_communication import ServerSocket
 from ttexalens.gdb.gdb_server import GdbServer
 from ttexalens.elf import CallstackEntry, DwarfFileLine
+from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.tt_exalens_lib import check_context
 from ttexalens.util import DEBUG, TRACE
 
@@ -93,18 +94,8 @@ def make_gdb_script_for_callstack(
     """
 
 
-def get_process_ids(gdb_server: GdbServer):
-    process_ids: dict[OnChipCoordinate, dict[str, int]] = {}
-    for pid, process in gdb_server.available_processes.items():
-        location = process.risc_debug.risc_location.location
-        risc_name = process.risc_debug.risc_location.risc_name
-
-        if location in process_ids:
-            process_ids[location][risc_name] = pid
-        else:
-            process_ids[location] = {risc_name: pid}
-
-    return process_ids
+def get_process_ids(gdb_server: GdbServer) -> dict[RiscLocation, int]:
+    return {process.risc_debug.risc_location: pid for pid, process in gdb_server.available_processes.items()}
 
 
 def get_callstack_entry(line: str) -> CallstackEntry:
@@ -174,6 +165,7 @@ def get_gdb_callstack(
     offsets: list[int | None],
     gdb_server: GdbServer | None = None,
     context: Context | None = None,
+    neo_id: int | None = None,
 ) -> list[CallstackEntry]:
     gdb_server_created = False
     if gdb_server is None:
@@ -201,7 +193,7 @@ def get_gdb_callstack(
 
         assert gdb_server.server.port is not None
         gdb_script = make_gdb_script_for_callstack(
-            process_ids[location][risc_name],
+            process_ids[RiscLocation(location, neo_id, risc_name)],
             elf_paths,
             offsets,
             gdb_server.server.port,
