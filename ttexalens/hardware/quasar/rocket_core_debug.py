@@ -9,6 +9,7 @@ import time
 from ttexalens import util
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
+from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.rocket_core_debug import RocketCoreDebug, TIMEOUT
 from ttexalens.register_store import RegisterStore
 
@@ -32,6 +33,7 @@ INSN_CSRSI_DCSR_STEP = 0x7B026073  # csrrsi x0, dcsr, 4
 INSN_CSRCI_DCSR_STEP = 0x7B027073  # csrrci x0, dcsr, 4
 INSN_CSRW_DPC_X5 = 0x7B129073  # csrrw x0, dpc, x5
 INSN_CSRRS_DCSR_X5 = 0x7B02A073  # csrrs x0, dcsr, x5
+INSN_CSRRC_DCSR_X5 = 0x7B02B073  # csrrc x0, dcsr, x5
 INSN_CSRR_X5_DCSR = 0x7B0022F3  # csrrs x5, dcsr, x0
 
 DCSR_EBREAKM = 1 << 15
@@ -343,3 +345,21 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
 
     def set_code_start_address(self, address: int | None) -> None:
         self.baby_risc_info.set_code_start_address(self.register_store, address if address is not None else 0)
+
+    def can_debug(self) -> bool:
+        return self.baby_risc_info.debug_hardware_present
+
+    def get_l1(self) -> MemoryBlock:
+        return self.risc_info.l1
+
+    def get_data_private_memory(self) -> MemoryBlock | None:
+        return self.baby_risc_info.data_private_memory
+
+    @contextmanager
+    def ensure_private_memory_access(self) -> Generator[None, Any, None]:
+        # Memory is accessed through SBA, which doesn't need the core, and a core in reset can't be halted
+        if self.is_in_reset():
+            yield
+        else:
+            with self.ensure_halted():
+                yield
