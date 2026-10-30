@@ -161,11 +161,11 @@ def extract_callstack_from_gdb_output(
 def get_gdb_callstack(
     location: OnChipCoordinate,
     risc_name: str,
+    neo_id: int | None,
     elf_paths: list[str],
     offsets: list[int | None],
     gdb_server: GdbServer | None = None,
     context: Context | None = None,
-    neo_id: int | None = None,
 ) -> list[CallstackEntry]:
     gdb_server_created = False
     if gdb_server is None:
