@@ -89,7 +89,7 @@ Set the active TTExaLens context object.
 ## read_word_from_device
 
 ```
-read_word_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None) -> int
+read_word_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None, register_access: bool | None = None) -> int
 ```
 
 
@@ -106,6 +106,7 @@ Reads one four-byte word of data, from address 'addr' at specified location usin
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
+- `register_access` *(bool, optional)*: Whether to access the address as a register, 4 bytes at a time and without DMA. If False, bulk access is used. If None, it is decided based on memory map: everything outside of L1 and DRAM is accessed as a register.
 
 
 ### Returns
@@ -117,7 +118,7 @@ Reads one four-byte word of data, from address 'addr' at specified location usin
 ## read_words_from_device
 
 ```
-read_words_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, word_count: int = 1, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None) -> list[int]
+read_words_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, word_count: int = 1, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None, register_access: bool | None = None) -> list[int]
 ```
 
 
@@ -135,6 +136,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at specif
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
+- `register_access` *(bool, optional)*: Whether to access the address as a register, 4 bytes at a time and without DMA. If False, bulk access is used. If None, it is decided based on memory map: everything outside of L1 and DRAM is accessed as a register.
 
 
 ### Returns
@@ -146,7 +148,7 @@ Reads word_count four-byte words of data, starting from address 'addr' at specif
 ## read_from_device
 
 ```
-read_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, num_bytes: int = 4, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None) -> bytes
+read_from_device(location: str | OnChipCoordinate, addr: int, device_id: int = 0, num_bytes: int = 4, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None, register_access: bool | None = None) -> bytes
 ```
 
 
@@ -164,6 +166,7 @@ Reads num_bytes of data starting from address 'addr' at specified location using
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 - `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
+- `register_access` *(bool, optional)*: Whether to access the address as a register, 4 bytes at a time and without DMA. If False, bulk access is used. If None, it is decided based on memory map: everything outside of L1 and DRAM is accessed as a register.
 
 
 ### Returns
@@ -175,7 +178,7 @@ Reads num_bytes of data starting from address 'addr' at specified location using
 ## write_words_to_device
 
 ```
-write_words_to_device(location: str | OnChipCoordinate, addr: int, data: int | list[int], device_id: int = 0, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None)
+write_words_to_device(location: str | OnChipCoordinate, addr: int, data: int | list[int], device_id: int = 0, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None, register_access: bool | None = None)
 ```
 
 
@@ -193,6 +196,7 @@ Writes data word to address 'addr' at specified location using specified noc.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 - `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
+- `register_access` *(bool, optional)*: Whether to access the address as a register, 4 bytes at a time and without DMA. If False, bulk access is used. If None, it is decided based on memory map: everything outside of L1 and DRAM is accessed as a register.
 
 
 
@@ -200,7 +204,7 @@ Writes data word to address 'addr' at specified location using specified noc.
 ## write_to_device
 
 ```
-write_to_device(location: str | OnChipCoordinate, addr: int, data: list[int] | bytes, device_id: int = 0, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None)
+write_to_device(location: str | OnChipCoordinate, addr: int, data: list[int] | bytes, device_id: int = 0, context: Context | None = None, noc_id: NocId | int | None = None, safe_mode: bool | None = None, register_access: bool | None = None)
 ```
 
 
@@ -218,6 +222,7 @@ Writes data to address 'addr' at specified location using specified noc.
 - `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
 - `noc_id` *(NocId, int, optional)*: NOC ID to use. If None, it will be set based on context initialization.
 - `safe_mode` *(bool, optional)*: Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
+- `register_access` *(bool, optional)*: Whether to access the address as a register, 4 bytes at a time and without DMA. If False, bulk access is used. If None, it is decided based on memory map: everything outside of L1 and DRAM is accessed as a register.
 
 
 

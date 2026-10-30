@@ -34,6 +34,7 @@ def read_word_from_device(
     context: Context | None = None,
     noc_id: NocId | int | None = None,
     safe_mode: bool | None = None,
+    register_access: bool | None = None,
 ) -> int:
     """
     Reads one four-byte word of data, from address 'addr' at specified location using specified noc.
@@ -45,6 +46,7 @@ def read_word_from_device(
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
         safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
+        register_access (bool, optional): Whether to access the address as a register, 4 bytes at a time and without DMA. If False, bulk access is used. If None, it is decided based on memory map: everything outside of L1 and DRAM is accessed as a register.
 
     Returns:
         int: Data read from the device.
@@ -54,7 +56,7 @@ def read_word_from_device(
     validate_addr(addr)
     noc_id = check_noc_id(noc_id, coordinate.context)
 
-    return coordinate.noc_read32(addr, noc_id, safe_mode=safe_mode)
+    return coordinate.noc_read32(addr, noc_id, safe_mode=safe_mode, register_access=register_access)
 
 
 @trace_api
@@ -66,6 +68,7 @@ def read_words_from_device(
     context: Context | None = None,
     noc_id: NocId | int | None = None,
     safe_mode: bool | None = None,
+    register_access: bool | None = None,
 ) -> list[int]:
     """
     Reads word_count four-byte words of data, starting from address 'addr' at specified location using specified noc.
@@ -78,6 +81,7 @@ def read_words_from_device(
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
         safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
+        register_access (bool, optional): Whether to access the address as a register, 4 bytes at a time and without DMA. If False, bulk access is used. If None, it is decided based on memory map: everything outside of L1 and DRAM is accessed as a register.
 
     Returns:
         list[int]: Data read from the device.
@@ -90,7 +94,7 @@ def read_words_from_device(
         raise TTException("word_count must be greater than 0.")
 
     buffer = bytearray(4 * word_count)
-    coordinate.noc_read(addr, buffer, noc_id, safe_mode=safe_mode)
+    coordinate.noc_read(addr, buffer, noc_id, safe_mode=safe_mode, register_access=register_access)
     data = list(struct.unpack(f"<{word_count}I", buffer))
     return data
 
@@ -104,6 +108,7 @@ def read_from_device(
     context: Context | None = None,
     noc_id: NocId | int | None = None,
     safe_mode: bool | None = None,
+    register_access: bool | None = None,
 ) -> bytes:
     """
     Reads num_bytes of data starting from address 'addr' at specified location using specified noc.
@@ -116,6 +121,7 @@ def read_from_device(
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
         noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
         safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
+        register_access (bool, optional): Whether to access the address as a register, 4 bytes at a time and without DMA. If False, bulk access is used. If None, it is decided based on memory map: everything outside of L1 and DRAM is accessed as a register.
 
     Returns:
         bytes: Data read from the device.
@@ -128,7 +134,7 @@ def read_from_device(
         raise TTException("num_bytes must be greater than 0.")
 
     buffer = bytearray(num_bytes)
-    coordinate.noc_read(addr, buffer, noc_id, safe_mode=safe_mode)
+    coordinate.noc_read(addr, buffer, noc_id, safe_mode=safe_mode, register_access=register_access)
     return bytes(buffer)
 
 
@@ -141,6 +147,7 @@ def write_words_to_device(
     context: Context | None = None,
     noc_id: NocId | int | None = None,
     safe_mode: bool | None = None,
+    register_access: bool | None = None,
 ):
     """
     Writes data word to address 'addr' at specified location using specified noc.
@@ -153,6 +160,7 @@ def write_words_to_device(
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
         noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
         safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
+        register_access (bool, optional): Whether to access the address as a register, 4 bytes at a time and without DMA. If False, bulk access is used. If None, it is decided based on memory map: everything outside of L1 and DRAM is accessed as a register.
     """
 
     coordinate = convert_coordinate(location, device_id, context)
@@ -160,10 +168,10 @@ def write_words_to_device(
     noc_id = check_noc_id(noc_id, coordinate.context)
 
     if isinstance(data, int):
-        coordinate.noc_write32(addr, data, noc_id, safe_mode=safe_mode)
+        coordinate.noc_write32(addr, data, noc_id, safe_mode=safe_mode, register_access=register_access)
     else:
         byte_data = b"".join(x.to_bytes(4, "little") for x in data)
-        coordinate.noc_write(addr, byte_data, noc_id, safe_mode=safe_mode)
+        coordinate.noc_write(addr, byte_data, noc_id, safe_mode=safe_mode, register_access=register_access)
 
 
 @trace_api
@@ -175,6 +183,7 @@ def write_to_device(
     context: Context | None = None,
     noc_id: NocId | int | None = None,
     safe_mode: bool | None = None,
+    register_access: bool | None = None,
 ):
     """
     Writes data to address 'addr' at specified location using specified noc.
@@ -187,6 +196,7 @@ def write_to_device(
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
         noc_id (NocId, int, optional): NOC ID to use. If None, it will be set based on context initialization.
         safe_mode (bool, optional): Whether to use safe mode for the operation. If True, additional checks are performed to ensure safe access to only known to be safe memory regions. If None, it will be used based on context.
+        register_access (bool, optional): Whether to access the address as a register, 4 bytes at a time and without DMA. If False, bulk access is used. If None, it is decided based on memory map: everything outside of L1 and DRAM is accessed as a register.
     """
 
     coordinate = convert_coordinate(location, device_id, context)
@@ -199,7 +209,7 @@ def write_to_device(
     if len(data) == 0:
         raise TTException("Data to write must not be empty.")
 
-    coordinate.noc_write(addr, data, noc_id, safe_mode=safe_mode)
+    coordinate.noc_write(addr, data, noc_id, safe_mode=safe_mode, register_access=register_access)
 
 
 @trace_api

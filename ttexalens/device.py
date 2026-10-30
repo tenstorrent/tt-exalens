@@ -326,10 +326,15 @@ class Device:
         self._with_noc_failover(noc_operation, noc_id)
 
     def noc_read32(
-        self, location: OnChipCoordinate, address: int, noc_id: NocId | None = None, safe_mode: bool | None = None
+        self,
+        location: OnChipCoordinate,
+        address: int,
+        noc_id: NocId | None = None,
+        safe_mode: bool | None = None,
+        register_access: bool | None = None,
     ) -> int:
         buffer = bytearray(4)
-        self.noc_read(location, address, buffer, noc_id, safe_mode=safe_mode)
+        self.noc_read(location, address, buffer, noc_id, safe_mode=safe_mode, register_access=register_access)
         return int.from_bytes(buffer, byteorder="little")
 
     def noc_write(
@@ -368,8 +373,16 @@ class Device:
         data: int,
         noc_id: NocId | None = None,
         safe_mode: bool | None = None,
+        register_access: bool | None = None,
     ):
-        self.noc_write(location, address, data.to_bytes(4, byteorder="little"), noc_id, safe_mode=safe_mode)
+        self.noc_write(
+            location,
+            address,
+            data.to_bytes(4, byteorder="little"),
+            noc_id,
+            safe_mode=safe_mode,
+            register_access=register_access,
+        )
 
     def bar0_read32(self, address: int) -> int:
         return self._umd_device.bar0_read32(address)
