@@ -11,7 +11,12 @@ from datetime import timedelta
 
 from parameterized import parameterized, parameterized_class
 
-from test.ttexalens.unit_tests.test_base import get_core_location, get_parsed_elf_file, init_cached_test_context
+from test.ttexalens.unit_tests.test_base import (
+    get_core_location,
+    get_parsed_elf_file,
+    init_cached_test_context,
+    is_simulation,
+)
 import ttexalens as lib
 from ttexalens import util
 from ttexalens.exceptions import TTException
@@ -1661,7 +1666,11 @@ class TestCallStack(unittest.TestCase):
     def setUpClass(cls):
         cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
-        cls.is_simulation = cls.device._umd_device.is_simulation
+        if cls.neo_id is not None:
+            location = get_core_location(cls.location_desc, cls.device)
+            if cls.neo_id not in cls.device.get_block(location).neo_ids:
+                raise unittest.SkipTest(f"NEO {cls.neo_id} is not available on this platform.")
+        cls.is_simulation = is_simulation(cls.device)
         if not cls.is_simulation:
             server = ServerSocket()
             server.start()
@@ -1688,11 +1697,6 @@ class TestCallStack(unittest.TestCase):
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
         except NotImplementedError:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
-        except AssertionError as e:
-            if self.neo_id is not None and "NEO ID" in e.__str__():
-                self.skipTest(f"Test requires NEO ID, but is not supported on this platform: {e}")
-            else:
-                raise e
 
         self.loader = ElfLoader(self.risc_debug)
         self.l1_mem_access = create_l1_memory_access(self.location)
@@ -1766,7 +1770,7 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
         if not self.is_simulation:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-                self.location, self.risc_name, [elf_path], [None], self.gdb_server, neo_id=self.neo_id
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
             self.compare_callstacks(callstack, gdb_callstack)
 
@@ -1792,7 +1796,7 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
         if not self.is_simulation:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-                self.location, self.risc_name, [elf_path], [None], self.gdb_server, neo_id=self.neo_id
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
             self.compare_callstacks(callstack, gdb_callstack)
 
@@ -1814,7 +1818,7 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[2].function_name, "main")
         if not self.is_simulation:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-                self.location, self.risc_name, [elf_path], [None], self.gdb_server, neo_id=self.neo_id
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
             self.compare_callstacks(callstack, gdb_callstack)
 
@@ -1850,7 +1854,7 @@ class TestCallStack(unittest.TestCase):
 
         if not self.is_simulation:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-                self.location, self.risc_name, [elf_path], [None], self.gdb_server, neo_id=self.neo_id
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
             self.compare_callstacks(callstack, gdb_callstack)
 
@@ -1933,7 +1937,7 @@ class TestCallStack(unittest.TestCase):
 
         if not self.is_simulation:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-                self.location, self.risc_name, [elf_path], [None], self.gdb_server, neo_id=self.neo_id
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
             self.compare_callstacks(callstack, gdb_callstack)
 
@@ -1974,7 +1978,7 @@ class TestCallStack(unittest.TestCase):
 
         if not self.is_simulation:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-                self.location, self.risc_name, [elf_path], [None], self.gdb_server, neo_id=self.neo_id
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
             self.compare_callstacks(callstack, gdb_callstack)
 
@@ -2015,7 +2019,7 @@ class TestCallStack(unittest.TestCase):
 
         if not self.is_simulation:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-                self.location, self.risc_name, [elf_path], [None], self.gdb_server, neo_id=self.neo_id
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
             self.compare_callstacks(callstack, gdb_callstack)
 

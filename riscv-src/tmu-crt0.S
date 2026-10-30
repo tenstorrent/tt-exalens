@@ -206,6 +206,7 @@ address_fix:
 
 #if __riscv_xlen == 64
   # Trap loop that mtvec points to.
+  .balign 4
   13: j 13b
 #endif
 
