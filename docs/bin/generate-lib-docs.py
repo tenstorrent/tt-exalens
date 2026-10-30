@@ -86,6 +86,10 @@ class DocstringParser:
         result["Description"] = self.parse_description(sections[0])
 
         for sec in sections[1:]:
+            if "\n" not in sec:
+                WARNING(f"Skipping paragraph without section name: {sec}")
+                continue
+
             # First line of each section is the section name
             secname, sec = sec.split("\n", 1)
             secname = secname.strip()[:-1]
