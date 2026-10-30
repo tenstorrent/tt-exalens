@@ -11,7 +11,12 @@ from datetime import timedelta
 
 from parameterized import parameterized, parameterized_class
 
-from test.ttexalens.unit_tests.test_base import get_core_location, get_parsed_elf_file, init_cached_test_context
+from test.ttexalens.unit_tests.test_base import (
+    get_core_location,
+    get_parsed_elf_file,
+    init_cached_test_context,
+    is_simulation,
+)
 import ttexalens as lib
 from ttexalens import util
 from ttexalens.exceptions import TTException
@@ -1617,19 +1622,36 @@ class TestARC(unittest.TestCase):
 
 @parameterized_class(
     [
-        {"location_desc": "ETH0", "risc_name": "ERISC"},
-        {"location_desc": "ETH0", "risc_name": "ERISC0"},
-        {"location_desc": "ETH0", "risc_name": "ERISC1"},
-        {"location_desc": "FW0", "risc_name": "BRISC"},
-        {"location_desc": "FW0", "risc_name": "TRISC0"},
-        {"location_desc": "FW0", "risc_name": "TRISC1"},
-        {"location_desc": "FW0", "risc_name": "TRISC2"},
-        {"location_desc": "DRAM0", "risc_name": "DRISC"},
+        {"location_desc": "ETH0", "risc_name": "ERISC", "neo_id": None},
+        {"location_desc": "ETH0", "risc_name": "ERISC0", "neo_id": None},
+        {"location_desc": "ETH0", "risc_name": "ERISC1", "neo_id": None},
+        {"location_desc": "FW0", "risc_name": "BRISC", "neo_id": None},
+        {"location_desc": "FW0", "risc_name": "TRISC0", "neo_id": None},
+        {"location_desc": "FW0", "risc_name": "TRISC1", "neo_id": None},
+        {"location_desc": "FW0", "risc_name": "TRISC2", "neo_id": None},
+        {"location_desc": "DRAM0", "risc_name": "DRISC", "neo_id": None},
+        {"location_desc": "FW0", "risc_name": "TRISC0", "neo_id": 0},
+        {"location_desc": "FW0", "risc_name": "TRISC1", "neo_id": 0},
+        {"location_desc": "FW0", "risc_name": "TRISC2", "neo_id": 0},
+        {"location_desc": "FW0", "risc_name": "TRISC3", "neo_id": 0},
+        {"location_desc": "FW0", "risc_name": "TRISC0", "neo_id": 1},
+        {"location_desc": "FW0", "risc_name": "TRISC1", "neo_id": 1},
+        {"location_desc": "FW0", "risc_name": "TRISC2", "neo_id": 1},
+        {"location_desc": "FW0", "risc_name": "TRISC3", "neo_id": 1},
+        {"location_desc": "FW0", "risc_name": "TRISC0", "neo_id": 2},
+        {"location_desc": "FW0", "risc_name": "TRISC1", "neo_id": 2},
+        {"location_desc": "FW0", "risc_name": "TRISC2", "neo_id": 2},
+        {"location_desc": "FW0", "risc_name": "TRISC3", "neo_id": 2},
+        {"location_desc": "FW0", "risc_name": "TRISC0", "neo_id": 3},
+        {"location_desc": "FW0", "risc_name": "TRISC1", "neo_id": 3},
+        {"location_desc": "FW0", "risc_name": "TRISC2", "neo_id": 3},
+        {"location_desc": "FW0", "risc_name": "TRISC3", "neo_id": 3},
     ]
 )
 class TestCallStack(unittest.TestCase):
     risc_name: str  # Risc name
     risc_id: int  # Risc ID - being parametrized
+    neo_id: int | None  # NEO ID - being parametrized
     context: Context  # TTExaLens context
     location_desc: str  # Core description ETH0, FW0, FW1 - being parametrized
     location: OnChipCoordinate  # Core location
@@ -1638,19 +1660,27 @@ class TestCallStack(unittest.TestCase):
     pc_register_index: int  # PC register index
     device: Device  # Device
     gdb_server: GdbServer  # GDB server
+    is_simulation: bool  # Running on simulator
 
     @classmethod
     def setUpClass(cls):
         cls.context = init_cached_test_context()
         cls.device = cls.context.devices[0]
-        server = ServerSocket()
-        server.start()
-        cls.gdb_server = GdbServer(cls.context, server, skip_detach=True, debug_only_with_elfs=True)
-        cls.gdb_server.start()
+        if cls.neo_id is not None:
+            location = get_core_location(cls.location_desc, cls.device)
+            if cls.neo_id not in cls.device.get_block(location).neo_ids:
+                raise unittest.SkipTest(f"NEO {cls.neo_id} is not available on this platform.")
+        cls.is_simulation = is_simulation(cls.device)
+        if not cls.is_simulation:
+            server = ServerSocket()
+            server.start()
+            cls.gdb_server = GdbServer(cls.context, server, skip_detach=True, debug_only_with_elfs=True)
+            cls.gdb_server.start()
 
     @classmethod
     def tearDownClass(cls):
-        cls.gdb_server.stop()
+        if not cls.is_simulation:
+            cls.gdb_server.stop()
 
     def setUp(self):
         try:
@@ -1661,7 +1691,7 @@ class TestCallStack(unittest.TestCase):
 
         noc_block = self.location.device.get_block(self.location)
         try:
-            self.risc_debug = noc_block.get_risc_debug(self.risc_name)
+            self.risc_debug = noc_block.get_risc_debug(self.risc_name, self.neo_id)
             self.risc_name = self.risc_debug.risc_location.risc_name
         except ValueError:
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
@@ -1730,7 +1760,7 @@ class TestCallStack(unittest.TestCase):
         parsed_elf.get_global("g_MAILBOX", mem_access)
 
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -1738,10 +1768,11 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
-        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-            self.location, self.risc_name, [elf_path], [None], self.gdb_server
-        )
-        self.compare_callstacks(callstack, gdb_callstack)
+        if not self.is_simulation:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
+            )
+            self.compare_callstacks(callstack, gdb_callstack)
 
     def test_callstack(self):
         if self.device.is_blackhole() and self.risc_name == "trisc2":
@@ -1755,7 +1786,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, recursion_count)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, elf_path, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, elf_path, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
         self.assertEqual(len(callstack), recursion_count + 3)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -1763,10 +1794,11 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
-        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-            self.location, self.risc_name, [elf_path], [None], self.gdb_server
-        )
-        self.compare_callstacks(callstack, gdb_callstack)
+        if not self.is_simulation:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
+            )
+            self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_namespace(self, elf_name):
@@ -1778,16 +1810,17 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
         self.assertEqual(len(callstack), 3)
         self.assertEqual(callstack[0].function_name, "halt")
         self.assertEqual(callstack[1].function_name, "ns::foo")
         self.assertEqual(callstack[2].function_name, "main")
-        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-            self.location, self.risc_name, [elf_path], [None], self.gdb_server
-        )
-        self.compare_callstacks(callstack, gdb_callstack)
+        if not self.is_simulation:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
+            )
+            self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_tail_call(self, elf_name):
@@ -1805,7 +1838,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFFA)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
 
         # The inlined leaf chain (halt inlined into pc3/pc2/pc1) is reconstructed from the PC alone,
@@ -1819,10 +1852,11 @@ class TestCallStack(unittest.TestCase):
         self.assertIn(callstack[-2].function_name, ("tail_call_test::run", "run"))
         self.assertEqual(callstack[-1].function_name, "main")
 
-        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-            self.location, self.risc_name, [elf_path], [None], self.gdb_server
-        )
-        self.compare_callstacks(callstack, gdb_callstack)
+        if not self.is_simulation:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
+            )
+            self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_tail_call_expand_inline_frames(self, elf_name):
@@ -1844,7 +1878,7 @@ class TestCallStack(unittest.TestCase):
             parsed_elf,
             None,
             self.risc_name,
-            None,
+            self.neo_id,
             100,
             stop_on_main=True,
             expand_tail_call_inline_frames=True,
@@ -1881,7 +1915,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFF9)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
 
         # tc_a/tc_b/tc_c are not inlined, so the whole chain appears the same on every build: the
@@ -1901,10 +1935,11 @@ class TestCallStack(unittest.TestCase):
             # As elsewhere, an optimized clone of a leaf can lose its namespace qualification.
             self.assertIn(entry.function_name, (name, name.split("::")[-1]))
 
-        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-            self.location, self.risc_name, [elf_path], [None], self.gdb_server
-        )
-        self.compare_callstacks(callstack, gdb_callstack)
+        if not self.is_simulation:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
+            )
+            self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, [5, -5]))
     def test_callstack_tail_call_branch(self, elf_name: str, arg: int):
@@ -1926,7 +1961,7 @@ class TestCallStack(unittest.TestCase):
         self.l1_mem_access.write(self.get_mailbox_value_address(parsed_elf), struct.pack("<i", arg))
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
 
         expected = [
@@ -1941,10 +1976,11 @@ class TestCallStack(unittest.TestCase):
             # As elsewhere, an optimized clone of a leaf can lose its namespace qualification.
             self.assertIn(entry.function_name, (name, name.split("::")[-1]))
 
-        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-            self.location, self.risc_name, [elf_path], [None], self.gdb_server
-        )
-        self.compare_callstacks(callstack, gdb_callstack)
+        if not self.is_simulation:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
+            )
+            self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand(itertools.product(CALLSTACK_ELFS, [5, -5]))
     def test_callstack_tail_call_multiple_sites(self, elf_name: str, arg: int):
@@ -1966,7 +2002,7 @@ class TestCallStack(unittest.TestCase):
         self.l1_mem_access.write(self.get_mailbox_value_address(parsed_elf), struct.pack("<i", arg))
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
 
         expected = [
@@ -1981,10 +2017,11 @@ class TestCallStack(unittest.TestCase):
             # As elsewhere, an optimized clone of a leaf can lose its namespace qualification.
             self.assertIn(entry.function_name, (name, name.split("::")[-1]))
 
-        gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
-            self.location, self.risc_name, [elf_path], [None], self.gdb_server
-        )
-        self.compare_callstacks(callstack, gdb_callstack)
+        if not self.is_simulation:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
+            )
+            self.compare_callstacks(callstack, gdb_callstack)
 
     @parameterized.expand([(x,) for x in RECURSION_COUNT])
     def test_top_callstack_with_parsing(self, recursion_count: int):
@@ -2047,7 +2084,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFFF)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
         self.assertEqual(len(callstack), 6)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -2072,7 +2109,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFFE)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
         self.assertEqual(len(callstack), 5)
         self.assertEqual(callstack[0].function_name, "halt")
@@ -2161,7 +2198,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, mailbox)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
 
         # The callstack is: halt, the value-test chain (one frame per type), an optional wrapper
@@ -2229,7 +2266,7 @@ class TestCallStack(unittest.TestCase):
         )
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
 
         # The callstack is: value_test<T> (top frame), dispatch, main.
@@ -2266,7 +2303,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFFB)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, stop_on_main=True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
         )
 
         # The callstack is: halt, the callee_saved_test chain (one frame per type), then main.
@@ -2301,7 +2338,7 @@ class TestCallStack(unittest.TestCase):
         self.set_recursion_count(parsed_elf, 0xFFFFFFF6)
         self.loader.run_elf(parsed_elf)
         callstack: list[CallstackEntry] = lib.callstack(
-            self.location, parsed_elf, None, self.risc_name, None, 100, True
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, True
         )
 
         # The callstack is: halt, reference_test::run, main.

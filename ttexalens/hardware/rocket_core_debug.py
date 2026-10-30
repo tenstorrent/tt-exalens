@@ -117,16 +117,16 @@ class RocketCoreDebug(RiscDebug):
         raise NotImplementedError("set_branch_prediction must be implemented by subclasses of RocketCoreDebug")
 
     def can_debug(self) -> bool:
-        raise NotImplementedError("can_debug must be implemented by subclasses of RocketCoreDebug")
+        return self.baby_risc_info.debug_hardware_present
 
     def set_code_start_address(self, address: int | None) -> None:
         raise NotImplementedError("set_code_start_address must be implemented by subclasses of RocketCoreDebug")
 
     def get_l1(self) -> MemoryBlock:
-        raise NotImplementedError("get_l1 must be implemented by subclasses of RocketCoreDebug")
+        return self.risc_info.l1
 
     def get_data_private_memory(self) -> MemoryBlock | None:
-        raise NotImplementedError("get_data_private_memory must be implemented by subclasses of RocketCoreDebug")
+        return self.baby_risc_info.data_private_memory
 
     def get_code_private_memory(self) -> MemoryBlock | None:
         # We don't have special place like WH NCRISC where code private memory is located, so return None.
