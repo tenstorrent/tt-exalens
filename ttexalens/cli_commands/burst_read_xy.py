@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  brxy [ <noc-loc> ] [ <addr> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <device>]
+  brxy [ <noc-loc> ] [ <addr> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [ --register-access | --no-register-access ] [-d <device>]
 
 Arguments:
   noc-loc       Optional. X-Y or R,C, or dram channel (e.g. ch3). Defaults to the current noc location when omitted.
@@ -14,6 +14,9 @@ Options:
   --sample=<N>  Number of seconds to sample for. [default: 0] (single read)
   --format=<F>  Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: hex32]
   -o <O>        Address offset. Optional and repeatable.
+  --register-access     Read as registers, 4 bytes at a time and without DMA.
+  --no-register-access  Read in bulk, even outside of L1 and DRAM.
+                        If neither is given, access type is decided based on memory map.
 
 Description:
   Reads a block of data at <addr> on <noc-loc>, or at the current location when <noc-loc> is omitted.
@@ -26,6 +29,7 @@ Examples:
   brxy 0,0 0x0 32 --format i8                   # 32 words, i8 format
   brxy 0,0 0x0 32 --format i8 --sample 5        # Sample for 5 seconds
   brxy ch0 0x0 16                               # 16 words at 0x0, dram channel 0
+  brxy 0,0 0x0 16 --register-access             # 16 words at 0x0, location 0,0, 4 bytes at a time
 """
 
 import time
@@ -124,6 +128,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     format = args["--format"] if args["--format"] else "hex32"
     if format not in util.PRINT_FORMATS:
         raise TTException(f"Invalid print format '{format}'. Valid formats: {list(util.PRINT_FORMATS)}")
+    register_access = True if args["--register-access"] else False if args["--no-register-access"] else None
 
     def do_burst_read(device: Device, location: OnChipCoordinate):
         addr = addr_arg
@@ -138,6 +143,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             sample=sample,
             print_format=format,
             context=context,
+            register_access=register_access,
         )
 
     for device in devices:
@@ -166,6 +172,7 @@ def print_a_burst_read(
     sample: float,
     print_format: str,
     context: Context,
+    register_access: bool | None = None,
 ):
     is_hex = util.PRINT_FORMATS[print_format]["is_hex"]
     bytes_per_entry = util.PRINT_FORMATS[print_format]["bytes"]
@@ -174,7 +181,7 @@ def print_a_burst_read(
 
     if sample == 0:  # No sampling, just a single read
         # Read all data at once for efficiency
-        data = read_words_from_device(location, addr, word_count=word_count)
+        data = read_words_from_device(location, addr, word_count=word_count, register_access=register_access)
 
         # Print overall header
         print(f"{location.to_user_str()} : 0x{addr:08x} ({word_count * 4} total bytes)")
@@ -229,7 +236,7 @@ def print_a_burst_read(
             print(f"Sampling for {sample / word_count} second{'s' if sample != 1 else ''}...")
             t_end = time.time() + sample / word_count
             while time.time() < t_end:
-                val = read_word_from_device(location, word_addr)
+                val = read_word_from_device(location, word_addr, register_access=register_access)
                 if val not in values:
                     values[val] = 0
                 values[val] += 1

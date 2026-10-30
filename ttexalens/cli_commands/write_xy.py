@@ -3,8 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  wxy <addr> <data> [--repeat <repeat>] [-d <device>]
-  wxy <noc-loc> <addr> <data> [--repeat <repeat>] [-d <device>]
+  wxy <addr> <data> [--repeat <repeat>] [ --register-access | --no-register-access ] [-d <device>]
+  wxy <noc-loc> <addr> <data> [--repeat <repeat>] [ --register-access | --no-register-access ] [-d <device>]
 
 Description:
   Writes a data word to address <addr> at <noc-loc>, or at the current location when <noc-loc> is omitted.
@@ -16,12 +16,16 @@ Arguments:
 
 Options:
   --repeat <repeat>  Number of times to repeat the write. Default: 1
+  --register-access     Write as registers, 4 bytes at a time and without DMA.
+  --no-register-access  Write in bulk, even outside of L1 and DRAM.
+                        If neither is given, access type is decided based on memory map.
 
 Examples:
   wxy 0x0 0x1234                               # Current device, current location, address 0x0
   wxy 0,0 0x0 0x1234                           # Current device, explicit noc location 0,0
   wxy 0,0 0x0 0x1234 -d 1                      # Device 1
   wxy 0,0 0x0 0x1234 --repeat 10
+  wxy 0,0 0x0 0x1234 --register-access         # Write as a register
 """
 
 from ttexalens.context import Context
@@ -59,11 +63,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     if repeat <= 0:
         util.WARN("Repeat count must be a positive integer, defaulting to 1")
         repeat = 1
+    register_access = True if args["--register-access"] else False if args["--no-register-access"] else None
 
     def do_writes(device: Device, noc_loc: OnChipCoordinate):
         addr = base_addr
         for _ in range(repeat):
-            write_words_to_device(noc_loc, addr, data, device.id, context)
+            write_words_to_device(noc_loc, addr, data, device.id, context, register_access=register_access)
             print_a_write(noc_loc.to_user_str(), addr, data)
             addr += 4
 

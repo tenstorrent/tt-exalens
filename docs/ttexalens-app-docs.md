@@ -3,7 +3,7 @@
 ### Usage
 
 ```
-brxy [ <noc-loc> ] [ <addr> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [-d <device>]
+brxy [ <noc-loc> ] [ <addr> ] [ <word-count> ] [ --format=hex32 ] [--sample <N>] [-o <O>...] [ --register-access | --no-register-access ] [-d <device>]
 ```
 
 
@@ -24,6 +24,8 @@ Reads a block of data at <addr> on <noc-loc>, or at the current location when <n
 - `--sample` = **\<N\>**: Number of seconds to sample for. [default: 0] (single read)
 - `--format` = **\<F\>**: Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: hex32]
 - `-o` = **\<O\>**: Address offset. Optional and repeatable.
+- `--register-access`: Read as registers, 4 bytes at a time and without DMA.
+- `--no-register-access`: Read in bulk, even outside of L1 and DRAM. If neither is given, access type is decided based on memory map.
 
 
 ### Examples
@@ -1819,7 +1821,7 @@ Output:
 ### Usage
 
 ```
-read <address> [ <word-count> ] [ --format=hex8 ] [ --unsafe ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ]
+read <address> [ <word-count> ] [ --format=hex8 ] [ --unsafe ] [ --register-access | --no-register-access ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ]
 ```
 
 
@@ -1839,6 +1841,8 @@ Reads and prints a block of data from address 'address'.
 - `--format` = **\<F\>**: Data format. Options: i8, i16, i32, hex8, hex16, hex32 [default: hex8]
 - `-r` = **\<risc_name\>**: RISC core name if you want to read memory that is not exposed on NOC.
 - `--unsafe`: Experts mode, allow reading everything (bypass safety checks).
+- `--register-access`: Read over NOC as registers, 4 bytes at a time and without DMA.
+- `--no-register-access`: Read over NOC in bulk, even outside of L1 and DRAM. If neither is given, access type is decided based on memory map.
 
 
 ### Examples
@@ -2485,7 +2489,7 @@ reg dbg(0x54) --neo 1
 ### Usage
 
 ```
-write <address> <data>... [ --width=<width> ] [ --repeat=<repeat> ] [ --unsafe ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ]
+write <address> <data>... [ --width=<width> ] [ --repeat=<repeat> ] [ --unsafe ] [ --register-access | --no-register-access ] [ -r <risc_name> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ]
 ```
 
 
@@ -2506,6 +2510,8 @@ Writes a block of data to address 'address'.
 - `--repeat` = **\<repeat\>**: Number of times to repeat the write, advancing the address each time. [default: 1]
 - `-r` = **\<risc_name\>**: RISC core name if you want to write memory that is not exposed on NOC.
 - `--unsafe`: Experts mode, allow writing everything (bypass safety checks).
+- `--register-access`: Write over NOC as registers, 4 bytes at a time and without DMA.
+- `--no-register-access`: Write over NOC in bulk, even outside of L1 and DRAM. If neither is given, access type is decided based on memory map.
 
 
 ### Examples
@@ -2568,8 +2574,8 @@ write 0x0 0xdeadbeef -r trisc0 --neo 1
 ### Usage
 
 ```
-wxy <addr> <data> [--repeat <repeat>] [-d <device>]
-wxy <noc-loc> <addr> <data> [--repeat <repeat>] [-d <device>]
+wxy <addr> <data> [--repeat <repeat>] [ --register-access | --no-register-access ] [-d <device>]
+wxy <noc-loc> <addr> <data> [--repeat <repeat>] [ --register-access | --no-register-access ] [-d <device>]
 ```
 
 
@@ -2588,6 +2594,8 @@ Writes a data word to address <addr> at <noc-loc>, or at the current location wh
 ### Options
 
 - `--repeat` = **\<repeat\>**: Number of times to repeat the write. Default: 1
+- `--register-access`: Write as registers, 4 bytes at a time and without DMA.
+- `--no-register-access`: Write in bulk, even outside of L1 and DRAM. If neither is given, access type is decided based on memory map.
 
 
 ### Examples

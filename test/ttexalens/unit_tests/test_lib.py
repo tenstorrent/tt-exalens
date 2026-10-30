@@ -163,6 +163,51 @@ class TestReadWrite(unittest.TestCase):
 
     @parameterized.expand(
         [
+            (None, True),  # Decided from memory map, debug registers are accessed as registers
+            (True, True),
+            (False, False),  # Bulk transactions of 16 bytes or more don't work on registers, see #1189
+        ]
+    )
+    def test_write_read_register_access(self, register_access: bool | None, works: bool):
+        """Test reading and writing registers wider than 16 bytes, which works only with register access."""
+        location = OnChipCoordinate.create("0,0", self.context.devices[0])
+        register_store = location.noc_block.get_register_store()
+        if "RISCV_DEBUG_REG_PERF_CNT_INSTRN_THREAD0" not in register_store.get_register_names():
+            self.skipTest("Performance counter registers are not defined on this architecture.")
+        address = register_store.get_register_noc_address("RISCV_DEBUG_REG_PERF_CNT_INSTRN_THREAD0")
+        assert address is not None
+
+        # RISCV_DEBUG_REG_PERF_CNT_INSTRN_THREAD0..FPU1, start/stop registers stay 0
+        words = [0x01000000, 0x00000200, 0, 0x04000000, 0x00000500, 0, 0x07000000, 0x00000800]
+        data = struct.pack(f"<{len(words)}I", *words)
+        check = self.assertEqual if works else self.assertNotEqual
+
+        def read_words(access: bool | None) -> list[int]:
+            return lib.read_words_from_device(location, address, word_count=len(words), register_access=access)
+
+        def write_words(values: list[int], access: bool | None) -> None:
+            lib.write_words_to_device(location, address, values, register_access=access)
+
+        original_words = read_words(access=True)
+        try:
+            # Reading registers written with register access
+            write_words(words, access=True)
+            check(read_words(access=register_access), words)
+            check(lib.read_from_device(location, address, num_bytes=len(data), register_access=register_access), data)
+
+            # Writing registers and reading them back with register access
+            write_words([0] * len(words), access=True)
+            write_words(words, access=register_access)
+            check(read_words(access=True), words)
+
+            write_words([0] * len(words), access=True)
+            lib.write_to_device(location, address, data, register_access=register_access)
+            check(read_words(access=True), words)
+        finally:
+            write_words(original_words, access=True)
+
+    @parameterized.expand(
+        [
             ("1,0", 1024, 0x100, 0),  # 1KB from device 0 at location 1,0
             ("1,0", 2048, 0x104, 0),  # 2KB from device 0 at location 1,0
             ("1,0", 4096, 0x108, 0),  # 4KB from device 0 at location 1,0
