@@ -7,7 +7,6 @@ __firmware_stack_size = LENGTH(REGION_STACK);
 __firmware_start = DEFINED(__fw_export_end_text) ? __fw_export_end_text : ORIGIN(REGION_CODE);
 __ldm_start = DEFINED(__fw_export_ldm_end) ? __fw_export_ldm_end : ORIGIN(REGION_DATA);
 
-/* No OUTPUT_FORMAT: the compiler driver picks ELF32 or ELF64 from -march (which -mcpu implies), so 32-bit and 64-bit cores share this script. */
 OUTPUT_ARCH(riscv)
 ENTRY(_start)
 SEARCH_DIR("/opt/riscv32i/riscv-tt-elf/lib");
