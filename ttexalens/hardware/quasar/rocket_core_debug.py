@@ -342,12 +342,7 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         self.register_store.write_register("TT_DEBUG_MODULE_APB_SBDATA0", data)
 
     def set_code_start_address(self, address: int | None) -> None:
-        # HACK: one 8-byte write, split 32-bit writes to RESET_VECTOR don't land on emulation
-        assert self.baby_risc_info.code_start_address_register is not None
-        register = self.register_store.get_register_description(self.baby_risc_info.code_start_address_register)
-        assert register.noc_address is not None
-        data = (address if address is not None else 0).to_bytes(register.size, byteorder="little")
-        self.register_store.location.noc_write(register.noc_address, data, register.noc_id, register_access=False)
+        self.baby_risc_info.set_code_start_address(self.register_store, address if address is not None else 0)
 
     @contextmanager
     def ensure_private_memory_access(self) -> Generator[None, Any, None]:
