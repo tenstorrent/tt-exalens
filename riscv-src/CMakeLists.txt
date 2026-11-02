@@ -31,11 +31,12 @@ set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size
 # but instead have GCC provide us with a pointer to the raw coverage data and let us extract it ourselves.
 set(GCOV_FLAGS -fprofile-arcs -ftest-coverage -fprofile-info-section -DCOVERAGE)
 
-# Define project paths: source files, ELFs, and object files
+# Define project paths: source files, ELFs, object files, and generated linker scripts
 set(RISCV_SOURCE "${CMAKE_CURRENT_LIST_DIR}")
 set(RISCV_OUTPUT "${CMAKE_SOURCE_DIR}/build/riscv-src")
 set(RISCV_OBJECT_rv32 "${CMAKE_SOURCE_DIR}/build/riscv-src/obj/rv32")
 set(RISCV_OBJECT_rv64 "${CMAKE_SOURCE_DIR}/build/riscv-src/obj/rv64")
+set(RISCV_LINKER_SCRIPTS "${CMAKE_SOURCE_DIR}/build/riscv-src/ld")
 
 # Define architectures, the cores of each architecture per ISA, and applications
 set(RISCV_ARCHITECTURES "wormhole" "blackhole" "quasar")
@@ -139,12 +140,12 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE ISA)
             ${LINK_OBJECTS}
             ${LINK_LIBS}
             -T${RISCV_SOURCE}/memory.${ARCH}.${LDSCRIPT_EXTENSION}.ld
-            -T${RISCV_SOURCE}/${CORE}.ld
+            -T${RISCV_LINKER_SCRIPTS}/${CORE}.ld
             -T${RISCV_SOURCE}/sections.ld
             -o ${OUTPUT_ELF}
         DEPENDS ${LINK_OBJECTS}
                 ${RISCV_SOURCE}/memory.${ARCH}.${LDSCRIPT_EXTENSION}.ld
-                ${RISCV_SOURCE}/${CORE}.ld
+                ${RISCV_LINKER_SCRIPTS}/${CORE}.ld
                 ${RISCV_SOURCE}/sections.ld
         COMMENT "Linking ${OUTPUT_ELF}"
     )
@@ -169,10 +170,12 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE ISA)
     endif()
 endfunction()
 
-# Create targets for all architectures, their cores, and applications
+# Create linker scripts and targets for all architectures, their cores, and applications
 foreach(ARCH ${RISCV_ARCHITECTURES})
     foreach(ISA ${RISCV_ISAS})
         foreach(CORE IN LISTS RISCV_CORES_${ARCH}_${ISA})
+            string(TOUPPER ${CORE} RISC_NAME)
+            configure_file(${RISCV_SOURCE}/risc.ld.in ${RISCV_LINKER_SCRIPTS}/${CORE}.ld)
             foreach(APP ${RISCV_APPS})
                 foreach(BUILD_TYPE debug release coverage)
                     create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE} ${ISA})

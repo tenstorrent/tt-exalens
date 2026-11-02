@@ -29,7 +29,7 @@ We have two sections in elf that are just reserving memory (similar to `.stack` 
 - `.loader_init` - it is used for transfering data into `.ldm_data` section
 - `.loader_code` - it is used for transfering code into `.init` section
 
-These sections are defined in `section.ld` file. Values used there are being defined in `brisc.ld`/`triscX.ld`/`ncrisc.ld` file,
+These sections are defined in `section.ld` file. Values used there are being defined in per-RISC linker scripts generated from `risc.ld.in`,
 that are using memory blocks defined in `memory.*arch*.ld` files.
 
 ### .loader_init
