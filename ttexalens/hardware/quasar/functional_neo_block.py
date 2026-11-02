@@ -9,9 +9,11 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.perf_counters import TensixPerfCounters
 from ttexalens.hardware.quasar.baby_risc_debug import QuasarBabyRiscDebug
 from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import debug_bus_signal_map, group_map
 from ttexalens.hardware.quasar.functional_neo_registers import register_map
+from ttexalens.hardware.quasar.perf_counters import initialization as perf_counters_initialization
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from typing import TYPE_CHECKING
 
@@ -81,6 +83,7 @@ class QuasarFunctionalNeoBlock:
             neo_base_address.private_address, neo_base_address.noc_address
         )
         self.register_store = RegisterStore(register_store_initialization, noc_block.location, neo_id)
+        self.perf_counters = TensixPerfCounters(perf_counters_initialization, noc_block, neo_id)
 
         self.trisc0 = BabyRiscInfo(
             risc_name="trisc0",

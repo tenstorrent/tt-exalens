@@ -217,7 +217,8 @@ def _run_list(context: Context) -> None:
     listing: dict[str, list[tuple[int, str]]] = {}
     for device in context.devices.values():
         for coord in device.get_block_locations("functional_workers"):
-            listing = list_perf_counters(coord)
+            neo_ids = coord.noc_block.neo_ids
+            listing = list_perf_counters(coord, neo_id=neo_ids[0] if neo_ids else None)
             if listing:
                 break
         if listing:
