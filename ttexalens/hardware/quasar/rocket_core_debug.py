@@ -343,3 +343,12 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
 
     def set_code_start_address(self, address: int | None) -> None:
         self.baby_risc_info.set_code_start_address(self.register_store, address if address is not None else 0)
+
+    @contextmanager
+    def ensure_private_memory_access(self) -> Generator[None, Any, None]:
+        # Memory is accessed through SBA, which doesn't need the core, and a core in reset can't be halted
+        if self.is_in_reset():
+            yield
+        else:
+            with self.ensure_halted():
+                yield

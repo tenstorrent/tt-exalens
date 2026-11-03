@@ -4,10 +4,11 @@
 import unittest
 from parameterized import parameterized_class, parameterized
 
-from test.ttexalens.unit_tests.test_base import get_core_location, init_cached_test_context
+from test.ttexalens.unit_tests.test_base import get_core_location, get_parsed_elf_file, init_cached_test_context
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
-from ttexalens import Context, OnChipCoordinate, read_word_from_device, write_words_to_device
+from ttexalens import Context, OnChipCoordinate, callstack, read_word_from_device, write_words_to_device
 from ttexalens.device import Device
+from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
 
 PROGRAM_BASE_ADDRESS = 0x0
@@ -355,3 +356,36 @@ class TestDebugging(unittest.TestCase):
         buffer = bytearray(len(data))
         self.rocket_debug.read_memory_bytes(addr + offset, buffer)
         self.assertEqual(buffer, data, f"Should read back {len(data)} bytes written at offset {offset}.")
+
+    @parameterized.expand(["callstack.debug", "callstack.release", "callstack.coverage"])
+    def test_callstack(self, elf_name: str):
+        """Test reading callstack of a core halted on ebreak."""
+        if self.device._umd_device.is_simulation:
+            self.skipTest("Test takes too long on simulator.")
+        recursion_count = 1
+        arch = str(self.device._arch).lower()
+        elf = get_parsed_elf_file(f"build/riscv-src/{arch}/{elf_name}.{self.risc_name.lower()}.elf")
+        init_section = elf.get_section_by_name(".init")
+        text_section = elf.get_section_by_name(".text")
+        assert init_section is not None and text_section is not None
+
+        # We load ELF through SBA to ensure coherency
+        for section_name in ElfLoader.SECTIONS_TO_LOAD:
+            section = elf.get_section_by_name(section_name)
+            if section is not None and section.data:
+                self.rocket_debug.write_memory_bytes(section.address, section.data)
+        self.rocket_debug.write_memory_bytes(
+            text_section.address + text_section.size, recursion_count.to_bytes(4, byteorder="little")
+        )
+        self.rocket_debug.set_code_start_address(init_section.address)
+
+        self.rocket_debug.set_reset_signal_with_ebreak_enabled(False)
+        self.assertFalse(self.rocket_debug.is_in_reset(), "Core should not be in reset.")
+        self.assertTrue(self.rocket_debug.is_halted(), "Core should be halted.")
+        self.assertTrue(self.rocket_debug.is_ebreak_hit(), "ebreak should be the cause.")
+
+        entries = callstack(self.location, elf, None, self.risc_name, None)
+        self.assertEqual(
+            [entry.function_name for entry in entries],
+            ["halt"] + ["f1"] * recursion_count + ["recurse", "main"],
+        )

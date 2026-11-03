@@ -95,6 +95,11 @@ def get_core_location(core_desc: str, device: Device) -> OnChipCoordinate:
         raise ValueError(f"Unknown core description {core_desc}") from e
 
 
+def is_simulation(device: Device) -> bool:
+    """Check if device is a simulated one."""
+    return device._umd_device.is_simulation
+
+
 def get_parsed_elf_file(elf_path: str) -> ElfFile:
     """Get a cached ElfFile or parse and cache it if not already done."""
     global _cached_parsed_elf_files

@@ -35,7 +35,7 @@ If you wish to integrate gcov into your project, some build adjustments will be 
 
     (Take a look at [`memory.wormhole.debug.ld`](../riscv-src/memory.wormhole.debug.ld) as an example.)
 
-  - Alias each RISC's new region (`REGION_ALIAS("REGION_GCOV", BRISC_GCOV_MEM)` and so on, as seen in [`brisc.ld`](../riscv-src/brisc.ld), [`trisc0.ld`](../riscv-src/trisc0.ld), etc.)
+  - Alias each RISC's new region (`REGION_ALIAS("REGION_GCOV", BRISC_GCOV_MEM)` and so on, as seen in [`risc.ld.in`](../riscv-src/risc.ld.in), the template our build generates each RISC's linker script from)
   - Add the following to the `SECTIONS` part of your linker scripts (as seen in [`sections.ld`](../riscv-src/sections.ld)):
   ```GNU ld
   .gcov_info :
