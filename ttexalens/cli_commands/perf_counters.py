@@ -24,8 +24,8 @@ Description:
   Read and control Tensix hardware performance counters on a functional worker core.
 
   Subcommands:
-    list      Show every counter block and its counters defined for Tensix
-              functional-worker cores.
+    list      Show the counter blocks and their counters at the current
+              location (for the current NEO on Quasar).
     reset     Reset performance counters.
     start     Start every block (or just --block).
     stop      Stop every block (or just --block).
@@ -213,16 +213,8 @@ def _render_consolidated(
     formatter.display_grouped_data_autoflow(data, columns=base_cols, sort_by_height_desc=False)
 
 
-def _run_list(context: Context) -> None:
-    listing: dict[str, list[tuple[int, str]]] = {}
-    for device in context.devices.values():
-        for coord in device.get_block_locations("functional_workers"):
-            neo_ids = coord.noc_block.neo_ids
-            listing = list_perf_counters(coord, neo_id=neo_ids[0] if neo_ids else None)
-            if listing:
-                break
-        if listing:
-            break
+def _run_list(ui_state: UIState) -> None:
+    listing = list_perf_counters(ui_state.current_location, neo_id=ui_state.current_neo_id)
     print("\n=== Perf Counter Blocks (Tensix functional workers) ===\n")
     _print_list(listing)
 
@@ -295,7 +287,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         block_name = None
 
     if args["list"]:
-        _run_list(context)
+        _run_list(ui_state)
         return
 
     if args["read"]:
