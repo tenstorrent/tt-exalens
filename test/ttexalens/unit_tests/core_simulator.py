@@ -211,6 +211,8 @@ class RiscvCoreSimulator:
         arch = str(self.device._arch).lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
+        if self.neo_id is not None:
+            app_name = f"{app_name}.neo{self.neo_id}"
         if self.risc_name.lower().startswith("erisc"):
             # For eriscs we can use brisc elf
             return f"build/riscv-src/{arch}/{app_name}.brisc.elf"

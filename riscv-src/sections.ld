@@ -89,19 +89,19 @@ SECTIONS
      * boundary, the linker still places the pointer data pointer-aligned, leaving *_start a few bytes
      * below the real data: the crt0 loop then reads misaligned garbage and `s` steps right past
      * `end` without ever equalling it, looping forever into garbage. Aligning to the pointer size
-     * (__crt0_pointer_size from tmu-crt0; 8, which suits both, with any other start file) keeps
+     * (__crt0_pointer_size from tmu-crt0) keeps
      * each *_start consistent with the aligned pointer data so start + SZREG*N == end exactly.
      */
-    . = ALIGN(DEFINED(__crt0_pointer_size) ? __crt0_pointer_size : 8);
+    . = ALIGN(__crt0_pointer_size);
     PROVIDE_HIDDEN (__preinit_array_start = .);
     KEEP (*(.preinit_array))
     PROVIDE_HIDDEN (__preinit_array_end = .);
-    . = ALIGN(DEFINED(__crt0_pointer_size) ? __crt0_pointer_size : 8);
+    . = ALIGN(__crt0_pointer_size);
     PROVIDE_HIDDEN (__init_array_start = .);
     KEEP (*(SORT_BY_INIT_PRIORITY(.init_array.*) SORT_BY_INIT_PRIORITY(.ctors.*)))
     KEEP (*(.init_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .ctors))
     PROVIDE_HIDDEN (__init_array_end = .);
-    . = ALIGN(DEFINED(__crt0_pointer_size) ? __crt0_pointer_size : 8);
+    . = ALIGN(__crt0_pointer_size);
     PROVIDE_HIDDEN (__fini_array_start = .);
     KEEP (*(SORT_BY_INIT_PRIORITY(.fini_array.*) SORT_BY_INIT_PRIORITY(.dtors.*)))
     KEEP (*(.fini_array EXCLUDE_FILE (*crtbegin.o *crtbegin?.o *crtend.o *crtend?.o ) .dtors))

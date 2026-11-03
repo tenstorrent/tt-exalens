@@ -1659,8 +1659,7 @@ class TestCallStack(unittest.TestCase):
     loader: ElfLoader  # ElfLoader object
     pc_register_index: int  # PC register index
     device: Device  # Device
-    gdb_server: GdbServer  # GDB server
-    is_simulation: bool  # Running on simulator
+    gdb_server: GdbServer | None = None  # GDB server
 
     @classmethod
     def setUpClass(cls):
@@ -1670,8 +1669,7 @@ class TestCallStack(unittest.TestCase):
             location = get_core_location(cls.location_desc, cls.device)
             if cls.neo_id not in cls.device.get_block(location).neo_ids:
                 raise unittest.SkipTest(f"NEO {cls.neo_id} is not available on this platform.")
-        cls.is_simulation = is_simulation(cls.device)
-        if not cls.is_simulation:
+        if not is_simulation(cls.device):
             server = ServerSocket()
             server.start()
             cls.gdb_server = GdbServer(cls.context, server, skip_detach=True, debug_only_with_elfs=True)
@@ -1679,7 +1677,7 @@ class TestCallStack(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        if not cls.is_simulation:
+        if cls.gdb_server is not None:
             cls.gdb_server.stop()
 
     def setUp(self):
@@ -1719,6 +1717,8 @@ class TestCallStack(unittest.TestCase):
         arch = str(self.device._arch).lower()
         if arch == "wormhole_b0":
             arch = "wormhole"
+        if self.neo_id is not None:
+            app_name = f"{app_name}.neo{self.neo_id}"
         return f"build/riscv-src/{arch}/{app_name}.{self.risc_name.lower()}.elf"
 
     def compare_callstacks(self, cs1: list[CallstackEntry], cs2: list[CallstackEntry]):
@@ -1768,7 +1768,7 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
-        if not self.is_simulation:
+        if self.gdb_server is not None:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
                 self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
@@ -1794,7 +1794,7 @@ class TestCallStack(unittest.TestCase):
             self.assertEqual(callstack[i].function_name, "f1")
         self.assertEqual(callstack[recursion_count + 1].function_name, "recurse")
         self.assertEqual(callstack[recursion_count + 2].function_name, "main")
-        if not self.is_simulation:
+        if self.gdb_server is not None:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
                 self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
@@ -1816,7 +1816,7 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[0].function_name, "halt")
         self.assertEqual(callstack[1].function_name, "ns::foo")
         self.assertEqual(callstack[2].function_name, "main")
-        if not self.is_simulation:
+        if self.gdb_server is not None:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
                 self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
@@ -1852,7 +1852,7 @@ class TestCallStack(unittest.TestCase):
         self.assertIn(callstack[-2].function_name, ("tail_call_test::run", "run"))
         self.assertEqual(callstack[-1].function_name, "main")
 
-        if not self.is_simulation:
+        if self.gdb_server is not None:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
                 self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
@@ -1935,7 +1935,7 @@ class TestCallStack(unittest.TestCase):
             # As elsewhere, an optimized clone of a leaf can lose its namespace qualification.
             self.assertIn(entry.function_name, (name, name.split("::")[-1]))
 
-        if not self.is_simulation:
+        if self.gdb_server is not None:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
                 self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
@@ -1976,7 +1976,7 @@ class TestCallStack(unittest.TestCase):
             # As elsewhere, an optimized clone of a leaf can lose its namespace qualification.
             self.assertIn(entry.function_name, (name, name.split("::")[-1]))
 
-        if not self.is_simulation:
+        if self.gdb_server is not None:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
                 self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
@@ -2017,7 +2017,7 @@ class TestCallStack(unittest.TestCase):
             # As elsewhere, an optimized clone of a leaf can lose its namespace qualification.
             self.assertIn(entry.function_name, (name, name.split("::")[-1]))
 
-        if not self.is_simulation:
+        if self.gdb_server is not None:
             gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
                 self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )

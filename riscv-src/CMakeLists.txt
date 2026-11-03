@@ -46,6 +46,9 @@ set(RISCV_CORES_quasar_rv32 "trisc0" "trisc1" "trisc2" "trisc3")
 set(RISCV_CORES_quasar_rv64 "rocket0" "rocket1" "rocket2" "rocket3" "rocket4" "rocket5" "rocket6" "rocket7")
 set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "edge_mem_test")
 
+# NEOs share L1, so Quasar TRISC ELFs are linked into a separate L1 slice for each NEO
+set(RISCV_NEO_IDS_quasar_rv32 0 1 2 3)
+
 # Create the object file output directories
 file(MAKE_DIRECTORY ${RISCV_OBJECT_rv32} ${RISCV_OBJECT_rv64})
 
@@ -99,8 +102,8 @@ foreach(ISA ${RISCV_ISAS})
     endforeach()
 endforeach()
 
-# Define function to create targets for a specific architecture, application, and core
-function(create_riscv_target ARCH APP CORE BUILD_TYPE ISA)
+# Define function to create targets for a specific architecture, application, core, and NEO
+function(create_riscv_target ARCH APP CORE BUILD_TYPE ISA NEO_ID)
     if(BUILD_TYPE STREQUAL "release")
         set(LINK_OPTIONS ${OPTIMIZED_OPTIONS_ALL_${ISA}} ${OPTIMIZED_OPTIONS_LINK})
     else()
@@ -114,9 +117,17 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE ISA)
         list(APPEND LINK_OPTIONS -mtt-fix-whbhebreak)
     endif()
 
-    set(OUTPUT_ELF "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.elf")
-    set(OUTPUT_OBJDUMP "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.objdump")
-    set(OUTPUT_DWARF "${RISCV_OUTPUT}/${ARCH}/${APP}.${BUILD_TYPE}.${CORE}.dwarf")
+    set(ELF_NAME "${APP}.${BUILD_TYPE}.${CORE}")
+    set(TARGET_NAME "${ARCH}_${APP}_${CORE}_${BUILD_TYPE}")
+    if(DEFINED RISCV_NEO_IDS_${ARCH}_${ISA})
+        set(ELF_NAME "${APP}.${BUILD_TYPE}.neo${NEO_ID}.${CORE}")
+        set(TARGET_NAME "${ARCH}_${APP}_neo${NEO_ID}_${CORE}_${BUILD_TYPE}")
+        list(APPEND LINK_OPTIONS -Wl,--defsym=NEO_ID=${NEO_ID})
+    endif()
+
+    set(OUTPUT_ELF "${RISCV_OUTPUT}/${ARCH}/${ELF_NAME}.elf")
+    set(OUTPUT_OBJDUMP "${RISCV_OUTPUT}/${ARCH}/${ELF_NAME}.objdump")
+    set(OUTPUT_DWARF "${RISCV_OUTPUT}/${ARCH}/${ELF_NAME}.dwarf")
 
     set(LINK_OBJECTS
         ${RISCV_OBJECT_${ISA}}/tmu-crt0.${BUILD_TYPE}.o
@@ -150,7 +161,7 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE ISA)
         COMMENT "Linking ${OUTPUT_ELF}"
     )
 
-    add_custom_target("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" ALL
+    add_custom_target("${TARGET_NAME}_target" ALL
         DEPENDS ${OUTPUT_ELF})
 
     if(DUMP_ELFS)
@@ -163,22 +174,28 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE ISA)
             COMMENT "Generating dump and disassembly for ${OUTPUT_ELF}"
         )
 
-        add_custom_target("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis" ALL
+        add_custom_target("${TARGET_NAME}_dump_dis" ALL
             DEPENDS ${OUTPUT_OBJDUMP} ${OUTPUT_DWARF})
 
-        add_dependencies("${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_target" "${ARCH}_${APP}_${CORE}_${BUILD_TYPE}_dump_dis")
+        add_dependencies("${TARGET_NAME}_target" "${TARGET_NAME}_dump_dis")
     endif()
 endfunction()
 
-# Create linker scripts and targets for all architectures, their cores, and applications
+# Create linker scripts and targets for all architectures, their cores, NEOs, and applications
 foreach(ARCH ${RISCV_ARCHITECTURES})
     foreach(ISA ${RISCV_ISAS})
+        set(NEO_IDS 0)
+        if(DEFINED RISCV_NEO_IDS_${ARCH}_${ISA})
+            set(NEO_IDS ${RISCV_NEO_IDS_${ARCH}_${ISA}})
+        endif()
         foreach(CORE IN LISTS RISCV_CORES_${ARCH}_${ISA})
             string(TOUPPER ${CORE} RISC_NAME)
             configure_file(${RISCV_SOURCE}/risc.ld.in ${RISCV_LINKER_SCRIPTS}/${CORE}.ld)
-            foreach(APP ${RISCV_APPS})
-                foreach(BUILD_TYPE debug release coverage)
-                    create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE} ${ISA})
+            foreach(NEO_ID IN LISTS NEO_IDS)
+                foreach(APP ${RISCV_APPS})
+                    foreach(BUILD_TYPE debug release coverage)
+                        create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE} ${ISA} ${NEO_ID})
+                    endforeach()
                 endforeach()
             endforeach()
         endforeach()

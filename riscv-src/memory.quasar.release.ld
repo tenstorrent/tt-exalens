@@ -18,20 +18,30 @@ TRISC2_LDM_LENGTH = 2K;
 TRISC3_LDM_LENGTH = 4K;
 
 L1_BASE = 0x0;
+L1_LENGTH = 4M;
 UNDEFINED = 0;
+
+/* L1 is shared by the NEOs, so each NEO's TRISCs get their own slice of it. Link with
+ * --defsym=NEO_ID=<n> to build for NEO n (default 0). Rocket blocks follow the last slice.
+ */
+NEO_ID = DEFINED(NEO_ID) ? NEO_ID : 0;
+NEO_COUNT = 4;
+NEO_L1_STRIDE = 512K;
+TRISC_L1_BASE = L1_BASE + NEO_ID * NEO_L1_STRIDE;
+ROCKET_L1_BASE = L1_BASE + NEO_COUNT * NEO_L1_STRIDE;
 
 /* Each core's L1 block ends with its THREAD_LOCAL region, which backs
  * `thread_local` variables - a fixed, in-range scratch/mailbox window the host
  * can address. The groups are:
  *
- *   Tensix: [TRISCs] [ROCKETs] (...) [LDM]
+ *   Tensix: [NEO 0 TRISCs] [NEO 1 TRISCs] [NEO 2 TRISCs] [NEO 3 TRISCs] [ROCKETs] (...) [LDM]
  *
  * Every NEO has its own TRISC0-3 and a TRISC's LDM is at the same address in
- * every NEO, so an ELF built for a TRISC runs on any NEO. L1 is shared, so it
- * runs on one NEO at a time.
+ * every NEO, so an ELF built for a TRISC runs on any NEO. ELFs built for
+ * different NEOs use different L1, so they can run at the same time.
  * LOADER_INIT regions are defined for every TRISC, as the data segment resides in LDM.
  * Rocket cores have no private memory, so their data segment and stack reside in L1
- * and their LOADER_INIT regions are undefined.
+ * and their LOADER_INIT regions are undefined. Rocket blocks don't depend on NEO_ID.
  * LOADER_CODE regions are undefined for all cores; there is no IRAM on Quasar.
  * GCOV region is left undefined for obvious reasons.
  * LDM (private memory) is only used for the stack and the data segment.
@@ -54,7 +64,7 @@ MEMORY
 
 
     /* L1 layout. Each core's block ends with its THREAD_LOCAL region. */
-    TRISC0_CODE              : ORIGIN = L1_BASE, LENGTH = 16K
+    TRISC0_CODE              : ORIGIN = TRISC_L1_BASE, LENGTH = 16K
     TRISC0_LOADER_INIT_MEM   : ORIGIN = ORIGIN(TRISC0_CODE) + LENGTH(TRISC0_CODE), LENGTH = TRISC0_LDM_LENGTH
     TRISC0_THREAD_LOCAL_MEM  : ORIGIN = ORIGIN(TRISC0_LOADER_INIT_MEM) + LENGTH(TRISC0_LOADER_INIT_MEM), LENGTH = 16K
 
@@ -70,7 +80,7 @@ MEMORY
     TRISC3_LOADER_INIT_MEM   : ORIGIN = ORIGIN(TRISC3_CODE) + LENGTH(TRISC3_CODE), LENGTH = TRISC3_LDM_LENGTH
     TRISC3_THREAD_LOCAL_MEM  : ORIGIN = ORIGIN(TRISC3_LOADER_INIT_MEM) + LENGTH(TRISC3_LOADER_INIT_MEM), LENGTH = 16K
 
-    ROCKET0_CODE             : ORIGIN = ORIGIN(TRISC3_THREAD_LOCAL_MEM) + LENGTH(TRISC3_THREAD_LOCAL_MEM), LENGTH = 16K
+    ROCKET0_CODE             : ORIGIN = ROCKET_L1_BASE, LENGTH = 16K
     ROCKET0_LOCAL_DATA_MEM   : ORIGIN = ORIGIN(ROCKET0_CODE) + LENGTH(ROCKET0_CODE), LENGTH = 8K
     ROCKET0_STACK_MEM        : ORIGIN = ORIGIN(ROCKET0_LOCAL_DATA_MEM) + LENGTH(ROCKET0_LOCAL_DATA_MEM), LENGTH = 8K
     ROCKET0_THREAD_LOCAL_MEM : ORIGIN = ORIGIN(ROCKET0_STACK_MEM) + LENGTH(ROCKET0_STACK_MEM), LENGTH = 16K
@@ -156,3 +166,7 @@ MEMORY
     ROCKET7_LOADER_CODE_MEM  : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
     ROCKET7_GCOV_MEM         : ORIGIN = UNDEFINED, LENGTH = UNDEFINED
 }
+
+ASSERT(NEO_ID < NEO_COUNT, "NEO_ID must be less than NEO_COUNT")
+ASSERT(ORIGIN(TRISC3_THREAD_LOCAL_MEM) + LENGTH(TRISC3_THREAD_LOCAL_MEM) - TRISC_L1_BASE <= NEO_L1_STRIDE, "TRISC blocks don't fit in a NEO's L1 slice")
+ASSERT(ORIGIN(ROCKET7_THREAD_LOCAL_MEM) + LENGTH(ROCKET7_THREAD_LOCAL_MEM) <= L1_BASE + L1_LENGTH, "Rocket blocks don't fit in L1")

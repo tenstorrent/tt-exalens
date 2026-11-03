@@ -5,12 +5,12 @@
 // Pointer-sized loads and stores (init_array entries, argv slots) depend on XLEN; everything else
 // works on 32-bit words, so the same code serves 32-bit and 64-bit cores.
 #if __riscv_xlen == 64
-#define REG_L ld
-#define REG_S sd
+#define LR ld
+#define SR sd
 #define SZREG 8
 #else
-#define REG_L lw
-#define REG_S sw
+#define LR lw
+#define SR sw
 #define SZREG 4
 #endif
 
@@ -114,13 +114,6 @@ address_fix:
   la gp, __global_pointer$
   .option pop                          # Restore the previous assembler options
 
-#if __riscv_xlen == 64
-  # Rocket cores reset mtvec to 0, which holds another core's code in the shared L1.
-  # Trap into a local loop instead; mepc and mcause keep the trap state.
-  la      t0, 13f
-  csrw    mtvec, t0
-#endif
-
 /* set stack pointer */
   la sp, __stack_top
 
@@ -166,7 +159,7 @@ address_fix:
 7:la      s2, __init_array_start       # Load the address of __init_array_start into s2
   la      s3, __init_array_end         # Load the address of __init_array_end into s3
   j       9f                           # Jump to label 9
-8:REG_L   a0, 0(s2)                    # Load the function pointer at s2 into a0
+8:LR      a0, 0(s2)                    # Load the function pointer at s2 into a0
   jalr    a0                           # Jump and link register to the address in a0
   addi    s2, s2, SZREG                # Move to the next pointer in the init array
 9:bne     s2, s3, 8b                   # If s2 != s3, jump back to label 8
@@ -180,8 +173,8 @@ address_fix:
    */
   addi    sp, sp, -4*SZREG /* (stack is aligned to 16 bytes in riscv calling convention) */
   addi    a0, sp, 2*SZREG
-  REG_S   a0, 0(sp)
-  REG_S   zero, SZREG(sp)
+  SR      a0, 0(sp)
+  SR      zero, SZREG(sp)
   sw      s1, 2*SZREG(sp)
   sw      zero, 2*SZREG+4(sp)
 
@@ -203,12 +196,6 @@ address_fix:
 
   # Loop infinitely.
   10: j 10b
-
-#if __riscv_xlen == 64
-  # Trap loop that mtvec points to.
-  .balign 4
-  13: j 13b
-#endif
 
   .size  _start, .-_start
 
