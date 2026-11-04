@@ -3,8 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Tensix performance-counter access (architecture-agnostic).
 
-Each Tensix functional worker exposes a debug-perf-counter block at
-``0xFFB12000`` containing several "counter blocks" (FPU, INSTRN_THREAD,
+Each Tensix functional worker (each NEO on Quasar) exposes a debug-perf-counter
+block in its debug registers (``0xFFB12000`` on Wormhole and Blackhole)
+containing several "counter blocks" (FPU, INSTRN_THREAD,
 TDMA_UNPACK, TDMA_PACK, ...). Each counter block follows the same
 3-register pattern:
 
@@ -20,8 +21,8 @@ Outputs are 64-bit, split across:
 
 Per-architecture register names and counter-id maps live alongside this
 module under ``ttexalens/hardware/<arch>/perf_counters.py``. The protocol
-itself is identical across Wormhole and Blackhole; Quasar uses a different
-layout and currently raises NotImplementedError.
+itself is identical across Wormhole, Blackhole and Quasar; Quasar places the
+registers at different offsets and has no L1 counter block.
 """
 
 from __future__ import annotations

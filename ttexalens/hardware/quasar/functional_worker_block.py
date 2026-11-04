@@ -8,6 +8,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.perf_counters import TensixPerfCounters
 from ttexalens.hardware.quasar.functional_neo_block import QuasarFunctionalNeoBlock
 from ttexalens.hardware.quasar.functional_overlay_block import QuasarFunctionalOverlayBlock
 from ttexalens.hardware.quasar.noc_block import QuasarNocBlock
@@ -79,6 +80,12 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
         if neo is not None and not isinstance(neo, QuasarFunctionalOverlayBlock):
             return neo.debug_bus
         return super().get_debug_bus(neo_id)
+
+    def get_perf_counters(self, neo_id: int | None = None) -> TensixPerfCounters | None:
+        neo = self.get_sub_block(neo_id)
+        if neo is not None and not isinstance(neo, QuasarFunctionalOverlayBlock):
+            return neo.perf_counters
+        return super().get_perf_counters(neo_id)
 
     def get_register_store(self, noc_id: NocId | None = None, neo_id: int | None = None) -> RegisterStore:
         neo = self.get_sub_block(neo_id)

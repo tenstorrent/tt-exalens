@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  perf-counters list
+  perf-counters list [-d <device>] [-l <loc>] [--neo <neo-id>]
   perf-counters reset [--block=<name>] [-d <device>] [-l <loc>] [--neo <neo-id>]
   perf-counters start [--block=<name>] [-d <device>] [-l <loc>] [--neo <neo-id>]
   perf-counters stop [--block=<name>] [-d <device>] [-l <loc>] [--neo <neo-id>]
@@ -24,8 +24,7 @@ Description:
   Read and control Tensix hardware performance counters on a functional worker core.
 
   Subcommands:
-    list      Show every counter block and its counters defined for Tensix
-              functional-worker cores.
+    list      Show the counter blocks and their counters.
     reset     Reset performance counters.
     start     Start every block (or just --block).
     stop      Stop every block (or just --block).
@@ -213,17 +212,11 @@ def _render_consolidated(
     formatter.display_grouped_data_autoflow(data, columns=base_cols, sort_by_height_desc=False)
 
 
-def _run_list(context: Context) -> None:
-    listing: dict[str, list[tuple[int, str]]] = {}
-    for device in context.devices.values():
-        for coord in device.get_block_locations("functional_workers"):
-            listing = list_perf_counters(coord)
-            if listing:
-                break
-        if listing:
-            break
-    print("\n=== Perf Counter Blocks (Tensix functional workers) ===\n")
-    _print_list(listing)
+def _run_list(dopt: tt_docopt, context: Context, ui_state: UIState) -> None:
+    for device, loc, neo_id in _iter_perf_targets(dopt, context, ui_state):
+        neo_where = f" neo={neo_id_to_str(neo_id)}" if loc.noc_block.neo_ids else ""
+        print(f"\n=== Perf Counter Blocks: chip={device.id}{neo_where} core={loc.to_user_str()} ===\n")
+        _print_list(list_perf_counters(loc, neo_id=neo_id))
 
 
 def _run_read(
@@ -294,7 +287,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         block_name = None
 
     if args["list"]:
-        _run_list(context)
+        _run_list(dopt, context, ui_state)
         return
 
     if args["read"]:

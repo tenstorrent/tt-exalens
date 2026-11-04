@@ -132,13 +132,17 @@ def read_perf_counters(
 
 
 @_lib_helpers.trace_api
-def list_perf_counters(location: OnChipCoordinate) -> dict[str, list[tuple[int, str]]]:
+def list_perf_counters(
+    location: OnChipCoordinate,
+    *,
+    neo_id: int | None = None,
+) -> dict[str, list[tuple[int, str]]]:
     """Return the perf-counter schema at this core as
     ``{block_name: [(counter_id, counter_name), ...]}``, sorted by counter
     id. Empty-counter blocks are omitted. Returns ``{}`` if perf counters
     are not wired here.
     """
-    perf = location.noc_block.get_perf_counters()
+    perf = location.noc_block.get_perf_counters(neo_id=neo_id)
     if perf is None:
         return {}
     out: dict[str, list[tuple[int, str]]] = {}
