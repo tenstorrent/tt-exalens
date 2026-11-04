@@ -37,9 +37,9 @@ brxy 0x0
 Output:
 ```
 Reading from device 0
-1-1 (0,0) : 0x00000000 (4 total bytes)
+1-2 (0,0) : 0x00000000 (4 total bytes)
 (l1) : 0x00000000 (4 bytes)
-0x00000000:  00000293
+0x00000000:  00100073
 ```
 16 words at 0x0, current noc location
 ```
@@ -48,12 +48,12 @@ brxy 0x0 16
 Output:
 ```
 Reading from device 0
-1-1 (0,0) : 0x00000000 (64 total bytes)
+1-2 (0,0) : 0x00000000 (64 total bytes)
 (l1) : 0x00000000 (64 bytes)
-0x00000000:  00000293  00000313  0a628063  ffb112b7
-0x00000010:  00000313  00435313  0062a023  ffb112b7
-0x00000020:  00428293  00004337  0062a023  ffb112b7
-0x00000030:  00828293  00000313  00000393  40638333
+0x00000000:  00100073  00100073  00100073  00100073
+0x00000010:  00100073  00100073  00100073  00100073
+0x00000020:  00100073  00100073  00100073  00100073
+0x00000030:  00100073  00100073  00100073  00100073
 ```
 1 word at 0x0, location 0,0
 ```
@@ -62,9 +62,9 @@ brxy 0,0 0x0
 Output:
 ```
 Reading from device 0
-1-1 (0,0) : 0x00000000 (4 total bytes)
+1-2 (0,0) : 0x00000000 (4 total bytes)
 (l1) : 0x00000000 (4 bytes)
-0x00000000:  00000293
+0x00000000:  00100073
 ```
 16 words at 0x0, location 0,0
 ```
@@ -73,12 +73,12 @@ brxy 0,0 0x0 16
 Output:
 ```
 Reading from device 0
-1-1 (0,0) : 0x00000000 (64 total bytes)
+1-2 (0,0) : 0x00000000 (64 total bytes)
 (l1) : 0x00000000 (64 bytes)
-0x00000000:  00000293  00000313  0a628063  ffb112b7
-0x00000010:  00000313  00435313  0062a023  ffb112b7
-0x00000020:  00428293  00004337  0062a023  ffb112b7
-0x00000030:  00828293  00000313  00000393  40638333
+0x00000000:  00100073  00100073  00100073  00100073
+0x00000010:  00100073  00100073  00100073  00100073
+0x00000020:  00100073  00100073  00100073  00100073
+0x00000030:  00100073  00100073  00100073  00100073
 ```
 32 words, i8 format
 ```
@@ -87,16 +87,16 @@ brxy 0,0 0x0 32 --format i8
 Output:
 ```
 Reading from device 0
-1-1 (0,0) : 0x00000000 (128 total bytes)
+1-2 (0,0) : 0x00000000 (128 total bytes)
 (l1) : 0x00000000 (128 bytes)
-0x00000000:  147  2    0    0  19   3    0   0  99   128  98   10   183  18   177  255
-0x00000010:  19   3    0    0  19   83   67  0  35   160  98   0    183  18   177  255
-0x00000020:  147  130  66   0  55   67   0   0  35   160  98   0    183  18   177  255
-0x00000030:  147  130  130  0  19   3    0   0  147  3    0    0    51   131  99   64
-0x00000040:  19   83   67   0  35   160  98  0  183  18   177  255  147  130  194  0
-0x00000050:  19   3    16   0  35   160  98  0  183  18   177  255  147  130  2    1
-0x00000060:  19   3    0    4  35   160  98  0  183  18   177  255  147  130  66   1
-0x00000070:  19   3    128  0  147  3    16  0  3    174  2    0    3    174  2    0
+0x00000000:  115  0  16  0  115  0  16  0  115  0  16  0  115  0  16  0
+0x00000010:  115  0  16  0  115  0  16  0  115  0  16  0  115  0  16  0
+0x00000020:  115  0  16  0  115  0  16  0  115  0  16  0  115  0  16  0
+0x00000030:  115  0  16  0  115  0  16  0  115  0  16  0  115  0  16  0
+0x00000040:  115  0  16  0  115  0  16  0  115  0  16  0  115  0  16  0
+0x00000050:  115  0  16  0  115  0  16  0  115  0  16  0  115  0  16  0
+0x00000060:  115  0  16  0  115  0  16  0  115  0  16  0  115  0  16  0
+0x00000070:  115  0  16  0  115  0  16  0  115  0  16  0  115  0  16  0
 ```
 Sample for 5 seconds
 ```
@@ -106,23 +106,23 @@ Output:
 ```
 Reading from device 0
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000000 (0) => 0x00000293 (659) - 21308 times
+1-2 (0,0) (l1) 0x00000000 (0) => 0x00100073 (1048691) - 17500 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000004 (4) => 0x00000313 (787) - 21650 times
+1-2 (0,0) (l1) 0x00000004 (4) => 0x00100073 (1048691) - 17568 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000008 (8) => 0x0a628063 (174227555) - 21903 times
+1-2 (0,0) (l1) 0x00000008 (8) => 0x00100073 (1048691) - 17919 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000000c (12) => 0xffb112b7 (4289794743) - 21923 times
+1-2 (0,0) (l1) 0x0000000c (12) => 0x00100073 (1048691) - 18018 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000010 (16) => 0x00000313 (787) - 21969 times
+1-2 (0,0) (l1) 0x00000010 (16) => 0x00100073 (1048691) - 17884 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000014 (20) => 0x00435313 (4412179) - 21824 times
+1-2 (0,0) (l1) 0x00000014 (20) => 0x00100073 (1048691) - 17741 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000018 (24) => 0x0062a023 (6463523) - 21267 times
+1-2 (0,0) (l1) 0x00000018 (24) => 0x00100073 (1048691) - 17552 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x0000001c (28) => 0xffb112b7 (4289794743) - 21907 times
+1-2 (0,0) (l1) 0x0000001c (28) => 0x00100073 (1048691) - 17919 times
 Sampling for 0.15625 seconds...
-1-1 (0,0) (l1) 0x00000020 (32) => 0x00428293 (4358803) - 21949 times
+1-2 (0,0) (l1) 0x00000020 (32) => 0x00100073 (1048691) - 17871 times
 Sampling for 0.15625 seconds...
 ...
 ```
@@ -135,10 +135,24 @@ Output:
 Reading from device 0
 0-0 (d0,0) : 0x00000000 (64 total bytes)
 (dram_bank) : 0x00000000 (64 bytes)
-0x00000000:  40000015  15d47d7d  5f9dfa55  50515411
-0x00000010:  75a656d1  55f5556f  55555155  80741155
-0x00000020:  5455ded2  54555514  5751f557  d5ddd155
-0x00000030:  5550d2fa  d5055155  d5557175  d855ffd5
+0x00000000:  54114041  55451555  4455125d  55555455
+0x00000010:  54535555  10555555  5555505d  50555e55
+0x00000020:  75252075  75055755  356f6e55  507f7515
+0x00000030:  55551155  70553475  755f3455  443f5555
+```
+16 words at 0x0, location 0,0, 4 bytes at a time
+```
+brxy 0,0 0x0 16 --register-access
+```
+Output:
+```
+Reading from device 0
+1-2 (0,0) : 0x00000000 (64 total bytes)
+(l1) : 0x00000000 (64 bytes)
+0x00000000:  00100073  00100073  00100073  00100073
+0x00000010:  00100073  00100073  00100073  00100073
+0x00000020:  00100073  00100073  00100073  00100073
+0x00000030:  00100073  00100073  00100073  00100073
 ```
 
 
@@ -182,11 +196,6 @@ Prints callstack using provided elf for a given RiscV core.
 Command:
 ```
 callstack build/riscv-src/wormhole/sample.debug.brisc.elf -r brisc
-```
-Output:
-```
-Location: 1-1 (0,0), core: brisc
-  #0 0x00000188 in halt () at /localdev/adjordjevic/work/tt-exalens/riscv-src/sample.cc 28:13
 ```
 Command:
 ```
@@ -285,24 +294,24 @@ Output:
 ```
 === Device 0 - location 0,0)
                                                      Signals
-╭───────────────────────────────┬───────────────────────────────────────────────────────────────────┬───────────╮
-│ Group                         │ Name                                                              │ Value     │
-├───────────────────────────────┼───────────────────────────────────────────────────────────────────┼───────────┤
-│                               │ rwc_i_dest_target_reg_cfg_math_offset/0                           │ 0x0       │
-│                               │ rwc_i_dest_target_reg_cfg_math_offset/1                           │ 0x0       │
-│                               │ rwc_i_dest_target_reg_cfg_math_offset/2                           │ False     │
-│                               │ trisc0_pc_buffer_next_cmd_fifo_data                               │ 0x18c     │
-│                               │ trisc1_pc_buffer_next_cmd_fifo_data                               │ 0x6f6cfa  │
-│                               │ trisc2_pc_buffer_next_cmd_fifo_data                               │ 0x2820d7  │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_w_counter                                │ 0x0       │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_w_cr                                     │ 0x0       │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_counter                                │ 0x0       │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_cr/0                                   │ 0x0       │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_cr/1                                   │ 0x0       │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_y_counter                                │ 0x0       │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_y_cr                                     │ 0x0       │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_z_counter                                │ 0x0       │
-│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_z_cr                                     │ 0x0       │
+╭───────────────────────────────┬───────────────────────────────────────────────────────────────────┬────────────╮
+│ Group                         │ Name                                                              │ Value      │
+├───────────────────────────────┼───────────────────────────────────────────────────────────────────┼────────────┤
+│                               │ rwc_i_dest_target_reg_cfg_math_offset/0                           │ 0x0        │
+│                               │ rwc_i_dest_target_reg_cfg_math_offset/1                           │ 0x0        │
+│                               │ rwc_i_dest_target_reg_cfg_math_offset/2                           │ False      │
+│                               │ trisc0_pc_buffer_next_cmd_fifo_data/0                             │ 0x17f      │
+│                               │ trisc0_pc_buffer_next_cmd_fifo_data/1                             │ 0x78c0fb   │
+│                               │ trisc1_pc_buffer_next_cmd_fifo_data/0                             │ 0x561c6b   │
+│                               │ trisc1_pc_buffer_next_cmd_fifo_data/1                             │ 0x15e      │
+│                               │ trisc2_pc_buffer_next_cmd_fifo_data/0                             │ 0x7d813a   │
+│                               │ trisc2_pc_buffer_next_cmd_fifo_data/1                             │ 0x1bd      │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_w_counter                                │ 0x0        │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_w_cr                                     │ 0x0        │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_counter                                │ 0x0        │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_cr/0                                   │ 0x0        │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_x_cr/1                                   │ 0x0        │
+│ adcs0_unpacker0_channel0      │ adcs0_unpacker0_channel0_y_counter                                │ 0x0        │
 ...
 ```
 List up to 5 signals whose names contain 'pc'
@@ -313,16 +322,16 @@ Output:
 ```
 There are matches remaining. To see more results, increase the --max value.
 === Device 0 - location 0,0)
-                      Signals
-╭────────────────┬───────────────────────┬─────────╮
-│ Group          │ Name                  │ Value   │
-├────────────────┼───────────────────────┼─────────┤
-│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x188   │
-│ brisc_group_a  │ brisc_pc              │ 0x188   │
-│ brisc_group_b  │ brisc_id_ex_pc        │ 0x188   │
-│ ncrisc_group_a │ ncrisc_dbg_obs_cmt_pc │ 0x7818c │
-│ ncrisc_group_b │ ncrisc_id_ex_pc       │ 0x78190 │
-╰────────────────┴───────────────────────┴─────────╯
+                        Signals
+╭────────────────┬───────────────────────┬────────────╮
+│ Group          │ Name                  │ Value      │
+├────────────────┼───────────────────────┼────────────┤
+│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x0        │
+│ brisc_group_a  │ brisc_pc              │ 0x0        │
+│ brisc_group_b  │ brisc_id_ex_pc        │ 0x0        │
+│ ncrisc_group_a │ ncrisc_dbg_obs_cmt_pc │ 0x32951492 │
+│ ncrisc_group_b │ ncrisc_id_ex_pc       │ 0x3a2b1c3f │
+╰────────────────┴───────────────────────┴────────────╯
 
 ```
 List all debug bus signal groups
@@ -378,16 +387,16 @@ Output:
 ╭────────────────────────┬──────────────────────────────────────╮
 │ Name                   │ Value                                │
 ├────────────────────────┼──────────────────────────────────────┤
-│ brisc_dbg_obs_cmt_pc   │ [0x188, 0x188, 0x188, 0x188]         │
-│ brisc_dbg_obs_cmt_vld  │ [False, False, True, False]          │
-│ brisc_dbg_obs_mem_addr │ [0x14000, 0x14000, 0x14000, 0x14000] │
+│ brisc_dbg_obs_cmt_pc   │ [0x0, 0x0, 0x0, 0x0]                 │
+│ brisc_dbg_obs_cmt_vld  │ [False, False, False, False]         │
+│ brisc_dbg_obs_mem_addr │ [0x10000, 0x10000, 0x10000, 0x10000] │
 │ brisc_dbg_obs_mem_rden │ [False, False, False, False]         │
-│ brisc_i_instrn         │ [0x6f, 0x0, 0x0, 0x6f]               │
+│ brisc_i_instrn         │ [0x0, 0x0, 0x0, 0x0]                 │
 │ brisc_i_instrn_req_rtr │ [True, True, True, True]             │
-│ brisc_i_instrn_vld     │ [True, False, False, True]           │
-│ brisc_o_instrn_addr    │ [0x18c, 0x18c, 0x188, 0x18c]         │
-│ brisc_o_instrn_req     │ [False, True, True, False]           │
-│ brisc_pc               │ [0x188, 0x188, 0x188, 0x188]         │
+│ brisc_i_instrn_vld     │ [False, False, False, False]         │
+│ brisc_o_instrn_addr    │ [0x0, 0x0, 0x0, 0x0]                 │
+│ brisc_o_instrn_req     │ [False, False, False, False]         │
+│ brisc_pc               │ [0x0, 0x0, 0x0, 0x0]                 │
 ╰────────────────────────┴──────────────────────────────────────╯
 
 ```
@@ -402,8 +411,8 @@ Output:
 ╭──────────────────────┬───────╮
 │ Name                 │ Value │
 ├──────────────────────┼───────┤
-│ brisc_dbg_obs_cmt_pc │ 0x188 │
-│ brisc_pc             │ 0x188 │
+│ brisc_dbg_obs_cmt_pc │ 0x0   │
+│ brisc_pc             │ 0x0   │
 ╰──────────────────────┴───────╯
 
 ```
@@ -413,8 +422,8 @@ debug-bus trisc0_pc,trisc1_pc
 ```
 Output:
 ```
-device:0 loc:1-1 (0,0)  trisc0_pc: 0x1e18c
-device:0 loc:1-1 (0,0)  trisc1_pc: 0x3c18c
+device:0 loc:1-2 (0,0)  trisc0_pc: 0x6020
+device:0 loc:1-2 (0,0)  trisc1_pc: 0xa020
 ```
 Print value for a custom signal and trisc2_pc
 ```
@@ -422,8 +431,8 @@ debug-bus {7,0,12,0x3ffffff},trisc2_pc
 ```
 Output:
 ```
-device:0 loc:1-1 (0,0)  Daisy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff: 0x1e18c
-device:0 loc:1-1 (0,0)  trisc2_pc: 0x5a18c
+device:0 loc:1-2 (0,0)  Daisy:7; Rd Sel:0; Sig Sel:12; Mask:0x3ffffff: 0x6020
+device:0 loc:1-2 (0,0)  trisc2_pc: 0xe020
 ```
 
 
@@ -475,9 +484,9 @@ Legend:
   Colors:
     functional_workers
 
-==== Device 0 [n300 / local] (Unique ID: 0x26183216c)
+==== Device 0 [n300 / local] (Unique ID: 0x261832091)
     00     01     02     03     04     05     06     07
-00  RRRRR  -----  -----  -----  -----  -----  -----  -----
+00  -----  -----  -----  -----  -----  -----  -----  -----
 01  -----  -----  -----  -----  -----  -----  -----  -----
 02  -----  -----  -----  -----  -----  -----  -----  -----
 03  -----  -----  -----  -----  -----  -----  -----  -----
@@ -485,7 +494,7 @@ Legend:
 05  -----  -----  -----  -----  -----  -----  -----  -----
 06  -----  -----  -----  -----  -----  -----  -----  -----
 07  -----  -----  -----  -----  -----  -----  -----  -----
-==== Device 1 [n300 / remote(0)] (Unique ID: 0x36183216c)
+==== Device 1 [n300 / remote(0)] (Unique ID: 0x361832091)
     00     01     02     03     04     05     06     07
 ...
 ```
@@ -513,7 +522,7 @@ Legend:
     security
     l2cpu
 
-==== Device 0 [n300 / local] (Unique ID: 0x26183216c)
+==== Device 0 [n300 / local] (Unique ID: 0x261832091)
     00           01     02     03     04     05    06     07     08     09
 ...
 ```
@@ -530,17 +539,17 @@ Legend:
   Colors:
     functional_workers
 
-==== Device 0 [n300 / local] (Unique ID: 0x26183216c)
+==== Device 0 [n300 / local] (Unique ID: 0x261832091)
     00    01    02    03    04    05    06    07
-00  1-1   2-1   3-1   4-1   6-1   7-1   8-1   9-1
-01  1-2   2-2   3-2   4-2   6-2   7-2   8-2   9-2
-02  1-3   2-3   3-3   4-3   6-3   7-3   8-3   9-3
+00  1-2   2-2   3-2   4-2   6-2   7-2   8-2   9-2
+01  1-3   2-3   3-3   4-3   6-3   7-3   8-3   9-3
+02  1-4   2-4   3-4   4-4   6-4   7-4   8-4   9-4
 03  1-5   2-5   3-5   4-5   6-5   7-5   8-5   9-5
 04  1-7   2-7   3-7   4-7   6-7   7-7   8-7   9-7
 05  1-8   2-8   3-8   4-8   6-8   7-8   8-8   9-8
 06  1-9   2-9   3-9   4-9   6-9   7-9   8-9   9-9
 07  1-10  2-10  3-10  4-10  6-10  7-10  8-10  9-10
-==== Device 1 [n300 / remote(0)] (Unique ID: 0x36183216c)
+==== Device 1 [n300 / remote(0)] (Unique ID: 0x361832091)
     00    01    02    03    04    05    06    07
 00  1-1   2-1   3-1   4-1   6-1   7-1   8-1   9-1
 ...
@@ -551,13 +560,13 @@ device noc0 block --no-legend
 ```
 Output:
 ```
-==== Device 0 [n300 / local] (Unique ID: 0x26183216c)
+==== Device 0 [n300 / local] (Unique ID: 0x261832091)
     00           01                  02                  03                  04                  05    06                  07     ...
 00  dram         eth                 eth                 eth                 eth                 dram  eth                 eth    ...
-01  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+01  dram         harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvest...
 02  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
 03  pcie         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
-04  router_only  harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvest...
+04  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
 05  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
 06  dram         eth                 eth                 eth                 eth                 dram  eth                 eth    ...
 07  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
@@ -565,7 +574,7 @@ Output:
 09  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
 10  arc          functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
 11  dram         harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvest...
-==== Device 1 [n300 / remote(0)] (Unique ID: 0x36183216c)
+==== Device 1 [n300 / remote(0)] (Unique ID: 0x361832091)
     00           01                  02                  03                  04                  05    06                  07     ...
 00  dram         eth                 eth                 eth                 eth                 dram  eth                 eth    ...
 01  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
@@ -597,7 +606,7 @@ Legend:
     security
     l2cpu
 
-==== Device 0 [n300 / local] (Unique ID: 0x26183216c)
+==== Device 0 [n300 / local] (Unique ID: 0x261832091)
     00           01     02     03     04     05     06     07     08     09
 ...
 ```
@@ -614,7 +623,7 @@ Legend:
   Colors:
     dram
 
-==== Device 0 [n300 / local] (Unique ID: 0x26183216c)
+==== Device 0 [n300 / local] (Unique ID: 0x261832091)
     00    01   02    03    04   05
 00  0-0   0-5  5-0   5-2   5-3  5-5
 01  0-1   0-6  5-1   5-9   5-4  5-6
@@ -626,13 +635,13 @@ device -d 0 noc0 block --no-legend
 ```
 Output:
 ```
-==== Device 0 [n300 / local] (Unique ID: 0x26183216c)
+==== Device 0 [n300 / local] (Unique ID: 0x261832091)
     00           01                  02                  03                  04                  05    06                  07     ...
 00  dram         eth                 eth                 eth                 eth                 dram  eth                 eth    ...
-01  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
+01  dram         harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvest...
 02  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
 03  pcie         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
-04  router_only  harvested_workers   harvested_workers   harvested_workers   harvested_workers   dram  harvested_workers   harvest...
+04  router_only  functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
 05  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
 06  dram         eth                 eth                 eth                 eth                 dram  eth                 eth    ...
 07  dram         functional_workers  functional_workers  functional_workers  functional_workers  dram  functional_workers  functio...
@@ -682,7 +691,7 @@ dump-overlay-state
 ```
 Output:
 ```
-Device 0 at location 1-1 (0,0) does not have an overlay block.
+Device 0 at location 1-2 (0,0) does not have an overlay block.
 ```
 same (short name)
 ```
@@ -690,7 +699,7 @@ overlay
 ```
 Output:
 ```
-Device 0 at location 1-1 (0,0) does not have an overlay block.
+Device 0 at location 1-2 (0,0) does not have an overlay block.
 ```
 only ROCC command buffers
 ```
@@ -698,7 +707,7 @@ overlay --cmdbuf
 ```
 Output:
 ```
-Device 0 at location 1-1 (0,0) does not have an overlay block.
+Device 0 at location 1-2 (0,0) does not have an overlay block.
 ```
 bus errors + watchdogs together
 ```
@@ -706,7 +715,7 @@ overlay --errors --wdt
 ```
 Output:
 ```
-Device 0 at location 1-1 (0,0) does not have an overlay block.
+Device 0 at location 1-2 (0,0) does not have an overlay block.
 ```
 LLK counters incl. read-mirrors/thresholds
 ```
@@ -714,7 +723,7 @@ overlay --counters -v
 ```
 Output:
 ```
-Device 0 at location 1-1 (0,0) does not have an overlay block.
+Device 0 at location 1-2 (0,0) does not have an overlay block.
 ```
 command buffers for cores 0, 3, 5 only
 ```
@@ -722,7 +731,7 @@ overlay --cmdbuf --cores 0,3,5
 ```
 Output:
 ```
-Device 0 at location 1-1 (0,0) does not have an overlay block.
+Device 0 at location 1-2 (0,0) does not have an overlay block.
 ```
 debug module at location 1,1
 ```
@@ -730,7 +739,7 @@ overlay --debug -l 1,1
 ```
 Output:
 ```
-Device 0 at location 2-2 (1,1) does not have an overlay block.
+Device 0 at location 2-3 (1,1) does not have an overlay block.
 ```
 
 
@@ -952,15 +961,15 @@ PACKER
 │ pack_yz_transposed       │ False        │ False        │ False        │ False        │
 │ pack_per_xy_plane_offset │ 0            │ 0            │ 0            │ 0            │
 └──────────────────────────┴──────────────┴──────────────┴──────────────┴──────────────┘
-┌────────────────────────────────────┬─────────────────────────┬──────────────────────────┬──────────────────────────┬────────────...
-│ PACK CONFIG                        │ REG_ID = 1              │ REG_ID = 2               │ REG_ID = 3               │ REG_ID = 4 ...
-├────────────────────────────────────┼─────────────────────────┼──────────────────────────┼──────────────────────────┼────────────...
-│ row_ptr_section_size               │ 65535                   │ 0                        │ 0                        │ 0          ...
-│ exp_section_size                   │ 65535                   │ 0                        │ 0                        │ 0          ...
-│ l1_dest_addr                       │ 0xffffffff              │ 0x0                      │ 0x0                      │ 0x0        ...
-│ uncompress                         │ True                    │ False                    │ False                    │ False      ...
-│ add_l1_dest_addr_offset            │ True                    │ False                    │ False                    │ False      ...
-│ reserved_0                         │ 3                       │ 0                        │ 0                        │ 0          ...
+┌────────────────────────────────────┬──────────────────────────┬──────────────────────────┬──────────────────────────┬───────────...
+│ PACK CONFIG                        │ REG_ID = 1               │ REG_ID = 2               │ REG_ID = 3               │ REG_ID = 4...
+├────────────────────────────────────┼──────────────────────────┼──────────────────────────┼──────────────────────────┼───────────...
+│ row_ptr_section_size               │ 0                        │ 0                        │ 0                        │ 0         ...
+│ exp_section_size                   │ 0                        │ 0                        │ 0                        │ 0         ...
+│ l1_dest_addr                       │ 0x0                      │ 0x0                      │ 0x0                      │ 0x0       ...
+│ uncompress                         │ False                    │ False                    │ False                    │ False     ...
+│ add_l1_dest_addr_offset            │ False                    │ False                    │ False                    │ False     ...
+│ reserved_0                         │ 0                        │ 0                        │ 0                        │ 0         ...
 ...
 ```
 Prints unpacker's configuration registers for current device and core
@@ -999,24 +1008,24 @@ Output:
 ```
 Tensix registers for location 0,0 on device 0
 GPR
-┌─────────────────────────────┬─────────────────┐   ┌──────────────────────────┬────────────┐   ┌─────────────────────┬───────────...
-│ Thread 0                    │ Values          │   │ Thread 1                 │ Values     │   │ Thread 2            │ Values    ...
-├─────────────────────────────┼─────────────────┤   ├──────────────────────────┼────────────┤   ├─────────────────────┼───────────...
-│ zero                        │ 2172478195      │   │ zero                     │ 259862017  │   │ zero                │ 1978091954...
-│ dbg_reserved                │ 3150427296      │   │ dbg_reserved             │ 1506769733 │   │ dbg_reserved        │ 2599953796...
-│ dbg_msg                     │ 2179204162      │   │ dbg_msg                  │ 512103610  │   │ dbg_msg             │ 237360030 ...
-│ dbg_ckid                    │ 4147448567      │   │ dbg_ckid                 │ 179517572  │   │ dbg_ckid            │ 187464892 ...
-│ operand_base_addr           │ 0x30f6e0f3      │   │ perf_dbus_cntl           │ 2791923892 │   │ dest_offset_lo      │ 182908691 ...
-│ operand_offset_addr         │ 0x4e0f031a      │   │ perf_mem_dump_cntl_clear │ 47099912   │   │ gpr_5               │ 3730085926...
-│ gpr_6                       │ 2039059408      │   │ perf_mem_dump_cntl_set   │ 1896888352 │   │ gpr_6               │ 2080692587...
-│ gpr_7                       │ 4134179461      │   │ perf_cnt_start           │ 2283721626 │   │ gpr_7               │ 3862903435...
-│ zero_0                      │ 2634131137      │   │ perf_cnt_stop            │ 725699935  │   │ dest_offset_hi      │ 3804441380...
-│ zero_1                      │ 1582676488      │   │ perf_epoch_base_addr     │ 0xa8324e0a │   │ gpr_9               │ 1561862670...
-│ zero_2                      │ 2731167618      │   │ perf_epoch_offset        │ 1614894416 │   │ gpr_10              │ 1618104515...
-│ zero_3                      │ 1136358986      │   │ gpr_11                   │ 743088358  │   │ gpr_11              │ 3675046608...
-│ tmp0                        │ 1961689736      │   │ gpr_12                   │ 227705667  │   │ output_addr         │ 0xee996a1e...
-│ tmp1                        │ 1294411776      │   │ gpr_13                   │ 3824158914 │   │ gpr_13              │ 2617775253...
-│ tile_size                   │ 667697226       │   │ gpr_14                   │ 4218024018 │   │ gpr_14              │ 1623914065...
+┌─────────────────────────────┬──────────────┐   ┌──────────────────────────┬────────────┐   ┌─────────────────────┬──────────────...
+│ Thread 0                    │ Values       │   │ Thread 1                 │ Values     │   │ Thread 2            │ Values       ...
+├─────────────────────────────┼──────────────┤   ├──────────────────────────┼────────────┤   ├─────────────────────┼──────────────...
+│ zero                        │ 285164287    │   │ zero                     │ 3880950223 │   │ zero                │ 2897188730   ...
+│ dbg_reserved                │ 3414040523   │   │ dbg_reserved             │ 4044108104 │   │ dbg_reserved        │ 2164203974   ...
+│ dbg_msg                     │ 4753929      │   │ dbg_msg                  │ 163997888  │   │ dbg_msg             │ 1158676034   ...
+│ dbg_ckid                    │ 1482752176   │   │ dbg_ckid                 │ 3362107486 │   │ dbg_ckid            │ 538508278    ...
+│ operand_base_addr           │ 0x7c08de32   │   │ perf_dbus_cntl           │ 2203916353 │   │ dest_offset_lo      │ 2598585506   ...
+│ operand_offset_addr         │ 0xa37e0823   │   │ perf_mem_dump_cntl_clear │ 556570113  │   │ gpr_5               │ 1497579271   ...
+│ gpr_6                       │ 3745942921   │   │ perf_mem_dump_cntl_set   │ 1407459502 │   │ gpr_6               │ 240942339    ...
+│ gpr_7                       │ 3458294048   │   │ perf_cnt_start           │ 3125546662 │   │ gpr_7               │ 2669755383   ...
+│ zero_0                      │ 1220805684   │   │ perf_cnt_stop            │ 2953036999 │   │ dest_offset_hi      │ 3080291429   ...
+│ zero_1                      │ 537528324    │   │ perf_epoch_base_addr     │ 0xcb7f0bac │   │ gpr_9               │ 2851332583   ...
+│ zero_2                      │ 2336598402   │   │ perf_epoch_offset        │ 2290295791 │   │ gpr_10              │ 1421275645   ...
+│ zero_3                      │ 813354776    │   │ gpr_11                   │ 2454041245 │   │ gpr_11              │ 2368976958   ...
+│ tmp0                        │ 1606902117   │   │ gpr_12                   │ 1783725703 │   │ output_addr         │ 0x8480121c   ...
+│ tmp1                        │ 5833835      │   │ gpr_13                   │ 2735901599 │   │ gpr_13              │ 4077400479   ...
+│ tile_size                   │ 4201271044   │   │ gpr_14                   │ 4067168315 │   │ gpr_14              │ 2046501369   ...
 ...
 ```
 Prints all general purpose registers for current device and core
@@ -1027,24 +1036,24 @@ Output:
 ```
 Tensix registers for location 0,0 on device 0
 GPR
-┌─────────────────────────────┬─────────────────┐   ┌──────────────────────────┬────────────┐   ┌─────────────────────┬───────────...
-│ Thread 0                    │ Values          │   │ Thread 1                 │ Values     │   │ Thread 2            │ Values    ...
-├─────────────────────────────┼─────────────────┤   ├──────────────────────────┼────────────┤   ├─────────────────────┼───────────...
-│ zero                        │ 2172478195      │   │ zero                     │ 259862017  │   │ zero                │ 1978091954...
-│ dbg_reserved                │ 3150427296      │   │ dbg_reserved             │ 1506769733 │   │ dbg_reserved        │ 2599953796...
-│ dbg_msg                     │ 2179204162      │   │ dbg_msg                  │ 512103610  │   │ dbg_msg             │ 237360030 ...
-│ dbg_ckid                    │ 4147448567      │   │ dbg_ckid                 │ 179517572  │   │ dbg_ckid            │ 187464892 ...
-│ operand_base_addr           │ 0x30f6e0f3      │   │ perf_dbus_cntl           │ 2791923892 │   │ dest_offset_lo      │ 182908691 ...
-│ operand_offset_addr         │ 0x4e0f031a      │   │ perf_mem_dump_cntl_clear │ 47099912   │   │ gpr_5               │ 3730085926...
-│ gpr_6                       │ 2039059408      │   │ perf_mem_dump_cntl_set   │ 1896888352 │   │ gpr_6               │ 2080692587...
-│ gpr_7                       │ 4134179461      │   │ perf_cnt_start           │ 2283721626 │   │ gpr_7               │ 3862903435...
-│ zero_0                      │ 2634131137      │   │ perf_cnt_stop            │ 725699935  │   │ dest_offset_hi      │ 3804441380...
-│ zero_1                      │ 1582676488      │   │ perf_epoch_base_addr     │ 0xa8324e0a │   │ gpr_9               │ 1561862670...
-│ zero_2                      │ 2731167618      │   │ perf_epoch_offset        │ 1614894416 │   │ gpr_10              │ 1618104515...
-│ zero_3                      │ 1136358986      │   │ gpr_11                   │ 743088358  │   │ gpr_11              │ 3675046608...
-│ tmp0                        │ 1961689736      │   │ gpr_12                   │ 227705667  │   │ output_addr         │ 0xee996a1e...
-│ tmp1                        │ 1294411776      │   │ gpr_13                   │ 3824158914 │   │ gpr_13              │ 2617775253...
-│ tile_size                   │ 667697226       │   │ gpr_14                   │ 4218024018 │   │ gpr_14              │ 1623914065...
+┌─────────────────────────────┬──────────────┐   ┌──────────────────────────┬────────────┐   ┌─────────────────────┬──────────────...
+│ Thread 0                    │ Values       │   │ Thread 1                 │ Values     │   │ Thread 2            │ Values       ...
+├─────────────────────────────┼──────────────┤   ├──────────────────────────┼────────────┤   ├─────────────────────┼──────────────...
+│ zero                        │ 285164287    │   │ zero                     │ 3880950223 │   │ zero                │ 2897188730   ...
+│ dbg_reserved                │ 3414040523   │   │ dbg_reserved             │ 4044108104 │   │ dbg_reserved        │ 2164203974   ...
+│ dbg_msg                     │ 4753929      │   │ dbg_msg                  │ 163997888  │   │ dbg_msg             │ 1158676034   ...
+│ dbg_ckid                    │ 1482752176   │   │ dbg_ckid                 │ 3362107486 │   │ dbg_ckid            │ 538508278    ...
+│ operand_base_addr           │ 0x7c08de32   │   │ perf_dbus_cntl           │ 2203916353 │   │ dest_offset_lo      │ 2598585506   ...
+│ operand_offset_addr         │ 0xa37e0823   │   │ perf_mem_dump_cntl_clear │ 556570113  │   │ gpr_5               │ 1497579271   ...
+│ gpr_6                       │ 3745942921   │   │ perf_mem_dump_cntl_set   │ 1407459502 │   │ gpr_6               │ 240942339    ...
+│ gpr_7                       │ 3458294048   │   │ perf_cnt_start           │ 3125546662 │   │ gpr_7               │ 2669755383   ...
+│ zero_0                      │ 1220805684   │   │ perf_cnt_stop            │ 2953036999 │   │ dest_offset_hi      │ 3080291429   ...
+│ zero_1                      │ 537528324    │   │ perf_epoch_base_addr     │ 0xcb7f0bac │   │ gpr_9               │ 2851332583   ...
+│ zero_2                      │ 2336598402   │   │ perf_epoch_offset        │ 2290295791 │   │ gpr_10              │ 1421275645   ...
+│ zero_3                      │ 813354776    │   │ gpr_11                   │ 2454041245 │   │ gpr_11              │ 2368976958   ...
+│ tmp0                        │ 1606902117   │   │ gpr_12                   │ 1783725703 │   │ output_addr         │ 0x8480121c   ...
+│ tmp1                        │ 5833835      │   │ gpr_13                   │ 2735901599 │   │ gpr_13              │ 4077400479   ...
+│ tile_size                   │ 4201271044   │   │ gpr_14                   │ 4067168315 │   │ gpr_14              │ 2046501369   ...
 ...
 ```
 Prints general purpose registers for threads 0 and 1 for current device and core
@@ -1055,24 +1064,24 @@ Output:
 ```
 Tensix registers for location 0,0 on device 0
 GPR
-┌─────────────────────────────┬─────────────────┐   ┌──────────────────────────┬────────────┐
-│ Thread 0                    │ Values          │   │ Thread 1                 │ Values     │
-├─────────────────────────────┼─────────────────┤   ├──────────────────────────┼────────────┤
-│ zero                        │ 2172478195      │   │ zero                     │ 259862017  │
-│ dbg_reserved                │ 3150427296      │   │ dbg_reserved             │ 1506769733 │
-│ dbg_msg                     │ 2179204162      │   │ dbg_msg                  │ 512103610  │
-│ dbg_ckid                    │ 4147448567      │   │ dbg_ckid                 │ 179517572  │
-│ operand_base_addr           │ 0x30f6e0f3      │   │ perf_dbus_cntl           │ 2791923892 │
-│ operand_offset_addr         │ 0x4e0f031a      │   │ perf_mem_dump_cntl_clear │ 47099912   │
-│ gpr_6                       │ 2039059408      │   │ perf_mem_dump_cntl_set   │ 1896888352 │
-│ gpr_7                       │ 4134179461      │   │ perf_cnt_start           │ 2283721626 │
-│ zero_0                      │ 2634131137      │   │ perf_cnt_stop            │ 725699935  │
-│ zero_1                      │ 1582676488      │   │ perf_epoch_base_addr     │ 0xa8324e0a │
-│ zero_2                      │ 2731167618      │   │ perf_epoch_offset        │ 1614894416 │
-│ zero_3                      │ 1136358986      │   │ gpr_11                   │ 743088358  │
-│ tmp0                        │ 1961689736      │   │ gpr_12                   │ 227705667  │
-│ tmp1                        │ 1294411776      │   │ gpr_13                   │ 3824158914 │
-│ tile_size                   │ 667697226       │   │ gpr_14                   │ 4218024018 │
+┌─────────────────────────────┬──────────────┐   ┌──────────────────────────┬────────────┐
+│ Thread 0                    │ Values       │   │ Thread 1                 │ Values     │
+├─────────────────────────────┼──────────────┤   ├──────────────────────────┼────────────┤
+│ zero                        │ 285164287    │   │ zero                     │ 3880950223 │
+│ dbg_reserved                │ 3414040523   │   │ dbg_reserved             │ 4044108104 │
+│ dbg_msg                     │ 4753929      │   │ dbg_msg                  │ 163997888  │
+│ dbg_ckid                    │ 1482752176   │   │ dbg_ckid                 │ 3362107486 │
+│ operand_base_addr           │ 0x7c08de32   │   │ perf_dbus_cntl           │ 2203916353 │
+│ operand_offset_addr         │ 0xa37e0823   │   │ perf_mem_dump_cntl_clear │ 556570113  │
+│ gpr_6                       │ 3745942921   │   │ perf_mem_dump_cntl_set   │ 1407459502 │
+│ gpr_7                       │ 3458294048   │   │ perf_cnt_start           │ 3125546662 │
+│ zero_0                      │ 1220805684   │   │ perf_cnt_stop            │ 2953036999 │
+│ zero_1                      │ 537528324    │   │ perf_epoch_base_addr     │ 0xcb7f0bac │
+│ zero_2                      │ 2336598402   │   │ perf_epoch_offset        │ 2290295791 │
+│ zero_3                      │ 813354776    │   │ gpr_11                   │ 2454041245 │
+│ tmp0                        │ 1606902117   │   │ gpr_12                   │ 1783725703 │
+│ tmp1                        │ 5833835      │   │ gpr_13                   │ 2735901599 │
+│ tile_size                   │ 4201271044   │   │ gpr_14                   │ 4067168315 │
 ...
 ```
 Prints RWC group for current device and core
@@ -1086,20 +1095,20 @@ RWCs
 ┌─────────────────┬──────────┐   ┌─────────────────┬──────────┐   ┌─────────────────────┬──────────┐
 │ COORDINATES_A   │ Values   │   │ COORDINATES_B   │ Values   │   │ FIDELITY_PHASE      │ Values   │
 ├─────────────────┼──────────┤   ├─────────────────┼──────────┤   ├─────────────────────┼──────────┤
-│ rwc0_dst_cr     │ 0x0      │   │ rwc2_dst_cr     │ 0x0      │   │ rwc2_fidelity_phase │ 0x0      │
-│ rwc0_dst        │ 0x0      │   │ rwc2_dst        │ 0x0      │   │ rwc1_fidelity_phase │ 0x3      │
-│ rwc2_srcb_cr    │ 0x0      │   │ rwc1_dst_cr     │ 0x0      │   │ rwc0_fidelity_phase │ 0x2      │
-│ rwc2_srcb       │ 0x0      │   │ rwc1_dst        │ 0x0      │   └─────────────────────┴──────────┘
-│ rwc1_srcb_cr    │ 0x0      │   └─────────────────┴──────────┘
-│ rwc1_srcb       │ 0x0      │
-│ rwc0_srcb_cr    │ 0x0      │
-│ rwc0_srcb       │ 0x0      │
-│ rwc2_srca_cr    │ 0x0      │
-│ rwc2_srca       │ 0x0      │
-│ rwc1_srca_cr    │ 0x0      │
-│ rwc1_srca       │ 0x0      │
-│ rwc0_srca_cr    │ 0x0      │
-│ rwc0_srca       │ 0x0      │
+│ rwc0_dst_cr     │ 0xf      │   │ rwc2_dst_cr     │ 0xf      │   │ rwc2_fidelity_phase │ 0x0      │
+│ rwc0_dst        │ 0xf      │   │ rwc2_dst        │ 0xf      │   │ rwc1_fidelity_phase │ 0x2      │
+│ rwc2_srcb_cr    │ 0xf      │   │ rwc1_dst_cr     │ 0xf      │   │ rwc0_fidelity_phase │ 0x0      │
+│ rwc2_srcb       │ 0xf      │   │ rwc1_dst        │ 0xf      │   └─────────────────────┴──────────┘
+│ rwc1_srcb_cr    │ 0xf      │   └─────────────────┴──────────┘
+│ rwc1_srcb       │ 0xf      │
+│ rwc0_srcb_cr    │ 0xf      │
+│ rwc0_srcb       │ 0xf      │
+│ rwc2_srca_cr    │ 0xf      │
+│ rwc2_srca       │ 0xf      │
+│ rwc1_srca_cr    │ 0xf      │
+│ rwc1_srca       │ 0xf      │
+│ rwc0_srca_cr    │ 0xf      │
+│ rwc0_srca       │ 0xf      │
 └─────────────────┴──────────┘
 ```
 Prints RWC group for current device and core using L1 address 0x0
@@ -1113,20 +1122,20 @@ RWCs
 ┌─────────────────┬──────────┐   ┌─────────────────┬──────────┐   ┌─────────────────────┬──────────┐
 │ COORDINATES_A   │ Values   │   │ COORDINATES_B   │ Values   │   │ FIDELITY_PHASE      │ Values   │
 ├─────────────────┼──────────┤   ├─────────────────┼──────────┤   ├─────────────────────┼──────────┤
-│ rwc0_dst_cr     │ 0x0      │   │ rwc2_dst_cr     │ 0x0      │   │ rwc2_fidelity_phase │ 0x0      │
-│ rwc0_dst        │ 0x0      │   │ rwc2_dst        │ 0x0      │   │ rwc1_fidelity_phase │ 0x3      │
-│ rwc2_srcb_cr    │ 0x0      │   │ rwc1_dst_cr     │ 0x0      │   │ rwc0_fidelity_phase │ 0x2      │
-│ rwc2_srcb       │ 0x0      │   │ rwc1_dst        │ 0x0      │   └─────────────────────┴──────────┘
-│ rwc1_srcb_cr    │ 0x0      │   └─────────────────┴──────────┘
-│ rwc1_srcb       │ 0x0      │
-│ rwc0_srcb_cr    │ 0x0      │
-│ rwc0_srcb       │ 0x0      │
-│ rwc2_srca_cr    │ 0x0      │
-│ rwc2_srca       │ 0x0      │
-│ rwc1_srca_cr    │ 0x0      │
-│ rwc1_srca       │ 0x0      │
-│ rwc0_srca_cr    │ 0x0      │
-│ rwc0_srca       │ 0x0      │
+│ rwc0_dst_cr     │ 0xf      │   │ rwc2_dst_cr     │ 0xf      │   │ rwc2_fidelity_phase │ 0x0      │
+│ rwc0_dst        │ 0xf      │   │ rwc2_dst        │ 0xf      │   │ rwc1_fidelity_phase │ 0x2      │
+│ rwc2_srcb_cr    │ 0xf      │   │ rwc1_dst_cr     │ 0xf      │   │ rwc0_fidelity_phase │ 0x0      │
+│ rwc2_srcb       │ 0xf      │   │ rwc1_dst        │ 0xf      │   └─────────────────────┴──────────┘
+│ rwc1_srcb_cr    │ 0xf      │   └─────────────────┴──────────┘
+│ rwc1_srcb       │ 0xf      │
+│ rwc0_srcb_cr    │ 0xf      │
+│ rwc0_srcb       │ 0xf      │
+│ rwc2_srca_cr    │ 0xf      │
+│ rwc2_srca       │ 0xf      │
+│ rwc1_srca_cr    │ 0xf      │
+│ rwc1_srca       │ 0xf      │
+│ rwc0_srca_cr    │ 0xf      │
+│ rwc0_srca       │ 0xf      │
 └─────────────────┴──────────┘
 ```
 Prints ADC group for current device and core
@@ -1273,25 +1282,25 @@ gpr
 Output:
 ```
 RISC-V registers for location 0,0 on device 0
-Register     brisc       trisc0      trisc1      trisc2      ncrisc
------------  ----------  ----------  ----------  ----------  --------
-0 - zero     0x00000000  0x00000000  0x00000000  0x00000000
-1 - ra       0x00000188  0x0001e18c  0x0003c18c  0x0005a18c
-2 - sp       0xffb00ff0  0xffb007f0  0xffb007f0  0xffb007f0
-3 - gp       0x0000c800  0x0002a800  0x00048800  0x00066800
-4 - tp       0x00016000  0x00034000  0x00052000  0x00070000
-5 - t0       0x00000000  0x00000000  0x00000000  0x00000000
-6 - t1       0x00000000  0x00000000  0x00000000  0x00000000
-7 - t2       0x00000000  0x00000000  0x00000000  0x00000000
-8 - s0 / fp  0x00000000  0x00000000  0x00000000  0x00000000
-9 - s1       0x00000000  0x00000000  0x00000000  0x00000000
-10 - a0      0xffb00fe0  0xffb007e0  0xffb007e0  0xffb007e0
-11 - a1      0x00000104  0x00000048  0x00000048  0x00000048
-12 - a2      0x00000100  0x00000044  0x00000044  0x00000044
-13 - a3      0x00000001  0x00000000  0x00000000  0x00000000
-14 - a4      0x00000000  0x00000000  0x00000000  0x00000000
-15 - a5      0x00000000  0x00000000  0x00000000  0x00000000
-16 - a6      0x00014000  0x00032000  0x00050000  0x0006e000
+Register     brisc       trisc0    trisc1    trisc2    ncrisc
+-----------  ----------  --------  --------  --------  --------
+0 - zero     0x00000000
+1 - ra       0x00000188
+2 - sp       0xffb00ff0
+3 - gp       0x0000c800
+4 - tp       0x00016000
+5 - t0       0x00000000
+6 - t1       0x00000000
+7 - t2       0x00000000
+8 - s0 / fp  0x00000000
+9 - s1       0x00000000
+10 - a0      0xffb00fe0
+11 - a1      0x00000104
+12 - a2      0x00000100
+13 - a3      0x00000001
+14 - a4      0x00000000
+15 - a5      0x00000000
+16 - a6      0x00014000
 ...
 ```
 Command:
@@ -1301,13 +1310,13 @@ gpr ra,sp,pc
 Output:
 ```
 RISC-V registers for location 0,0 on device 0
-Register    brisc       trisc0      trisc1      trisc2      ncrisc
-----------  ----------  ----------  ----------  ----------  --------
-1 - ra      0x00000188  0x0001e18c  0x0003c18c  0x0005a18c
-2 - sp      0xffb00ff0  0xffb007f0  0xffb007f0  0xffb007f0
-32 - pc     0x00000188  0x0001e18c  0x0003c18c  0x0005a18c
-Soft reset  False       False       False       False       False
-Halted      False       False       False       False       ?
+Register    brisc       trisc0    trisc1    trisc2    ncrisc
+----------  ----------  --------  --------  --------  --------
+1 - ra      0x00000188
+2 - sp      0xffb00ff0
+32 - pc     0x00000188
+Soft reset  False       True      True      True      True
+Halted      False       -         -         -         -
 ```
 
 
@@ -1529,19 +1538,19 @@ noc status -d 0 -l 0,0
 ```
 Output:
 ```
-==== Device 0 - Location: 1-1
+==== Device 0 - Location: 1-2
 NOC0 Status Registers
               Transaction Counters (Sent)                              Transaction Counters (Received)
 ╭────────────────────────────┬────────────┬────────────╮ ╭────────────────────────────────┬────────────┬────────────╮
 │ Name                       │ Address    │ Value      │ │ Name                           │ Address    │ Value      │
 ├────────────────────────────┼────────────┼────────────┤ ├────────────────────────────────┼────────────┼────────────┤
-│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x0000003c │
-│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x00004427 │
-│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x00004580 │
-│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x00004427 │
-│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x0000003d │
+│ write acks received        │ 0xffb20204 │ 0x00000000 │ │ write acks sent                │ 0xffb202c4 │ 0x0000001b │
+│ read resps received        │ 0xffb20208 │ 0x00000000 │ │ read resps sent                │ 0xffb202c8 │ 0x00000007 │
+│ read words received        │ 0xffb2020c │ 0x00000000 │ │ read words sent                │ 0xffb202cc │ 0x00000007 │
+│ read reqs sent             │ 0xffb20214 │ 0x00000000 │ │ read reqs received             │ 0xffb202d4 │ 0x00000007 │
+│ nonposted write words sent │ 0xffb20220 │ 0x00000000 │ │ nonposted write words received │ 0xffb202e0 │ 0x0000001b │
 │ posted write words sent    │ 0xffb20224 │ 0x00000000 │ │ posted write words received    │ 0xffb202e4 │ 0x00000000 │
-│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x0000003c │
+│ nonposted write reqs sent  │ 0xffb20228 │ 0x00000000 │ │ nonposted write reqs received  │ 0xffb202e8 │ 0x0000001b │
 │ posted write reqs sent     │ 0xffb2022c │ 0x00000000 │ │ posted write reqs received     │ 0xffb202ec │ 0x00000000 │
 ╰────────────────────────────┴────────────┴────────────╯ ╰────────────────────────────────┴────────────┴────────────╯
 
@@ -1557,7 +1566,7 @@ noc status -s
 ```
 Output:
 ```
-==== Device 0 - Location: 1-1
+==== Device 0 - Location: 1-2
 NOC0 Status Registers
               Transaction Counters (Sent)
 
@@ -1573,10 +1582,10 @@ NOC0 Status Registers
 
               Transaction Counters (Received)
 
-  write acks sent                  0xffb202c4   0x0000003c
-  read resps sent                  0xffb202c8   0x00004427
-  read words sent                  0xffb202cc   0x00004580
-  read reqs received               0xffb202d4   0x00004427
+  write acks sent                  0xffb202c4   0x0000001b
+  read resps sent                  0xffb202c8   0x00000007
+  read words sent                  0xffb202cc   0x00000007
+  read reqs received               0xffb202d4   0x00000007
 ...
 ```
 Prints a specific register value
@@ -1585,7 +1594,7 @@ noc register NIU_MST_RD_REQ_SENT
 ```
 Output:
 ```
-==== Device 0 - Location: 1-1
+==== Device 0 - Location: 1-2
                  NOC0 Registers
 ╭─────────────────────┬────────────┬────────────╮
 │ Name                │ Address    │ Value      │
@@ -1607,7 +1616,7 @@ noc register NIU_MST_RD_REQ_SENT,NIU_MST_RD_DATA_WORD_RECEIVED
 ```
 Output:
 ```
-==== Device 0 - Location: 1-1
+==== Device 0 - Location: 1-2
                       NOC0 Registers
 ╭───────────────────────────────┬────────────┬────────────╮
 │ Name                          │ Address    │ Value      │
@@ -1631,7 +1640,7 @@ noc register --search *_RD* --max all
 ```
 Output:
 ```
-==== Device 0 - Location: 1-1
+==== Device 0 - Location: 1-2
                       NOC0 Registers
 ╭───────────────────────────────┬────────────┬────────────╮
 │ Name                          │ Address    │ Value      │
@@ -1640,9 +1649,9 @@ Output:
 │ NIU_MST_RD_DATA_WORD_RECEIVED │ 0xffb2020c │ 0x00000000 │
 │ NIU_MST_RD_REQ_SENT           │ 0xffb20214 │ 0x00000000 │
 │ NIU_MST_RD_REQ_STARTED        │ 0xffb20238 │ 0x00000000 │
-│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00004427 │
-│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x00004580 │
-│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00004427 │
+│ NIU_SLV_RD_RESP_SENT          │ 0xffb202c8 │ 0x00000007 │
+│ NIU_SLV_RD_DATA_WORD_SENT     │ 0xffb202cc │ 0x00000007 │
+│ NIU_SLV_RD_REQ_RECEIVED       │ 0xffb202d4 │ 0x00000007 │
 ╰───────────────────────────────┴────────────┴────────────╯
 
                       NOC1 Registers
@@ -1670,7 +1679,7 @@ Output:
 ### Usage
 
 ```
-perf-counters list
+perf-counters list [-d <device>] [-l <loc>] [--neo <neo-id>]
 perf-counters reset [--block=<name>] [-d <device>] [-l <loc>] [--neo <neo-id>]
 perf-counters start [--block=<name>] [-d <device>] [-l <loc>] [--neo <neo-id>]
 perf-counters stop [--block=<name>] [-d <device>] [-l <loc>] [--neo <neo-id>]
@@ -1700,7 +1709,7 @@ perf-counters list
 Output:
 ```
 
-=== Perf Counter Blocks (Tensix functional workers) ===
+=== Perf Counter Blocks: chip=0 core=1-2 (0,0) ===
 
             FPU                         INSTRN_THREAD                     TDMA_UNPACK                      TDMA_PACK
 ╭─────┬────────────────────╮ ╭─────┬───────────────────────────╮ ╭─────┬─────────────────────╮ ╭─────┬──────────────────────────╮
@@ -1727,7 +1736,7 @@ perf-counters reset -l 0,0
 ```
 Output:
 ```
-chip=0  core=1-1 (0,0): reset all blocks
+chip=0  core=1-2 (0,0): reset all blocks
 ```
 Command:
 ```
@@ -1735,7 +1744,7 @@ perf-counters start
 ```
 Output:
 ```
-chip=0  core=1-1 (0,0): start all blocks
+chip=0  core=1-2 (0,0): start all blocks
 ```
 Command:
 ```
@@ -1744,25 +1753,25 @@ perf-counters read
 Output:
 ```
 
-=== Perf Counter Read: chip=0 core=1-1 (0,0) ===
+=== Perf Counter Read: chip=0 core=1-2 (0,0) ===
 
-                           FPU                                                            INSTRN_THREAD                           ...
-╭─────┬────────────────────┬────────────────┬────────────╮      ╭─────┬───────────────────────────┬────────────────┬────────────╮ ...
-│ ID  │ Counter            │ Value          │ ref_cnt    │      │ ID  │ Counter                   │ Value          │ ref_cnt    │ ...
-├─────┼────────────────────┼────────────────┼────────────┤      ├─────┼───────────────────────────┼────────────────┼────────────┤ ...
-│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 2143474646 │      │ 0   │ cfg_instrn[0]             │ 0 (0x00000000) │ 2143543205 │ ...
-│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 2143501624 │      │ 1   │ cfg_instrn[1]             │ 0 (0x00000000) │ 2143567757 │ ...
-│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 2143527497 │      │ 2   │ cfg_instrn[2]             │ 0 (0x00000000) │ 2143592306 │ ...
-╰─────┴────────────────────┴────────────────┴────────────╯      │ 4   │ sync_instrn[0]            │ 0 (0x00000000) │ 2143616835 │ ...
-                                                                │ 5   │ sync_instrn[1]            │ 0 (0x00000000) │ 2143640869 │ ...
-                                                                │ 6   │ sync_instrn[2]            │ 0 (0x00000000) │ 2143665572 │ ...
-                                                                │ 8   │ thcon_instrn[0]           │ 0 (0x00000000) │ 2143689835 │ ...
-                                                                │ 9   │ thcon_instrn[1]           │ 0 (0x00000000) │ 2143713941 │ ...
-                                                                │ 10  │ thcon_instrn[2]           │ 0 (0x00000000) │ 2143738356 │ ...
-                                                                │ 12  │ xsrch_instrn[0]           │ 0 (0x00000000) │ 2143762569 │ ...
-                                                                │ 13  │ xsrch_instrn[1]           │ 0 (0x00000000) │ 2143786729 │ ...
-                                                                │ 14  │ xsrch_instrn[2]           │ 0 (0x00000000) │ 2143810767 │ ...
-                                                                │ 16  │ instissue_instrn[0]       │ 0 (0x00000000) │ 2143834800 │ ...
+                           FPU                                                      INSTRN_THREAD
+╭─────┬────────────────────┬────────────────┬───────────╮  ╭─────┬───────────────────────────┬────────────────┬───────────╮
+│ ID  │ Counter            │ Value          │ ref_cnt   │  │ ID  │ Counter                   │ Value          │ ref_cnt   │
+├─────┼────────────────────┼────────────────┼───────────┤  ├─────┼───────────────────────────┼────────────────┼───────────┤
+│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 177440170 │  │ 0   │ cfg_instrn[0]             │ 0 (0x00000000) │ 177511664 │
+│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 177469344 │  │ 1   │ cfg_instrn[1]             │ 0 (0x00000000) │ 177537840 │
+│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 177496208 │  │ 2   │ cfg_instrn[2]             │ 0 (0x00000000) │ 177563181 │
+╰─────┴────────────────────┴────────────────┴───────────╯  │ 4   │ sync_instrn[0]            │ 0 (0x00000000) │ 177588605 │
+                                                           │ 5   │ sync_instrn[1]            │ 0 (0x00000000) │ 177613797 │
+                                                           │ 6   │ sync_instrn[2]            │ 0 (0x00000000) │ 177638654 │
+                                                           │ 8   │ thcon_instrn[0]           │ 0 (0x00000000) │ 177663878 │
+                                                           │ 9   │ thcon_instrn[1]           │ 0 (0x00000000) │ 177688953 │
+                                                           │ 10  │ thcon_instrn[2]           │ 0 (0x00000000) │ 177713908 │
+                                                           │ 12  │ xsrch_instrn[0]           │ 0 (0x00000000) │ 177738740 │
+                                                           │ 13  │ xsrch_instrn[1]           │ 0 (0x00000000) │ 177763876 │
+                                                           │ 14  │ xsrch_instrn[2]           │ 0 (0x00000000) │ 177789054 │
+                                                           │ 16  │ instissue_instrn[0]       │ 0 (0x00000000) │ 177814060 │
 ...
 ```
 Command:
@@ -1772,7 +1781,7 @@ perf-counters read --snapshot --active
 Output:
 ```
 
-=== Perf Counter Read: chip=0 core=1-1 (0,0) ===
+=== Perf Counter Read: chip=0 core=1-2 (0,0) ===
 
   (no counters changed)
 ```
@@ -1783,16 +1792,16 @@ perf-counters read --block=FPU
 Output:
 ```
 
-=== Perf Counter Read: chip=0 core=1-1 (0,0) ===
+=== Perf Counter Read: chip=0 core=1-2 (0,0) ===
 
                            FPU
-╭─────┬────────────────────┬────────────────┬────────────╮
-│ ID  │ Counter            │ Value          │ ref_cnt    │
-├─────┼────────────────────┼────────────────┼────────────┤
-│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 2573229152 │
-│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 2573253861 │
-│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 2573278307 │
-╰─────┴────────────────────┴────────────────┴────────────╯
+╭─────┬────────────────────┬────────────────┬───────────╮
+│ ID  │ Counter            │ Value          │ ref_cnt   │
+├─────┼────────────────────┼────────────────┼───────────┤
+│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 609043341 │
+│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 609071814 │
+│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 609099116 │
+╰─────┴────────────────────┴────────────────┴───────────╯
 
 ```
 Command:
@@ -1853,7 +1862,7 @@ read 0x0 1
 ```
 Output:
 ```
-Device 0 [0x26183216c] | Location 1-1 (0,0) | Block l1 : 0x00000000 (1 bytes)
+Device 0 [0x261832091] | Location 1-2 (0,0) | Block l1 : 0x00000000 (1 bytes)
 0x00000000:  93
 ```
 Read 16 words from address 0
@@ -1862,7 +1871,7 @@ read 0x0 16
 ```
 Output:
 ```
-Device 0 [0x26183216c] | Location 1-1 (0,0) | Block l1 : 0x00000000 (16 bytes)
+Device 0 [0x261832091] | Location 1-2 (0,0) | Block l1 : 0x00000000 (16 bytes)
 0x00000000:  93  02  00  00  13  03  00  00  63  80  62  0a  b7  12  b1  ff
 ```
 Prints 32 bytes in i8 format
@@ -1871,7 +1880,7 @@ read 0x0 32 --format i8
 ```
 Output:
 ```
-Device 0 [0x26183216c] | Location 1-1 (0,0) | Block l1 : 0x00000000 (32 bytes)
+Device 0 [0x261832091] | Location 1-2 (0,0) | Block l1 : 0x00000000 (32 bytes)
 0x00000000:  147  2  0  0  19  3   0   0  99  128  98  10  183  18  177  255
 0x00000010:  19   3  0  0  19  83  67  0  35  160  98  0   183  18  177  255
 ```
@@ -1882,6 +1891,15 @@ read 0xFFB0000 -r brisc 16
 Read trisc0 private memory of NEO 1 (Quasar)
 ```
 read 0x0 4 -r trisc0 --neo 1
+```
+Read 16 words from address 0, 4 bytes at a time
+```
+read 0x0 16 --register-access
+```
+Output:
+```
+Device 0 [0x261832091] | Location 1-2 (0,0) | Block l1 : 0x00000000 (16 bytes)
+0x00000000:  93  02  00  00  13  03  00  00  63  80  62  0a  b7  12  b1  ff
 ```
 
 
@@ -1939,13 +1957,6 @@ Halt brisc
 ```
 riscv halt
 ```
-Output:
-```
-Halting brisc 0,0 [0]
-Halting trisc0 0,0 [0]
-Halting trisc1 0,0 [0]
-Halting trisc2 0,0 [0]
-```
 Halt trisc0 of NEO
 ```
 riscv halt --neo 1 -r trisc0
@@ -1957,31 +1968,17 @@ riscv status
 Output:
 ```
   HALTED PC=0x00000188 - brisc 0,0 [0]
-  HALTED PC=0x0001e18c - trisc0 0,0 [0]
-  HALTED PC=0x0003c18c - trisc1 0,0 [0]
-  HALTED PC=0x0005a18c - trisc2 0,0 [0]
+  IN RESET - trisc0 0,0 [0]
+  IN RESET - trisc1 0,0 [0]
+  IN RESET - trisc2 0,0 [0]
 ```
 Step
 ```
 riscv step
 ```
-Output:
-```
-Stepping brisc 0,0 [0]
-Stepping trisc0 0,0 [0]
-Stepping trisc1 0,0 [0]
-Stepping trisc2 0,0 [0]
-```
 Continue
 ```
 riscv cont
-```
-Output:
-```
-Continuing brisc 0,0 [0]
-Continuing trisc0 0,0 [0]
-Continuing trisc1 0,0 [0]
-Continuing trisc2 0,0 [0]
 ```
 Write a word to address 0
 ```
@@ -1995,27 +1992,9 @@ Write a word to register 1
 ```
 riscv wreg 1 0xabcd
 ```
-Output:
-```
-Writing to register 1 on brisc 0,0 [0]
-Writing to register 1 on trisc0 0,0 [0]
-Writing to register 1 on trisc1 0,0 [0]
-Writing to register 1 on trisc2 0,0 [0]
-```
 Read a word from register 1
 ```
 riscv rreg 1
-```
-Output:
-```
-Reading from register 1 on brisc 0,0 [0]
-  0x03c00000
-Reading from register 1 on trisc0 0,0 [0]
-  0xffb007f0
-Reading from register 1 on trisc1 0,0 [0]
-  0xffb007f0
-Reading from register 1 on trisc2 0,0 [0]
-  0xffb007f0
 ```
 Set breakpoint
 ```
@@ -2160,7 +2139,7 @@ search 0xDEADBEEF
 Output:
 ```
 Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
-Device 0 [0x26183216c] | Location 1-1 (0,0): pattern not found.
+Device 0 [0x261832091] | Location 1-2 (0,0): pattern not found.
 ```
 Search all accessible blocks
 ```
@@ -2169,7 +2148,7 @@ search 0xDEADBEEF --end all
 Output:
 ```
 Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
-Device 0 [0x26183216c] | Location 1-1 (0,0): pattern not found.
+Device 0 [0x261832091] | Location 1-2 (0,0): pattern not found.
 ```
 Search all blocks from 0x10000 onwards
 ```
@@ -2178,7 +2157,7 @@ search 0xDEADBEEF --start 0x10000 --end all
 Output:
 ```
 Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
-Device 0 [0x26183216c] | Location 1-1 (0,0): pattern not found.
+Device 0 [0x261832091] | Location 1-2 (0,0): pattern not found.
 ```
 Search from address 0 to 0xFFFF
 ```
@@ -2187,8 +2166,7 @@ search 0x1234 --start 0 --end 0xFFFF
 Output:
 ```
 Searching for pattern [0x34 0x12] (2 byte(s))
-Device 0 [0x26183216c] | Location 1-1 (0,0): 1 match(es) found:
-  0x00005002  (l1)
+Device 0 [0x261832091] | Location 1-2 (0,0): pattern not found.
 ```
 Search for two 2-byte LE values (0x34 0x12 0x78 0x56)
 ```
@@ -2197,7 +2175,7 @@ search 0x1234 0x5678 --width 2
 Output:
 ```
 Searching for pattern [0x34 0x12 0x78 0x56] (4 byte(s))
-Device 0 [0x26183216c] | Location 1-1 (0,0): pattern not found.
+Device 0 [0x261832091] | Location 1-2 (0,0): pattern not found.
 ```
 Search using 64-byte reads
 ```
@@ -2206,7 +2184,7 @@ search 0xDEADBEEF --read-size 64
 Output:
 ```
 Searching for pattern [0xef 0xbe 0xad 0xde] (4 byte(s))
-Device 0 [0x26183216c] | Location 1-1 (0,0): pattern not found.
+Device 0 [0x261832091] | Location 1-2 (0,0): pattern not found.
 ```
 Search with safety checks bypassed
 ```
@@ -2215,8 +2193,7 @@ search 0xAB --unsafe
 Output:
 ```
 Searching for pattern [0xab] (1 byte(s))
-Device 0 [0x26183216c] | Location 1-1 (0,0): 1 match(es) found:
-  0x000016d7  (l1)
+Device 0 [0x261832091] | Location 1-2 (0,0): pattern not found.
 ```
 Search brisc private memory (4-byte reads by default)
 ```
@@ -2225,8 +2202,7 @@ search 0xBEEF -r brisc
 Output:
 ```
 Searching for pattern [0xef 0xbe] (2 byte(s))
-Device 0 [0x26183216c] | Location 1-1 (0,0): 1 match(es) found:
-  0x0000ffe5  (l1)
+Device 0 [0x261832091] | Location 1-2 (0,0): pattern not found.
 ```
 Search brisc private memory with 256-byte reads
 ```
@@ -2235,8 +2211,7 @@ search 0xBEEF -r brisc --read-size 256
 Output:
 ```
 Searching for pattern [0xef 0xbe] (2 byte(s))
-Device 0 [0x26183216c] | Location 1-1 (0,0): 1 match(es) found:
-  0x0000ffe5  (l1)
+Device 0 [0x261832091] | Location 1-2 (0,0): pattern not found.
 ```
 
 
@@ -2335,7 +2310,7 @@ reg dbg(0x54)
 Output:
 ```
 Value of register DebugRegisterDescription(base_address=DeviceAddress(private_address=4289798144, noc_address=4289798144, bar0_add...
-537329680
+537329674
 ```
 Prints names of first 10 registers that start with PACK
 ```
@@ -2420,7 +2395,7 @@ reg dbg(0x54) --type INT_VALUE
 Output:
 ```
 Value of register DebugRegisterDescription(base_address=DeviceAddress(private_address=4289798144, noc_address=4289798144, bar0_add...
-537329680
+537329674
 ```
 Writes 18 to debug register with address 0x54
 ```
@@ -2522,7 +2497,7 @@ write 0x0 0xdeadbeef
 ```
 Output:
 ```
-Device 0 [0x26183216c] | Location 1-1 (0,0) | Block l1 : 0x00000000 (4 bytes written)
+Device 0 [0x261832091] | Location 1-2 (0,0) | Block l1 : 0x00000000 (4 bytes written)
 ```
 Write 3 bytes to address 0
 ```
@@ -2530,7 +2505,7 @@ write 0x0 0x1 0x2 0x3
 ```
 Output:
 ```
-Device 0 [0x26183216c] | Location 1-1 (0,0) | Block l1 : 0x00000000 (3 bytes written)
+Device 0 [0x261832091] | Location 1-2 (0,0) | Block l1 : 0x00000000 (3 bytes written)
 ```
 Write 4 bytes to address 0
 ```
@@ -2538,7 +2513,7 @@ write 0x0 0x12 0x34 --width 2
 ```
 Output:
 ```
-Device 0 [0x26183216c] | Location 1-1 (0,0) | Block l1 : 0x00000000 (4 bytes written)
+Device 0 [0x261832091] | Location 1-2 (0,0) | Block l1 : 0x00000000 (4 bytes written)
 ```
 Write the same word to 4 consecutive addresses
 ```
@@ -2546,7 +2521,7 @@ write 0x0 0xdeadbeef --repeat 4
 ```
 Output:
 ```
-Device 0 [0x26183216c] | Location 1-1 (0,0) | Block l1 : 0x00000000 (16 bytes written)
+Device 0 [0x261832091] | Location 1-2 (0,0) | Block l1 : 0x00000000 (16 bytes written)
 ```
 Write 1 word to brisc private data memory
 ```
@@ -2555,6 +2530,14 @@ write 0xFFB0000 0xdeadbeef -r brisc
 Write to trisc0 private memory of NEO 1
 ```
 write 0x0 0xdeadbeef -r trisc0 --neo 1
+```
+Write 1 word to address 0, 4 bytes at a time
+```
+write 0x0 0xdeadbeef --register-access
+```
+Output:
+```
+Device 0 [0x261832091] | Location 1-2 (0,0) | Block l1 : 0x00000000 (4 bytes written)
 ```
 
 
@@ -2607,7 +2590,7 @@ wxy 0x0 0x1234
 Output:
 ```
 Writing to device 0
-1-1 (0,0) (L1) : 0x00000000 (0) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x00000000 (0) <= 0x00001234 (4660)
 ```
 Current device, explicit noc location 0,0
 ```
@@ -2616,7 +2599,7 @@ wxy 0,0 0x0 0x1234
 Output:
 ```
 Writing to device 0
-1-1 (0,0) (L1) : 0x00000000 (0) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x00000000 (0) <= 0x00001234 (4660)
 ```
 Device 1
 ```
@@ -2634,16 +2617,25 @@ wxy 0,0 0x0 0x1234 --repeat 10
 Output:
 ```
 Writing to device 0
-1-1 (0,0) (L1) : 0x00000000 (0) <= 0x00001234 (4660)
-1-1 (0,0) (L1) : 0x00000004 (4) <= 0x00001234 (4660)
-1-1 (0,0) (L1) : 0x00000008 (8) <= 0x00001234 (4660)
-1-1 (0,0) (L1) : 0x0000000c (12) <= 0x00001234 (4660)
-1-1 (0,0) (L1) : 0x00000010 (16) <= 0x00001234 (4660)
-1-1 (0,0) (L1) : 0x00000014 (20) <= 0x00001234 (4660)
-1-1 (0,0) (L1) : 0x00000018 (24) <= 0x00001234 (4660)
-1-1 (0,0) (L1) : 0x0000001c (28) <= 0x00001234 (4660)
-1-1 (0,0) (L1) : 0x00000020 (32) <= 0x00001234 (4660)
-1-1 (0,0) (L1) : 0x00000024 (36) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x00000000 (0) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x00000004 (4) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x00000008 (8) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x0000000c (12) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x00000010 (16) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x00000014 (20) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x00000018 (24) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x0000001c (28) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x00000020 (32) <= 0x00001234 (4660)
+1-2 (0,0) (L1) : 0x00000024 (36) <= 0x00001234 (4660)
+```
+Write as a register
+```
+wxy 0,0 0x0 0x1234 --register-access
+```
+Output:
+```
+Writing to device 0
+1-2 (0,0) (L1) : 0x00000000 (0) <= 0x00001234 (4660)
 ```
 
 
