@@ -155,6 +155,16 @@ class TensixGeneralPurposeRegisterDescription(RegisterDescription):
         self.offset = self.offset + self.index * 4
 
 
+def get_general_purpose_registers(register_map: dict[str, RegisterDescription]) -> list[dict[str, str]]:
+    register_mapping_by_thread: list[dict[str, str]] = []
+    for register_name, register_desc in register_map.items():
+        if isinstance(register_desc, TensixGeneralPurposeRegisterDescription):
+            while len(register_mapping_by_thread) <= register_desc.thread_id:
+                register_mapping_by_thread.append({})
+            register_mapping_by_thread[register_desc.thread_id][register_name[:-3].lower()] = register_name
+    return register_mapping_by_thread
+
+
 @dataclass
 class NocStatusRegisterDescription(RegisterDescription):
     pass

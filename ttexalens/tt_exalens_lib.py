@@ -21,6 +21,7 @@ from ttexalens.context import Context, NocId
 from ttexalens.elf import read_elf, CallstackEntry, ElfFile, ElfVariable, get_callstack, get_frame_callstack
 from ttexalens.exceptions import TTException
 from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
+from ttexalens.hardware.quasar.tensix_register_description import QuasarTensixRegisterDescription
 from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
 from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
 from ttexalens.memory_access import create_memory_access
@@ -817,6 +818,7 @@ class TensixState:
 def get_tensix_state(
     location: str | OnChipCoordinate,
     l1_address: int | None = None,
+    neo_id: int | None = None,
     device_id: int = 0,
     context: Context | None = None,
 ) -> TensixState:
@@ -824,23 +826,30 @@ def get_tensix_state(
     Gets the tensix state for the given device and location.
     Args:
         location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
-        l1_address (int, optional): L1 address to use for reading debug bus signals atomically. If None, debug bus signals are read unsafely.
+        l1_address (int, optional): L1 address to use for reading debug bus signals atomically. If None, debug bus signals are read unsafely. Not supported on Quasar.
+        neo_id (int | None, optional): NEO ID of the Tensix. Required on Quasar.
         device_id (int, default 0):	ID number of device to read from.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
     Returns:
-        TensixState: Tensix state for the given device and location.
+        TensixState: Tensix state for the given device and location. Register groups that the architecture doesn't have are empty.
     """
     coordinate = convert_coordinate(location, device_id, context)
     device = coordinate.device
     tensix_reg_desc = device.get_tensix_registers_description()
-    assert isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription)
+    assert isinstance(
+        tensix_reg_desc,
+        WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription | QuasarTensixRegisterDescription,
+    )
     tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
     noc_block = coordinate.noc_block
     if noc_block.block_type != "functional_workers":
         raise ValueError(f"Tensix state can only be retrieved from a tensix block. Got {noc_block.block_type} block.")
-    register_store = noc_block.get_register_store()
-    debug_bus = noc_block.debug_bus
-    assert debug_bus is not None, "Debug bus is not available for the given location."
+    register_store = noc_block.get_register_store(neo_id=neo_id)
+    debug_bus = noc_block.get_debug_bus(neo_id)
+    if debug_bus is None:
+        raise TTException("Debug bus is not available for the given location.")
+    if l1_address is not None and not debug_bus.supports_l1_sampling:
+        raise TTException("Reading debug bus groups through L1 is not supported for the given location.")
 
     def _read_register_group(group: list[dict[str, str]]) -> list[dict[str, int]]:
         return [
@@ -860,14 +869,18 @@ def get_tensix_state(
 
     alu = _read_register_group(tensix_reg_desc.alu_config)
     unpack_config = _read_register_group(tensix_reg_desc.unpack_config)
-    unpack_tile_descriptor = _read_register_group(tensix_reg_desc.unpack_tile_descriptor)
     pack_config = _read_register_group(tensix_reg_desc.pack_config)
     relu_config = _read_register_group(tensix_reg_desc.relu_config)
-    pack_dest_rd_ctrl = _read_register_group(tensix_reg_desc.pack_dest_rd_ctrl)
     pack_edge_offset = _read_register_group(tensix_reg_desc.pack_edge_offset)
-    pack_counters = _read_register_group(tensix_reg_desc.pack_counters)
     pack_strides = _read_register_group(tensix_reg_desc.pack_strides)
     gpr = _read_register_group(tensix_reg_desc.general_purpose_registers)
+    unpack_tile_descriptor: list[dict[str, int]] = []
+    pack_dest_rd_ctrl: list[dict[str, int]] = []
+    pack_counters: list[dict[str, int]] = []
+    if isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription):
+        unpack_tile_descriptor = _read_register_group(tensix_reg_desc.unpack_tile_descriptor)
+        pack_dest_rd_ctrl = _read_register_group(tensix_reg_desc.pack_dest_rd_ctrl)
+        pack_counters = _read_register_group(tensix_reg_desc.pack_counters)
     group_reader = lambda signal_group: (
         debug_bus.read_signal_group(signal_group, l1_address)
         if l1_address is not None

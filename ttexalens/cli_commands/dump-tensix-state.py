@@ -38,6 +38,7 @@ from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore, SignalGroupSample
 from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
+from ttexalens.hardware.quasar.tensix_register_description import QuasarTensixRegisterDescription
 from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
@@ -164,7 +165,10 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
     device: Device
     for device in dopt.for_each(CommonCommandOptions.Device, context, ui_state):
         tensix_reg_desc = device.get_tensix_registers_description()
-        assert isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription)
+        assert isinstance(
+            tensix_reg_desc,
+            WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription | QuasarTensixRegisterDescription,
+        )
         tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
         loc: OnChipCoordinate
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
@@ -184,6 +188,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             if debug_bus is None:
                 util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not have a debug bus.")
                 continue
+            if l1_address is not None and not debug_bus.supports_l1_sampling:
+                util.ERROR(f"Device {device.id} at location {loc.to_user_str()} does not support -a <l1-address>.")
+                continue
 
             if group == "alu" or group == "all":
                 print(f"{CLR_GREEN}ALU{CLR_END}")
@@ -191,23 +198,28 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                 print(alu_config_table)
             if group == "unpack" or group == "all":
                 print(f"{CLR_GREEN}UNPACKER{CLR_END}")
-                tile_descriptor_table = config_regs_to_table(
-                    tensix_reg_desc.unpack_tile_descriptor, "TILE DESCRIPTOR", register_store
-                )
-                unpack_config_table = config_regs_to_table(
-                    tensix_reg_desc.unpack_config, "UNPACK CONFIG", register_store
-                )
-                print(put_table_list_side_by_side([unpack_config_table, tile_descriptor_table]))
+                if isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription):
+                    tile_descriptor_table = config_regs_to_table(
+                        tensix_reg_desc.unpack_tile_descriptor, "TILE DESCRIPTOR", register_store
+                    )
+                    unpack_config_table = config_regs_to_table(
+                        tensix_reg_desc.unpack_config, "UNPACK CONFIG", register_store
+                    )
+                    print(put_table_list_side_by_side([unpack_config_table, tile_descriptor_table]))
+                else:
+                    print(config_regs_to_table(tensix_reg_desc.unpack_config, "UNPACK CONFIG", register_store))
             if group == "pack" or group == "all":
                 print(f"{CLR_GREEN}PACKER{CLR_END}")
                 pack_config_table = config_regs_to_table(tensix_reg_desc.pack_config, "PACK CONFIG", register_store)
-                pack_counters_table = config_regs_to_table(tensix_reg_desc.pack_counters, "COUNTERS", register_store)
                 edge_offset_table = config_regs_to_table(
                     tensix_reg_desc.pack_edge_offset, "EDGE OFFSET", register_store
                 )
                 pack_strides_table = config_regs_to_table(tensix_reg_desc.pack_strides, "STRIDES", register_store)
-                if device.is_wormhole() or device.is_blackhole():
-                    relu_config_table = config_regs_to_table(tensix_reg_desc.relu_config, "RELU CONFIG", register_store)
+                relu_config_table = config_regs_to_table(tensix_reg_desc.relu_config, "RELU CONFIG", register_store)
+                if isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription):
+                    pack_counters_table = config_regs_to_table(
+                        tensix_reg_desc.pack_counters, "COUNTERS", register_store
+                    )
                     dest_rd_ctrl_table = config_regs_to_table(
                         tensix_reg_desc.pack_dest_rd_ctrl, "DEST RD CTRL", register_store
                     )
@@ -216,13 +228,15 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     print(put_table_list_side_by_side([edge_offset_table, pack_strides_table]))
                     print(put_table_list_side_by_side([relu_config_table, dest_rd_ctrl_table]))
                 else:
-                    print(pack_counters_table)
                     print(pack_config_table)
                     print(put_table_list_side_by_side([edge_offset_table, pack_strides_table]))
+                    print(relu_config_table)
             if group == "gpr" or group == "all":
                 verbose = dopt.args["-v"]
                 thread_ids = (
-                    [int(thread_id) for thread_id in dopt.args["-t"].split(",")] if dopt.args["-t"] else [0, 1, 2]
+                    [int(thread_id) for thread_id in dopt.args["-t"].split(",")]
+                    if dopt.args["-t"]
+                    else list(range(len(tensix_reg_desc.general_purpose_registers)))
                 )
                 print(f"{CLR_GREEN}GPR{CLR_END}")
                 tables: list[str] = []

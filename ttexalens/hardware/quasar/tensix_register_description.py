@@ -43,3 +43,6 @@ class QuasarTensixRegisterDescription(TensixRegisterDescription):
 
     # GLOBAL CONFIG
     global_config: list[dict[str, str]] = field(default_factory=list)
+
+    # GENERAL PURPOSE REGISTERS
+    general_purpose_registers: list[dict[str, str]] = field(default_factory=list)

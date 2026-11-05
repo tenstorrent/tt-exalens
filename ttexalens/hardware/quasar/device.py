@@ -9,6 +9,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.quasar.dram_block import QuasarDramBlock, QuasarDramBlockSim
+from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import tensix_debug_bus_description
 from ttexalens.hardware.quasar.functional_neo_registers import tensix_registers_descriptions
 from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
 from ttexalens.hardware.quasar.tensix_register_description import QuasarTensixRegisterDescription
@@ -49,4 +50,4 @@ class QuasarDevice(Device):
         return tensix_registers_descriptions
 
     def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
-        raise NotImplementedError("Quasar does not have a Tensix debug bus description yet.")
+        return tensix_debug_bus_description
