@@ -50,6 +50,7 @@ class UmdApi:
         init_jtag=False,
         noc_id: NocId = NocId.NOC1,
         simulation_directory: str | None = None,
+        serve_over_sockets: bool = False,
     ):
         from ttexalens.umd_device import UmdDevice
 
@@ -74,7 +75,7 @@ class UmdApi:
 
         UmdApi.select_noc_id(noc_id)
         if simulation_directory is not None:
-            self._init_simulation(simulation_directory)
+            self._init_simulation(simulation_directory, serve_over_sockets)
         else:
             self.discovery_options = tt_umd.TopologyDiscoveryOptions()
             self.discovery_options.cmfw_mismatch_action = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
@@ -122,7 +123,7 @@ class UmdApi:
                         f"'{simulation_directory}'."
                     )
                 self.discovery_options = None
-                self._init_simulation(simulation_directory)
+                self._init_simulation(simulation_directory, serve_over_sockets)
                 return
 
             # Setup used devices
@@ -174,7 +175,7 @@ class UmdApi:
                 )
             tt_umd.MmioTimeoutConfig.set_op_timeout(0.002)  # 2ms timeout for MMIO operations
 
-    def _init_simulation(self, simulation_directory: str) -> None:
+    def _init_simulation(self, simulation_directory: str, serve_over_sockets: bool) -> None:
         from ttexalens.umd_device import UmdDevice
 
         path = Path(simulation_directory).expanduser()
@@ -187,11 +188,21 @@ class UmdApi:
 
         options = tt_umd.SimulationConnectorOptions()
         options.simulator_directory = path
-        options.serve_over_sockets = True
+        options.serve_over_sockets = serve_over_sockets
         try:
             simulation_connection, simulation_devices, cluster_descriptor = tt_umd.SimulationConnector.discover(options)
         except Exception as e:
             raise TTFatalException(f"Failed to open simulation at '{path}': {e}") from e
+
+        if (
+            util.DEBUG_ENABLED
+            and serve_over_sockets
+            and simulation_connection.role == tt_umd.SimulationConnector.Role.HOST
+        ):
+            util.DEBUG(
+                f"Serving the simulation over sockets in '{simulation_connection.server_directory}'. "
+                f"Other processes can attach to it with -s {simulation_connection.server_directory}"
+            )
 
         if util.DEBUG_ENABLED:
             util.DEBUG(
@@ -293,8 +304,18 @@ class UmdApi:
             tt_umd.WarmReset.warm_reset()
 
 
-def local_init(init_jtag=False, noc_id: NocId = NocId.NOC1, simulation_directory: str | None = None):
-    communicator = UmdApi(init_jtag=init_jtag, noc_id=noc_id, simulation_directory=simulation_directory)
+def local_init(
+    init_jtag=False,
+    noc_id: NocId = NocId.NOC1,
+    simulation_directory: str | None = None,
+    serve_over_sockets: bool = False,
+):
+    communicator = UmdApi(
+        init_jtag=init_jtag,
+        noc_id=noc_id,
+        simulation_directory=simulation_directory,
+        serve_over_sockets=serve_over_sockets,
+    )
     if util.VERBOSE_ENABLED:
         util.VERBOSE("Device opened successfully.")
     return communicator

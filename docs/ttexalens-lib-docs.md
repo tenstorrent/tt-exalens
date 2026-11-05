@@ -3,7 +3,7 @@
 ## init_ttexalens
 
 ```
-init_ttexalens(init_jtag: bool = False, noc_id: NocId = NocId.NOC1, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True) -> Context
+init_ttexalens(init_jtag: bool = False, noc_id: NocId = NocId.NOC1, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True, serve_over_sockets: bool = False) -> Context
 ```
 
 
@@ -24,6 +24,9 @@ directory of an already running simulation server to attach to. If omitted and n
 is found, tt-exalens attaches to a running simulation instead. If several are running it raises and
 asks for an explicit choice.
 - `safe_mode` *(bool)*: Whether to enable safe mode for memory access. Default is True.
+- `serve_over_sockets` *(bool)*: Whether to serve the simulator started from simulation_directory over
+per-chip sockets, so other processes can attach to it as clients. Has no effect when attaching to
+an already running simulation server or when using hardware. Default is False.
 
 
 ### Returns
