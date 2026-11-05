@@ -609,12 +609,8 @@ neo_id (int | None, optional): NEO ID of the Tensix. Required on Quasar.
 device_id (int, default 0):     ID number of device to read from.
 context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 Returns:
-TensixState: Tensix state for the given device and location. Register groups that the architecture doesn't have are empty.
+TensixState: Tensix state for the given device and location, as the architecture's subclass (WormholeTensixState, BlackholeTensixState or QuasarTensixState).
 
-
-
-
-## TensixState
 
 
 

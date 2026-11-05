@@ -1,11 +1,11 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from dataclasses import dataclass
+from dataclasses import fields
 import datetime
 import os
 import struct
-from typing import Callable
+from typing import Any, Callable
 
 from ttexalens import util
 from ttexalens._lib_helpers import (
@@ -20,10 +20,8 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context, NocId
 from ttexalens.elf import read_elf, CallstackEntry, ElfFile, ElfVariable, get_callstack, get_frame_callstack
 from ttexalens.exceptions import TTException
-from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
-from ttexalens.hardware.quasar.tensix_register_description import QuasarTensixRegisterDescription
 from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
-from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
+from ttexalens.hardware.tensix_registers_description import TensixState
 from ttexalens.memory_access import create_memory_access
 
 
@@ -798,22 +796,6 @@ def write_riscv_memory(
     create_memory_access(risc_debug, safe_mode=safe_mode).write(addr, value.to_bytes(4, byteorder="little"))
 
 
-@dataclass
-class TensixState:
-    alu_config: list[dict[str, int]]
-    unpack_config: list[dict[str, int]]
-    unpack_tile_descriptor: list[dict[str, int]]
-    pack_config: list[dict[str, int]]
-    relu_config: list[dict[str, int]]
-    pack_dest_rd_ctrl: list[dict[str, int]]
-    pack_edge_offset: list[dict[str, int]]
-    pack_counters: list[dict[str, int]]
-    pack_strides: list[dict[str, int]]
-    gpr: list[dict[str, int]]
-    register_window_counters: dict[str, int]
-    address_counters: dict[str, int]
-
-
 @trace_api
 def get_tensix_state(
     location: str | OnChipCoordinate,
@@ -831,25 +813,22 @@ def get_tensix_state(
         device_id (int, default 0):	ID number of device to read from.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
     Returns:
-        TensixState: Tensix state for the given device and location. Register groups that the architecture doesn't have are empty.
+        TensixState: Tensix state for the given device and location, as the architecture's subclass (WormholeTensixState, BlackholeTensixState or QuasarTensixState).
     """
     coordinate = convert_coordinate(location, device_id, context)
     device = coordinate.device
     tensix_reg_desc = device.get_tensix_registers_description()
-    assert isinstance(
-        tensix_reg_desc,
-        WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription | QuasarTensixRegisterDescription,
-    )
     tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
     noc_block = coordinate.noc_block
     if noc_block.block_type != "functional_workers":
         raise ValueError(f"Tensix state can only be retrieved from a tensix block. Got {noc_block.block_type} block.")
     register_store = noc_block.get_register_store(neo_id=neo_id)
     debug_bus = noc_block.get_debug_bus(neo_id)
-    if debug_bus is None:
-        raise TTException("Debug bus is not available for the given location.")
+    assert debug_bus is not None, "Debug bus is not available for the given location."
     if l1_address is not None and not debug_bus.supports_l1_sampling:
-        raise TTException("Reading debug bus groups through L1 is not supported for the given location.")
+        if util.DEBUG_ENABLED:
+            util.DEBUG("Reading debug bus groups through L1 is not supported, disregarding L1 address.")
+        l1_address = None
 
     def _read_register_group(group: list[dict[str, str]]) -> list[dict[str, int]]:
         return [
@@ -867,41 +846,20 @@ def get_tensix_state(
             for signal_name in group_data.keys()
         }
 
-    alu = _read_register_group(tensix_reg_desc.alu_config)
-    unpack_config = _read_register_group(tensix_reg_desc.unpack_config)
-    pack_config = _read_register_group(tensix_reg_desc.pack_config)
-    relu_config = _read_register_group(tensix_reg_desc.relu_config)
-    pack_edge_offset = _read_register_group(tensix_reg_desc.pack_edge_offset)
-    pack_strides = _read_register_group(tensix_reg_desc.pack_strides)
-    gpr = _read_register_group(tensix_reg_desc.general_purpose_registers)
-    unpack_tile_descriptor: list[dict[str, int]] = []
-    pack_dest_rd_ctrl: list[dict[str, int]] = []
-    pack_counters: list[dict[str, int]] = []
-    if isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription):
-        unpack_tile_descriptor = _read_register_group(tensix_reg_desc.unpack_tile_descriptor)
-        pack_dest_rd_ctrl = _read_register_group(tensix_reg_desc.pack_dest_rd_ctrl)
-        pack_counters = _read_register_group(tensix_reg_desc.pack_counters)
+    state_type = tensix_reg_desc.state_type
+    register_groups: dict[str, Any] = {
+        field.name: _read_register_group(getattr(tensix_reg_desc, field.name))
+        for field in fields(state_type)
+        if field.name not in ("register_window_counters", "address_counters")
+    }
     group_reader = lambda signal_group: (
         debug_bus.read_signal_group(signal_group, l1_address)
         if l1_address is not None
         else debug_bus.read_signal_group_unsafe(signal_group)
     )
-    if l1_address is None:
+    if l1_address is None and debug_bus.supports_l1_sampling:
         if util.DEBUG_ENABLED:
             util.DEBUG("No L1 address provided. Disabling atomic group reading ADC and RWC groups.")
     rwc = _read_signal_groups(tensix_debug_bus_desc.register_window_counter_groups, group_reader)
     adc = _read_signal_groups(tensix_debug_bus_desc.address_counter_groups, group_reader)
-    return TensixState(
-        alu_config=alu,
-        unpack_config=unpack_config,
-        unpack_tile_descriptor=unpack_tile_descriptor,
-        pack_config=pack_config,
-        relu_config=relu_config,
-        pack_dest_rd_ctrl=pack_dest_rd_ctrl,
-        pack_edge_offset=pack_edge_offset,
-        pack_counters=pack_counters,
-        pack_strides=pack_strides,
-        gpr=gpr,
-        register_window_counters=rwc,
-        address_counters=adc,
-    )
+    return state_type(**register_groups, register_window_counters=rwc, address_counters=adc)
