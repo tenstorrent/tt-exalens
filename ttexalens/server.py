@@ -180,6 +180,7 @@ UMD_SERIALIZABLE_TYPES = {
     tt_umd.TelemetryTag,
     tt_umd.DramTrainingStatus,
     tt_umd.NocId,
+    tt_umd.IpVariant,
 }
 UMD_SERIALIZABLE_TYPES_NAMES: dict[str, type] = {f"{t.__module__}.{t.__name__}": t for t in UMD_SERIALIZABLE_TYPES}
 
