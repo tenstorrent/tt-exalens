@@ -32,6 +32,7 @@ class UmdDevice:
         self._is_mmio_capable = not device.is_remote()
         self._is_jtag_capable = device.get_communication_device_type() == tt_umd.IODeviceType.JTAG
         self._soc_descriptor = soc_descriptor if soc_descriptor is not None else tt_umd.SocDescriptor(device)
+        self._ip_variant = self._soc_descriptor.get_arch_descriptor().ip_variant
         self._device_id = device_id
         self._unique_id = unique_id
         self._simulation_backend_type = simulation_backend_type
@@ -98,6 +99,10 @@ class UmdDevice:
     @property
     def soc_descriptor(self) -> tt_umd.SocDescriptor:
         return self._soc_descriptor
+
+    @property
+    def ip_variant(self) -> tt_umd.IpVariant | None:
+        return self._ip_variant
 
     @property
     def is_mmio_capable(self) -> bool:

@@ -197,6 +197,10 @@ class Device:
                 offset += 1
 
     @property
+    def ip_variant(self) -> tt_umd.IpVariant | None:
+        return self._umd_device.ip_variant
+
+    @property
     def board_type(self) -> tt_umd.BoardType:
         return self._context.cluster_descriptor.get_board_type(self.id)
 
