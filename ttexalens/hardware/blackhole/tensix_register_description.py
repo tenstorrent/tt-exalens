@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from typing import ClassVar
 
 from ttexalens.hardware.tensix_registers_description import TensixRegisterDescription, TensixState
 
@@ -18,8 +17,6 @@ class BlackholeTensixState(TensixState):
 @dataclass
 class BlackholeTensixRegisterDescription(TensixRegisterDescription):
     """Tensix configuration register groups of a Blackhole functional worker."""
-
-    state_type: ClassVar[type[TensixState]] = BlackholeTensixState
 
     # ALU
     alu_config: list[dict[str, str]] = field(default_factory=list)

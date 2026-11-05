@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from typing import ClassVar
 
 from ttexalens.hardware.tensix_registers_description import TensixRegisterDescription, TensixState
 
@@ -18,8 +17,6 @@ class WormholeTensixState(TensixState):
 @dataclass
 class WormholeTensixRegisterDescription(TensixRegisterDescription):
     """Tensix configuration register groups of a Wormhole functional worker."""
-
-    state_type: ClassVar[type[TensixState]] = WormholeTensixState
 
     # ALU
     alu_config: list[dict[str, str]] = field(default_factory=list)

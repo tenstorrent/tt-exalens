@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
 from dataclasses import dataclass, field
-from typing import ClassVar
 
 
 @dataclass
@@ -25,8 +24,6 @@ class TensixState:
 class TensixRegisterDescription:
     """Base for the per architecture groupings of Tensix configuration registers.
     Each architecture defines its own groupings of configuration registers."""
-
-    state_type: ClassVar[type[TensixState]]
 
 
 @dataclass

@@ -846,7 +846,7 @@ def get_tensix_state(
             for signal_name in group_data.keys()
         }
 
-    state_type = tensix_reg_desc.state_type
+    state_type = device.get_tensix_state_type()
     description_groups = {field.name for field in fields(tensix_reg_desc)}
     register_groups: dict[str, Any] = {
         field.name: _read_register_group(getattr(tensix_reg_desc, field.name))
