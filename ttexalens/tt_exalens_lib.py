@@ -847,10 +847,11 @@ def get_tensix_state(
         }
 
     state_type = tensix_reg_desc.state_type
+    description_groups = {field.name for field in fields(tensix_reg_desc)}
     register_groups: dict[str, Any] = {
         field.name: _read_register_group(getattr(tensix_reg_desc, field.name))
         for field in fields(state_type)
-        if field.name not in ("register_window_counters", "address_counters")
+        if field.name in description_groups
     }
     group_reader = lambda signal_group: (
         debug_bus.read_signal_group(signal_group, l1_address)
