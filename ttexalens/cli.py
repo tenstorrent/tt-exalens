@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [-s=<simulation_directory>] [--verbosity=<verbosity>] [--test] [--jtag] [--noc-id=<id>] [--unsafe-mode] [--disable-noc-failover]
-  tt-exalens --server [--port=<port>] [--test] [--jtag] [-s=<simulation_directory>] [--background] [--noc-id=<id>] [--verbosity=<verbosity>]
+  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [(-s=<simulation_directory> [--sim-serve])] [--verbosity=<verbosity>] [--test] [--jtag] [--noc-id=<id>] [--unsafe-mode] [--disable-noc-failover]
+  tt-exalens --server [--port=<port>] [--test] [--jtag] [(-s=<simulation_directory> [--sim-serve])] [--background] [--noc-id=<id>] [--verbosity=<verbosity>]
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-exalens --gdb [gdb_args...]
   tt-exalens --sim-list
@@ -24,6 +24,7 @@ Options:
   --start-server=<server_port>    Start a tt-exalens server on the specified port.
   --background                    Start the server in the background detached from console (doesn't require ENTER button for exit, but exit.server file to be created).
   -s=<simulation_directory>       Simulator to use. Either a simulator build to start (a libttsim .so file or an RTL simulator build directory), or the socket directory of an already-running simulation server to attach to. Which one it is is detected from the path; use --sim-list to see running servers. If omitted and no hardware is found, tt-exalens attaches to a running simulation when exactly one is running.
+  --sim-serve                     Serve the simulator started with -s over sockets, so other processes can attach to it (it then shows up in --sim-list). Has no effect when -s attaches to an already-running simulation server.
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
   --jtag                          Initialize JTAG interface.
@@ -412,6 +413,7 @@ def main():
     safe_mode = False if args["--unsafe-mode"] else True
     noc_id = to_noc_id(args["--noc-id"])
     simulation_directory = args["-s"]
+    serve_over_sockets: bool = args["--sim-serve"]
     init_jtag = args["--jtag"]
     noc_failover: bool = False if args["--disable-noc-failover"] else True
 
@@ -424,6 +426,7 @@ def main():
                 safe_mode=safe_mode,
                 simulation_directory=simulation_directory,
                 noc_failover=noc_failover,
+                serve_over_sockets=serve_over_sockets,
             )
             ttexalens_server = start_server(port=int(args["--port"]), context=context)
 
@@ -459,6 +462,7 @@ def main():
             safe_mode=safe_mode,
             simulation_directory=simulation_directory,
             noc_failover=noc_failover,
+            serve_over_sockets=serve_over_sockets,
         )
 
     # Main function

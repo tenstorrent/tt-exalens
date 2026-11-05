@@ -23,6 +23,7 @@ def init_ttexalens(
     simulation_directory: str | None = None,
     noc_failover: bool = True,
     safe_mode: bool = True,
+    serve_over_sockets: bool = False,
 ) -> Context:
     """Initializes TTExaLens internals by creating the device interface and TTExaLens context.
     Interfacing device is local, through pybind.
@@ -37,13 +38,21 @@ def init_ttexalens(
             is found, tt-exalens attaches to a running simulation instead. If several are running it raises and
             asks for an explicit choice.
         safe_mode (bool): Whether to enable safe mode for memory access. Default is True.
+        serve_over_sockets (bool): Whether to serve the simulator started from simulation_directory over
+            per-chip sockets, so other processes can attach to it as clients. Has no effect when attaching to
+            an already running simulation server or when using hardware. Default is False.
 
     Returns:
         Context: TTExaLens context object.
     """
     noc_id = to_noc_id(noc_id)
 
-    umd_api = local_init(init_jtag=init_jtag, noc_id=noc_id, simulation_directory=simulation_directory)
+    umd_api = local_init(
+        init_jtag=init_jtag,
+        noc_id=noc_id,
+        simulation_directory=simulation_directory,
+        serve_over_sockets=serve_over_sockets,
+    )
 
     return load_context(
         umd_api, FileAccessApi(), umd_api.initialization_noc_id, noc_failover=noc_failover, safe_mode=safe_mode
