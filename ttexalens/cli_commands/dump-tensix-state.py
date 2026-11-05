@@ -6,8 +6,8 @@ Usage:
   dump-tensix-state [ <group> ] [ -d <device> ] [ -l <loc> ] [ --neo <neo-id> ] [ -v ] [ -t <thread-id> ] [ -a <l1-address> ]
 
 Options:
-  <group>           Tensix state group to dump. Options: [all, alu, pack, unpack, gpr, rwc, adc]
-  -t <thread-id>    Thread ID. Options: [0, 1, 2] Default: all (only for gpr group)
+  <group>           Tensix state group to dump. Options: [all, alu, pack, unpack, gpr, rwc, adc, bfd, addr_mod, dest, src, sfpu, global]. Groups bfd, addr_mod, dest, src, sfpu and global are available only on Quasar.
+  -t <thread-id>    Thread IDs, comma separated. Default: all threads (only for gpr group)
   -a <l1-address>   L1 address to save group data. Only used for RWC and ADC groups.
 
 Description:
@@ -31,6 +31,8 @@ Examples:
   tensix adc -a 0x0   # Prints ADC group for current device and core using L1 address 0x0
 """
 
+import os
+
 import tabulate
 
 from ttexalens import util
@@ -38,6 +40,7 @@ from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore, SignalGroupSample
 from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
+from ttexalens.hardware.quasar.functional_neo_registers import DEST_DVALID_CLIENTS
 from ttexalens.hardware.quasar.tensix_register_description import QuasarTensixRegisterDescription
 from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
 from ttexalens.register_store import RegisterStore, format_register_value
@@ -71,7 +74,8 @@ command_metadata = CommandMetadata(
     is_supported=is_supported,
 )
 
-possible_groups = ["all", "alu", "pack", "unpack", "gpr", "rwc", "adc"]
+quasar_groups = ["bfd", "addr_mod", "dest", "src", "sfpu", "global"]
+possible_groups = ["all", "alu", "pack", "unpack", "gpr", "rwc", "adc"] + quasar_groups
 
 # Creates list of column names for configuration register table
 def create_column_names(num_of_columns):
@@ -82,7 +86,12 @@ def create_column_names(num_of_columns):
 
 
 # Converts list of configuration registers to table
-def config_regs_to_table(config_regs: list[dict[str, str]], table_name: str, register_store: RegisterStore):
+def config_regs_to_table(
+    config_regs: list[dict[str, str]],
+    table_name: str,
+    register_store: RegisterStore,
+    column_names: list[str] | None = None,
+):
     config_reg_values: list[dict[str, int | str]] = []
     keys = list(config_regs[0].keys())
 
@@ -105,7 +114,27 @@ def config_regs_to_table(config_regs: list[dict[str, str]], table_name: str, reg
                 config_reg_value[name] = format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count())
         config_reg_values.append(config_reg_value)
 
-    return dict_list_to_table(config_reg_values, table_name, create_column_names(len(config_reg_values)))
+    return dict_list_to_table(
+        config_reg_values, table_name, column_names or create_column_names(len(config_reg_values))
+    )
+
+
+# Converts list of indexed register entries to table with one row per entry
+def entries_to_table(entries: list[dict[str, str]], table_name: str, register_store: RegisterStore):
+    keys = list(entries[0].keys())
+    prefix = os.path.commonprefix(keys)
+    prefix = prefix[: prefix.rfind("_") + 1]
+    rows: list[list[int | str]] = []
+    for index, entry in enumerate(entries):
+        row: list[int | str] = [index]
+        for key in keys:
+            reg_desc = register_store.get_register_description(entry[key])
+            value = register_store.read_register(entry[key])
+            row.append(format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count()))
+        rows.append(row)
+    return tabulate.tabulate(
+        rows, headers=[table_name] + [key[len(prefix) :] for key in keys], tablefmt="simple_outline"
+    )
 
 
 def read_signal_groups(
@@ -169,6 +198,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             tensix_reg_desc,
             WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription | QuasarTensixRegisterDescription,
         )
+        if group in quasar_groups and not isinstance(tensix_reg_desc, QuasarTensixRegisterDescription):
+            util.ERROR(f"Tensix group {group} is not available on device {device.id}.")
+            continue
         tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
         loc: OnChipCoordinate
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
@@ -231,6 +263,41 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     print(pack_config_table)
                     print(put_table_list_side_by_side([edge_offset_table, pack_strides_table]))
                     print(relu_config_table)
+            if isinstance(tensix_reg_desc, QuasarTensixRegisterDescription):
+                if group == "bfd" or group == "all":
+                    print(f"{CLR_GREEN}BUFFER DESCRIPTORS{CLR_END}")
+                    print(
+                        entries_to_table(tensix_reg_desc.buffer_descriptor_table, "BUFFER DESCRIPTOR", register_store)
+                    )
+                if group == "addr_mod" or group == "all":
+                    print(f"{CLR_GREEN}ADDRESS MODIFIERS{CLR_END}")
+                    print(entries_to_table(tensix_reg_desc.addr_mod, "ADDR MOD", register_store))
+                if group == "dest" or group == "all":
+                    print(f"{CLR_GREEN}DEST{CLR_END}")
+                    thread_columns = [f"THREAD {i}" for i in range(len(tensix_reg_desc.dest_config))]
+                    print(
+                        config_regs_to_table(tensix_reg_desc.dest_config, "DEST CONFIG", register_store, thread_columns)
+                    )
+                    print(
+                        config_regs_to_table(
+                            tensix_reg_desc.dest_dvalid_ctrl, "DEST DVALID CTRL", register_store, DEST_DVALID_CLIENTS
+                        )
+                    )
+                if group == "src" or group == "all":
+                    print(f"{CLR_GREEN}SRC{CLR_END}")
+                    thread_columns = [f"THREAD {i}" for i in range(len(tensix_reg_desc.src_config))]
+                    print(
+                        config_regs_to_table(tensix_reg_desc.src_config, "SRC CONFIG", register_store, thread_columns)
+                    )
+                if group == "sfpu" or group == "all":
+                    print(f"{CLR_GREEN}SFPU{CLR_END}")
+                    thread_columns = [f"THREAD {i}" for i in range(len(tensix_reg_desc.sfpu_config))]
+                    print(
+                        config_regs_to_table(tensix_reg_desc.sfpu_config, "SFPU CONFIG", register_store, thread_columns)
+                    )
+                if group == "global" or group == "all":
+                    print(f"{CLR_GREEN}GLOBAL{CLR_END}")
+                    print(config_regs_to_table(tensix_reg_desc.global_config, "GLOBAL CONFIG", register_store))
             if group == "gpr" or group == "all":
                 verbose = dopt.args["-v"]
                 thread_ids = (
