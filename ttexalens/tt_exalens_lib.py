@@ -846,11 +846,11 @@ def get_tensix_state(
             for signal_name in group_data.keys()
         }
 
-    state_type = device.get_tensix_state_type()
+    tensix_state_type = device.get_tensix_state_type()
     description_groups = {field.name for field in fields(tensix_reg_desc)}
     register_groups: dict[str, Any] = {
         field.name: _read_register_group(getattr(tensix_reg_desc, field.name))
-        for field in fields(state_type)
+        for field in fields(tensix_state_type)
         if field.name in description_groups
     }
     group_reader = lambda signal_group: (
@@ -863,4 +863,4 @@ def get_tensix_state(
             util.DEBUG("No L1 address provided. Disabling atomic group reading ADC and RWC groups.")
     rwc = _read_signal_groups(tensix_debug_bus_desc.register_window_counter_groups, group_reader)
     adc = _read_signal_groups(tensix_debug_bus_desc.address_counter_groups, group_reader)
-    return state_type(**register_groups, register_window_counters=rwc, address_counters=adc)
+    return tensix_state_type(**register_groups, register_window_counters=rwc, address_counters=adc)
