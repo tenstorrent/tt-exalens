@@ -74,8 +74,21 @@ command_metadata = CommandMetadata(
     is_supported=is_supported,
 )
 
-quasar_groups = ["bfd", "addr_mod", "dest", "src", "sfpu", "global"]
-possible_groups = ["all", "alu", "pack", "unpack", "gpr", "rwc", "adc"] + quasar_groups
+possible_groups = [
+    "all",
+    "alu",
+    "pack",
+    "unpack",
+    "gpr",
+    "rwc",
+    "adc",
+    "bfd",
+    "addr_mod",
+    "dest",
+    "src",
+    "sfpu",
+    "global",
+]
 
 # Creates list of column names for configuration register table
 def create_column_names(num_of_columns):
@@ -198,9 +211,6 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             tensix_reg_desc,
             WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription | QuasarTensixRegisterDescription,
         )
-        if group in quasar_groups and not isinstance(tensix_reg_desc, QuasarTensixRegisterDescription):
-            util.ERROR(f"Tensix group {group} is not available on device {device.id}.")
-            continue
         tensix_debug_bus_desc = device.get_tensix_debug_bus_description()
         loc: OnChipCoordinate
         for loc in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
