@@ -37,6 +37,8 @@ endif()
 
 # ELFIO — header-only C++ ELF reader (section list + symbol table; libdwarf v2.x
 # doesn't expose those publicly). DOWNLOAD_ONLY: we only want the headers.
+# Patch adds the <cstdint> include missing from Release_3.12, which GCC 16's libstdc++
+# no longer provides transitively (fixed upstream after 3.12; drop on the next release).
 if(NOT TARGET elfio)
     CPMAddPackage(
         NAME ELFIO
@@ -44,6 +46,8 @@ if(NOT TARGET elfio)
         GIT_TAG Release_3.12
         EXCLUDE_FROM_ALL YES
         DOWNLOAD_ONLY YES
+        PATCHES
+            "${CMAKE_CURRENT_LIST_DIR}/patches/elfio_include_cstdint.patch"
     )
     add_library(elfio INTERFACE)
     target_include_directories(elfio SYSTEM INTERFACE "${ELFIO_SOURCE_DIR}")
