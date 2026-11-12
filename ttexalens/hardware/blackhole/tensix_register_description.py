@@ -4,7 +4,14 @@
 
 from dataclasses import dataclass, field
 
-from ttexalens.hardware.tensix_registers_description import TensixRegisterDescription
+from ttexalens.hardware.tensix_registers_description import TensixRegisterDescription, TensixState
+
+
+@dataclass
+class BlackholeTensixState(TensixState):
+    unpack_tile_descriptor: list[dict[str, int]]
+    pack_dest_rd_ctrl: list[dict[str, int]]
+    pack_counters: list[dict[str, int]]
 
 
 @dataclass

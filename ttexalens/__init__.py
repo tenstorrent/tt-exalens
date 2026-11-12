@@ -36,6 +36,9 @@ from .perf_counters import (
     PerfCounterBlockDescription,
     TensixPerfCounters,
 )
+from .hardware.blackhole.tensix_register_description import BlackholeTensixState
+from .hardware.quasar.tensix_register_description import QuasarTensixState
+from .hardware.wormhole.tensix_register_description import WormholeTensixState
 from .coordinate import OnChipCoordinate
 from .context import Context, NocId, to_noc_id
 from .device import Device
@@ -99,6 +102,10 @@ __all__ = [
     "start_perf_counters",
     "stop_perf_counters",
     "TensixPerfCounters",
+    # hardware/<arch>/tensix_register_description.py
+    "BlackholeTensixState",
+    "QuasarTensixState",
+    "WormholeTensixState",
     # util.py
     "TTException",
     "TTFatalException",

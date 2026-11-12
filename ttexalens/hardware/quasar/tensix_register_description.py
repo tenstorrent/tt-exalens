@@ -4,7 +4,18 @@
 
 from dataclasses import dataclass, field
 
-from ttexalens.hardware.tensix_registers_description import TensixRegisterDescription
+from ttexalens.hardware.tensix_registers_description import TensixRegisterDescription, TensixState
+
+
+@dataclass
+class QuasarTensixState(TensixState):
+    buffer_descriptor_table: list[dict[str, int]]
+    addr_mod: list[dict[str, int]]
+    dest_config: list[dict[str, int]]
+    src_config: list[dict[str, int]]
+    sfpu_config: list[dict[str, int]]
+    dest_dvalid_ctrl: list[dict[str, int]]
+    global_config: list[dict[str, int]]
 
 
 @dataclass
@@ -43,3 +54,6 @@ class QuasarTensixRegisterDescription(TensixRegisterDescription):
 
     # GLOBAL CONFIG
     global_config: list[dict[str, str]] = field(default_factory=list)
+
+    # GENERAL PURPOSE REGISTERS
+    general_purpose_registers: list[dict[str, str]] = field(default_factory=list)

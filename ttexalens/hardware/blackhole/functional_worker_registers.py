@@ -9,6 +9,7 @@ from ttexalens.register_store import (
     DebugRegisterDescription,
     TensixGeneralPurposeRegisterDescription,
     RegisterDescription,
+    get_general_purpose_registers,
 )
 
 
@@ -864,18 +865,6 @@ def get_pack_strides() -> list[dict[str, str]]:
     return [{field: f"{struct_name}{i}_{field}" for field in fields} for i in range(2)]
 
 
-def get_general_purpose_registers() -> list[dict[str, str]]:
-    register_mapping_by_thread: list[dict[str, str]] = [dict() for _ in range(3)]
-    for register_name in register_map.keys():
-        register_desc = register_map[register_name]
-        if isinstance(register_desc, TensixGeneralPurposeRegisterDescription):
-            assert isinstance(register_desc, TensixGeneralPurposeRegisterDescription)
-            thread_id = register_desc.thread_id
-            register_mapping_by_thread[thread_id][register_name[:-3].lower()] = register_name
-
-    return register_mapping_by_thread
-
-
 tensix_registers_descriptions = BlackholeTensixRegisterDescription(
     # ALU CONFIG
     alu_config=[
@@ -927,5 +916,5 @@ tensix_registers_descriptions = BlackholeTensixRegisterDescription(
     pack_edge_offset=get_pack_edge_offset(),
     pack_counters=get_pack_counters(),
     pack_strides=get_pack_strides(),
-    general_purpose_registers=get_general_purpose_registers(),
+    general_purpose_registers=get_general_purpose_registers(register_map),
 )
