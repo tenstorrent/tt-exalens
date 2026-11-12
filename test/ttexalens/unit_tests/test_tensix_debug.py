@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import math
+import struct
 import unittest
 from parameterized import parameterized_class, parameterized
 import tt_umd
@@ -11,15 +12,16 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.debug_tensix import TensixDebug, TILE_SIZE, TensixDataFormat, REGFILE
-from ttexalens.device import TensixInstructions
 from ttexalens.exceptions import TTException
 
 
 @parameterized_class(
     [
-        {"location_str": "0,0"},
-        {"location_str": "1,1"},
-        {"location_str": "2,2"},
+        {"location_str": "0,0", "neo_id": None},
+        {"location_str": "1,1", "neo_id": None},
+        {"location_str": "2,2", "neo_id": None},
+        {"location_str": "0,0", "neo_id": 0},
+        {"location_str": "0,0", "neo_id": 3},
     ]
 )
 class TestTensixDebug(unittest.TestCase):
@@ -27,19 +29,19 @@ class TestTensixDebug(unittest.TestCase):
     location: OnChipCoordinate
     tensix_debug: TensixDebug
     location_str: str
-    ops: TensixInstructions
+    neo_id: int | None
     debug_bus: DebugBusSignalStore
 
     @classmethod
     def setUpClass(cls):
         cls.context = init_cached_test_context()
-        cls.ops = cls.context.devices[0].instructions
 
     def setUp(self):
         self.location = OnChipCoordinate.create(self.location_str, device=self.context.devices[0])
-        self.tensix_debug = TensixDebug(self.location)
-        assert self.location.noc_block.debug_bus is not None
-        self.debug_bus = self.location.noc_block.debug_bus
+        self.tensix_debug = TensixDebug(self.location, self.neo_id)
+        debug_bus = self.location.noc_block.get_debug_bus(self.neo_id)
+        assert debug_bus is not None
+        self.debug_bus = debug_bus
 
     def is_blackhole(self) -> bool:
         return self.location.device._arch == tt_umd.ARCH.BLACKHOLE
@@ -58,8 +60,8 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_fp32(self, num_tiles: int, value: float | None = None):
-        if not self.is_blackhole():
-            self.skipTest("Direct read/write is supported only on Blackhole.")
+        if self.tensix_debug.dest is None:
+            self.skipTest("Direct read/write of dest is not supported on this device.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
@@ -89,8 +91,8 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_int32(self, num_tiles: int, value: int | None = None):
-        if not self.is_blackhole():
-            self.skipTest("Direct read/write is supported only on Blackhole.")
+        if self.tensix_debug.dest is None:
+            self.skipTest("Direct read/write of dest is not supported on this device.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
@@ -110,8 +112,8 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_uint32(self, num_tiles: int):
-        if not self.is_blackhole():
-            self.skipTest("Direct read/write is supported only on Blackhole.")
+        if self.tensix_debug.dest is None:
+            self.skipTest("Direct read/write of dest is not supported on this device.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
@@ -131,7 +133,7 @@ class TestTensixDebug(unittest.TestCase):
     )
     def test_read_write_regfile_int8(self, num_tiles: int):
         if not self.is_blackhole():
-            self.skipTest("Direct read/write is supported only on Blackhole.")
+            self.skipTest("Direct read/write of 8-bit integers is supported only on Blackhole.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
@@ -150,7 +152,7 @@ class TestTensixDebug(unittest.TestCase):
     )
     def test_read_write_regfile_uint8(self, num_tiles: int):
         if not self.is_blackhole():
-            self.skipTest("Direct read/write is supported only on Blackhole.")
+            self.skipTest("Direct read/write of 8-bit integers is supported only on Blackhole.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
@@ -176,11 +178,38 @@ class TestTensixDebug(unittest.TestCase):
     def test_invalid_write_regfile(
         self, df: TensixDataFormat, regfile: int | str | REGFILE = REGFILE.DSTACC, value: int | float = 1
     ):
-        if not self.is_blackhole():
-            self.skipTest("Direct read/write is supported only on Blackhole.")
+        if self.tensix_debug.dest is None:
+            self.skipTest("Direct read/write of dest is not supported on this device.")
 
         with self.assertRaises((TTException, ValueError)):
             self.tensix_debug.write_regfile(regfile, [value], df)
+
+    def test_read_regfile_16bit(self):
+        if self.tensix_debug.dest is None or not self.location.device.is_quasar():
+            self.skipTest("Reading 16-bit dest directly is supported only on Quasar.")
+
+        def float16_b_bits(value: float) -> int:
+            return int.from_bytes(struct.pack(">f", value), byteorder="big") >> 16
+
+        upper = [float(i % 256 - 128) for i in range(TILE_SIZE)]
+        lower = [(i % 64) / 64 for i in range(TILE_SIZE)]
+        # A Float32 in dest keeps its upper 16 bits in 16-bit row r and its lower 16 bits in row r + 256.
+        # Dest stores Float16_b as sign, mantissa, exponent, so the lower half is written in that order.
+        data = []
+        for upper_value, lower_value in zip(upper, lower):
+            bits = float16_b_bits(lower_value)
+            stored = (bits & 0x8000) | ((bits & 0x7F) << 8) | ((bits >> 7) & 0xFF)
+            word = (float16_b_bits(upper_value) << 16) | stored
+            data.append(struct.unpack(">f", word.to_bytes(4, byteorder="big"))[0])
+        self.tensix_debug.write_regfile(REGFILE.DSTACC, data, TensixDataFormat.Float32)
+        self.tensix_debug.register_store.write_register("ALU_ACC_CTRL_Fp32_enabled", 0)
+        self.tensix_debug.register_store.write_register(
+            "ALU_FORMAT_SPEC_REG_SrcA_val", TensixDataFormat.Float16_b.value
+        )
+
+        values = self.tensix_debug.read_regfile(REGFILE.DSTACC, 5)
+        self.assertEqual(values[:TILE_SIZE], upper)
+        self.assertEqual(values[4 * TILE_SIZE : 5 * TILE_SIZE], lower)
 
     def _read_signal(self, signal_name: str) -> int:
         if signal_name in self.debug_bus.signal_names:
@@ -204,10 +233,13 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_register_window_counters(self, rwc_a: list[int], rwc_b: list[int], rwc_dst: list[int]):
+        if self.location.device.is_quasar():
+            self.skipTest("Tensix instructions are not available on Quasar.")
+        ops = self.location.device.instructions
         for thread_id in range(3):
             # 0x7 is code for setting all three RWCs for that thread
             self.tensix_debug.inject_instruction(
-                self.ops.TT_OP_SETRWC(0, 0, rwc_dst[thread_id], rwc_b[thread_id], rwc_a[thread_id], 0x7), thread_id
+                ops.TT_OP_SETRWC(0, 0, rwc_dst[thread_id], rwc_b[thread_id], rwc_a[thread_id], 0x7), thread_id
             )
             self.assertEqual(self._read_signal(f"rwc{thread_id}_srca"), rwc_a[thread_id])
             self.assertEqual(self._read_signal(f"rwc{thread_id}_srcb"), rwc_b[thread_id])
