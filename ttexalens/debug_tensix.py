@@ -16,11 +16,6 @@ from ttexalens.pack_unpack_regfile import (
 from ttexalens.memory_access import create_memory_access
 
 
-def validate_thread_id(thread_id: int) -> None:
-    if thread_id not in [0, 1, 2]:
-        raise TTException(f"Invalid thread_id {thread_id}.")
-
-
 def validate_instruction(instruction: bytearray | bytes) -> None:
     if len(bytearray(instruction)) != 4:
         raise TTException("Instruction must be 4 bytes long.")
@@ -62,6 +57,9 @@ class TensixDebug:
         self.device = location.device
         self.noc_block = location.noc_block
         self.register_store = self.noc_block.get_register_store(neo_id=neo_id)
+        self.thread_count = len(
+            [risc for risc in self.noc_block.get_riscs(neo_id) if risc.risc_location.risc_name.startswith("trisc")]
+        )
 
         # Using TRISC debug hardware to read/write memory
         # Use restricted_access=False because the Tensix dest is outside L1/data_private, but we still need to read/write it via TRISC debug hardware.
@@ -70,6 +68,10 @@ class TensixDebug:
         self.mem_access = create_memory_access(risc_debug, restricted_access=False)
         dest = risc_debug.risc_info.memory_map.find_by_name("dest")
         self.dest = dest.memory_block if dest is not None else None
+
+    def _validate_thread_id(self, thread_id: int) -> None:
+        if not 0 <= thread_id < self.thread_count:
+            raise TTException(f"Invalid thread_id {thread_id}.")
 
     def dbg_buff_status(self):
         return self.register_store.read_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_STATUS")
@@ -113,7 +115,7 @@ class TensixDebug:
 
     def _end_insn_push(self, thread_id: int) -> None:
         """Relinquish control over thread_id's FIFO."""
-        validate_thread_id(thread_id)
+        self._validate_thread_id(thread_id)
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_INSTRN_BUF_CTRL0", 0)  # simply clear the register.
 
     def inject_instruction(
@@ -127,9 +129,9 @@ class TensixDebug:
 
         Args:
                 instruction (bytearray): 32-bit instruction to inject.
-                thread_id (int): Tensix thread ID (0-2).
+                thread_id (int): Tensix thread ID (0 to thread_count - 1).
         """
-        validate_thread_id(thread_id)
+        self._validate_thread_id(thread_id)
         if isinstance(instruction, int):
             instruction_bytes = instruction.to_bytes(4, byteorder="little")
         else:
