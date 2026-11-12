@@ -2,7 +2,6 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import math
-import struct
 import unittest
 from parameterized import parameterized_class, parameterized
 import tt_umd
@@ -183,33 +182,6 @@ class TestTensixDebug(unittest.TestCase):
 
         with self.assertRaises((TTException, ValueError)):
             self.tensix_debug.write_regfile(regfile, [value], df)
-
-    def test_read_regfile_16bit(self):
-        if self.tensix_debug.dest is None or not self.location.device.is_quasar():
-            self.skipTest("Reading 16-bit dest directly is supported only on Quasar.")
-
-        def float16_b_bits(value: float) -> int:
-            return int.from_bytes(struct.pack(">f", value), byteorder="big") >> 16
-
-        upper = [float(i % 256 - 128) for i in range(TILE_SIZE)]
-        lower = [(i % 64) / 64 for i in range(TILE_SIZE)]
-        # A Float32 in dest keeps its upper 16 bits in 16-bit row r and its lower 16 bits in row r + 256.
-        # Dest stores Float16_b as sign, mantissa, exponent, so the lower half is written in that order.
-        data = []
-        for upper_value, lower_value in zip(upper, lower):
-            bits = float16_b_bits(lower_value)
-            stored = (bits & 0x8000) | ((bits & 0x7F) << 8) | ((bits >> 7) & 0xFF)
-            word = (float16_b_bits(upper_value) << 16) | stored
-            data.append(struct.unpack(">f", word.to_bytes(4, byteorder="big"))[0])
-        self.tensix_debug.write_regfile(REGFILE.DSTACC, data, TensixDataFormat.Float32)
-        self.tensix_debug.register_store.write_register("ALU_ACC_CTRL_Fp32_enabled", 0)
-        self.tensix_debug.register_store.write_register(
-            "ALU_FORMAT_SPEC_REG_SrcA_val", TensixDataFormat.Float16_b.value
-        )
-
-        values = self.tensix_debug.read_regfile(REGFILE.DSTACC, 5)
-        self.assertEqual(values[:TILE_SIZE], upper)
-        self.assertEqual(values[4 * TILE_SIZE : 5 * TILE_SIZE], lower)
 
     def _read_signal(self, signal_name: str) -> int:
         if signal_name in self.debug_bus.signal_names:

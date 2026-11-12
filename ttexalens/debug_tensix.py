@@ -141,8 +141,8 @@ class TensixDebug:
         self._insn_push(instruction_bytes, thread_id)
         self._end_insn_push(thread_id)
 
-    def _validate_number_of_tiles(self, num_tiles: int | None, datum_size: int) -> int:
-        max_num_tiles = self.dest.size // TILE_SIZE // datum_size if self.dest is not None else None
+    def _validate_number_of_tiles(self, num_tiles: int | None) -> int:
+        max_num_tiles = self.dest.size // TILE_SIZE // 4 if self.dest is not None else None
         if num_tiles is None or (max_num_tiles is not None and num_tiles > max_num_tiles) or num_tiles <= 0:
             WARN(
                 f"Number of tiles given {num_tiles} is not valid, defaulting to maximum number of tiles {max_num_tiles}"
@@ -168,14 +168,6 @@ class TensixDebug:
             and (self._is_32_bit_format(df) or (self.device.is_blackhole() and self._is_8_bit_int_format(df)))
         )
 
-    def _direct_16bit_dest_access_enabled(self, df: TensixDataFormat, regfile: REGFILE) -> bool:
-        return (
-            regfile == REGFILE.DSTACC
-            and self.dest is not None
-            and self.device.is_quasar()
-            and not self._is_32_bit_format(df)
-        )
-
     def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int]:
         data: list[int] = []
         if self.dest is None:
@@ -192,23 +184,6 @@ class TensixDebug:
         self.mem_access.read(base_address, bytes_data)
         data.extend(int.from_bytes(bytes_data[i : i + 4], byteorder="little") for i in range(0, size_bytes, 4))
 
-        return data
-
-    def _direct_dest_read_16bit(self, num_tiles: int) -> list[int]:
-        # In each 512-row bank, 16-bit rows 0-255 are the upper halves of the 32-bit rows and rows 256-511 the lower halves.
-        rows = [(((row >> 9) << 8) | (row & 0xFF), (row >> 8) & 1) for row in range(num_tiles * TILE_SIZE // 16)]
-        words = self.direct_dest_read(TensixDataFormat.Float32, (max(row for row, _ in rows) + 1) * 16 // TILE_SIZE)
-
-        data: list[int] = []
-        for row, lower_half in rows:
-            for word in words[row * 16 : (row + 1) * 16]:
-                # The 32-bit window reorders the upper half like Float32, so undo that to get the stored 16 bits.
-                value = (
-                    word & 0xFFFF
-                    if lower_half
-                    else ((word >> 16) & 0x8000) | ((word >> 8) & 0x7F00) | ((word >> 23) & 0xFF)
-                )
-                data += list(value.to_bytes(2, byteorder="big"))
         return data
 
     def direct_dest_write(self, data: list[int], df: TensixDataFormat) -> None:
@@ -245,11 +220,8 @@ class TensixDebug:
 
         # Directly reading dest does not require complex unpacking so we return it right away
         if self._direct_dest_access_enabled(df, regfile):
-            num_tiles = self._validate_number_of_tiles(num_tiles, 4)
+            num_tiles = self._validate_number_of_tiles(num_tiles)
             return self.direct_dest_read(df, num_tiles)
-        if self._direct_16bit_dest_access_enabled(df, regfile):
-            num_tiles = self._validate_number_of_tiles(num_tiles, 2)
-            return self._direct_dest_read_16bit(num_tiles)
 
         if not self.device.is_wormhole() and not self.device.is_blackhole():
             raise TTException("Not supported for this architecture: ")
@@ -296,15 +268,11 @@ class TensixDebug:
         if not self.device.is_quasar():
             return TensixDataFormat(self.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc"))
         # Quasar LLK leaves ALU_FORMAT_SPEC_REG2_Dstacc at 0 and selects 32-bit and Int32 dest with these bits.
-        if self.register_store.read_register("ALU_ACC_CTRL_Fp32_enabled"):
-            if self.register_store.read_register("ALU_ACC_CTRL_INT8_math_enabled"):
-                return TensixDataFormat.Int32
-            return TensixDataFormat.Float32
-        # For 16-bit dest only the SrcA format tells Float16 from Float16_b. Other Quasar format codes differ from TensixDataFormat.
-        src_format = self.register_store.read_register("ALU_FORMAT_SPEC_REG_SrcA_val")
-        if src_format in (TensixDataFormat.Float16.value, TensixDataFormat.Float16_b.value):
-            return TensixDataFormat(src_format)
-        return TensixDataFormat.RawUInt16
+        if not self.register_store.read_register("ALU_ACC_CTRL_Fp32_enabled"):
+            raise TTException("Only 32-bit dest can be read on Quasar, but ALU_ACC_CTRL_Fp32_enabled is 0.")
+        if self.register_store.read_register("ALU_ACC_CTRL_INT8_math_enabled"):
+            return TensixDataFormat.Int32
+        return TensixDataFormat.Float32
 
     def _write_dest_data_format(self, df: TensixDataFormat) -> None:
         if not self.device.is_quasar():
@@ -329,10 +297,7 @@ class TensixDebug:
         regfile = convert_regfile(regfile)
         df = self._read_dest_data_format()
 
-        direct_read = self._direct_dest_access_enabled(df, regfile) or self._direct_16bit_dest_access_enabled(
-            df, regfile
-        )
-        if not direct_read and num_tiles is not None:
+        if not self._direct_dest_access_enabled(df, regfile) and num_tiles is not None:
             WARN("num_tiles argument only has effect for 32 bit formats on blackhole and for dest on quasar.")
 
         data: list[int] = []
