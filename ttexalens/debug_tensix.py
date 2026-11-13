@@ -146,7 +146,9 @@ class TensixDebug:
         self._end_insn_push(thread_id)
 
     def _validate_number_of_tiles(self, num_tiles: int | None, df: TensixDataFormat) -> int:
-        max_num_tiles = self.dest.size // TILE_SIZE // self._dest_datum_size(df) if self.dest is not None else None
+        max_num_tiles = (
+            self.dest.size // TILE_SIZE // self._direct_dest_datum_size(df) if self.dest is not None else None
+        )
         if num_tiles is None or (max_num_tiles is not None and num_tiles > max_num_tiles) or num_tiles <= 0:
             WARN(
                 f"Number of tiles given {num_tiles} is not valid, defaulting to maximum number of tiles {max_num_tiles}"
@@ -167,8 +169,8 @@ class TensixDebug:
     def _uses_int8_view(self, df: TensixDataFormat) -> bool:
         return self.device.is_quasar() and self._is_8_bit_int_format(df)
 
-    def _dest_datum_size(self, df: TensixDataFormat) -> int:
-        # Quasar stores 8-bit integers in 16-bit dest.
+    def _direct_dest_datum_size(self, df: TensixDataFormat) -> int:
+        # Direct access reads 32-bit words; Quasar's INT8 view reads 8-bit integers stored in 16-bit dest.
         return 2 if self._uses_int8_view(df) else 4
 
     def _direct_dest_access_enabled(self, df: TensixDataFormat, regfile: REGFILE) -> bool:
@@ -209,7 +211,7 @@ class TensixDebug:
         base_address = self.dest.address.private_address
         dest_size = self.dest.size
         assert base_address is not None
-        size_bytes = num_tiles * TILE_SIZE * self._dest_datum_size(df)
+        size_bytes = num_tiles * TILE_SIZE * self._direct_dest_datum_size(df)
         if size_bytes > dest_size:
             raise TTException(f"Size {size_bytes} bytes is out of bounds for destination memory block.")
         if self._uses_int8_view(df):
@@ -226,7 +228,7 @@ class TensixDebug:
         if self.dest is None:
             raise TTException("Direct dest writing not supported for this architecture.")
         dest_size = self.dest.size
-        size_bytes = len(data) * self._dest_datum_size(df)
+        size_bytes = len(data) * self._direct_dest_datum_size(df)
         if size_bytes > dest_size:
             raise TTException(f"Data is to large to be written in destination memory block.")
         if self._uses_int8_view(df):
@@ -431,8 +433,5 @@ class TensixDebug:
                 df (TensixDataFormat): Data format.
         """
         regfile = convert_regfile(regfile)
-        packed_data = pack_data_direct_access(data, df)
-        if self._uses_int8_view(df):
-            # The INT8 view takes the value's low byte and converts it to dest's storage format.
-            packed_data = [int(value) & 0xFF for value in data]
+        packed_data = pack_data_direct_access(data, df, int8_view=self._uses_int8_view(df))
         self.write_regfile_data(regfile, packed_data, df)
