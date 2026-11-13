@@ -4,7 +4,6 @@
 import math
 import unittest
 from parameterized import parameterized_class, parameterized
-import tt_umd
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -41,9 +40,6 @@ class TestTensixDebug(unittest.TestCase):
         debug_bus = self.location.noc_block.get_debug_bus(self.neo_id)
         assert debug_bus is not None
         self.debug_bus = debug_bus
-
-    def is_blackhole(self) -> bool:
-        return self.location.device._arch == tt_umd.ARCH.BLACKHOLE
 
     @parameterized.expand(
         [
@@ -131,8 +127,8 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_int8(self, num_tiles: int):
-        if not self.is_blackhole():
-            self.skipTest("Direct read/write of 8-bit integers is supported only on Blackhole.")
+        if self.tensix_debug.dest is None:
+            self.skipTest("Direct read/write of dest is not supported on this device.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
@@ -150,8 +146,8 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_uint8(self, num_tiles: int):
-        if not self.is_blackhole():
-            self.skipTest("Direct read/write of 8-bit integers is supported only on Blackhole.")
+        if self.tensix_debug.dest is None:
+            self.skipTest("Direct read/write of dest is not supported on this device.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
