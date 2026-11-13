@@ -6,6 +6,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass
 import datetime
+from enum import Enum
 from functools import cache, cached_property
 import traceback
 import tt_umd
@@ -570,6 +571,10 @@ class Device:
 
     @abstractmethod
     def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
+        pass
+
+    @abstractmethod
+    def get_data_format_type(self) -> type[Enum]:
         pass
 
     def get_block_locations(self, block_type="functional_workers") -> list[OnChipCoordinate]:
