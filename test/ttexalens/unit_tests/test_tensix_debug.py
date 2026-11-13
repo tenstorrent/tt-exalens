@@ -36,7 +36,15 @@ class TestTensixDebug(unittest.TestCase):
 
     def setUp(self):
         self.location = OnChipCoordinate.create(self.location_str, device=self.context.devices[0])
-        self.tensix_debug = TensixDebug(self.location, self.neo_id)
+
+        try:
+            self.tensix_debug = TensixDebug(self.location, self.neo_id)
+        except ValueError:
+            if not (self.location.device.is_quasar() and self.neo_id is None):
+                raise
+            self.skipTest(
+                "Quasar needs a NEO: TensixDebug reads dest through TRISC, which the overlay (neo_id=None) lacks."
+            )
         debug_bus = self.location.noc_block.get_debug_bus(self.neo_id)
         assert debug_bus is not None
         self.debug_bus = debug_bus
