@@ -542,6 +542,34 @@ class TestGdbServerBreakpointPackets(unittest.TestCase):
         self.assertEqual(self.risc_debug.step_calls, 1)
         self.assertEqual(self._pc_in_g_reply(), b"18C00000")
 
+    def test_continue_from_watchpoint_stop_steps_core(self) -> None:
+        self._attach([(0xC014, _HALTED_ON_MEMORY_WATCHPOINT), (0xBC4, _HALTED_ON_EBREAK), (0xBC8, _HALTED)])
+
+        self._send(b"Z2,d000,4")
+        self._send(b"vCont;c")
+        self._send(b"vCont;c")
+        self.assertEqual(self._send(b"vCont;s:p1.1"), b"T05thread:p1.1;core:1;")
+        self.assertEqual(self.risc_debug.step_calls, 1)
+
+    def test_attach_forgets_watchpoint_stop(self) -> None:
+        self._attach([(0xC014, _HALTED_ON_MEMORY_WATCHPOINT), (0xC018, _HALTED)])
+
+        self._send(b"Z2,d000,4")
+        self._send(b"vCont;c")
+        self._send(b"D;1")
+        self._send(b"vAttach;1")
+        self.assertEqual(self._send(b"vCont;s:p1.1"), b"T05thread:p1.1;core:1;")
+        self.assertEqual(self.risc_debug.step_calls, 1)
+
+    def test_breakpoint_address_is_read_from_hit_slot(self) -> None:
+        status = dataclasses.replace(_HALTED, is_pc_watchpoint_hit=True, watchpoints_hit=[False, True] + [False] * 6)
+        self._attach([(0xC014, status)])
+
+        self._send(b"Z2,d000,4")
+        self._send(b"Z0,c010,4")
+        self._send(b"vCont;c")
+        self.assertEqual(self._pc_in_g_reply(), b"10C00000")
+
 
 _SAMPLE_CORES = ["brisc", "trisc0", "trisc1", "trisc2"]
 
@@ -616,9 +644,9 @@ class TestGdbBreakpointsFromClient(unittest.TestCase):
             f"Expected GDB to print g_MAILBOX as 0xffb12080 at the ebreak stop\nOutput:\n{output}",
         )
         self.assertEqual(
-            sum("Breakpoint 1, decrement_mailbox" in line for line in lines),
+            sum(bool(re.search(r"Breakpoint 1(\.\d+)?, decrement_mailbox", line)) for line in lines),
             stops,
-            f"Expected {stops} lines with 'Breakpoint 1, decrement_mailbox'\nOutput:\n{output}",
+            f"Expected {stops} lines with 'Breakpoint 1[.<location>], decrement_mailbox'\nOutput:\n{output}",
         )
         self.assertEqual(
             [int(match.group(1)) for line in lines if (match := re.match(r"^\$\d+ = (\d+)$", line))],
