@@ -88,6 +88,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
         self.noc_overlay = MemoryBlock(
             size=0x40000, address=DeviceAddress(private_address=0xFFB40000, noc_address=0xFFB40000)
         )
+        self.config_regs = MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000))
 
         self.brisc = BabyRiscInfo(
             risc_name="brisc",
@@ -314,10 +315,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs),
             ],
         )
 
@@ -373,10 +371,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs),
             ],
         )
 
@@ -432,10 +427,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs),
             ],
         )
 
@@ -491,10 +483,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs),
             ],
         )
 

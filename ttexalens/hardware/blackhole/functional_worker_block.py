@@ -92,6 +92,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
 
         # Dest size: 8 tiles, of 1024 4 bytes each
         self.dest = MemoryBlock(size=4 * 8 * 1024, address=DeviceAddress(private_address=0xFFBD8000))
+        self.config_regs = MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000))
 
         self.brisc = BabyRiscInfo(
             risc_name="brisc",
@@ -320,10 +321,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs),
             ]
         )
 
@@ -383,10 +381,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs),
             ]
         )
 
@@ -446,10 +441,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs),
             ]
         )
 
@@ -509,10 +501,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs),
             ]
         )
 
