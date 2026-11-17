@@ -104,3 +104,19 @@ print/x g_MAILBOX
 
 # If you reached here, test passed without errors :)
 ```
+
+## Breakpoints
+
+A breakpoint set with `break` uses a hardware watchpoint on the program counter. The core stops after the instruction at the breakpoint address has executed, so the effect of that instruction is already visible at a breakpoint stop. GDB shows the breakpoint address as `$pc` at the stop, and the first `stepi` from a breakpoint stop only moves `$pc` to the instruction that executes next.
+
+## Conditional breakpoints
+
+A breakpoint can have a condition. The sample app calls `decrement_mailbox` three times, with `g_MAILBOX` equal to 3, 2 and 1. To stop only in the last call, replace `break decrement_mailbox` in the script above with the line below, and keep only one of the three `continue` lines that follow `print g_MAILBOX`:
+
+```
+break decrement_mailbox if g_MAILBOX == 1
+```
+
+The core then stops in `decrement_mailbox` once, and `print g_MAILBOX` shows 1. `condition <N> <expression>` sets the condition of an existing breakpoint, and `condition <N>` removes it.
+
+GDB evaluates the condition: the core stops at every hit of the breakpoint, GDB reads the values the condition needs and resumes the core if the condition is false. The GDB server does not evaluate conditions itself, so `set breakpoint condition-evaluation target` only prints a warning and GDB keeps evaluating them.
