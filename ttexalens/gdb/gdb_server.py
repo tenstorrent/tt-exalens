@@ -21,7 +21,7 @@ from ttexalens.gdb.gdb_data import GdbProcess, GdbThreadId
 from ttexalens.gdb.gdb_file_server import GdbFileServer
 from ttexalens.context import Context
 from ttexalens import util as util
-from ttexalens.hardware.risc_debug import RiscDebug, RiscLocation
+from ttexalens.hardware.risc_debug import RiscDebug, RiscDebugStatus, RiscLocation
 from ttexalens.memory_access import RestrictedMemoryAccessError
 
 # Helper class returns currently debugging list of threads to gdb client in paged manner
@@ -319,11 +319,14 @@ class GdbServer(threading.Thread):
                 assert self.current_process is not None, "Current process should not be None when reading registers"
                 value = self.current_process.risc_debug.read_gpr(j)
                 if j == 32:
-                    # If ebreak was hit, pc will point to the instruction after it
-                    risc_debug_status = self.current_process.risc_debug.read_status()
-                    if risc_debug_status.is_ebreak_hit:
-                        # Rewind pc to unwind callstack from the ebreak instruction
-                        value -= 4
+                    if self.current_process.breakpoint_stop_address is not None:
+                        value = self.current_process.breakpoint_stop_address
+                    else:
+                        # If ebreak was hit, pc will point to the instruction after it
+                        risc_debug_status = self.current_process.risc_debug.read_status()
+                        if risc_debug_status.is_ebreak_hit:
+                            # Rewind pc to unwind callstack from the ebreak instruction
+                            value -= 4
                 writer.append_register_hex(value)
         elif parser.parse(b"G"):  # Write general registers.
             # ‘G XX...’
@@ -655,6 +658,8 @@ class GdbServer(threading.Thread):
                     if not process.risc_debug.is_halted():
                         process.risc_debug.halt()
                     self.debugging_threads[process.process_id] = process.thread_id
+                    process.breakpoint_stop_address = None
+                    process.watchpoint_stop = False
 
                     # Respond with Stop Reply Packet
                     # Example on x64: T0006:008e3ced17560000;07:d0b6f7f6fe7f0000;10:9bf26da6a27f0000;thread:pd60.d60;core:5;
@@ -766,6 +771,7 @@ class GdbServer(threading.Thread):
 
             # Apply actions
             processes_to_watch: set[GdbProcess] = set()
+            stepped_processes: set[GdbProcess] = set()
             for pid in thread_actions.keys():
                 # NOTE: The server must ignore ‘c’, ‘C’, ‘s’, ‘S’, and ‘r’ actions for threads that are already running. Conversely, the server must ignore ‘t’ actions for threads that are already stopped.
                 process = available_processes.get(pid)
@@ -776,13 +782,21 @@ class GdbServer(threading.Thread):
                 if action == "c":  # Continue
                     # Continue only if we are not already running.
                     if process.risc_debug.is_halted():
+                        process.breakpoint_stop_address = None
+                        process.watchpoint_stop = False
                         process.risc_debug.cont()
                         processes_to_watch.add(process)
                 elif action == "s":  # Step
                     # Step only if we are not already running.
                     if process.risc_debug.is_halted():
-                        process.risc_debug.step()
-                        processes_to_watch.add(process)
+                        if process.breakpoint_stop_address is not None or process.watchpoint_stop:
+                            process.breakpoint_stop_address = None
+                            process.watchpoint_stop = False
+                            self.vCont_pending_statuses.append(self._stop_reply(process))
+                        else:
+                            process.risc_debug.step()
+                            processes_to_watch.add(process)
+                            stepped_processes.add(process)
                 elif action == "t":  # Stop
                     # Stop only if we are already running
                     if not process.risc_debug.is_halted() and not process.risc_debug.is_in_reset():
@@ -794,7 +808,7 @@ class GdbServer(threading.Thread):
 
             # Watch processes that are running for changes and report (only in all-stop mode)
             if not self.is_non_stop:
-                stop_watching = False
+                stop_watching = len(self.vCont_pending_statuses) > 0
                 client_socket = writer.socket
                 while not stop_watching:
                     # Check if user wants to stop gdb
@@ -828,9 +842,7 @@ class GdbServer(threading.Thread):
                                 watchpoints = process.risc_debug.read_watchpoints_state()
                                 watchpoints_hit = risc_debug_status.watchpoints_hit
                                 for i in range(0, min(len(watchpoints), len(watchpoints_hit))):
-                                    if watchpoints_hit[i]:
-                                        assert watchpoints[i].is_enabled
-
+                                    if watchpoints_hit[i] and watchpoints[i].is_enabled:
                                         # If it is memory watchpoint, check type of watchpoint (read, write, access) and get address
                                         if watchpoints[i].is_memory:
                                             if watchpoints[i].is_write:
@@ -842,20 +854,20 @@ class GdbServer(threading.Thread):
                                             detected_signal = (
                                                 f"{detected_signal}{process.risc_debug.read_watchpoint_address(i):x};"
                                             )
+                                            process.watchpoint_stop = True
                                             break
-                            elif risc_debug_status.is_pc_watchpoint_hit:
+                            elif risc_debug_status.is_pc_watchpoint_hit and process not in stepped_processes:
                                 detected_signal = "swbreak:;"  # This is also software breakpoint and not hardware breakpoint in gdb eyes
+                                address = self._read_hit_breakpoint_address(process, risc_debug_status)
+                                if address is not None and address != process.risc_debug.read_gpr(32):
+                                    process.breakpoint_stop_address = address
                             elif risc_debug_status.is_ebreak_hit:
                                 detected_signal = "swbreak:;"
                             else:
                                 detected_signal = ""
-                            self.vCont_pending_statuses.append(
-                                f"T05{detected_signal}thread:p{process.thread_id.process_id:x}.{process.thread_id.thread_id:x};core:{process.virtual_core_id:x};"
-                            )
+                            self.vCont_pending_statuses.append(self._stop_reply(process, detected_signal))
                             stop_watching = True
-                if len(self.vCont_pending_statuses) > 0:
-                    self.vCont_pending_statuses.append("T05")
-                else:
+                if len(self.vCont_pending_statuses) == 0:
                     self.vCont_pending_statuses.append("S02")
                 self.vCont_pending_statuses.reverse()
                 writer.append(self.vCont_pending_statuses.pop().encode())
@@ -1219,6 +1231,16 @@ class GdbServer(threading.Thread):
             util.WARN(f"GDB: unsupported message: {parser.data!r}", file=self.error_stream)
             pass
         return True
+
+    def _stop_reply(self, process: GdbProcess, stop_reason: str = "") -> str:
+        return f"T05{stop_reason}thread:p{process.thread_id.process_id:x}.{process.thread_id.thread_id:x};core:{process.virtual_core_id:x};"
+
+    def _read_hit_breakpoint_address(self, process: GdbProcess, status: RiscDebugStatus) -> int | None:
+        watchpoints = process.risc_debug.read_watchpoints_state()
+        for i in range(0, min(len(watchpoints), len(status.watchpoints_hit))):
+            if status.watchpoints_hit[i] and watchpoints[i].is_enabled and not watchpoints[i].is_memory:
+                return process.risc_debug.read_watchpoint_address(i)
+        return None
 
     def write_paged_message(self, message: str, offset: int, length: int, writer: GdbMessageWriter):
         if offset >= len(message):

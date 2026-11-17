@@ -24,6 +24,8 @@ class GdbProcess:
     virtual_core_id: int
     core_type: str
     mem_access: MemoryAccess = field(init=False)
+    breakpoint_stop_address: int | None = field(init=False, default=None)
+    watchpoint_stop: bool = field(init=False, default=False)
 
     def __post_init__(self):
         self.mem_access = create_memory_access(self.risc_debug)
