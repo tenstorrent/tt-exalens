@@ -613,10 +613,91 @@ TensixState: Tensix state for the given device and location.
 
 
 
+## read_block_state
+
+```
+read_block_state(location: str | OnChipCoordinate, device_id: int = 0, context: Context | None = None) -> list[BlockStateEntry]
+```
+
+
+### Description
+
+Reads the raw state of one Tensix or Ethernet block without halting a core or sending one a command.
+
+
+### Args
+
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
+- `device_id` *(int, default 0)*: ID number of device to read from.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+
+
+### Returns
+
+ *(list[BlockStateEntry])*: The entries in read order: every debug-bus group, each region of the block's NOC memory map with register regions first and L1 last, the configuration registers through their select register, then the registers of each RISC's debug hardware. A region or RISC that isn't read has an entry with a reason instead of data, such as "unsafe to read", "not accessible", "no debug hardware", "in reset" or the error its read raised.
+
+### Notes
+
+- A region is read only when its memory map calls it accessible and safe to read.
+- A read can change what a later one returns. A NOC read of L1 can set ECC status bits in the debug registers, so the register regions are read before L1.
+- The NIU counters of the NOC the reads go through (NOC1 by default) count this function's own reads, so their returned values are higher than before the call. The returned debug_regs region also holds the debug-bus select value this function wrote last.
+- On Blackhole the NOC memory map marks each RISC's data private memory unsafe to read (tt-exalens#907), so it has a reason here; halt_and_read_risc_state reads it through the RISC.
+- A device timeout (TimeoutDeviceRegisterError) is raised, not returned as a reason.
+- Quasar is not covered.
+
+
+
+
+## halt_and_read_risc_state
+
+```
+halt_and_read_risc_state(location: str | OnChipCoordinate, device_id: int = 0, context: Context | None = None) -> list[BlockStateEntry]
+```
+
+
+### Description
+
+Halts every RISC of one Tensix or Ethernet block that can be halted, then reads what only a halted core gives. The cores stay halted.
+
+
+### Args
+
+- `location` *(str | OnChipCoordinate)*: Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
+- `device_id` *(int, default 0)*: ID number of device to read from.
+- `context` *(Context, optional)*: TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+
+
+### Returns
+
+ *(list[BlockStateEntry])*: For each RISC, its GPR entries (named as in RISCV_REGISTER_NAMES_BY_INDEX, with pc from get_pc), then an entry for each region of its memory map that read_block_state doesn't read, read through that RISC at its private address. A RISC that isn't read has one entry without a name that says why, and a region that isn't read has a reason instead of data.
+
+### Notes
+
+- Every RISC of the block is halted before the first read. Each one is checked to still report halted after the halt, after its GPRs and after each region, because on Blackhole a halted core can stop reporting halted; data read while that happened is not returned.
+- The cores are not continued: a halt can corrupt the instruction a core was executing, so continuing it can break the core (tt-exalens#908).
+- A remote chip's link cores get no command, because they are the chip's only path to the host and halting one cuts the chip off. Halting a local chip's link cores cuts off the chips reached through them, so call this for the blocks of those chips first.
+- A region that several RISCs list, such as dest, is read through each of them.
+- Regions are read 4 bytes at a time, so a RISC's own address check sees every word. On Blackhole, tt-exalens refuses reads through trisc2 at addresses where address % 16 is above 4, because its reads of private memory there return wrong data (tt-exalens#528). A region read through trisc2 therefore comes back with a reason, not data.
+- A device timeout (TimeoutDeviceRegisterError) is raised, not returned as a reason.
+- Quasar is not covered.
+
+
+
+
 ## TensixState
 
 
 
+## BlockStateEntryKind
+
+
+
+What a BlockStateEntry holds. NOC_REGION is a region of the block's NOC memory map, read over the NOC. PRIVATE_REGION is a region of a RISC's memory map read through that RISC at its private address, or the block's configuration registers read through their select register. DEBUG_BUS_GROUP is one debug-bus signal group. GPR is one general purpose register of a RISC, or its PC. DEBUG_HARDWARE_REGISTER is one register of a RISC's debug hardware.
+## BlockStateEntry
+
+
+
+One piece of a block's state, as read_block_state and halt_and_read_risc_state return it. name is the region, debug-bus group or register name from tt-exalens, or None for an entry about a whole RISC. risc_name is the RISC whose view or register the entry holds, or None for what belongs to the block. address is the NOC address of a NOC region and the private address of a private region, else None. size is in bytes. data holds the raw bytes as the device stores them; when it is None, reason says why.
 
 
 # perf_counters
@@ -777,6 +858,14 @@ and must be specified explicitly.
 
 
 
+### is_register_access
+
+
+
+```
+is_register_access(self, location: OnChipCoordinate, address: int, num_bytes: int) -> bool
+```
+Returns True unless the whole access lies in L1 or DRAM.
 ### bar0_read
 
 

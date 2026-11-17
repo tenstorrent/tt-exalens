@@ -492,6 +492,12 @@ class BabyRiscDebugHardware:
     def read_watchpoint_address(self, id) -> int:
         return self.__riscv_read(REG_HW_WATCHPOINT_0 + id)
 
+    def read_debug_hardware_registers(self) -> dict[str, int]:
+        registers = {"status": REG_STATUS, "command": REG_COMMAND, "hw_watchpoint_settings": REG_HW_WATCHPOINT_SETTINGS}
+        for id in range(self.risc_info.max_watchpoints):
+            registers[f"hw_watchpoint_{id}"] = REG_HW_WATCHPOINT_0 + id
+        return {name: self.__riscv_read(register) for name, register in registers.items()}
+
     def disable_watchpoint(self, id):
         self.__update_watchpoint_setting(id, 0)
 
@@ -753,6 +759,11 @@ class BabyRiscDebug(RiscDebug):
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
         return self.debug_hardware.read_watchpoint_address(watchpoint_index)
+
+    def read_debug_hardware_registers(self) -> dict[str, int]:
+        self.assert_debug_hardware()
+        assert self.debug_hardware is not None, "Debug hardware is not initialized"
+        return self.debug_hardware.read_debug_hardware_registers()
 
     def disable_watchpoint(self, watchpoint_index: int) -> None:
         self.assert_debug_hardware()

@@ -96,6 +96,9 @@ class RocketCoreDebug(RiscDebug):
     def read_watchpoint_address(self, watchpoint_index: int) -> int:
         raise NotImplementedError("read_watchpoint_address must be implemented by subclasses of RocketCoreDebug")
 
+    def read_debug_hardware_registers(self) -> dict[str, int]:
+        raise NotImplementedError("read_debug_hardware_registers must be implemented by subclasses of RocketCoreDebug")
+
     def disable_watchpoint(self, watchpoint_index: int) -> None:
         raise NotImplementedError("disable_watchpoint must be implemented by subclasses of RocketCoreDebug")
 

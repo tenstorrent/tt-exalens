@@ -355,6 +355,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
+                    safe_to_read=False,
                 ),  # T0 MOP extender configuration
                 MemoryMapBlockInfo("dest", self.dest),
                 MemoryMapBlockInfo(
@@ -426,6 +427,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
+                    safe_to_read=False,
                 ),  # T1 MOP extender configuration
                 MemoryMapBlockInfo("dest", self.dest),
                 MemoryMapBlockInfo(
@@ -497,6 +499,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
+                    safe_to_read=False,
                 ),  # T2 MOP extender configuration
                 MemoryMapBlockInfo("dest", self.dest),
                 MemoryMapBlockInfo(

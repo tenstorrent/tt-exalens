@@ -145,6 +145,11 @@ class MemoryMap:
     def find_by_name(self, name: str) -> MemoryMapBlockInfo | None:
         return self._blocks_info.get(name, None)
 
+    @property
+    def blocks(self) -> list[MemoryMapBlockInfo]:
+        """The regions of the map, in the order they were given."""
+        return list(self._blocks_info.values())
+
     @staticmethod
     def get_memory_map_from_cache(
         type_to_cache: type, cache_key: str, block_list_lambda: Callable[[], list[MemoryMapBlockInfo]]
