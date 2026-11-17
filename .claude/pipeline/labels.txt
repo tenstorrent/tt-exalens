@@ -1,0 +1,39 @@
+# Labels the issue shaper may suggest. One label per line, spelled as on GitHub.
+# Maintained by hand: the pipeline never reads GitHub labels itself.
+# Left out on purpose: bounty*, duplicate, wontfix, review, short, mvp, community.
+
+# kind
+bug
+feature-request
+documentation
+code-quality
+testing
+
+# architecture
+wormhole
+blackhole
+quasar
+
+# area
+API
+library
+cli command
+gdb
+debug bus
+tensix-state
+error-handling
+eth
+JTAG
+multichip
+offline-debug
+code_coverage
+metal-context
+tt-triage
+umd
+hw
+Infra
+CI/CD
+
+# triage
+incomplete-information
+Needs clarification

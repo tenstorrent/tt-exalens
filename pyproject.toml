@@ -84,7 +84,7 @@ before-all = "yum install -y xz"
 
 [tool.pyright]
 include = ["."]
-exclude = ["build", "build_asan", "build_debug", "build_release", "build_riscv", "build_wheel", "**/__pycache__", "**/.venv"]
+exclude = ["build", "build_asan", "build_debug", "build_release", "build_riscv", "build_wheel", "**/__pycache__", "**/.venv", ".issue-pipeline"]
 extraPaths = ["build/stubs"]
 pythonVersion = "3.10"
 typeCheckingMode = "standard"

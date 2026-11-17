@@ -1,0 +1,36 @@
+{
+  "mode": "guided",
+  "gates": {
+    "issue": "user",
+    "plan": "user",
+    "result": "user",
+    "prompts": "user"
+  },
+  "home": ".issue-pipeline",
+  "base_ref": "origin/main",
+  "tt_metal": "",
+  "caps": {
+    "shaper_questions": 2,
+    "investigation": 2,
+    "plan_revisions": 3,
+    "test_retries": 3,
+    "review": 3,
+    "agent_calls": 60
+  },
+  "device_free_tests": [
+    "test.ttexalens.unit_tests.test_exception_hierarchy",
+    "test.ttexalens.unit_tests.test_noc_failover",
+    "test.ttexalens.unit_tests.test_search"
+  ],
+  "workspace_readable": [".claude", ".github", ".venv", "AGENTS.md"],
+  "leak_patterns": [
+    "\\[internal\\]",
+    "atlassian\\.net",
+    "slack\\.com",
+    "sharepoint\\.com",
+    "docs\\.google\\.com",
+    "drive\\.google\\.com",
+    "glean\\.com",
+    "@tenstorrent\\.com"
+  ]
+}
