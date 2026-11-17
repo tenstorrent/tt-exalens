@@ -4,6 +4,7 @@
 - [*ttexalens-lib-docs.md*](ttexalens-lib-docs.md): Library API documentation (automatically generated)
 - [*ttexalens-app-tutorial.md*](ttexalens-app-tutorial.md): How to use the command-line application
 - [*ttexalens-app-docs.md*](ttexalens-app-docs.md): Application command reference with examples (automatically generated)
+- [*design.md*](design.md): How tt-exalens is built: the device model, memory maps, how reads reach the hardware, RISC debug and multi-chip
 - [*elf_loader.md*](elf_loader.md): How the ELF loader works
 - [*gdb.md*](gdb.md): How to use GDB to debug RISC-V cores
 - [*coordinates.md*](coordinates.md): How to use coordinates for device targeting
