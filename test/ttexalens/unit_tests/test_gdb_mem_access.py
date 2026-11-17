@@ -561,6 +561,16 @@ class TestGdbServerBreakpointPackets(unittest.TestCase):
         self.assertEqual(self._send(b"vCont;s:p1.1"), b"T05thread:p1.1;core:1;")
         self.assertEqual(self.risc_debug.step_calls, 1)
 
+    def test_second_step_after_watchpoint_stop_runs_core(self) -> None:
+        self._attach([(0xC014, _HALTED_ON_MEMORY_WATCHPOINT), (0xC018, _HALTED)])
+
+        self._send(b"Z2,d000,4")
+        self._send(b"vCont;c")
+        self._send(b"z2,d000,4")
+        self.assertEqual(self._send(b"vCont;s:p1.1"), b"T05thread:p1.1;core:1;")
+        self.assertEqual(self._send(b"vCont;s:p1.1"), b"T05thread:p1.1;core:1;")
+        self.assertEqual(self.risc_debug.step_calls, 1)
+
     def test_breakpoint_address_is_read_from_hit_slot(self) -> None:
         status = dataclasses.replace(_HALTED, is_pc_watchpoint_hit=True, watchpoints_hit=[False, True] + [False] * 6)
         self._attach([(0xC014, status)])
@@ -634,7 +644,11 @@ class TestGdbBreakpointsFromClient(unittest.TestCase):
             script_path = os.path.join(tmpdir, "commands.gdb")
             with open(script_path, "w", encoding="utf-8") as f:
                 f.write("\n".join(script) + "\n")
-            return run_gdb_script(self.gdb_bin, script_path, timeout=60)
+            try:
+                return run_gdb_script(self.gdb_bin, script_path, timeout=60)
+            except subprocess.TimeoutExpired as e:
+                output = (e.stdout or b"").decode("utf-8", errors="replace")
+                self.fail(f"GDB did not finish within {e.timeout} s\nOutput:\n{output}")
 
     def _assert_breakpoint_stops(self, rc: int, output: str, stops: int, mailbox_values: list[int]) -> None:
         lines = output.splitlines()
