@@ -346,7 +346,6 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
-                    safe_to_read=False,
                 ),  # T0 MOP extender configuration
                 MemoryMapBlockInfo(
                     "t0_gprs",
@@ -414,7 +413,6 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
-                    safe_to_read=False,
                 ),  # T1 MOP extender configuration
                 MemoryMapBlockInfo(
                     "t1_gprs",
@@ -482,7 +480,6 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
-                    safe_to_read=False,
                 ),  # T1 MOP extender configuration
                 MemoryMapBlockInfo(
                     "t2_gprs",

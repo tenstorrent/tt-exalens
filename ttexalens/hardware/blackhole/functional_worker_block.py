@@ -58,11 +58,6 @@ register_store_noc1_initialization = RegisterStore.create_initialization(
 debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(group_map, debug_bus_signal_map)
 
 
-def trisc2_safe_to_read(address: int, num_bytes: int) -> bool:
-    # trisc2 debug reads of its data private memory return wrong words at addr % 16 > 4 (tt-exalens#528).
-    return address % 16 + num_bytes <= 8
-
-
 class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
     def __init__(self, location: OnChipCoordinate):
         super().__init__(
@@ -360,7 +355,6 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
-                    safe_to_read=False,
                 ),  # T0 MOP extender configuration
                 MemoryMapBlockInfo("dest", self.dest),
                 MemoryMapBlockInfo(
@@ -432,7 +426,6 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
-                    safe_to_read=False,
                 ),  # T1 MOP extender configuration
                 MemoryMapBlockInfo("dest", self.dest),
                 MemoryMapBlockInfo(
@@ -489,7 +482,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
         self.trisc2.memory_map.initialize_blocks(
             [
                 MemoryMapBlockInfo("l1", self.l1, safe_to_write=True),
-                MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, safe_to_read=trisc2_safe_to_read, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
+                MemoryMapBlockInfo("data_private_memory", self.trisc2.data_private_memory, access_check=lambda: not self.get_risc_debug("trisc2").is_in_reset()),  # type: ignore
                 MemoryMapBlockInfo("tdma_regs", self.tdma_regs, safe_to_read=False),
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
@@ -504,7 +497,6 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo(
                     "mop_config",
                     MemoryBlock(size=0x24, address=DeviceAddress(private_address=0xFFB14000)),
-                    safe_to_read=False,
                 ),  # T2 MOP extender configuration
                 MemoryMapBlockInfo("dest", self.dest),
                 MemoryMapBlockInfo(
