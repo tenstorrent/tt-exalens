@@ -317,11 +317,11 @@ class GdbServer(threading.Thread):
             # TODO: Use arc to read registers faster
             for j in range(0, GdbServer.REGISTER_COUNT):
                 assert self.current_process is not None, "Current process should not be None when reading registers"
-                value = self.current_process.risc_debug.read_gpr(j)
-                if j == 32:
-                    if self.current_process.breakpoint_stop_address is not None:
-                        value = self.current_process.breakpoint_stop_address
-                    else:
+                if j == 32 and self.current_process.breakpoint_stop_address is not None:
+                    value = self.current_process.breakpoint_stop_address
+                else:
+                    value = self.current_process.risc_debug.read_gpr(j)
+                    if j == 32:
                         # If ebreak was hit, pc will point to the instruction after it
                         risc_debug_status = self.current_process.risc_debug.read_status()
                         if risc_debug_status.is_ebreak_hit:
