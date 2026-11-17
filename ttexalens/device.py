@@ -284,7 +284,7 @@ class Device:
 
             bytes_checked += access_size
 
-    def _is_register_access(self, location: OnChipCoordinate, address: int, num_bytes: int) -> bool:
+    def is_register_access(self, location: OnChipCoordinate, address: int, num_bytes: int) -> bool:
         """
         Returns True unless the whole access lies in L1 or DRAM.
 
@@ -320,7 +320,7 @@ class Device:
         if safe_mode:
             self._validate_noc_access_is_safe(location, address, len(buffer), is_write=False)
         if register_access is None:
-            register_access = self._is_register_access(location, address, len(buffer))
+            register_access = self.is_register_access(location, address, len(buffer))
 
         def noc_operation(noc_id: NocId) -> None:
             self._umd_device.noc_read(
@@ -361,7 +361,7 @@ class Device:
         if safe_mode:
             self._validate_noc_access_is_safe(location, address, len(data), is_write=True)
         if register_access is None:
-            register_access = self._is_register_access(location, address, len(data))
+            register_access = self.is_register_access(location, address, len(data))
 
         def noc_operation(noc_id: NocId) -> None:
             self._umd_device.noc_write(

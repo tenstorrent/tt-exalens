@@ -297,6 +297,16 @@ class RiscDebug:
         pass
 
     @abstractmethod
+    def read_debug_hardware_registers(self) -> dict[str, int]:
+        """
+        Read the raw values of the debug hardware's status, command and watchpoint registers.
+        Sends the core no command and needs no halt.
+        Returns:
+            dict[str, int]: Raw 32-bit value of each register, by register name.
+        """
+        pass
+
+    @abstractmethod
     def disable_watchpoint(self, watchpoint_index: int) -> None:
         """
         Disable a watchpoint.

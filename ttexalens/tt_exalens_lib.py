@@ -1,8 +1,11 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+from contextlib import suppress
 from dataclasses import dataclass
 import datetime
+from enum import Enum, auto
+from functools import partial
 import os
 import struct
 from typing import Callable
@@ -19,11 +22,16 @@ from ttexalens._lib_helpers import (
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context, NocId
 from ttexalens.elf import read_elf, CallstackEntry, ElfFile, ElfVariable, get_callstack, get_frame_callstack
-from ttexalens.exceptions import TTException
+from ttexalens.exceptions import RiscHaltError, TTException
+from ttexalens.hardware.baby_risc_debug import RISCV_REGISTER_NAMES_BY_INDEX
 from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
+from ttexalens.hardware.noc_block import NocBlock
+from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.hardware.rocket_core_debug import RocketCoreDebug
 from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
 from ttexalens.memory_access import create_memory_access
+from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.register_store import ConfigurationRegisterDescription
 
 
 @trace_api
@@ -892,3 +900,298 @@ def get_tensix_state(
         register_window_counters=rwc,
         address_counters=adc,
     )
+
+
+class BlockStateEntryKind(Enum):
+    """
+    What a BlockStateEntry holds. NOC_REGION is a region of the block's NOC memory map, read over the NOC. PRIVATE_REGION is a region of a RISC's memory map read through that RISC at its private address, or the block's configuration registers read through their select register. DEBUG_BUS_GROUP is one debug-bus signal group. GPR is one general purpose register of a RISC, or its PC. DEBUG_HARDWARE_REGISTER is one register of a RISC's debug hardware.
+    """
+
+    NOC_REGION = auto()
+    PRIVATE_REGION = auto()
+    DEBUG_BUS_GROUP = auto()
+    GPR = auto()
+    DEBUG_HARDWARE_REGISTER = auto()
+
+
+@dataclass
+class BlockStateEntry:
+    """
+    One piece of a block's state, as read_block_state and halt_and_read_risc_state return it. name is the region, debug-bus group or register name from tt-exalens, or None for an entry about a whole RISC. risc_name is the RISC whose view or register the entry holds, or None for what belongs to the block. address is the NOC address of a NOC region and the private address of a private region, else None. size is in bytes. data holds the raw bytes as the device stores them; when it is None, reason says why.
+    """
+
+    kind: BlockStateEntryKind
+    name: str | None
+    risc_name: str | None
+    address: int | None
+    size: int
+    data: bytes | None
+    reason: str | None
+
+
+def _error_reason(error: Exception) -> str:
+    return f"{type(error).__name__}: {error}"
+
+
+def _unreadable_reason(region: MemoryMapBlockInfo, address: int) -> str | None:
+    if not region.is_safe_to_read(address, region.memory_block.size):
+        return "unsafe to read"
+    if not region.is_accessible:
+        return "not accessible"
+    return None
+
+
+def _read_entry(
+    kind: BlockStateEntryKind, name: str, address: int | None, size: int, read: Callable[[], bytes]
+) -> BlockStateEntry:
+    try:
+        return BlockStateEntry(kind, name, None, address, size, read(), None)
+    except Exception as error:
+        return BlockStateEntry(kind, name, None, address, size, None, _error_reason(error))
+
+
+def _read_region_entry(
+    kind: BlockStateEntryKind, region: MemoryMapBlockInfo, address: int, read: Callable[[], bytes]
+) -> BlockStateEntry:
+    size = region.memory_block.size
+    reason = _unreadable_reason(region, address)
+    if reason is not None:
+        return BlockStateEntry(kind, region.name, None, address, size, None, reason)
+    return _read_entry(kind, region.name, address, size, read)
+
+
+def _read_noc_bytes(coordinate: OnChipCoordinate, address: int, size: int) -> bytes:
+    # Names no NOC, so the read fails over to the other NOC if one hangs.
+    buffer = bytearray(size)
+    coordinate.noc_read(address, buffer)
+    return bytes(buffer)
+
+
+def _configuration_registers(risc: RiscDebug) -> MemoryMapBlockInfo | None:
+    # The region RegisterStore reads configuration registers from, found the way RegisterStore finds it.
+    return risc.risc_info.memory_map.find_by_name("config_regs")
+
+
+def _noc_regions(coordinate: OnChipCoordinate) -> list[tuple[MemoryMapBlockInfo, int]]:
+    regions: list[tuple[MemoryMapBlockInfo, int]] = []
+    for region in coordinate.noc_block.noc_memory_map.blocks:
+        noc_address = region.memory_block.address.noc_address
+        assert noc_address is not None, "A region of a NOC memory map has a NOC address."
+        regions.append((region, noc_address))
+    # A NOC read of L1 can set ECC status bits in the debug registers, so registers are stored before L1 is read.
+    regions.sort(
+        key=lambda item: not coordinate.device.is_register_access(coordinate, item[1], item[0].memory_block.size)
+    )
+    return regions
+
+
+@trace_api
+def read_block_state(
+    location: str | OnChipCoordinate,
+    device_id: int = 0,
+    context: Context | None = None,
+) -> list[BlockStateEntry]:
+    """
+    Reads the raw state of one Tensix or Ethernet block without halting a core or sending one a command.
+
+    Args:
+        location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
+        device_id (int, default 0): ID number of device to read from.
+        context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+
+    Returns:
+        list[BlockStateEntry]: The entries in read order: every debug-bus group, each region of the block's NOC memory map with register regions first and L1 last, the configuration registers through their select register, then the registers of each RISC's debug hardware. A region or RISC that isn't read has an entry with a reason instead of data, such as "unsafe to read", "not accessible", "no debug hardware", "in reset" or the error its read raised.
+
+    Notes:
+        - A region is read only when its memory map calls it accessible and safe to read.
+        - A read can change what a later one returns. A NOC read of L1 can set ECC status bits in the debug registers, so the register regions are read before L1.
+        - The NIU counters of the NOC the reads go through (NOC1 by default) count this function's own reads, so their returned values are higher than before the call. The returned debug_regs region also holds the debug-bus select value this function wrote last.
+        - On Blackhole the NOC memory map marks each RISC's data private memory unsafe to read (tt-exalens#907), so it has a reason here; halt_and_read_risc_state reads it through the RISC.
+        - A device timeout (TimeoutDeviceRegisterError) is raised, not returned as a reason.
+        - Quasar is not covered.
+    """
+    coordinate = convert_coordinate(location, device_id, context)
+    block = coordinate.noc_block
+    entries: list[BlockStateEntry] = []
+
+    debug_bus = block.get_debug_bus()
+    if debug_bus is not None:
+        sample_size = debug_bus.L1_SAMPLE_SIZE_BYTES
+        for group in sorted(debug_bus.group_names):
+            entries.append(
+                _read_entry(
+                    BlockStateEntryKind.DEBUG_BUS_GROUP,
+                    group,
+                    None,
+                    sample_size,
+                    lambda: debug_bus.read_signal_group_unsafe(group).raw_data.to_bytes(
+                        sample_size, byteorder="little"
+                    ),
+                )
+            )
+
+    for region, noc_address in _noc_regions(coordinate):
+        entries.append(
+            _read_region_entry(
+                BlockStateEntryKind.NOC_REGION,
+                region,
+                noc_address,
+                partial(_read_noc_bytes, coordinate, noc_address, region.memory_block.size),
+            )
+        )
+
+    config_regs = _configuration_registers(block.get_default_risc_debug())
+    if config_regs is not None:
+        private_address = config_regs.memory_block.address.private_address
+        assert private_address is not None, "Configuration registers have a private address."
+        size = config_regs.memory_block.size
+        register_store = block.get_register_store()
+        registers = ConfigurationRegisterDescription(index=0, size=size)
+        entries.append(
+            _read_region_entry(
+                BlockStateEntryKind.PRIVATE_REGION,
+                config_regs,
+                private_address,
+                lambda: register_store.read_register(registers).to_bytes(size, byteorder="little"),
+            )
+        )
+
+    for risc in block.all_riscs:
+        risc_name = risc.risc_location.risc_name
+        debug_registers: dict[str, int] = {}
+        reason = "no debug hardware" if not risc.can_debug() else "in reset" if risc.is_in_reset() else None
+        if reason is None:
+            try:
+                debug_registers = risc.read_debug_hardware_registers()
+            except Exception as error:
+                reason = _error_reason(error)
+        for name, value in debug_registers.items():
+            data = value.to_bytes(4, byteorder="little")
+            entries.append(
+                BlockStateEntry(BlockStateEntryKind.DEBUG_HARDWARE_REGISTER, name, risc_name, None, 4, data, None)
+            )
+        if reason is not None:
+            entries.append(
+                BlockStateEntry(BlockStateEntryKind.DEBUG_HARDWARE_REGISTER, None, risc_name, None, 0, None, reason)
+            )
+    return entries
+
+
+def _private_regions(block: NocBlock, risc: RiscDebug) -> list[MemoryMapBlockInfo]:
+    """The regions of a RISC's memory map that read_block_state doesn't cover."""
+    config_regs = _configuration_registers(risc)
+    regions: list[MemoryMapBlockInfo] = []
+    for region in risc.risc_info.memory_map.blocks:
+        address = region.memory_block.address
+        if address.private_address is None:
+            continue
+        if address.noc_address is not None:
+            noc_region = block.noc_memory_map.find_by_noc_address(address.noc_address)
+            if noc_region is not None:
+                noc_region_address = noc_region.memory_block.address.noc_address
+                assert noc_region_address is not None, "A region of a NOC memory map has a NOC address."
+                if _unreadable_reason(noc_region, noc_region_address) is None:
+                    continue
+        if config_regs is not None and region.name == config_regs.name:
+            continue
+        regions.append(region)
+    return regions
+
+
+def _read_private_bytes(risc: RiscDebug, address: int, size: int) -> bytes:
+    buffer = bytearray(size)
+    view = memoryview(buffer)
+    # One word per call, so the RISC's own address check sees every word.
+    for offset in range(0, size, 4):
+        risc.read_memory_bytes(address + offset, view[offset : offset + 4])
+    return bytes(buffer)
+
+
+def _read_private_region(risc: RiscDebug, region: MemoryMapBlockInfo, risc_reason: str | None) -> BlockStateEntry:
+    address = region.memory_block.address.private_address
+    assert address is not None, "A region read through a RISC has a private address."
+    size = region.memory_block.size
+    data = None
+    reason = _unreadable_reason(region, address) or risc_reason
+    if reason is None and not risc.is_halted():
+        reason = "didn't stay halted"
+    if reason is None:
+        try:
+            data = _read_private_bytes(risc, address, size)
+        except Exception as error:
+            reason = _error_reason(error)
+        if data is not None and not risc.is_halted():
+            data, reason = None, "didn't stay halted"
+    return BlockStateEntry(
+        BlockStateEntryKind.PRIVATE_REGION, region.name, risc.risc_location.risc_name, address, size, data, reason
+    )
+
+
+@trace_api
+def halt_and_read_risc_state(
+    location: str | OnChipCoordinate,
+    device_id: int = 0,
+    context: Context | None = None,
+) -> list[BlockStateEntry]:
+    """
+    Halts every RISC of one Tensix or Ethernet block that can be halted, then reads what only a halted core gives. The cores stay halted.
+
+    Args:
+        location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, or OnChipCoordinate object.
+        device_id (int, default 0): ID number of device to read from.
+        context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
+
+    Returns:
+        list[BlockStateEntry]: For each RISC, its GPR entries (named as in RISCV_REGISTER_NAMES_BY_INDEX, with pc from get_pc), then an entry for each region of its memory map that read_block_state doesn't read, read through that RISC at its private address. A RISC that isn't read has one entry without a name that says why, and a region that isn't read has a reason instead of data.
+
+    Notes:
+        - Every RISC of the block is halted before the first read. Each one is checked to still report halted after the halt, after its GPRs and after each region, because on Blackhole a halted core can stop reporting halted; data read while that happened is not returned.
+        - The cores are not continued: a halt can corrupt the instruction a core was executing, so continuing it can break the core (tt-exalens#908).
+        - A remote chip's link cores get no command, because they are the chip's only path to the host and halting one cuts the chip off. Halting a local chip's link cores cuts off the chips reached through them, so call this for the blocks of those chips first.
+        - A region that several RISCs list, such as dest, is read through each of them.
+        - Regions are read 4 bytes at a time, so a RISC's own address check sees every word. On Blackhole, tt-exalens refuses reads through trisc2 at addresses where address % 16 is above 4, because its reads of private memory there return wrong data (tt-exalens#528). A region read through trisc2 therefore comes back with a reason, not data.
+        - A device timeout (TimeoutDeviceRegisterError) is raised, not returned as a reason.
+        - Quasar is not covered.
+    """
+    coordinate = convert_coordinate(location, device_id, context)
+    block = coordinate.noc_block
+    device = coordinate.device
+    if not device.is_local and coordinate in device.active_eth_block_locations:
+        return [
+            BlockStateEntry(
+                BlockStateEntryKind.GPR, None, risc.risc_location.risc_name, None, 0, None, "remote chip's link core"
+            )
+            for risc in block.all_riscs
+        ]
+
+    halt_reasons: list[str | None] = []
+    for risc in block.all_riscs:
+        if not risc.can_debug():
+            halt_reasons.append("no debug hardware")
+        elif risc.is_in_reset():
+            halt_reasons.append("in reset")
+        else:
+            if not risc.is_halted():
+                with suppress(RiscHaltError):
+                    risc.halt()
+            halt_reasons.append(None if risc.is_halted() else "didn't halt")
+
+    entries: list[BlockStateEntry] = []
+    for risc, reason in zip(block.all_riscs, halt_reasons):
+        risc_name = risc.risc_location.risc_name
+        if reason is None and not risc.is_halted():
+            reason = "didn't stay halted"
+        if reason is None:
+            values = {
+                name: risc.get_pc() if name == "pc" else risc.read_gpr(index)
+                for index, name in RISCV_REGISTER_NAMES_BY_INDEX.items()
+            }
+            gprs_reason = None if risc.is_halted() else "didn't stay halted"
+            for name, value in values.items():
+                data = value.to_bytes(4, byteorder="little") if gprs_reason is None else None
+                entries.append(BlockStateEntry(BlockStateEntryKind.GPR, name, risc_name, None, 4, data, gprs_reason))
+        else:
+            entries.append(BlockStateEntry(BlockStateEntryKind.GPR, None, risc_name, None, 0, None, reason))
+        for region in _private_regions(block, risc):
+            entries.append(_read_private_region(risc, region, reason))
+    return entries
