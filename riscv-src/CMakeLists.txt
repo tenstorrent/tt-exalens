@@ -44,7 +44,7 @@ set(RISCV_CORES_wormhole_rv32 "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc
 set(RISCV_CORES_blackhole_rv32 "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc0" "erisc1" "drisc")
 set(RISCV_CORES_quasar_rv32 "trisc0" "trisc1" "trisc2" "trisc3")
 set(RISCV_CORES_quasar_rv64 "rocket0" "rocket1" "rocket2" "rocket3" "rocket4" "rocket5" "rocket6" "rocket7")
-set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "edge_mem_test")
+set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "edge_mem_test" "gdb_breakpoint_test")
 
 # NEOs share L1, so Quasar TRISC ELFs are linked into a separate L1 slice for each NEO
 set(RISCV_NEO_IDS_quasar_rv32 0 1 2 3)
