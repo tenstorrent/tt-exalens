@@ -861,7 +861,11 @@ class GdbServer(threading.Thread):
                                 watchpoints = process.risc_debug.read_watchpoints_state()
                                 watchpoints_hit = risc_debug_status.watchpoints_hit
                                 for i in range(0, min(len(watchpoints), len(watchpoints_hit))):
-                                    if watchpoints_hit[i] and watchpoints[i].is_enabled and not watchpoints[i].is_memory:
+                                    if (
+                                        watchpoints_hit[i]
+                                        and watchpoints[i].is_enabled
+                                        and not watchpoints[i].is_memory
+                                    ):
                                         process.breakpoint_stop_address = process.risc_debug.read_watchpoint_address(i)
                                         break
                                 detected_signal = "swbreak:;"  # This is also software breakpoint and not hardware breakpoint in gdb eyes
