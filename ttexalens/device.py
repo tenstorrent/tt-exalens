@@ -66,6 +66,10 @@ class TensixInstructions:
         raise NotImplementedError
 
     @staticmethod
+    def TT_OP_SETC16(setc16_reg, setc16_value) -> int:
+        raise NotImplementedError
+
+    @staticmethod
     def TT_OP_SFPSHFT(Imm12, VC, VD, Mod1) -> int:
         raise NotImplementedError
 

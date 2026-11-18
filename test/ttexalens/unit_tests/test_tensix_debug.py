@@ -190,7 +190,7 @@ class TestTensixDebug(unittest.TestCase):
             value = 0
             for signal in signals:
                 signal_desc = self.debug_bus.get_signal_description(signal)
-                value = value << signal_desc.mask.bit_length()
+                value = value << bin(signal_desc.mask).count("1")
                 value |= self.debug_bus.read_signal(signal_desc)
             return value
         else:
@@ -326,3 +326,65 @@ class TestTensixDebug(unittest.TestCase):
                 inject(instruction)
                 state = state_after(state, instruction)
                 check(state, f"{instruction}, round {round_id}")
+
+    def _reset_register_window_counters(self):
+        for thread_id in range(3):
+            # 0xF sets SrcA, SrcB, Dst and the fidelity phase of that thread to 0
+            self.tensix_debug.inject_instruction(self.ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0xF), thread_id)
+
+    def test_dst_register_window_counter_width(self):
+        """The Dst counter and its carriage-return copy keep 12 bits; the signals must show all of them."""
+        if self.is_blackhole():
+            self.skipTest("Checks the Wormhole Dst counter width.")
+
+        self.addCleanup(self._reset_register_window_counters)
+        for thread_id in range(3):
+            self._reset_register_window_counters()
+            value = 0
+            for target in [0x3FF, 0x400, 0x7FF, 0xFFF]:
+                while value < target:
+                    step = min(target - value, 0xF)
+                    # rwc_cr = 0x4: increment Dst_Cr and set Dst to it
+                    self.tensix_debug.inject_instruction(self.ops.TT_OP_INCRWC(0x4, step, 0, 0), thread_id)
+                    value += step
+                self.assertEqual(self._read_signal(f"rwc{thread_id}_dst"), value, f"thread {thread_id}")
+                self.assertEqual(self._read_signal(f"rwc{thread_id}_dst_cr"), value, f"thread {thread_id}")
+
+    def test_fidelity_phase_signals(self):
+        """Each thread's fidelity phase is shown by its own signal."""
+        if self.is_blackhole() or "rwc0_fidelity_phase" not in self.debug_bus.signal_names:
+            self.skipTest("Test uses Wormhole ADDR_MOD register numbers.")
+
+        # Wormhole ADDR_MOD_AB_SEC, ADDR_MOD_DST_SEC and ADDR_MOD_BIAS_SEC register numbers of address modes 3 and 7.
+        # Address mode 7 is what address mode 3 selects when ADDR_MOD_SET_Base is set.
+        address_mode_registers = [(13, 26, 51), (21, 30, 55)]
+        fidelity_increment_1 = 1 << 13
+
+        def write_address_modes(dst_value: int):
+            for thread_id in range(3):
+                for ab, dst, bias in address_mode_registers:
+                    self.tensix_debug.inject_instruction(self.ops.TT_OP_SETC16(ab, 0), thread_id)
+                    self.tensix_debug.inject_instruction(self.ops.TT_OP_SETC16(dst, dst_value), thread_id)
+                    self.tensix_debug.inject_instruction(self.ops.TT_OP_SETC16(bias, 0), thread_id)
+
+        def increment_fidelity_phase(thread_id: int):
+            # ZEROACC on row 0xFF in 16-row mode clears nothing and applies address mode 3
+            self.tensix_debug.inject_instruction(self.ops.TT_OP_ZEROACC(1, 3, 0xFF), thread_id)
+
+        def check(phases: list[int]):
+            actual = [self._read_signal(f"rwc{thread_id}_fidelity_phase") for thread_id in range(3)]
+            self.assertEqual(actual, phases)
+
+        self.addCleanup(write_address_modes, 0)
+        self.addCleanup(self._reset_register_window_counters)
+        self._reset_register_window_counters()
+        write_address_modes(fidelity_increment_1)
+        check([0, 0, 0])
+        for thread_id in range(3):
+            for _ in range(thread_id + 1):
+                increment_fidelity_phase(thread_id)
+        check([1, 2, 3])
+        increment_fidelity_phase(0)
+        check([2, 2, 3])
+        increment_fidelity_phase(2)
+        check([2, 2, 0])

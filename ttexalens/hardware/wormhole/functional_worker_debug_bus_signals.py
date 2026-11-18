@@ -160,19 +160,19 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x3C0
     ),
     "trisc0_risc_wrapper_trisc_o_mailbox_rddata/0": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=18, mask=0xFFFF0000
+        rd_sel=2, daisy_sel=7, sig_sel=18, mask=0xFFFFFFC0
     ),
     "trisc0_risc_wrapper_trisc_o_mailbox_rddata/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=18, mask=0x3F
     ),
     "trisc0_risc_wrapper_trisc_intf_wrack_trisc": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x3FFE0000
+        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x3FF8000
     ),
     "trisc0_risc_wrapper_trisc_dmem_tensix_rden": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x10000
+        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x4000
     ),
     "trisc0_risc_wrapper_trisc_dmem_tensix_wren": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x8000
+        rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x2000
     ),
     "trisc0_risc_wrapper_trisc_icache_req_fifo_full": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=18, mask=0x2
@@ -248,10 +248,10 @@ debug_bus_signal_map = {
     "trisc1_pc_buffer_i_mops_outstanding": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x2000000),
     "trisc1_pc_buffer_cmd_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x1000000),
     "trisc1_pc_buffer_cmd_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x800000),
-    "trisc1_pc_buffer_next_cmd_fifo_data/1": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    "trisc1_pc_buffer_next_cmd_fifo_data/0": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
         rd_sel=3, daisy_sel=7, sig_sel=20, mask=0xFF800000, across_groups=True
     ),
-    "trisc1_pc_buffer_next_cmd_fifo_data/0": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    "trisc1_pc_buffer_next_cmd_fifo_data/1": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
         rd_sel=0, daisy_sel=7, sig_sel=21, mask=0x7FFFFF, across_groups=True
     ),
     "trisc1_risc_wrapper_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
@@ -270,19 +270,19 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x3C0
     ),
     "trisc1_risc_wrapper_trisc_o_mailbox_rddata/0": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=20, mask=0xFFFF0000
+        rd_sel=2, daisy_sel=7, sig_sel=20, mask=0xFFFFFFC0
     ),
     "trisc1_risc_wrapper_trisc_o_mailbox_rddata/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=20, mask=0x3F
     ),
     "trisc1_risc_wrapper_trisc_intf_wrack_trisc": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x3FFE0000
+        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x3FF8000
     ),
     "trisc1_risc_wrapper_trisc_dmem_tensix_rden": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x10000
+        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x4000
     ),
     "trisc1_risc_wrapper_trisc_dmem_tensix_wren": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x8000
+        rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x2000
     ),
     "trisc1_risc_wrapper_trisc_icache_req_fifo_full": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=20, mask=0x2
@@ -327,10 +327,10 @@ debug_bus_signal_map = {
     "trisc2_pc_buffer_i_mops_outstanding": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x2000000),
     "trisc2_pc_buffer_cmd_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x1000000),
     "trisc2_pc_buffer_cmd_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x800000),
-    "trisc2_pc_buffer_next_cmd_fifo_data/1": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    "trisc2_pc_buffer_next_cmd_fifo_data/0": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
         rd_sel=3, daisy_sel=7, sig_sel=22, mask=0xFF800000, across_groups=True
     ),
-    "trisc2_pc_buffer_next_cmd_fifo_data/0": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+    "trisc2_pc_buffer_next_cmd_fifo_data/1": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
         rd_sel=0, daisy_sel=7, sig_sel=23, mask=0x7FFFFF, across_groups=True
     ),
     "trisc2_risc_wrapper_trisc_o_par_err_risc_localmem": DebugBusSignalDescription(
@@ -349,19 +349,19 @@ debug_bus_signal_map = {
         rd_sel=3, daisy_sel=7, sig_sel=22, mask=0x3C0
     ),
     "trisc2_risc_wrapper_trisc_o_mailbox_rddata/0": DebugBusSignalDescription(
-        rd_sel=2, daisy_sel=7, sig_sel=22, mask=0xFFFF0000
+        rd_sel=2, daisy_sel=7, sig_sel=22, mask=0xFFFFFFC0
     ),
     "trisc2_risc_wrapper_trisc_o_mailbox_rddata/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=7, sig_sel=22, mask=0x3F
     ),
     "trisc2_risc_wrapper_trisc_intf_wrack_trisc": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x3FFE0000
+        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x3FF8000
     ),
     "trisc2_risc_wrapper_trisc_dmem_tensix_rden": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x10000
+        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x4000
     ),
     "trisc2_risc_wrapper_trisc_dmem_tensix_wren": DebugBusSignalDescription(
-        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x8000
+        rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x2000
     ),
     "trisc2_risc_wrapper_trisc_icache_req_fifo_full": DebugBusSignalDescription(
         rd_sel=0, daisy_sel=7, sig_sel=22, mask=0x2
@@ -736,8 +736,8 @@ debug_bus_signal_map = {
     "rwc_i_instrn_payload[47..31]": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=0, mask=0x1FFFF),
     "rwc_i_opcode[8]": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=0, mask=0x1000000),
     "rwc_i_instrn_payload[23..0]": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=0, mask=0xFFFFFF),
-    "rwc0_dst_cr": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=2, mask=0x3FF0000),
-    "rwc0_dst": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=2, mask=0x3FF),
+    "rwc0_dst_cr": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=2, mask=0xFFF0000),
+    "rwc0_dst": DebugBusSignalDescription(rd_sel=3, daisy_sel=3, sig_sel=2, mask=0xFFF),
     "rwc2_srcb_cr": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=2, mask=0x3F000000),
     "rwc2_srcb": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=2, mask=0x3F0000),
     "rwc1_srcb_cr": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=2, mask=0x3F00),
@@ -750,13 +750,13 @@ debug_bus_signal_map = {
     "rwc1_srca": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=2, mask=0x3F0000),
     "rwc0_srca_cr": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=2, mask=0x3F00),
     "rwc0_srca": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=2, mask=0x3F),
-    "rwc2_dst_cr": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=3, mask=0x3FF0000),
-    "rwc2_dst": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=3, mask=0x3FF),
-    "rwc1_dst_cr": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3FF0000),
-    "rwc1_dst": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0x3FF),
-    "rwc2_fidelity_phase": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=4, mask=0xC0000000),
-    "rwc1_fidelity_phase": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=4, mask=0x30000000),
-    "rwc0_fidelity_phase": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=4, mask=0xC000000),
+    "rwc2_dst_cr": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=3, mask=0xFFF0000),
+    "rwc2_dst": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=3, mask=0xFFF),
+    "rwc1_dst_cr": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0xFFF0000),
+    "rwc1_dst": DebugBusSignalDescription(rd_sel=0, daisy_sel=3, sig_sel=3, mask=0xFFF),
+    "rwc2_fidelity_phase": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=4, mask=0xC),
+    "rwc1_fidelity_phase": DebugBusSignalDescription(rd_sel=2, daisy_sel=3, sig_sel=4, mask=0x3),
+    "rwc0_fidelity_phase": DebugBusSignalDescription(rd_sel=1, daisy_sel=3, sig_sel=4, mask=0xC0000000),
     "sfpu_lane_enabled[31]": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x80000000),
     "sfpu_lane_enabled[23]": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x40000000),
     "sfpu_lane_enabled[15]": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x20000000),
@@ -789,13 +789,12 @@ debug_bus_signal_map = {
     "sfpu_lane_enabled[16]": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x4),
     "sfpu_lane_enabled[8]": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x2),
     "sfpu_lane_enabled[0]": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=28, mask=0x1),
-    "l1_addr_access_p18": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=5, mask=0x1FFFF0),
-    "l1_addr_access_p17/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=5, mask=0xF),
-    "l1_addr_access_p17/0": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=5, mask=0xFFF80000),
-    "l1_addr_access_p16": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=5, mask=0x7FFFC),
-    "l1_addr_access_p15": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=5, mask=0x3),
-    "l1_addr_access_p14": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=5, mask=0xFFFE0000),
-    "l1_addr_access_p13": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=5, mask=0x1FFFF),
+    "l1_addr_access_p15/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=5, mask=0xF),
+    "l1_addr_access_p15/0": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=5, mask=0xFFF80000),
+    "l1_addr_access_p14": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=5, mask=0x7FFFC),
+    "l1_addr_access_p13/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=5, mask=0x3),
+    "l1_addr_access_p13/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=5, mask=0xFFFE0000),
+    "l1_addr_access_p12": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=5, mask=0x1FFFF),
     "l1_access_port_rd_req_port15": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x800),
     "l1_access_port_rd_req_port14": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x400),
     "l1_access_port_rd_req_port13": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=3, mask=0x200),
@@ -828,14 +827,18 @@ debug_bus_signal_map = {
     "l1_access_port_wr_req_port2": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x4000),
     "l1_access_port_wr_req_port1": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x2000),
     "l1_access_port_wr_req_port0": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=3, mask=0x1000),
-    "l1_addr_access_p12/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=3, mask=0xFFF),
-    "l1_addr_access_p12/0": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=3, mask=0xF8000000),
-    "l1_addr_access_p11": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=3, mask=0x7FFFC00),
-    "l1_addr_access_p10/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=3, mask=0x3FF),
-    "l1_addr_access_p10/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=3, mask=0xFE000000),
-    "l1_addr_access_p9": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=3, mask=0x1FFFF00),
-    "l1_addr_access_p8": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=3, mask=0xFF),
-    "l1_addr_access_p7": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=2, mask=0xFF800000),
+    "l1_addr_access_p11/1": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=3, mask=0xFFF),
+    "l1_addr_access_p11/0": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=3, mask=0xF8000000),
+    "l1_addr_access_p10": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=3, mask=0x7FFFC00),
+    "l1_addr_access_p9/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=3, mask=0x3FF),
+    "l1_addr_access_p9/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=3, mask=0xFE000000),
+    "l1_addr_access_p8": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=3, mask=0x1FFFF00),
+    "l1_addr_access_p7/1": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+        rd_sel=0, daisy_sel=8, sig_sel=3, mask=0xFF, across_groups=True
+    ),
+    "l1_addr_access_p7/0": DebugBusSignalDescription(  # Signal spans two consecutive groups, so its value cannot be read atomically.
+        rd_sel=3, daisy_sel=8, sig_sel=2, mask=0xFF800000, across_groups=True
+    ),
     "l1_addr_access_p6": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=2, mask=0x7FFFC0),
     "l1_addr_access_p5/1": DebugBusSignalDescription(rd_sel=3, daisy_sel=8, sig_sel=2, mask=0x3F),
     "l1_addr_access_p5/0": DebugBusSignalDescription(rd_sel=2, daisy_sel=8, sig_sel=2, mask=0xFFE00000),
