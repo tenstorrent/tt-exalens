@@ -41,6 +41,25 @@ Once attached to the process, you can load the ELF file using the `add-symbol-fi
 
 After the symbols are loaded, you can display the call stack using the `bt` (backtrace) command.
 
+## Breakpoints and conditional breakpoints
+
+`break <location>` sets a breakpoint. It uses one of the hardware breakpoint slots of the riscv core. Watchpoints use the same slots, and GDB reports an error when none is free.
+
+A condition makes GDB report the stop only when it is true:
+
+```
+# Stop in decrement_mailbox only when g_MAILBOX is 2
+break decrement_mailbox if g_MAILBOX == 2
+# Change the condition of breakpoint 1
+condition 1 g_MAILBOX == 1
+# Remove the condition: breakpoint 1 stops on every hit again
+condition 1
+```
+
+GDB evaluates the condition itself. The core halts at every hit, GDB reads the variables and resumes the core when the condition is false, so a conditional breakpoint in a hot loop slows the program down.
+
+The core pauses on the instruction after the one at the breakpoint address (see "Breakpoints and memory watchpoints" in the [Wormhole debug interface documentation](https://github.com/tenstorrent/tt-isa-documentation/blob/main/WormholeB0/TensixTile/BabyRISCV/DebugInterface.md)). GDB shows the breakpoint address as `pc`, while registers and memory already hold the state after that instruction. The first `stepi` after a breakpoint stop therefore only moves `pc` to the next instruction and executes nothing.
+
 ## Sample app debugging script:
 
 Once you started gdb server, you can use run-elf command to execute `ttexalens/riscv-src/sample.cc` application on chip. For wormhole, you can execute `re build/riscv-src/wormhole/sample.brisc.elf` to run application on brisc core.
