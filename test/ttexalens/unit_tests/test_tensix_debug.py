@@ -212,3 +212,87 @@ class TestTensixDebug(unittest.TestCase):
             self.assertEqual(self._read_signal(f"rwc{thread_id}_srca"), rwc_a[thread_id])
             self.assertEqual(self._read_signal(f"rwc{thread_id}_srcb"), rwc_b[thread_id])
             self.assertEqual(self._read_signal(f"rwc{thread_id}_dst"), rwc_dst[thread_id])
+
+    @parameterized.expand(
+        [
+            # (register, SETDVALID / CLEARDVALID operand bit, signal names without the group prefix)
+            (
+                "srca",
+                0x1,
+                "unpacker0_srca_bank",
+                "mxu_srca_bank",
+                ["srca_srca_bank0_mxu_allowed", "srca_bank1_mxu_allowed"],
+                "srca_mxu_allowed",
+                "srca_unpacker0_allowed",
+            ),
+            (
+                "srcb",
+                0x2,
+                "unpacker1_srcb_bank",
+                "mxu_srcb_bank",
+                ["srcb_bank0_mxu_allowed", "srcb_bank1_mxu_allowed"],
+                "srcb_mxu_allowed",
+                "srcb_unpacker1_allowed",
+            ),
+        ]
+    )
+    def test_src_access_control_signals(
+        self,
+        _register: str,
+        operand: int,
+        unpacker_bank: str,
+        mxu_bank: str,
+        bank_mxu_allowed: list[str],
+        mxu_allowed: str,
+        unpacker_allowed: str,
+    ):
+        """SETDVALID gives the unpacker's bank to the matrix unit and CLEARDVALID gives the matrix unit's bank back.
+        The access control signals of SrcA and of SrcB must follow both."""
+        prefix = "srca_srcb_access_control_"
+        if prefix + unpacker_bank not in self.debug_bus.signal_names:
+            self.skipTest("Debug bus has no SrcA/SrcB access control signals on this device.")
+
+        def read(signal_name: str) -> int:
+            return self._read_signal(prefix + signal_name)
+
+        def give_back():
+            self.tensix_debug.inject_instruction(self.ops.TT_OP_CLEARDVALID(operand, 0), 0)
+
+        def give_back_all():
+            for _ in range(2):
+                if read(bank_mxu_allowed[0]) or read(bank_mxu_allowed[1]):
+                    give_back()
+
+        # SETDVALID waits while the matrix unit holds the unpacker's bank, so start with both banks given back,
+        # and leave no bank with the matrix unit if a check fails.
+        give_back_all()
+        self.addCleanup(give_back_all)
+
+        unpacker = read(unpacker_bank)
+        mxu = read(mxu_bank)
+        allowed = [0, 0]
+
+        def check(step: str):
+            expected = {
+                unpacker_bank: unpacker,
+                mxu_bank: mxu,
+                bank_mxu_allowed[0]: allowed[0],
+                bank_mxu_allowed[1]: allowed[1],
+                mxu_allowed: allowed[mxu],
+                unpacker_allowed: 1 - allowed[unpacker],
+            }
+            actual = {signal_name: read(signal_name) for signal_name in expected}
+            self.assertEqual(actual, expected, f"after {step}")
+
+        check("giving back both banks")
+        # Two rounds, so that each bank is given and given back once.
+        for round_id in range(2):
+            self.tensix_debug.inject_instruction(self.ops.TT_OP_SETDVALID(operand), 0)
+            allowed[unpacker] = 1
+            unpacker ^= 1
+            check(f"SETDVALID, round {round_id}")
+
+            give_back()
+            allowed[mxu] = 0
+            mxu ^= 1
+            check(f"CLEARDVALID, round {round_id}")
