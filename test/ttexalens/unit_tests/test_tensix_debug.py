@@ -255,44 +255,74 @@ class TestTensixDebug(unittest.TestCase):
         def read(signal_name: str) -> int:
             return self._read_signal(prefix + signal_name)
 
-        def give_back():
-            self.tensix_debug.inject_instruction(self.ops.TT_OP_CLEARDVALID(operand, 0), 0)
+        # State of the register: (unpacker's bank, matrix unit's bank, bank 0 given, bank 1 given),
+        # where "given" means that the matrix unit is allowed to use the bank.
+        def read_state() -> tuple[int, int, int, int]:
+            return (read(unpacker_bank), read(mxu_bank), read(bank_mxu_allowed[0]), read(bank_mxu_allowed[1]))
 
-        def give_back_all():
-            for _ in range(2):
-                if read(bank_mxu_allowed[0]) or read(bank_mxu_allowed[1]):
-                    give_back()
+        def state_after(state: tuple[int, int, int, int], instruction: str) -> tuple[int, int, int, int]:
+            unpacker, mxu, *given = state
+            if instruction == "SETDVALID":
+                given[unpacker] = 1
+                unpacker ^= 1
+            else:
+                given[mxu] = 0
+                mxu ^= 1
+            return (unpacker, mxu, given[0], given[1])
 
-        # SETDVALID waits while the matrix unit holds the unpacker's bank, so start with both banks given back,
-        # and leave no bank with the matrix unit if a check fails.
-        give_back_all()
-        self.addCleanup(give_back_all)
+        def inject(instruction: str):
+            op = (
+                self.ops.TT_OP_SETDVALID(operand)
+                if instruction == "SETDVALID"
+                else self.ops.TT_OP_CLEARDVALID(operand, 0)
+            )
+            self.tensix_debug.inject_instruction(op, 0)
 
-        unpacker = read(unpacker_bank)
-        mxu = read(mxu_bank)
-        allowed = [0, 0]
+        def go_to(target: tuple[int, int, int, int]):
+            """Injects the shortest sequence of instructions that takes the register to the target state."""
+            paths: dict[tuple[int, int, int, int], list[str]] = {read_state(): []}
+            queue = list(paths)
+            while queue and target not in paths:
+                state = queue.pop(0)
+                for instruction in ("SETDVALID", "CLEARDVALID"):
+                    if instruction == "SETDVALID" and state[2 + state[0]]:
+                        continue  # SETDVALID waits while the matrix unit holds the unpacker's bank.
+                    next_state = state_after(state, instruction)
+                    if next_state not in paths:
+                        paths[next_state] = paths[state] + [instruction]
+                        queue.append(next_state)
+            # The only states that cannot be reached are the two in which the unpacker waits for a bank
+            # that the matrix unit, being on the other bank, never gives back.
+            for instruction in paths.get(target, []):
+                inject(instruction)
 
-        def check(step: str):
+        # Leave the register as it was found, also if a check fails.
+        initial_state = read_state()
+        self.addCleanup(go_to, initial_state)
+
+        def check(state: tuple[int, int, int, int], step: str):
+            unpacker, mxu, *given = state
             expected = {
                 unpacker_bank: unpacker,
                 mxu_bank: mxu,
-                bank_mxu_allowed[0]: allowed[0],
-                bank_mxu_allowed[1]: allowed[1],
-                mxu_allowed: allowed[mxu],
-                unpacker_allowed: 1 - allowed[unpacker],
+                bank_mxu_allowed[0]: given[0],
+                bank_mxu_allowed[1]: given[1],
+                mxu_allowed: given[mxu],
+                unpacker_allowed: 1 - given[unpacker],
             }
             actual = {signal_name: read(signal_name) for signal_name in expected}
             self.assertEqual(actual, expected, f"after {step}")
 
-        check("giving back both banks")
+        # Start with both banks given back.
+        state = initial_state
+        while state[2] or state[3]:
+            inject("CLEARDVALID")
+            state = state_after(state, "CLEARDVALID")
+        check(state, "giving back both banks")
+
         # Two rounds, so that each bank is given and given back once.
         for round_id in range(2):
-            self.tensix_debug.inject_instruction(self.ops.TT_OP_SETDVALID(operand), 0)
-            allowed[unpacker] = 1
-            unpacker ^= 1
-            check(f"SETDVALID, round {round_id}")
-
-            give_back()
-            allowed[mxu] = 0
-            mxu ^= 1
-            check(f"CLEARDVALID, round {round_id}")
+            for instruction in ("SETDVALID", "CLEARDVALID"):
+                inject(instruction)
+                state = state_after(state, instruction)
+                check(state, f"{instruction}, round {round_id}")
