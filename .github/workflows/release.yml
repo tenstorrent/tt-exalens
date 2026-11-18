@@ -22,7 +22,7 @@ jobs:
       version: ${{ steps.get-version.outputs.version }}
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: "Get version"
         id: get-version
@@ -48,7 +48,7 @@ jobs:
     name: "Release"
     steps:
       - name: "Download wheel artifacts"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           # Every artifact produced by build-wheels.yml is named wheel-*.
           # Merge them into one directory for the release/upload step.
@@ -74,7 +74,7 @@ jobs:
           fi
 
       - name: "Create GitHub Release"
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           tag_name: ${{ steps.set-release-info.outputs.release-tag }}
           name: ${{ steps.set-release-info.outputs.release-name }}

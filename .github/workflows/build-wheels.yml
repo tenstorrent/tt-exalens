@@ -25,18 +25,18 @@ jobs:
     runs-on: ${{ matrix.os.runner }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           submodules: recursive
 
       - name: Build wheel via cibuildwheel
-        uses: pypa/cibuildwheel@v2.23.4
+        uses: pypa/cibuildwheel@f9b966cfadf4109556cadc5bb39ddb72d0ce664e # v4.3.5
         env:
           CIBW_BUILD: "cp3${{ matrix.python-minor }}-manylinux_${{ matrix.os.cibw-archs }}"
           CIBW_ARCHS: ${{ matrix.os.cibw-archs }}
 
       - name: Upload wheel artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheel-${{ matrix.os.label }}-cp3${{ matrix.python-minor }}
           path: ./wheelhouse/*.whl

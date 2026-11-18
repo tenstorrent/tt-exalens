@@ -161,6 +161,17 @@ class DebugBusSignalStore:
     def _l1_mem_reg2_address(self) -> int:
         return self._get_register_address("RISCV_DEBUG_REG_DBG_L1_MEM_REG2", "L1 memory register 2")
 
+    @cached_property
+    def supports_l1_sampling(self) -> bool:
+        return all(
+            register_name in self._register_store.registers
+            for register_name in (
+                "RISCV_DEBUG_REG_DBG_L1_MEM_REG0",
+                "RISCV_DEBUG_REG_DBG_L1_MEM_REG1",
+                "RISCV_DEBUG_REG_DBG_L1_MEM_REG2",
+            )
+        )
+
     @staticmethod
     def get_base_signal_name(signal_name: str) -> str:
         """Extract base signal name from combined signal names like 'signal/suffix'."""
