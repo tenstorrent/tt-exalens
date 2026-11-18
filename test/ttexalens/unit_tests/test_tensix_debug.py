@@ -36,6 +36,8 @@ class TestTensixDebug(unittest.TestCase):
 
     def setUp(self):
         self.location = OnChipCoordinate.create(self.location_str, device=self.context.devices[0])
+        if self.neo_id is not None and self.neo_id not in self.location.noc_block.neo_ids:
+            self.skipTest(f"NEO {self.neo_id} is not available on this platform.")
 
         try:
             self.tensix_debug = TensixDebug(self.location, self.neo_id)
