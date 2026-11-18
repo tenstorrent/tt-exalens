@@ -317,13 +317,7 @@ class GdbServer(threading.Thread):
             # TODO: Use arc to read registers faster
             for j in range(0, GdbServer.REGISTER_COUNT):
                 assert self.current_process is not None, "Current process should not be None when reading registers"
-                value = self.current_process.risc_debug.read_gpr(j)
-                if j == 32:
-                    # If ebreak was hit, pc will point to the instruction after it
-                    risc_debug_status = self.current_process.risc_debug.read_status()
-                    if risc_debug_status.is_ebreak_hit:
-                        # Rewind pc to unwind callstack from the ebreak instruction
-                        value -= 4
+                value = self.current_process.read_pc() if j == 32 else self.current_process.risc_debug.read_gpr(j)
                 writer.append_register_hex(value)
         elif parser.parse(b"G"):  # Write general registers.
             # ‘G XX...’
@@ -456,7 +450,11 @@ class GdbServer(threading.Thread):
                 writer.append(b"E01")
             else:
                 assert self.current_process is not None, "Current process should not be None when reading registers"
-                value = self.current_process.risc_debug.read_gpr(register)
+                value = (
+                    self.current_process.read_pc()
+                    if register == 32
+                    else self.current_process.risc_debug.read_gpr(register)
+                )
                 writer.append_hex(value, 8)
         elif parser.parse(b"P"):  # Write register n… with value r….
             # ‘P n…=r…’
@@ -651,6 +649,8 @@ class GdbServer(threading.Thread):
                 writer.append(b"E01")
             else:
                 try:
+                    process.breakpoint_stop_address = None
+                    process.step_completed = False
                     # We should halt selected core
                     if not process.risc_debug.is_halted():
                         process.risc_debug.halt()
@@ -776,13 +776,22 @@ class GdbServer(threading.Thread):
                 if action == "c":  # Continue
                     # Continue only if we are not already running.
                     if process.risc_debug.is_halted():
+                        process.breakpoint_stop_address = None
+                        process.step_completed = False
                         process.risc_debug.cont()
                         processes_to_watch.add(process)
                 elif action == "s":  # Step
                     # Step only if we are not already running.
                     if process.risc_debug.is_halted():
-                        process.risc_debug.step()
-                        processes_to_watch.add(process)
+                        if process.step_completed:
+                            process.breakpoint_stop_address = None
+                            process.step_completed = False
+                            self.vCont_pending_statuses.append(
+                                f"T05thread:p{process.thread_id.process_id:x}.{process.thread_id.thread_id:x};core:{process.virtual_core_id:x};"
+                            )
+                        else:
+                            process.risc_debug.step()
+                            processes_to_watch.add(process)
                 elif action == "t":  # Stop
                     # Stop only if we are already running
                     if not process.risc_debug.is_halted() and not process.risc_debug.is_in_reset():
@@ -797,6 +806,9 @@ class GdbServer(threading.Thread):
                 stop_watching = False
                 client_socket = writer.socket
                 while not stop_watching:
+                    if len(self.vCont_pending_statuses) > 0:
+                        stop_watching = True
+
                     # Check if user wants to stop gdb
                     if self.stop_event.is_set():
                         stop_watching = True
@@ -825,6 +837,7 @@ class GdbServer(threading.Thread):
                             # Report that process is halted
                             detected_signal = ""
                             if risc_debug_status.is_memory_watchpoint_hit:
+                                process.step_completed = True
                                 watchpoints = process.risc_debug.read_watchpoints_state()
                                 watchpoints_hit = risc_debug_status.watchpoints_hit
                                 for i in range(0, min(len(watchpoints), len(watchpoints_hit))):
@@ -844,6 +857,13 @@ class GdbServer(threading.Thread):
                                             )
                                             break
                             elif risc_debug_status.is_pc_watchpoint_hit:
+                                process.step_completed = True
+                                watchpoints = process.risc_debug.read_watchpoints_state()
+                                watchpoints_hit = risc_debug_status.watchpoints_hit
+                                for i in range(0, min(len(watchpoints), len(watchpoints_hit))):
+                                    if watchpoints_hit[i] and watchpoints[i].is_enabled and not watchpoints[i].is_memory:
+                                        process.breakpoint_stop_address = process.risc_debug.read_watchpoint_address(i)
+                                        break
                                 detected_signal = "swbreak:;"  # This is also software breakpoint and not hardware breakpoint in gdb eyes
                             elif risc_debug_status.is_ebreak_hit:
                                 detected_signal = "swbreak:;"
@@ -853,9 +873,7 @@ class GdbServer(threading.Thread):
                                 f"T05{detected_signal}thread:p{process.thread_id.process_id:x}.{process.thread_id.thread_id:x};core:{process.virtual_core_id:x};"
                             )
                             stop_watching = True
-                if len(self.vCont_pending_statuses) > 0:
-                    self.vCont_pending_statuses.append("T05")
-                else:
+                if len(self.vCont_pending_statuses) == 0:
                     self.vCont_pending_statuses.append("S02")
                 self.vCont_pending_statuses.reverse()
                 writer.append(self.vCont_pending_statuses.pop().encode())

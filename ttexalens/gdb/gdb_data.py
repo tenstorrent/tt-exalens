@@ -24,6 +24,8 @@ class GdbProcess:
     virtual_core_id: int
     core_type: str
     mem_access: MemoryAccess = field(init=False)
+    breakpoint_stop_address: int | None = field(default=None, init=False)
+    step_completed: bool = field(default=False, init=False)
 
     def __post_init__(self):
         self.mem_access = create_memory_access(self.risc_debug)
@@ -31,6 +33,16 @@ class GdbProcess:
     @cached_property
     def thread_id(self):
         return GdbThreadId(self.process_id, self.virtual_core_id)
+
+    def read_pc(self) -> int:
+        if self.breakpoint_stop_address is not None:
+            return self.breakpoint_stop_address
+        pc = self.risc_debug.read_gpr(32)
+        # If ebreak was hit, pc will point to the instruction after it
+        if self.risc_debug.read_status().is_ebreak_hit:
+            # Rewind pc to unwind callstack from the ebreak instruction
+            pc -= 4
+        return pc
 
     def __eq__(self, other):
         if not isinstance(other, GdbProcess):
