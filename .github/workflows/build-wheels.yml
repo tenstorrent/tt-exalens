@@ -30,7 +30,7 @@ jobs:
           submodules: recursive
 
       - name: Build wheel via cibuildwheel
-        uses: pypa/cibuildwheel@e5486e0b831d3a4954f271c2a053fbbc0e227d6a # v2.23.4
+        uses: pypa/cibuildwheel@f9b966cfadf4109556cadc5bb39ddb72d0ce664e # v4.3.5
         env:
           CIBW_BUILD: "cp3${{ matrix.python-minor }}-manylinux_${{ matrix.os.cibw-archs }}"
           CIBW_ARCHS: ${{ matrix.os.cibw-archs }}
