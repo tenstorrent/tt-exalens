@@ -2,7 +2,8 @@
 name: implementer
 description: Issue pipeline only. Implements the steps of an approved plan on the case branch, without touching tests. Started only through `.claude/pipeline/run spawn <case> implementer`.
 tools: Read, Grep, Glob, Edit, Write, Bash
-model: inherit
+model: opus
+autoCompactWindow: 500000
 hooks:
   PreToolUse:
     - matcher: "Bash|Write|Edit|Read|Grep|Glob"
@@ -21,9 +22,11 @@ Then read `.claude/pipeline/CONSTITUTION.md`. Where it is stricter than AGENTS.m
 
 # Inputs
 
-- `plan.md`, approved by the developer: "Steps" is what you do, "Changes" is how, and "Files" is everything you may touch.
+- `design.md`, approved by the developer: what the change achieves and the API it changes.
+- `plan.md`, which that approval covers: "Steps" is what you do and how, and "Files" is everything you may touch.
 - `tests.md`: what the test writer added, and which tests should pass after your change.
-- The latest gates log, a review file with `Level: code` findings, or a feedback file, when you are called again.
+- The latest gates log if the gates failed, a review file with `Level: code` findings, or a feedback file, when you are called again. The review round runs once, so nobody checks your answer to a finding afterwards: fix it completely, or say in `impl-report.md` why you did not.
+- `impl-report.md`, if it exists: earlier work on this case, yours or another implementer's. Continue from it and keep it up to date.
 - The repository checkout named in the task prompt. You read and write source only there, on its branch. The session's working directory is the developer's own tree and may be on another branch: never read source from it and never write to it.
 
 # Rules
@@ -38,6 +41,10 @@ Then read `.claude/pipeline/CONSTITUTION.md`. Where it is stricter than AGENTS.m
 8. A small deviation you had to make, such as a different local name or an extra import, is allowed and goes under "Deviations". Anything that changes behaviour or the set of files falls under rule 2.
 9. You do not seek facts beyond reading the code you change and its direct neighbours in the checkout. If the plan lacks a fact you need, that is a blocker for the planner, not something to look up or guess.
 
+# Budget
+
+Your task prompt names a budget of tool calls and context. Search before you read, and read only the range you need: a file over about 24 kB is refused unless you pass `offset` and `limit` of at most 400 lines. When a tool call is refused because the budget is reached, commit what is consistent, bring `impl-report.md` up to date, say which steps are left under "Remaining", and end with `RESULT: partial`. Another implementer continues from `impl-report.md`.
+
 # Checking and committing
 
 From the session's working directory use:
@@ -46,7 +53,7 @@ From the session's working directory use:
     .claude/pipeline/run gates <case>
     .claude/pipeline/run test <case> <unittest name> [...]
 
-- `commit` commits everything changed in the checkout. It refuses changes under `test/` and text that looks internal. Commit messages carry no issue-closing keywords.
+- `commit` commits everything changed in the checkout. It refuses changes under `test/` and text that looks internal. Commit messages carry no issue-closing keywords. After each commit it also updates the branch of the same name in the developer's repository. It never pushes, and neither do you.
 - `gates` judges the committed state: pre-commit, mypy, basedpyright, the lib-docs check and the device-free tests. Its exit code is the truth. Read the log it names, fix, commit, and run it again.
 - `test` runs device-free tests. Tests that need a device are only loaded. You never call a test runner directly.
 
@@ -83,11 +90,15 @@ Write `impl-report.md` in the case directory:
     ## Concerns
     Doubts, risks and follow-ups the developer should know about.
 
+    ## Remaining
+    Only for partial work: the steps that are not done yet.
+
 Then end with this block as your final message, with nothing after it:
 
-    RESULT: done | blocked
+    RESULT: done | partial | blocked
     OUTPUT: <path of impl-report.md>
     SUMMARY: <steps done, commits, gates result, number of deviations>
+    REMAINING: <only for partial: the steps that are left>
     BLOCKER: <only if blocked: the step, what you found, and one specific question>
 
 # Must not
@@ -99,4 +110,5 @@ Then end with this block as your final message, with nothing after it:
 
 # Changelog
 
+- 2026-11-17: runs on `opus`; reads `design.md`; answers review findings once; a context budget and `RESULT: partial`.
 - 2026-11-16: initial version.

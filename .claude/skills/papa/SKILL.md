@@ -5,6 +5,12 @@ argument-hint: "[case id ...] [--final <case id>=<git ref>]"
 disable-model-invocation: true
 allowed-tools:
   - Bash(.claude/pipeline/run *)
+hooks:
+  PreToolUse:
+    - matcher: "Agent"
+      hooks:
+        - type: command
+          command: '"${CLAUDE_PROJECT_DIR}"/.claude/pipeline/run guard orchestrator'
 ---
 
 # Improving the role files
@@ -22,5 +28,5 @@ First read `.claude/pipeline/CONSTITUTION.md`. Its rules override this file.
 
        git apply <proposals directory>/NN-<target>.patch
 
-   You never apply a patch and never edit a role file, `AGENTS.md` or the review skill on papa's behalf. `gates.prompts` in `.claude/pipeline/config.json` is reserved for an auto mode that does not exist yet.
+   You never apply a patch and never edit a role file, `AGENTS.md` or the review skill on papa's behalf. This gate always waits for the developer: auto mode does not take it.
 5. **Check an accepted change.** There is no automatic evaluation yet. The way to check a change is to run the same issue again in a fresh session and compare the result with the earlier case.

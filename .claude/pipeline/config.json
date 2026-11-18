@@ -1,21 +1,55 @@
 {
   "mode": "guided",
   "gates": {
-    "issue": "user",
-    "plan": "user",
-    "result": "user",
+    "issue": "auto",
+    "plan": "auto",
+    "result": "auto",
     "prompts": "user"
   },
   "home": ".issue-pipeline",
   "base_ref": "origin/main",
   "tt_metal": "",
+  "branch_user": "",
+  "branch_docs": "docs/agentic",
+  "mirror_branch": true,
+  "pr_footer": "🤖 Generated with [Claude Code](https://claude.com/claude-code)",
   "caps": {
     "shaper_questions": 2,
     "investigation": 2,
     "plan_revisions": 3,
     "test_retries": 3,
-    "review": 3,
-    "agent_calls": 60
+    "review": 1,
+    "agent_calls": 80
+  },
+  "context": {
+    "hard_cap": 500000,
+    "stop_at": 450000,
+    "wrap_at": 350000,
+    "continue_under": 200000,
+    "read_whole_max_bytes": 24000,
+    "read_max_lines": 400,
+    "diff_context_lines": 12,
+    "max_calls": {
+      "investigator": 50,
+      "planner": 80,
+      "reviewer": 80,
+      "test-writer": 200,
+      "implementer": 250,
+      "papa": 100
+    }
+  },
+  "limits": {
+    "issue_words": 250,
+    "issue_criteria": 5,
+    "criterion_words": 30,
+    "issue_code_lines": 25,
+    "design_words": 300,
+    "design_code_lines": 40,
+    "plan_words": 2500,
+    "plan_code_lines": 150,
+    "findings_words": 1200,
+    "report_words": 400,
+    "pr_words": 200
   },
   "device_free_tests": [
     "test.ttexalens.unit_tests.test_exception_hierarchy",
