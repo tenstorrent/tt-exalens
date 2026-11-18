@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import math
 import unittest
+from typing import Callable
 from parameterized import parameterized_class, parameterized
 import tt_umd
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
@@ -388,3 +389,44 @@ class TestTensixDebug(unittest.TestCase):
         check([2, 2, 3])
         increment_fidelity_phase(2)
         check([2, 2, 0])
+
+    def test_register_window_counter_carriage_returns(self):
+        """Each thread's SrcA and SrcB counters and their carriage-return copies are shown by their own signals."""
+        self.addCleanup(self._reset_register_window_counters)
+        self._reset_register_window_counters()
+        expected = {}
+        for thread_id in range(3):
+            srca_cr, srcb_cr = 3 + 4 * thread_id, 5 + 4 * thread_id
+            # SETRWC sets each counter and its carriage-return copy; INCRWC then moves only the counters
+            self.tensix_debug.inject_instruction(self.ops.TT_OP_SETRWC(0, 0, 0, srcb_cr, srca_cr, 0x3), thread_id)
+            self.tensix_debug.inject_instruction(self.ops.TT_OP_INCRWC(0, 0, 2 + thread_id, 1 + thread_id), thread_id)
+            expected[f"rwc{thread_id}_srca"] = srca_cr + 1 + thread_id
+            expected[f"rwc{thread_id}_srca_cr"] = srca_cr
+            expected[f"rwc{thread_id}_srcb"] = srcb_cr + 2 + thread_id
+            expected[f"rwc{thread_id}_srcb_cr"] = srcb_cr
+        actual = {signal_name: self._read_signal(signal_name) for signal_name in expected}
+        self.assertEqual(actual, expected)
+
+    def test_last_math_instruction_signals(self):
+        """The last math instruction and the thread that issued it."""
+        if not self.is_blackhole():
+            self.skipTest("Test uses the Blackhole ZEROACC encoding and signal names.")
+
+        # Blackhole ZEROACC takes (clear_mode, use_32_bit_mode, clear_zero_flags, addr_mode, where)
+        zeroacc: Callable[..., int] = self.ops.TT_OP_ZEROACC
+        for thread_id in [1, 2, 0]:
+            # ZEROACC on a row above 0xF0 in 16-row mode clears nothing
+            instruction = zeroacc(1, 0, 0, thread_id, 0xFF - thread_id)
+            self.tensix_debug.inject_instruction(instruction, thread_id)
+            if isinstance(instruction, (bytes, bytearray)):
+                instruction = int.from_bytes(instruction, "little")
+            self.assertEqual(self._read_signal("rwc_last_math_instrn"), instruction)
+            self.assertEqual(self._read_signal("rwc_last_math_winner_thread"), thread_id)
+
+    def test_idle_instruction_buffers_are_empty(self):
+        """No thread of an idle core has instructions waiting."""
+        signal_names = [f"tensix_frontend_t{thread_id}_ibuffer_empty_raw" for thread_id in range(3)]
+        if any(signal_name not in self.debug_bus.signal_names for signal_name in signal_names):
+            self.skipTest("Debug bus has no instruction buffer signals on this device.")
+
+        self.assertEqual([self._read_signal(signal_name) for signal_name in signal_names], [1, 1, 1])
