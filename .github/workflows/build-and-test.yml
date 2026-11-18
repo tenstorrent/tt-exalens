@@ -23,12 +23,12 @@ jobs:
     name: Build Docker image
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           submodules: recursive
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -67,7 +67,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
@@ -122,14 +122,14 @@ jobs:
         run: git config --global --add safe.directory '*'
 
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           submodules: recursive
 
       - name: Download build artifact
         id: download-build
         continue-on-error: true
-        uses: pyTooling/download-artifact@v4
+        uses: pyTooling/download-artifact@e20e40f1bdf018e52108faaadd8b04a4dfffae92 # v4 branch
         with:
           name: ttexalens-build-ubuntu-${{ inputs.ubuntu-version }}
 
@@ -139,7 +139,7 @@ jobs:
 
       - name: Download build artifact (retry)
         if: steps.download-build.outcome == 'failure'
-        uses: pyTooling/download-artifact@v4
+        uses: pyTooling/download-artifact@e20e40f1bdf018e52108faaadd8b04a4dfffae92 # v4 branch
         with:
           name: ttexalens-build-ubuntu-${{ inputs.ubuntu-version }}
 
@@ -157,7 +157,7 @@ jobs:
 
       - name: Upload Test Report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-reports-${{ inputs.ubuntu-version }}-${{ matrix.runner-info.arch }}-${{ matrix.runner-info.board }}
           path: ${{ steps.strings.outputs.test_report_path }}

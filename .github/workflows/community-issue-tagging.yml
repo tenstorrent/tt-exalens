@@ -12,4 +12,4 @@ permissions:
 
 jobs:
   call-central-workflow:
-    uses: tenstorrent/tt-github-actions/.github/workflows/on-community-issue.yml@main
+    uses: tenstorrent/tt-github-actions/.github/workflows/on-community-issue.yml@5f18fe6f86d825c87924d5559ac442ac7eca534f # main, 2026-11-06

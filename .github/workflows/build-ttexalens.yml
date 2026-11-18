@@ -33,7 +33,7 @@ jobs:
       image: ${{ inputs.docker-image }}
     name: "Build tt-exalens"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           submodules: recursive
       - name: Git safe dir
@@ -61,7 +61,7 @@ jobs:
           mkdir build
           ln -s ../build_riscv build/riscv-src
       - name: Upload libraries as artifacts
-        uses: pyTooling/upload-artifact@v4
+        uses: pyTooling/upload-artifact@f768f30e80e9f27b3fd61f4405facadf6ddc31ea # v4 branch
         with:
           name: ttexalens-build-${{ inputs.os }}
           retention-days: 1
