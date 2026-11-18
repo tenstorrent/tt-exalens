@@ -17,31 +17,6 @@ jobs:
     name: "Build and release wheel of version specified in VERSION file"
     uses: ./.github/workflows/release.yml
 
-  test-pypi-publish:
-    name: Upload release to Test PyPI
-    needs: build-and-release
-    runs-on: ubuntu-latest
-    # Specifying a GitHub environment is optional, but strongly encouraged
-    environment: testpypi-release
-    permissions:
-      # IMPORTANT: this permission is mandatory for Trusted Publishing
-      id-token: write
-    steps:
-      - name: "Download wheel artifacts"
-        uses: actions/download-artifact@v4
-        with:
-          # Every artifact produced by build-wheels.yml is named wheel-*.
-          # Merge them into one directory for the publish step.
-          pattern: wheel-*
-          path: dist
-          merge-multiple: true
-
-      - name: Publish package distributions to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-          packages-dir: dist
-
   pypi-publish:
     name: Upload release to PyPI
     needs: build-and-release
