@@ -103,7 +103,7 @@ Runtime data is in `.issue-pipeline/` at the repository root. The directory igno
     .issue-pipeline/
       cases/<case>/        status.json, issue.md, issue.notes.md, findings/, design.md, plan.md, feedback/, review/,
                            tests.md, impl-report.md, gates/, report.md, pr-text.md, pr-description.md, outcome.md, run.jsonl
-      checkouts/<case>/    a clone without a remote, on the case branch
+      checkouts/<case>/    a clone of the base history only, without a remote, on the case branch
       budget/              one file per agent: tool calls, context size, model
       proposals/           papa's patches
       leak-patterns.txt    your own patterns for the leak scan, one regular expression per line
@@ -125,7 +125,7 @@ The clone starts from `base_ref` in `config.json`. Type checks and tests need th
 | `gates` | pre-commit, mypy, basedpyright, lib docs, device-free tests, on the committed state |
 | `scope-check` | changed files against the plan's `## Files` list |
 | `pr` | assembles the PR description, scans it, commits it with the issue and the design |
-| `guard` | a hook in each agent file and command file: writes, commands, reads and starts outside the limits are blocked |
+| `guard` | a hook in each agent file and command file: writes, commands, reads and starts outside the limits are blocked, and an agent sees only its own case |
 
 The hooks run only in a trusted workspace. To avoid a permission prompt per check, allow `Bash(.claude/pipeline/run *)` in `.claude/settings.local.json`.
 

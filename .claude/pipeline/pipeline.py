@@ -703,21 +703,19 @@ def cmd_new_case(args: argparse.Namespace) -> None:
         die(f"base ref '{base_ref}' does not exist in {REPO}")
     ensure_home()
     stem = f"{datetime.date.today():%Y%m%d}-{slug}"
-    case_id = next(name for name in [stem, *(f"{stem}-{n}" for n in range(2, 100))] if not (CASES / name).exists())
+    names = [stem, *(f"{stem}-{n}" for n in range(2, 100))]
+    case_id = next(name for name in names if not (CASES / name).exists() and not (CHECKOUTS / name).exists())
     case, checkout = CASES / case_id, CHECKOUTS / case_id
     branch = unique_branch(wanted_branch(args.name or slug.replace("-", "_")))
-    run_cmd(["git", "clone", "--quiet", "--no-checkout", str(REPO), str(checkout)], REPO)
-    git(checkout, "remote", "remove", "origin")
+    checkout.mkdir(parents=True)
+    git(checkout, "init", "--quiet")
     for key in ("user.name", "user.email"):
         value = git(REPO, "config", "--get", key, check=False)
         if value:
             git(checkout, "config", key, value)
-    if run_cmd(["git", "cat-file", "-e", f"{base_sha}^{{commit}}"], checkout, check=False).returncode != 0:
-        git(checkout, "fetch", "--quiet", str(REPO), base_sha)
+    source = git(REPO, "rev-parse", "--symbolic-full-name", base_ref, check=False) or base_sha
+    git(checkout, "fetch", "--quiet", "--no-tags", str(REPO), source)
     git(checkout, "checkout", "--quiet", "-b", branch, base_sha)
-    for other in git(checkout, "for-each-ref", "--format=%(refname:short)", "refs/heads").splitlines():
-        if other != branch:
-            git(checkout, "branch", "--quiet", "-D", other)
     for name in ("findings", "review", "feedback"):
         (case / name).mkdir(parents=True)
     status: Status = {
@@ -1774,6 +1772,15 @@ def budget_reason(role: str, tool: str, tool_input: dict[str, Any], record: dict
 # ---------------------------------------------------------------- tool guard (PreToolUse hook)
 
 
+def foreign_case(role: str, own: str, path: Path) -> str | None:
+    """Inside the pipeline's home an agent sees only its own case: its directory and its checkout."""
+    if role == "papa" or not own or not inside(path, HOME):
+        return None
+    if inside(path, CASES / own) or inside(path, CHECKOUTS / own):
+        return None
+    return f"only your own case is open to you: {CASES / own} and {CHECKOUTS / own}"
+
+
 def active_checkout(role: str) -> str:
     wanted = WRITER_STATES.get(role)
     matching = [name for name in case_ids() if wanted is None or load_status(name)["state"] == wanted]
@@ -1905,7 +1912,7 @@ def guard_read(role: str, path: Path) -> str | None:
     )
 
 
-def guard_bash(role: str, command: str) -> str | None:
+def guard_bash(role: str, command: str, own: str = "") -> str | None:
     try:
         lexer = shlex.shlex(command, posix=True, punctuation_chars=True)
         lexer.whitespace_split = True
@@ -1924,6 +1931,8 @@ def guard_bash(role: str, command: str) -> str | None:
             return "the investigator runs only single read-only git commands: git -C <checkout> log|show|blame|diff|grep ..."
         if target is None or not any(inside(target, root) for root in allowed):
             return f"name the repository: git -C {active_checkout(role)} {rest[0]} ..."
+        if foreign_case(role, own, target):
+            return foreign_case(role, own, target)
         if any(token.startswith("--output") for token in tokens):
             return "no --output: the investigator writes nothing but its findings file"
         return None
@@ -1951,6 +1960,8 @@ def guard_bash(role: str, command: str) -> str | None:
     located = case_of(target) if target else None
     if located is None or located[0] != "checkout" or not (CASES / located[1] / "status.json").is_file():
         return f"start every command with: cd {active_checkout(role)} && ...   (or use {RUN} <command>)"
+    if own and located[1] != own:
+        return foreign_case(role, own, target) if target else None
     if load_status(located[1])["state"] != WRITER_STATES[role]:
         return f"the {role} works only while the case is in state {WRITER_STATES[role]}"
     return None
@@ -1962,23 +1973,27 @@ def cmd_guard(args: argparse.Namespace) -> None:
     except ValueError:
         return
     tool, tool_input = event.get("tool_name", ""), event.get("tool_input") or {}
+    own = ""
     if args.role == "orchestrator":
         reason = guard_orchestrator(event)
     else:
-        reason = budget_reason(args.role, tool, tool_input, budget_update(args.role, event))
+        record = budget_update(args.role, event)
+        own, reason = str(record.get("case") or ""), budget_reason(args.role, tool, tool_input, record)
     if reason or args.role == "orchestrator":
         pass
     elif tool == "Bash":
-        reason = guard_bash(args.role, tool_input.get("command", ""))
+        reason = guard_bash(args.role, tool_input.get("command", ""), own)
     elif tool in ("Edit", "Write", "NotebookEdit"):
         path = Path(tool_input.get("file_path") or tool_input.get("notebook_path") or "/")
-        reason = guard_write(args.role, path) or size_reason(args.role, path, written_text(tool, tool_input, path))
+        reason = foreign_case(args.role, own, path) or guard_write(args.role, path)
+        reason = reason or size_reason(args.role, path, written_text(tool, tool_input, path))
     elif tool in ("Read", "Grep", "Glob"):
         target = tool_input.get("file_path") or tool_input.get("path")
         pattern = str(tool_input.get("pattern") or "")
         if not target and tool == "Glob" and pattern.startswith("/"):
             target = re.split(r"[*?\[{]", pattern, maxsplit=1)[0]
-        reason = guard_read(args.role, Path(target or REPO)) or (read_reason(tool_input) if tool == "Read" else None)
+        reason = foreign_case(args.role, own, Path(target or REPO)) or guard_read(args.role, Path(target or REPO))
+        reason = reason or (read_reason(tool_input) if tool == "Read" else None)
     if reason:
         print(f"Blocked by the issue pipeline: {reason}", file=sys.stderr)
         sys.exit(2)
