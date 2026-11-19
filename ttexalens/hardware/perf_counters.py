@@ -43,7 +43,7 @@ if TYPE_CHECKING:
 # Counter ids occupy 9 bits in REG1: 8-bit bank index in [15:8] plus the
 # grant-view selector in [16]. We flatten that into a single id space of
 # [0, 512) where ids >= 256 are the grant view of bank (id - 256).
-_COUNTER_ID_LIMIT = 512
+COUNTER_ID_LIMIT = 512
 
 
 @dataclass(frozen=True)
@@ -58,8 +58,8 @@ class PerfCounterBlockDescription:
 
     def __post_init__(self) -> None:
         for cid in self.counters:
-            if not 0 <= cid < _COUNTER_ID_LIMIT:
-                raise ValueError(f"counter id {cid} in block {self.name!r} out of range [0, {_COUNTER_ID_LIMIT})")
+            if not 0 <= cid < COUNTER_ID_LIMIT:
+                raise ValueError(f"counter id {cid} in block {self.name!r} out of range [0, {COUNTER_ID_LIMIT})")
         # Freeze the counters mapping. Use object.__setattr__ because the
         # dataclass is frozen.
         if not isinstance(self.counters, MappingProxyType):
@@ -182,8 +182,8 @@ class TensixPerfCounters:
 
     def _resolve_counter(self, block: PerfCounterBlockDescription, counter: int | str) -> int:
         if isinstance(counter, int):
-            if not 0 <= counter < _COUNTER_ID_LIMIT:
-                raise ValueError(f"counter id {counter} out of range [0, {_COUNTER_ID_LIMIT})")
+            if not 0 <= counter < COUNTER_ID_LIMIT:
+                raise ValueError(f"counter id {counter} out of range [0, {COUNTER_ID_LIMIT})")
             return counter
         for cid, name in block.counters.items():
             if name == counter:
