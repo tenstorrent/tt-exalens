@@ -421,10 +421,7 @@ class TestDebugBusCommand(unittest.TestCase):
         return [i for i, line in enumerate(lines) if all(text in line for text in texts)]
 
     def _assert_no_device_access(self):
-        self.noc_block.location.noc_write32.assert_not_called()
-        self.noc_block.location.noc_read32.assert_not_called()
-        self.noc_block.location.noc_write.assert_not_called()
-        self.noc_block.location.noc_read.assert_not_called()
+        self.assertEqual(self.noc_block.location.method_calls, [])
 
     def test_signal_list_continues_after_combined_signal(self):
         output = io.StringIO()
