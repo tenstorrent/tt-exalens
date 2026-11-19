@@ -13,6 +13,11 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.debug_tensix import TensixDebug, TILE_SIZE, TensixDataFormat, REGFILE
 from ttexalens.device import TensixInstructions
 from ttexalens.exceptions import TTException
+from ttexalens.register_store import ConfigurationRegisterDescription
+
+# Format of the Dst window that TRISC0 (the core exalens accesses Dst through) sees.
+# 0: raw 32-bit words, 1: hardware converts between two's complement and the sign/magnitude integers Dst holds.
+RISC_DEST_ACCESS_CTRL_SEC0_fmt = ConfigurationRegisterDescription(index=3, mask=0x70000, shift=16)
 
 
 @parameterized_class(
@@ -136,9 +141,49 @@ class TestTensixDebug(unittest.TestCase):
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
         num_of_elements = num_tiles * TILE_SIZE
-        data = [(i % 2**8) - 2**7 for i in range(num_of_elements)]
+        data = [(i % 255) - 127 for i in range(num_of_elements)]
         self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Int8)
         assert self.tensix_debug.read_regfile(regfile, num_tiles) == data
+
+    def _read_write_dest_as_twos_complement(self, data: list[int] | None = None) -> list[int]:
+        """Reads (or writes, if data is given) the first words of Dst through the window that converts between
+        two's complement and sign/magnitude, so the hardware itself decides what the stored words mean."""
+        register_store = self.tensix_debug.register_store
+        previous_fmt = register_store.read_register(RISC_DEST_ACCESS_CTRL_SEC0_fmt)
+        register_store.write_register(RISC_DEST_ACCESS_CTRL_SEC0_fmt, 1)
+        try:
+            if data is not None:
+                self.tensix_debug.direct_dest_write([value & 0xFFFFFFFF for value in data], TensixDataFormat.Int32)
+                return data
+            words = self.tensix_debug.direct_dest_read(TensixDataFormat.Int32, 1)
+            return [word - 2**32 if word & 0x80000000 else word for word in words]
+        finally:
+            register_store.write_register(RISC_DEST_ACCESS_CTRL_SEC0_fmt, previous_fmt)
+
+    def test_int8_regfile_matches_hardware_sign_magnitude(self):
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        regfile = REGFILE.DSTACC
+        data = [-1, -2, -127, 0, 1, 127]
+
+        # What exalens writes must be what the hardware reads as these integers.
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Int8)
+        self.assertEqual(self._read_write_dest_as_twos_complement()[: len(data)], data)
+
+        # What the hardware stores for these integers must read back as them.
+        self._read_write_dest_as_twos_complement(list(reversed(data)))
+        self.assertEqual(list(self.tensix_debug.read_regfile(regfile, 1)[: len(data)]), list(reversed(data)))
+
+    @parameterized.expand([(TensixDataFormat.Int32,), (TensixDataFormat.Int8,)])
+    def test_write_regfile_fraction_between_minus_one_and_zero(self, df: TensixDataFormat):
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        regfile = REGFILE.DSTACC
+        data = [-0.5, 0.5, -1.5, 2.5]
+        self.tensix_debug.write_regfile(regfile, data, df)
+        self.assertEqual(list(self.tensix_debug.read_regfile(regfile, 1)[: len(data)]), [0, 0, -1, 2])
 
     @parameterized.expand(
         [
@@ -168,7 +213,7 @@ class TestTensixDebug(unittest.TestCase):
             (TensixDataFormat.Int32, REGFILE.DSTACC, 2**31),  # Value out of range for Int32
             (TensixDataFormat.Int32, REGFILE.DSTACC, -(2**31 + 1)),  # Value out of range for Int32
             (TensixDataFormat.Int8, REGFILE.DSTACC, 2**7),  # Value out of range for Int8
-            (TensixDataFormat.Int8, REGFILE.DSTACC, -(2**7 + 1)),  # Value out of range for Int8
+            (TensixDataFormat.Int8, REGFILE.DSTACC, -(2**7)),  # Value out of range for sign/magnitude Int8
             (TensixDataFormat.Float32, REGFILE.SRCA),  # srcA not supported
             (TensixDataFormat.Float32, REGFILE.SRCB),  # srcB not supported
         ]
