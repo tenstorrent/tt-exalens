@@ -13,6 +13,8 @@ from ttexalens import Context, OnChipCoordinate, Device, TTException
 from ttexalens.elf_loader import ElfLoader
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.coverage import dump_coverage
+from ttexalens.cli_commands import dump_coverage as dump_coverage_command
+from ttexalens.uistate import UIState
 
 ELFS = ["run_elf_test.coverage", "cov_test.coverage"]  # We only run ELFs that don't halt.
 
@@ -73,6 +75,7 @@ def summarize_gcda(data: bytes) -> tuple[int, int, int]:
         {"core_desc": "FW0", "risc_name": "TRISC1"},
         {"core_desc": "FW0", "risc_name": "TRISC2"},
         {"core_desc": "FW0", "risc_name": "NCRISC"},
+        {"core_desc": "DRAM0", "risc_name": "DRISC"},
     ]
 )
 class TestCoverage(unittest.TestCase):
@@ -124,6 +127,14 @@ class TestCoverage(unittest.TestCase):
             else:
                 # If not found, we should skip the test
                 self.skipTest("FW core is not available on this platform")
+        elif self.core_desc.startswith("DRAM"):
+            dram_cores = self.device.get_block_locations(block_type="dram")
+            core_index = int(self.core_desc[4:])
+            if len(dram_cores) > core_index:
+                self.core_loc = dram_cores[core_index].to_str()
+            else:
+                # If not found, we should skip the test
+                self.skipTest("DRAM core is not available on this platform")
         else:
             self.fail(f"Unknown core description {self.core_desc}")
 
@@ -169,35 +180,81 @@ class TestCoverage(unittest.TestCase):
             gcno = os.path.join(temp_root, f"{basename}.gcno")
 
             dump_coverage(elf, self.location, gcda, gcno)
+            check_coverage_files(self, gcda, gcno)
 
-            # Check if the files match expectations: if they exist, and if the headers are well-formed.
-            self.assertTrue(os.path.exists(gcda), f"{gcda}: file does not exist")
-            self.assertTrue(os.path.exists(gcno), f"{gcno}: file does not exist")
 
-            with open(gcda, "rb") as f:
-                gcda_bytes = f.read()
-            with open(gcno, "rb") as f:
-                gcno_bytes = f.read()
-            gcda_header = gcda_bytes[:16]
-            gcno_header = gcno_bytes[:16]
+def check_coverage_files(test: unittest.TestCase, gcda: str, gcno: str):
+    """Check that a gcda and gcno pair exist, belong to the same compilation and carry coverage."""
+    # Check if the files match expectations: if they exist, and if the headers are well-formed.
+    test.assertTrue(os.path.exists(gcda), f"{gcda}: file does not exist")
+    test.assertTrue(os.path.exists(gcno), f"{gcno}: file does not exist")
 
-            # First four bytes of gcno and gcda contain their magic numbers (mind the endianness).
-            self.assertEqual(gcno_header[0:4], b"oncg", f"{gcno}: incorrect magic")
-            self.assertEqual(gcda_header[0:4], b"adcg", f"{gcda}: incorrect magic")
+    with open(gcda, "rb") as f:
+        gcda_bytes = f.read()
+    with open(gcno, "rb") as f:
+        gcno_bytes = f.read()
+    gcda_header = gcda_bytes[:16]
+    gcno_header = gcno_bytes[:16]
 
-            # Versions (bytes 4:8) must match. The gcda version is emitted by the
-            # compiler-shipped libgcov and the gcno version by the same compiler, so the
-            # two stay in lockstep across SFPI bumps (no hand-maintained constant).
-            self.assertEqual(gcda_header[4:8], gcno_header[4:8], f"{gcda}: version mismatch with {gcno}")
+    # First four bytes of gcno and gcda contain their magic numbers (mind the endianness).
+    test.assertEqual(gcno_header[0:4], b"oncg", f"{gcno}: incorrect magic")
+    test.assertEqual(gcda_header[0:4], b"adcg", f"{gcda}: incorrect magic")
 
-            # The stamp (bytes 8:12) uniquely identifies a compilation; a matching stamp
-            # means this gcda was produced from exactly this gcno.
-            self.assertEqual(gcda_header[8:12], gcno_header[8:12], f"{gcda}: stamp mismatch with {gcno}")
+    # Versions (bytes 4:8) must match. The gcda version is emitted by the
+    # compiler-shipped libgcov and the gcno version by the same compiler, so the
+    # two stay in lockstep across SFPI bumps (no hand-maintained constant).
+    test.assertEqual(gcda_header[4:8], gcno_header[4:8], f"{gcda}: version mismatch with {gcno}")
 
-            # Validate the gcda actually carries coverage: at least one function record and
-            # at least one counter that was incremented while the kernel ran. Both ELFs
-            # execute a main(), so its entry counter must be non-zero.
-            functions, counters, nonzero = summarize_gcda(gcda_bytes)
-            self.assertGreater(functions, 0, f"{gcda}: no function records in coverage data")
-            self.assertGreater(counters, 0, f"{gcda}: no counters in coverage data")
-            self.assertGreater(nonzero, 0, f"{gcda}: all counters are zero - kernel produced no coverage")
+    # The stamp (bytes 8:12) uniquely identifies a compilation; a matching stamp
+    # means this gcda was produced from exactly this gcno.
+    test.assertEqual(gcda_header[8:12], gcno_header[8:12], f"{gcda}: stamp mismatch with {gcno}")
+
+    # Validate the gcda actually carries coverage: at least one function record and
+    # at least one counter that was incremented while the kernel ran. Both ELFs
+    # execute a main(), so its entry counter must be non-zero.
+    functions, counters, nonzero = summarize_gcda(gcda_bytes)
+    test.assertGreater(functions, 0, f"{gcda}: no function records in coverage data")
+    test.assertGreater(counters, 0, f"{gcda}: no counters in coverage data")
+    test.assertGreater(nonzero, 0, f"{gcda}: all counters are zero - kernel produced no coverage")
+
+
+class TestCoverageCommand(unittest.TestCase):
+    context: Context
+    device: Device
+
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_cached_test_context()
+        cls.device = cls.context.devices[0]
+
+    def test_coverage_of_several_cores(self):
+        """Dumping coverage of several cores keeps a gcda and gcno pair for each core."""
+        arch = str(self.device._arch).lower()
+        if arch.startswith("wormhole"):
+            arch = "wormhole"
+        elif not arch.startswith("blackhole"):
+            self.skipTest(f"Unsupported architecture: {arch}")
+        fw_cores = self.device.get_block_locations(block_type="functional_workers")
+        if len(fw_cores) < 2:
+            self.skipTest("Test needs two functional worker cores.")
+        locations = fw_cores[:2]
+        elf_path = f"build/riscv-src/{arch}/cov_test.coverage.brisc.elf"
+        elf = get_parsed_elf_file(elf_path)
+        for location in locations:
+            risc_debug = location.noc_block.get_risc_debug("brisc")
+            ElfLoader(risc_debug).run_elf(elf)
+
+        with tempfile.TemporaryDirectory(prefix="cov_test_") as temp_root:
+            gcda = os.path.join(temp_root, "cov_test.gcda")
+            gcno = os.path.join(temp_root, "cov_test.gcno")
+            location_list = "/".join(location.to_str("logical") for location in locations)
+            dump_coverage_command.run(
+                f"cov {elf_path} {gcda} {gcno} -l {location_list}",
+                self.context,
+                UIState(self.context),
+            )
+            for location in locations:
+                directory = os.path.join(temp_root, f"device{self.device.id}_{location.to_str('noc0')}")
+                check_coverage_files(
+                    self, os.path.join(directory, "cov_test.gcda"), os.path.join(directory, "cov_test.gcno")
+                )
