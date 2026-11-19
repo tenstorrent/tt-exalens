@@ -14,6 +14,7 @@ from ttexalens.hardware.quasar.baby_risc_debug import QuasarBabyRiscDebug
 from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import debug_bus_signal_map, group_map
 from ttexalens.hardware.quasar.functional_neo_registers import register_map
 from ttexalens.hardware.quasar.perf_counters import initialization as perf_counters_initialization
+from ttexalens.hardware.quasar.tensix_debug import QuasarTensixDebug
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from typing import TYPE_CHECKING
 
@@ -244,6 +245,10 @@ class QuasarFunctionalNeoBlock:
             self.get_risc_debug(self.trisc2.risc_name),
             self.get_risc_debug(self.trisc3.risc_name),
         ]
+
+    @cached_property
+    def tensix_debug(self) -> QuasarTensixDebug:
+        return QuasarTensixDebug(self.noc_block.location, self.neo_id)
 
     def get_default_risc_debug(self) -> RiscDebug:
         return self.get_risc_debug(self.trisc3.risc_name)

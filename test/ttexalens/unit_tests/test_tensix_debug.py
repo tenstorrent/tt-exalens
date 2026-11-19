@@ -39,14 +39,10 @@ class TestTensixDebug(unittest.TestCase):
         if self.neo_id is not None and self.neo_id not in self.location.noc_block.neo_ids:
             self.skipTest(f"NEO {self.neo_id} is not available on this platform.")
 
-        try:
-            self.tensix_debug = TensixDebug(self.location, self.neo_id)
-        except ValueError:
-            if not (self.location.device.is_quasar() and self.neo_id is None):
-                raise
-            self.skipTest(
-                "Quasar needs a NEO: TensixDebug reads dest through TRISC, which the overlay (neo_id=None) lacks."
-            )
+        tensix_debug = self.location.noc_block.get_tensix_debug(self.neo_id)
+        if tensix_debug is None:
+            self.skipTest(f"There is no Tensix at {self.location.to_user_str_with_neo(self.neo_id)}.")
+        self.tensix_debug = tensix_debug
         debug_bus = self.location.noc_block.get_debug_bus(self.neo_id)
         assert debug_bus is not None
         self.debug_bus = debug_bus

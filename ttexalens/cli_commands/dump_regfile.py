@@ -33,11 +33,9 @@ from ttexalens.context import Context
 from ttexalens.device import Device
 from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.debug_tensix import TensixDebug
 from ttexalens.util import ERROR, INFO
 from ttexalens.debug_tensix import TILE_SIZE
 from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
-from ttexalens.hardware.noc_block import neo_id_to_str
 
 command_metadata = CommandMetadata(
     short_name="dr",
@@ -74,13 +72,12 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         INFO(f"Dump regfile on device {device.id}")
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             neo_id = dopt.get_neo_id(ui_state, location.noc_block)
-            neo_where = f" (neo {neo_id_to_str(neo_id)})" if location.noc_block.neo_ids else ""
-            INFO(f"Location {location.to_user_str()}{neo_where}")
-            if location.noc_block.neo_ids and neo_id is None:
-                ERROR("The overlay has no Tensix register files. Select a NEO with --neo.")
+            INFO(f"Location {location.to_user_str_with_neo(neo_id)}")
+            tensix_debug = location.noc_block.get_tensix_debug(neo_id)
+            if tensix_debug is None:
+                ERROR("This location does not have a Tensix.")
                 continue
-            debug_tensix = TensixDebug(location, neo_id)
-            data = debug_tensix.read_regfile(regfile, num_tiles)
+            data = tensix_debug.read_regfile(regfile, num_tiles)
             print_regfile(data)
 
     return None

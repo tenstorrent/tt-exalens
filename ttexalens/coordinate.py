@@ -195,6 +195,16 @@ class OnChipCoordinate:
         logical = self.to_str("logical")
         return f"{noc0} ({logical})"
 
+    def to_user_str_with_neo(self, neo_id: int | None) -> str:
+        """
+        Returns to_user_str() followed by the NEO, if the block at this coordinate has NEOs.
+        """
+        from ttexalens.hardware.noc_block import neo_id_to_str
+
+        if not self.noc_block.neo_ids:
+            return self.to_user_str()
+        return f"{self.to_user_str()} (neo {neo_id_to_str(neo_id)})"
+
     def change_device(self, device):
         """
         Returns coordinates for the specified device.

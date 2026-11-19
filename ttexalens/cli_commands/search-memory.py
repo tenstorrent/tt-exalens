@@ -43,7 +43,6 @@ import math
 
 from ttexalens.context import Context
 from ttexalens.device import Device
-from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens import util as util
@@ -319,8 +318,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             noc_block = location.noc_block
             neo_id = dopt.get_neo_id(ui_state, noc_block)
-            neo_str = f" | Neo {neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""
-            location_str = location.to_user_str() + neo_str
+            location_str = location.to_user_str_with_neo(neo_id)
 
             try:
                 if risc_name:

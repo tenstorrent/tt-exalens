@@ -4,35 +4,20 @@
 
 from enum import Enum
 
+from ttexalens.pack_unpack_regfile import TensixDataFormat
 
-# DataFormat from tt-metal's tt-2xx/quasar/tensix_types.h.
-class QuasarDataFormat(Enum):
-    Float32 = 0
-    Tf32 = 4
-    Float16 = 1
-    Float16_b = 5
-    Fp8R = 10
-    Fp8P = 16
-    MxFp8R = 18
-    MxFp8P = 20
-    MxFp6R = 19
-    MxFp6P = 21
-    MxFp4 = 22
-    MxInt8 = 2
-    MxInt4 = 3
-    MxInt2 = 11
-    Int32 = 8
-    Int8 = 14
-    Int16 = 9
-    UInt8 = 17
-    UInt16 = 130
-    Int4 = 23
-    UInt4 = 25
-    MxFp4_2x_A = 27
-    MxFp4_2x_B = 24
-    Int8_2x = 26
-    UInt8_2x = 28
-    Invalid = 0xFF
+# DataFormat from tt-metal's tt-2xx/quasar/tensix_types.h, without the formats that TensixDataFormat does not have.
+tensix_data_formats: dict[TensixDataFormat, int] = {
+    TensixDataFormat.Float32: 0,
+    TensixDataFormat.Tf32: 4,
+    TensixDataFormat.Float16: 1,
+    TensixDataFormat.Float16_b: 5,
+    TensixDataFormat.Int32: 8,
+    TensixDataFormat.Int8: 14,
+    TensixDataFormat.UInt8: 17,
+    TensixDataFormat.UInt16: 130,
+    TensixDataFormat.Invalid: 0xFF,
+}
 
 
 # RISC_DEST_ACCESS_CTRL_SEC<n>_fmt: the format the dest window converts to and from (RISC_DEST_FMT_* in ckernel_dest.h).

@@ -12,7 +12,8 @@ from ttexalens.hardware.quasar.dram_block import QuasarDramBlock, QuasarDramBloc
 from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import tensix_debug_bus_description
 from ttexalens.hardware.quasar.functional_neo_registers import tensix_registers_descriptions
 from ttexalens.hardware.quasar.functional_worker_block import QuasarFunctionalWorkerBlock
-from ttexalens.hardware.quasar.tensix_data_formats import QuasarDataFormat
+from ttexalens.hardware.quasar.tensix_data_formats import tensix_data_formats
+from ttexalens.pack_unpack_regfile import TensixDataFormat
 from ttexalens.hardware.quasar.tensix_register_description import (
     QuasarTensixRegisterDescription,
     QuasarTensixState,
@@ -59,5 +60,5 @@ class QuasarDevice(Device):
     def get_tensix_state_type(self) -> type[QuasarTensixState]:
         return QuasarTensixState
 
-    def get_data_format_type(self) -> type[QuasarDataFormat]:
-        return QuasarDataFormat
+    def get_tensix_data_formats(self) -> dict[TensixDataFormat, int]:
+        return tensix_data_formats

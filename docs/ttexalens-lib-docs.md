@@ -730,6 +730,14 @@ Returns a tuple with the coordinates in the specified coordinate system.
 to_user_str(self) -> str
 ```
 Returns a string representation of the coordinate that is suitable for the user.
+### to_user_str_with_neo
+
+
+
+```
+to_user_str_with_neo(self, neo_id: int | None) -> str
+```
+Returns to_user_str() followed by the NEO, if the block at this coordinate has NEOs.
 ### change_device
 
 

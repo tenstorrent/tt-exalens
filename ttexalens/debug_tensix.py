@@ -1,14 +1,12 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
-from collections.abc import Generator, Sequence
-from contextlib import contextmanager
+from collections.abc import Sequence
 from enum import Enum
+from typing import TypeVar, cast
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.exceptions import TTException
-from ttexalens.hardware.baby_risc_debug import BabyRiscDebug, BabyRiscDebugHardware
-from ttexalens.hardware.quasar.tensix_data_formats import QuasarRiscDestFormat
 from ttexalens.util import WARN
 from ttexalens.pack_unpack_regfile import (
     unpack_data,
@@ -50,7 +48,22 @@ def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
     raise TTException(f"Invalid regfile {regfile}.")
 
 
+T = TypeVar("T", bound="TensixDebug")
+
+
 class TensixDebug:
+    thread_count: int
+    dest_risc_name: str
+
+    def __new__(cls: type[T], location: OnChipCoordinate, neo_id: int | None = None) -> T:
+        # TensixDebug(location, neo_id) creates the architecture's class, the one that the block's get_tensix_debug returns.
+        if cls is not TensixDebug:
+            return object.__new__(cls)
+        tensix_debug = location.noc_block.get_tensix_debug(neo_id)
+        if tensix_debug is None:
+            raise TTException(f"There is no Tensix at {location.to_user_str_with_neo(neo_id)}.")
+        return cast(T, object.__new__(type(tensix_debug)))
+
     def __init__(
         self,
         location: OnChipCoordinate,
@@ -60,17 +73,12 @@ class TensixDebug:
         self.device = location.device
         self.noc_block = location.noc_block
         self.register_store = self.noc_block.get_register_store(neo_id=neo_id)
-        self.thread_count = len(
-            [risc for risc in self.noc_block.get_riscs(neo_id) if risc.risc_location.risc_name.startswith("trisc")]
-        )
 
         # Using TRISC debug hardware to read/write memory
         # Use restricted_access=False because the Tensix dest is outside L1/data_private, but we still need to read/write it via TRISC debug hardware.
-        # Quasar uses TRISC3 because LLK never programs its dest window
-        risc_debug = self.noc_block.get_risc_debug("trisc3" if self.device.is_quasar() else "trisc0", neo_id)
-        self.risc_debug = risc_debug
-        self.mem_access = create_memory_access(risc_debug, restricted_access=False)
-        dest = risc_debug.risc_info.memory_map.find_by_name("dest")
+        self.risc_debug = self.noc_block.get_risc_debug(self.dest_risc_name, neo_id)
+        self.mem_access = create_memory_access(self.risc_debug, restricted_access=False)
+        dest = self.risc_debug.risc_info.memory_map.find_by_name("dest")
         self.dest = dest.memory_block if dest is not None else None
 
     def _validate_thread_id(self, thread_id: int) -> None:
@@ -166,81 +174,45 @@ class TensixDebug:
     def _is_8_bit_int_format(df: TensixDataFormat) -> bool:
         return df in (TensixDataFormat.Int8, TensixDataFormat.UInt8)
 
-    def _uses_int8_view(self, df: TensixDataFormat) -> bool:
-        return self.device.is_quasar() and self._is_8_bit_int_format(df)
+    def _direct_dest_format(self, df: TensixDataFormat) -> TensixDataFormat:
+        return df
 
     def _direct_dest_datum_size(self, df: TensixDataFormat) -> int:
-        # Direct access reads 32-bit words; Quasar's INT8 view reads 8-bit integers stored in 16-bit dest.
-        return 2 if self._uses_int8_view(df) else 4
+        return 4
 
     def _direct_dest_access_enabled(self, df: TensixDataFormat, regfile: REGFILE) -> bool:
-        # Blackhole stores 8-bit integers in 32-bit dest, Quasar reads them through the dest window's INT8 view.
         return (
             regfile == REGFILE.DSTACC
             and self.dest is not None
             and (self._is_32_bit_format(df) or self._is_8_bit_int_format(df))
         )
 
-    @contextmanager
-    def _dest_int8_view(self, df: TensixDataFormat) -> Generator[tuple[int, BabyRiscDebugHardware], None, None]:
-        # The INT8 view maps each datum to its own byte address and returns it in every byte of the word,
-        # so each datum takes one debug access at its exact address.
-        assert self.dest is not None and self.dest.address.private_address is not None
-        assert isinstance(self.risc_debug, BabyRiscDebug) and self.risc_debug.debug_hardware is not None
-        fields = {
-            "RISC_DEST_ACCESS_CTRL_SEC3_fmt": QuasarRiscDestFormat.INT8.value,
-            "RISC_DEST_ACCESS_CTRL_SEC3_unsigned_int": int(df == TensixDataFormat.UInt8),
-            "RISC_DEST_ACCESS_CTRL_SEC3_no_swizzle": 0,
-        }
-        with self.risc_debug.ensure_private_memory_access():
-            saved = {name: self.register_store.read_register(name) for name in fields}
-            changed = [name for name, value in fields.items() if saved[name] != value]
-            try:
-                for name in changed:
-                    self.register_store.write_register(name, fields[name])
-                yield self.dest.address.private_address, self.risc_debug.debug_hardware
-            finally:
-                for name in changed:
-                    self.register_store.write_register(name, saved[name])
-
     def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int]:
-        data: list[int] = []
         if self.dest is None:
             raise TTException("Direct dest reading not supported for this architecture.")
-
-        base_address = self.dest.address.private_address
-        dest_size = self.dest.size
-        assert base_address is not None
         size_bytes = num_tiles * TILE_SIZE * self._direct_dest_datum_size(df)
-        if size_bytes > dest_size:
+        if size_bytes > self.dest.size:
             raise TTException(f"Size {size_bytes} bytes is out of bounds for destination memory block.")
-        if self._uses_int8_view(df):
-            with self._dest_int8_view(df) as (int8_base_address, debug_hardware):
-                return [debug_hardware.read_memory(int8_base_address + i) & 0xFF for i in range(num_tiles * TILE_SIZE)]
+        return self._read_dest(df, num_tiles * TILE_SIZE)
 
-        bytes_data = bytearray(size_bytes)
-        self.mem_access.read(base_address, bytes_data)
-        data.extend(int.from_bytes(bytes_data[i : i + 4], byteorder="little") for i in range(0, size_bytes, 4))
-
-        return data
+    def _read_dest(self, df: TensixDataFormat, num_data: int) -> list[int]:
+        assert self.dest is not None and self.dest.address.private_address is not None
+        bytes_data = bytearray(num_data * 4)
+        self.mem_access.read(self.dest.address.private_address, bytes_data)
+        return [int.from_bytes(bytes_data[i : i + 4], byteorder="little") for i in range(0, len(bytes_data), 4)]
 
     def direct_dest_write(self, data: list[int], df: TensixDataFormat) -> None:
         if self.dest is None:
             raise TTException("Direct dest writing not supported for this architecture.")
-        dest_size = self.dest.size
         size_bytes = len(data) * self._direct_dest_datum_size(df)
-        if size_bytes > dest_size:
+        if size_bytes > self.dest.size:
             raise TTException(f"Data is to large to be written in destination memory block.")
-        if self._uses_int8_view(df):
-            with self._dest_int8_view(df) as (int8_base_address, debug_hardware):
-                for i, value in enumerate(data):
-                    debug_hardware.write_memory(int8_base_address + i, value)
-            return
-        base_address = self.dest.address.private_address
-        assert base_address is not None
-        bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in data)
+        self._write_dest(data, df)
 
-        self.mem_access.write(base_address, bytes_data)
+    def _write_dest(self, data: list[int], df: TensixDataFormat) -> None:
+        assert self.dest is not None and self.dest.address.private_address is not None
+        bytes_data = b"".join(word.to_bytes(4, byteorder="little") for word in data)
+        self.mem_access.write(self.dest.address.private_address, bytes_data)
 
     def read_regfile_data(
         self, regfile: int | str | REGFILE, df: TensixDataFormat, num_tiles: int | None = None
@@ -266,8 +238,6 @@ class TensixDebug:
             num_tiles = self._validate_number_of_tiles(num_tiles, df)
             return self.direct_dest_read(df, num_tiles)
 
-        if not self.device.is_wormhole() and not self.device.is_blackhole():
-            raise TTException("Not supported for this architecture: ")
         ops = self.device.instructions
 
         data: list[int] = []
@@ -308,49 +278,31 @@ class TensixDebug:
         return data
 
     def _decode_data_format(self, value: int) -> TensixDataFormat:
-        data_format = self.device.get_data_format_type()(value)
-        if data_format.name not in TensixDataFormat.__members__:
-            raise TTException(f"Data format {data_format.name} is not supported.")
-        return TensixDataFormat[data_format.name]
+        for df, encoding in self.device.get_tensix_data_formats().items():
+            if encoding == value:
+                return df
+        raise TTException(f"Data format {value} is not supported.")
 
     def _encode_data_format(self, df: TensixDataFormat) -> int:
-        return int(self.device.get_data_format_type()[df.name].value)
+        data_formats = self.device.get_tensix_data_formats()
+        if df not in data_formats:
+            raise TTException(f"Data format {df.name} is not supported.")
+        return data_formats[df]
 
     def _read_dest_data_format(self) -> TensixDataFormat:
-        if not self.device.is_quasar():
-            return self._decode_data_format(self.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc"))
-        # Quasar LLK leaves ALU_FORMAT_SPEC_REG2_Dstacc at 0 and selects 32-bit and Int32 dest with these bits.
-        if self.register_store.read_register("ALU_ACC_CTRL_Fp32_enabled"):
-            if self.register_store.read_register("ALU_ACC_CTRL_INT8_math_enabled"):
-                return TensixDataFormat.Int32
-            return TensixDataFormat.Float32
-        # For 16-bit dest, the SrcA format is the only configuration that says what dest holds.
-        df = self._decode_data_format(self.register_store.read_register("ALU_FORMAT_SPEC_REG_SrcA_val"))
-        if not self._is_8_bit_int_format(df):
-            raise TTException(
-                f"Only 32-bit dest and 8-bit integers can be read on Quasar, but dest is 16-bit with SrcA format {df.name}."
-            )
-        return df
+        return self._decode_data_format(self.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc"))
 
     def _write_dest_data_format(self, df: TensixDataFormat) -> None:
-        if not self.device.is_quasar():
-            # Workaround because we can't write UInt32 or UInt8 data format to alu register
-            # Alu register is 4 bit long so it does not support formats which values exceed 15, which both UInt32 and UInt8 do.
-            if df == TensixDataFormat.UInt32:
-                df = TensixDataFormat.Int32
-            elif df == TensixDataFormat.UInt8:
-                df = TensixDataFormat.Int8
-            self.register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", self._encode_data_format(df))
-            return
-        if self._is_8_bit_int_format(df):
-            self.register_store.write_register("ALU_ACC_CTRL_Fp32_enabled", 0)
-            self.register_store.write_register("ALU_ACC_CTRL_INT8_math_enabled", 0)
-            self.register_store.write_register("ALU_FORMAT_SPEC_REG_SrcA_val", self._encode_data_format(df))
-            return
-        self.register_store.write_register("ALU_ACC_CTRL_Fp32_enabled", 1)
-        self.register_store.write_register(
-            "ALU_ACC_CTRL_INT8_math_enabled", int(df in (TensixDataFormat.Int32, TensixDataFormat.UInt32))
-        )
+        # Workaround because we can't write UInt32 or UInt8 data format to alu register
+        # Alu register is 4 bit long so it does not support formats which values exceed 15, which both UInt32 and UInt8 do.
+        if df == TensixDataFormat.UInt32:
+            df = TensixDataFormat.Int32
+        elif df == TensixDataFormat.UInt8:
+            df = TensixDataFormat.Int8
+        self.register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", self._encode_data_format(df))
+
+    def _read_regfile_raw(self, regfile: REGFILE, df: TensixDataFormat, num_tiles: int | None) -> list[int]:
+        return self.read_regfile_data(regfile, df, num_tiles)
 
     def read_regfile(
         self, regfile: int | str | REGFILE, num_tiles: int | None = None, signed: bool = True
@@ -371,37 +323,10 @@ class TensixDebug:
         if not self._direct_dest_access_enabled(df, regfile) and num_tiles is not None:
             WARN("num_tiles argument only has effect for 32 bit formats on blackhole and for dest on quasar.")
 
-        data: list[int] = []
-        # Workaround for an architectural quirk of Wormhole: reading DST as INT32 or FP32
-        # returns zeros on the lower 16 bits of each datum. This handles the FP32 case.
-        if regfile == REGFILE.DSTACC and df == TensixDataFormat.Float32 and self.device.is_wormhole():
-            ops = self.device.instructions
-            upper = self.read_regfile_data(regfile, df)
-            # First, read the upper 16 bits of each value.
-            # Half of the values read are zeros, shave them off.
-            upper = upper[0:256] + upper[512:768] + upper[1024:1280] + upper[1536:1792]
-
-            # Pass a simple kernel directly to Tensix that exposes the lower 16 bits
-            # in place of the upper. This unfortunately clobbers dest.
-            for _ in range(0, 64):
-                self.inject_instruction(ops.TT_OP_SFPLOAD(2, 3, 0, 0), 1)
-                self.inject_instruction(ops.TT_OP_SFPSHFT(0x010, 2, 2, 1), 1)
-                self.inject_instruction(ops.TT_OP_SFPSTORE(2, 3, 0, 0), 1)
-                self.inject_instruction(ops.TT_OP_INCRWC(0, 16, 0, 0), 1)
-
-            # Read the lower 16 bits from the upper bits' position.
-            # Prune the zeros again, same as previously.
-            lower = self.read_regfile_data(regfile, df)
-            lower = lower[0:256] + lower[512:768] + lower[1024:1280] + lower[1536:1792]
-            data = upper + lower
-            WARN("The previous contents of DSTACC have been lost and should not be relied upon.")
-        else:
-            data = self.read_regfile_data(regfile, df, num_tiles)
-        if self._uses_int8_view(df):
-            return [byte - 0x100 if signed and df == TensixDataFormat.Int8 and byte & 0x80 else byte for byte in data]
+        data = self._read_regfile_raw(regfile, df, num_tiles)
         try:
             return (
-                unpack_data_direct_access(data, df, signed=signed)
+                unpack_data_direct_access(data, self._direct_dest_format(df), signed=signed)
                 if self._direct_dest_access_enabled(df, regfile)
                 else unpack_data(data, df, signed=signed)
             )
@@ -433,5 +358,5 @@ class TensixDebug:
                 df (TensixDataFormat): Data format.
         """
         regfile = convert_regfile(regfile)
-        packed_data = pack_data_direct_access(data, df, int8_view=self._uses_int8_view(df))
+        packed_data = pack_data_direct_access(data, self._direct_dest_format(df))
         self.write_regfile_data(regfile, packed_data, df)
