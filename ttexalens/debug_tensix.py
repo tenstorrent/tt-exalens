@@ -35,6 +35,10 @@ class REGFILE(Enum):
 
 TILE_SIZE = 32 * 32
 
+# Wormhole thread configuration words that decide where the math thread's SFPLOAD/SFPSTORE land in Dst:
+# the Dst offset, the address modifier set, and the Dst increment/clear of address modifier 0.
+WORMHOLE_MATH_DEST_ADDRESSING_THREAD_CFG = (1, 2, 23)
+
 
 def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
     if isinstance(regfile, REGFILE):
@@ -268,7 +272,8 @@ class TensixDebug:
         self, regfile: int | str | REGFILE, num_tiles: int | None = None, signed: bool = True
     ) -> Sequence[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
-        Dumping DSTACC on Wormhole as FP32 clobbers the register.
+        Dumping DSTACC on Wormhole as FP32 clobbers the register, LReg2, and the math thread's Dst counter,
+        Dst offset, address modifier set and address modifier 0 Dst settings (all set to 0).
 
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
@@ -294,11 +299,19 @@ class TensixDebug:
 
             # Pass a simple kernel directly to Tensix that exposes the lower 16 bits
             # in place of the upper. This unfortunately clobbers dest.
-            for _ in range(0, 64):
-                self.inject_instruction(ops.TT_OP_SFPLOAD(2, 3, 0, 0), 1)
+            # The values read are the 32 rows of 32-bit Dst starting at row 0. Each SFPLOAD/SFPSTORE covers four
+            # rows and either the even (address + 0) or the odd (address + 2) columns, so step the address by 2.
+            # Address the rows from 0 whatever the last kernel left in the math thread: no Dst offset, address
+            # modifier set 0, no Dst change from address modifier 0, and the Dst counter at 0.
+            for cfg_index in WORMHOLE_MATH_DEST_ADDRESSING_THREAD_CFG:
+                self.inject_instruction(ops.TT_OP_SETC16(cfg_index, 0), 1)
+            self.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0x4), 1)
+            # INT32 mode (4) moves the bits unchanged, where FP32 mode would flush a shifted value that looks
+            # like a denormal.
+            for address in range(0, 32, 2):
+                self.inject_instruction(ops.TT_OP_SFPLOAD(2, 4, 0, address), 1)
                 self.inject_instruction(ops.TT_OP_SFPSHFT(0x010, 2, 2, 1), 1)
-                self.inject_instruction(ops.TT_OP_SFPSTORE(2, 3, 0, 0), 1)
-                self.inject_instruction(ops.TT_OP_INCRWC(0, 16, 0, 0), 1)
+                self.inject_instruction(ops.TT_OP_SFPSTORE(2, 4, 0, address), 1)
 
             # Read the lower 16 bits from the upper bits' position.
             # Prune the zeros again, same as previously.

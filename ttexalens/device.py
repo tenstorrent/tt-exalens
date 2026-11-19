@@ -58,6 +58,14 @@ class TensixInstructions:
         raise NotImplementedError
 
     @staticmethod
+    def TT_OP_SFPLOADI(lreg_ind, instr_mod0, imm16) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_SETC16(setc16_reg, setc16_value) -> int:
+        raise NotImplementedError
+
+    @staticmethod
     def TT_OP_SETRWC(clear_ab_vld, rwc_cr, rwc_d, rwc_b, rwc_a, BitMask) -> int:
         raise NotImplementedError
 
