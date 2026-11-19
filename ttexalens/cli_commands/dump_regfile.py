@@ -34,7 +34,7 @@ from ttexalens.device import Device
 from ttexalens.uistate import UIState
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_tensix import TensixDebug
-from ttexalens.util import INFO
+from ttexalens.util import ERROR, INFO
 from ttexalens.debug_tensix import TILE_SIZE
 from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
 from ttexalens.hardware.noc_block import neo_id_to_str
@@ -76,6 +76,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             neo_id = dopt.get_neo_id(ui_state, location.noc_block)
             neo_where = f" (neo {neo_id_to_str(neo_id)})" if location.noc_block.neo_ids else ""
             INFO(f"Location {location.to_user_str()}{neo_where}")
+            if location.noc_block.neo_ids and neo_id is None:
+                ERROR("The overlay has no Tensix register files. Select a NEO with --neo.")
+                continue
             debug_tensix = TensixDebug(location, neo_id)
             data = debug_tensix.read_regfile(regfile, num_tiles)
             print_regfile(data)

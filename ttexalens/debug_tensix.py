@@ -192,16 +192,16 @@ class TensixDebug:
             "RISC_DEST_ACCESS_CTRL_SEC3_unsigned_int": int(df == TensixDataFormat.UInt8),
             "RISC_DEST_ACCESS_CTRL_SEC3_no_swizzle": 0,
         }
-        saved = {name: self.register_store.read_register(name) for name in fields}
-        changed = [name for name, value in fields.items() if saved[name] != value]
-        for name in changed:
-            self.register_store.write_register(name, fields[name])
-        try:
-            with self.risc_debug.ensure_private_memory_access():
+        with self.risc_debug.ensure_private_memory_access():
+            saved = {name: self.register_store.read_register(name) for name in fields}
+            changed = [name for name, value in fields.items() if saved[name] != value]
+            try:
+                for name in changed:
+                    self.register_store.write_register(name, fields[name])
                 yield self.dest.address.private_address, self.risc_debug.debug_hardware
-        finally:
-            for name in changed:
-                self.register_store.write_register(name, saved[name])
+            finally:
+                for name in changed:
+                    self.register_store.write_register(name, saved[name])
 
     def direct_dest_read(self, df: TensixDataFormat, num_tiles: int) -> list[int]:
         data: list[int] = []
