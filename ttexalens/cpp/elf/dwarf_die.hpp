@@ -268,6 +268,17 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     // DIE and runs get_resolved_type on it. nullptr for any other tag.
     DwarfDiePtr get_array_element_type() const;
 
+    // Element counts of this DW_TAG_array_type's dimensions, outermost first,
+    // one per DW_TAG_subrange_type child. A dimension is std::nullopt when its
+    // subrange gives no bound (a flexible array member). Empty for any other tag.
+    std::vector<std::optional<uint64_t>> get_array_dimensions() const;
+
+    // Element count of this DW_TAG_subrange_type: DW_AT_count when present,
+    // otherwise upper_bound - lower_bound + 1 (lower bound defaults to 0).
+    // A negative bound is decoded by the width of its form, so the upper bound
+    // -1 of a zero-length array gives 0. std::nullopt when no bound is given.
+    std::optional<uint64_t> get_subrange_length() const;
+
     // True iff this DIE is one of the DWARF type-describing tags (typedef_,
     // base_type, pointer_type, structure_type, ...). Used to distinguish
     // type DIEs from data/location DIEs when walking DW_AT_type chains.

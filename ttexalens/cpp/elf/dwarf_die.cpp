@@ -193,11 +193,8 @@ std::string DwarfDie::get_readable_name() const {
                     continue;
                 }
                 dimensions += '[';
-                if (const auto* count = child->get_attribute_value<uint64_t>(DwarfAttributeTag::count)) {
-                    dimensions += std::to_string(*count);
-                } else if (const auto* upper_bound =
-                               child->get_attribute_value<uint64_t>(DwarfAttributeTag::upper_bound)) {
-                    dimensions += std::to_string(*upper_bound + 1);
+                if (auto length = child->get_subrange_length()) {
+                    dimensions += std::to_string(*length);
                 }
                 dimensions += ']';
             }
@@ -473,6 +470,63 @@ DwarfDiePtr DwarfDie::get_array_element_type() const {
     }
     auto resolved = element->get_resolved_type();
     return resolved ? resolved : element;
+}
+
+namespace {
+
+// Reads an integer subrange bound. Bounds stored in a fixed-size data form
+// carry no signedness, so they are sign-extended from the form's width: GCC
+// encodes the upper bound -1 of a zero-length array on a 32-bit target as a
+// 4-byte 0xffffffff.
+std::optional<int64_t> get_subrange_bound(const DwarfDie& subrange, DwarfAttributeTag tag) {
+    const DwarfAttribute* attr = subrange.get_attribute(tag);
+    if (attr == nullptr) {
+        return std::nullopt;
+    }
+    if (const auto* s = std::get_if<int64_t>(&attr->get_value())) {
+        return *s;
+    }
+    const auto* u = std::get_if<uint64_t>(&attr->get_value());
+    if (u == nullptr) {
+        return std::nullopt;
+    }
+    switch (attr->get_form()) {
+        case DwarfAttributeForm::data1:
+            return static_cast<int8_t>(*u);
+        case DwarfAttributeForm::data2:
+            return static_cast<int16_t>(*u);
+        case DwarfAttributeForm::data4:
+            return static_cast<int32_t>(*u);
+        default:
+            return static_cast<int64_t>(*u);
+    }
+}
+
+}  // namespace
+
+std::optional<uint64_t> DwarfDie::get_subrange_length() const {
+    if (auto count = get_subrange_bound(*this, DwarfAttributeTag::count)) {
+        return *count < 0 ? 0 : static_cast<uint64_t>(*count);
+    }
+    auto upper_bound = get_subrange_bound(*this, DwarfAttributeTag::upper_bound);
+    if (!upper_bound.has_value()) {
+        return std::nullopt;
+    }
+    const int64_t lower_bound = get_subrange_bound(*this, DwarfAttributeTag::lower_bound).value_or(0);
+    return *upper_bound < lower_bound ? 0 : static_cast<uint64_t>(*upper_bound - lower_bound + 1);
+}
+
+std::vector<std::optional<uint64_t>> DwarfDie::get_array_dimensions() const {
+    std::vector<std::optional<uint64_t>> dimensions;
+    if (get_tag() != DwarfDieTag::array_type) {
+        return dimensions;
+    }
+    for (auto child = get_first_child(); child; child = child->get_next_sibling()) {
+        if (child->get_tag() == DwarfDieTag::subrange_type) {
+            dimensions.push_back(child->get_subrange_length());
+        }
+    }
+    return dimensions;
 }
 
 bool DwarfDie::is_declaration() const {
@@ -797,11 +851,10 @@ std::optional<uint64_t> DwarfDie::get_size() const {
 
     // Check for array
     if (tag == DwarfDieTag::array_type) {
+        // A dimension with no bound (flexible array member) counts as one element.
         uint64_t array_size = 1;
-        for (auto child = get_first_child(); child; child = child->get_next_sibling()) {
-            if (const auto* u = child->get_attribute_value<uint64_t>(DwarfAttributeTag::upper_bound)) {
-                array_size *= (*u + 1);
-            }
+        for (const auto& length : get_array_dimensions()) {
+            array_size *= length.value_or(1);
         }
         if (auto elem = get_die_from_attribute(DwarfAttributeTag::type)) {
             if (auto elem_size = elem->get_size()) {

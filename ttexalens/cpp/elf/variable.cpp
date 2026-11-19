@@ -138,8 +138,12 @@ constexpr size_t kMaxCStringLength = 64 * 1024;
 
 }  // namespace
 
-ElfVariable::ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access)
-    : type_die(std::move(type_die)), address(address), memory_access(std::move(memory_access)) {}
+ElfVariable::ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access,
+                         uint32_t array_dimension)
+    : type_die(std::move(type_die)),
+      address(address),
+      memory_access(std::move(memory_access)),
+      array_dimension(array_dimension) {}
 
 ElfVariable::~ElfVariable() = default;
 ElfVariable::ElfVariable(const ElfVariable&) = default;
@@ -147,7 +151,27 @@ ElfVariable::ElfVariable(ElfVariable&&) noexcept = default;
 ElfVariable& ElfVariable::operator=(const ElfVariable&) = default;
 ElfVariable& ElfVariable::operator=(ElfVariable&&) noexcept = default;
 
+std::vector<std::optional<uint64_t>> ElfVariable::get_remaining_dimensions() const {
+    auto dimensions = type_die->get_array_dimensions();
+    dimensions.erase(dimensions.begin(), dimensions.begin() + std::min<size_t>(array_dimension, dimensions.size()));
+    return dimensions;
+}
+
 uint64_t ElfVariable::get_size() const {
+    if (array_dimension > 0) {
+        // Sub-array of a multi-dimensional array: element size times the
+        // remaining dimensions.
+        auto element_type = type_die->get_array_element_type();
+        auto size = element_type ? element_type->get_size() : std::nullopt;
+        if (!size.has_value()) {
+            throw TypeMismatchException("get_size", type_die->get_path());
+        }
+        uint64_t total = *size;
+        for (const auto& length : get_remaining_dimensions()) {
+            total *= length.value_or(1);
+        }
+        return total;
+    }
     auto size = type_die->get_size();
     if (!size.has_value()) {
         throw TypeMismatchException("get_size", type_die->get_path());
@@ -237,6 +261,23 @@ ElfVariable ElfVariable::get_index(int64_t i) const {
     if (!elem_size.has_value()) {
         throw TypeMismatchException("index", type_die->get_path());
     }
+    if (tag == DwarfDieTag::array_type) {
+        // One array_type DIE can describe several dimensions (`int a[3][4]`
+        // has two subranges). Indexing any but the last dimension yields the
+        // sub-array, whose stride is the size of all inner dimensions.
+        auto dimensions = get_remaining_dimensions();
+        if (dimensions.size() > 1) {
+            uint64_t stride = *elem_size;
+            for (size_t d = 1; d < dimensions.size(); ++d) {
+                if (!dimensions[d].has_value()) {
+                    throw TypeMismatchException("index", type_die->get_path());
+                }
+                stride *= *dimensions[d];
+            }
+            return ElfVariable(type_die, address + static_cast<uint64_t>(i) * stride, memory_access,
+                               array_dimension + 1);
+        }
+    }
     uint64_t new_address = base_address + static_cast<uint64_t>(i) * *elem_size;
     return ElfVariable(std::move(element_type), new_address, memory_access);
 }
@@ -249,20 +290,12 @@ uint64_t ElfVariable::get_length() const {
     if (tag != DwarfDieTag::array_type) {
         throw TypeMismatchException("len", type_die->get_path());
     }
-    for (auto child = type_die->get_first_child(); child; child = child->get_next_sibling()) {
-        auto upper_bound = child->get_attribute(DwarfAttributeTag::upper_bound);
-        if (upper_bound == nullptr) {
-            continue;
-        }
-        const auto& value = upper_bound->get_value();
-        if (auto* signed_val = std::get_if<int64_t>(&value)) {
-            return static_cast<uint64_t>(*signed_val) + 1;
-        }
-        if (auto* unsigned_val = std::get_if<uint64_t>(&value)) {
-            return *unsigned_val + 1;
-        }
+    auto dimensions = get_remaining_dimensions();
+    if (dimensions.empty() || !dimensions.front().has_value()) {
+        // No bound recorded (flexible array member): the length is unknown.
+        throw InvalidArrayAccessException(0, std::nullopt);
     }
-    throw InvalidArrayAccessException(0, std::nullopt);
+    return *dimensions.front();
 }
 
 void ElfVariable::read_bytes(std::span<std::byte> buffer) const {
@@ -293,6 +326,10 @@ ElfVariable::Value ElfVariable::read_value() const {
     // C strings: char[] and char* are returned as Python str.
     if (type->is_string_type()) {
         if (tag == DwarfDieTag::array_type) {
+            if (get_remaining_dimensions().size() > 1) {
+                // An array of strings (`char names[3][8]`) has no single string value.
+                throw TypeMismatchException("read_value", type->get_path());
+            }
             const uint64_t array_len = get_length();
             const size_t cap = static_cast<size_t>(std::min<uint64_t>(array_len, kMaxCStringLength));
             std::vector<std::byte> bytes(cap);
@@ -374,7 +411,7 @@ void ElfVariable::write_value(Value value, bool check_data_loss) {
     // which we don't model). The supplied string + NUL must fit the array.
     // Bytes past the terminator are left untouched.
     if (auto* str = std::get_if<std::string>(&value)) {
-        if (tag != DwarfDieTag::array_type || !type->is_string_type()) {
+        if (tag != DwarfDieTag::array_type || !type->is_string_type() || get_remaining_dimensions().size() > 1) {
             throw TypeMismatchException("write_value", type->get_path());
         }
         const uint64_t array_len = get_length();
@@ -521,7 +558,7 @@ ElfVariable ElfVariable::read() const {
     }
     auto data = read_bytes();
     auto cached = std::make_shared<CachedReadMemoryAccess>(address, std::move(data), memory_access);
-    return ElfVariable(type_die, address, std::move(cached));
+    return ElfVariable(type_die, address, std::move(cached), array_dimension);
 }
 
 std::string ElfVariable::value_to_string(const Value& v) {
