@@ -2,6 +2,8 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import unittest
+from contextlib import contextmanager
+from unittest.mock import MagicMock
 from parameterized import parameterized_class, parameterized
 
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
@@ -11,6 +13,11 @@ from ttexalens import Context, write_to_device
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebugWatchpointState, get_register_index
 from ttexalens.exceptions import RiscHaltError
+from ttexalens.memory_map import MemoryMapBlockInfo
+from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.device_address import DeviceAddress
+from ttexalens.cli_commands.read import execute_safe_read, execute_unsafe_read
+from ttexalens.cli_commands.write import execute_safe_write, execute_unsafe_write
 
 
 @parameterized_class(
@@ -1235,6 +1242,45 @@ class TestDebugging(unittest.TestCase):
                 elif i == 2:
                     self.assertEqual(self.core_sim.read_data(noc_addresses[2]), 0x87654000)
 
+    @parameterized.expand([(False, False), (False, True), (True, False), (True, True)])
+    def test_cli_read_write_private_only_memory(self, running: bool, unsafe: bool):
+        """The read and write commands reach private memory that has no NOC address on a running core and on a core in reset,
+        and leave the core in the state it was in."""
+        if not self.core_sim.has_debug_hardware():
+            self.skipTest("Private memory access needs debug hardware.")
+        risc_debug = self.core_sim.risc_debug
+        data_private = risc_debug.get_data_private_memory()
+        if data_private is None or data_private.address.private_address is None:
+            self.skipTest("RISC has no data private memory.")
+        if data_private.address.noc_address is not None:
+            self.skipTest("Data private memory is reachable over NOC, the command does not use debug hardware.")
+        address = data_private.address.private_address
+        if risc_debug.risc_info.memory_map.find_by_private_address(address) is None:
+            self.skipTest("Data private memory is not in the memory map of this RISC.")
+        risc_name = self.risc_name.lower()
+        read = execute_unsafe_read if unsafe else execute_safe_read
+        write = execute_unsafe_write if unsafe else execute_safe_write
+
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+        if running:
+            self.core_sim.set_reset(False)
+
+        # The command must work with the checks that are on by default outside of tests
+        saved_asserts = (risc_debug.enable_asserts, self.core_sim.debug_hardware.enable_asserts)
+        risc_debug.enable_asserts = self.core_sim.debug_hardware.enable_asserts = True
+        try:
+            for value in [0x12345678, 0x87654321]:
+                data = value.to_bytes(4, "little")
+                self.assertEqual(write(self.core_sim.location, address, data, risc_name, self.neo_id)[0], 4)
+                self.assertEqual(read(self.core_sim.location, address, 4, risc_name, self.neo_id)[0], data)
+        finally:
+            risc_debug.enable_asserts, self.core_sim.debug_hardware.enable_asserts = saved_asserts
+
+        self.assertEqual(self.core_sim.is_in_reset(), not running)
+        if running:
+            self.assertFalse(self.core_sim.is_halted(), "Core should be running again.")
+
     def test_bne_with_debug_fail(self):
         """Test running 48 bytes of generated code that confirms problem with BNE when debugging hardware is enabled."""
 
@@ -1437,3 +1483,45 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.halt()
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
+
+
+class TestCliPrivateMemoryAccessWithoutDevice(unittest.TestCase):
+    """The read and write commands must reach private-only memory through ensure_private_memory_access."""
+
+    def create_location(self):
+        state = {"inside": False}
+
+        @contextmanager
+        def ensure_private_memory_access():
+            state["inside"] = True
+            try:
+                yield
+            finally:
+                state["inside"] = False
+
+        def check_access(*args, **kwargs):
+            self.assertTrue(state["inside"], "Private memory accessed without ensure_private_memory_access")
+
+        block_info = MemoryMapBlockInfo(
+            "data_private_memory", MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFB00000))
+        )
+        risc_debug = MagicMock()
+        risc_debug.risc_info.memory_map.find_by_private_address.return_value = block_info
+        risc_debug.ensure_private_memory_access = ensure_private_memory_access
+        risc_debug.read_memory_bytes.side_effect = check_access
+        risc_debug.write_memory_bytes.side_effect = check_access
+        location = MagicMock()
+        location.noc_block.get_risc_debug.return_value = risc_debug
+        return location, risc_debug
+
+    @parameterized.expand([("safe", execute_safe_read), ("unsafe", execute_unsafe_read)])
+    def test_read(self, _, read):
+        location, risc_debug = self.create_location()
+        read(location, 0xFFB00000, 4, "brisc")
+        risc_debug.read_memory_bytes.assert_called_once()
+
+    @parameterized.expand([("safe", execute_safe_write), ("unsafe", execute_unsafe_write)])
+    def test_write(self, _, write):
+        location, risc_debug = self.create_location()
+        write(location, 0xFFB00000, bytes(4), "brisc")
+        risc_debug.write_memory_bytes.assert_called_once()

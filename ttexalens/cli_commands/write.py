@@ -159,7 +159,8 @@ def execute_safe_write(
             )
             location.noc_write(noc_address, data[:write_size], register_access=register_access)
         else:
-            risc_debug.write_memory_bytes(address, data[:write_size])
+            with risc_debug.ensure_private_memory_access():
+                risc_debug.write_memory_bytes(address, data[:write_size])
         return write_size, memory_block_info.name
 
 
@@ -194,7 +195,8 @@ def execute_unsafe_write(
                 )
                 location.noc_write(noc_address, data[:write_size], safe_mode=False, register_access=register_access)
             else:
-                risc_debug.write_memory_bytes(address, data[:write_size], safe_mode=False)
+                with risc_debug.ensure_private_memory_access():
+                    risc_debug.write_memory_bytes(address, data[:write_size], safe_mode=False)
             return write_size, memory_block_info.name
 
     # Find end address of unknown block and limit write size to that
