@@ -173,6 +173,8 @@ def read_perf_counter(
     perf = _check_and_get_perf_counters(location, neo_id)
     if isinstance(counter, int) and not 0 <= counter < COUNTER_ID_LIMIT:
         raise TTException(f"Counter id {counter} out of range (0..{COUNTER_ID_LIMIT - 1}).")
+    if block_name not in perf.block_names:
+        raise TTException(f"Unknown perf-counter block {block_name!r}. Available: {sorted(perf.block_names)}.")
     block = perf.get_block(block_name)
     if isinstance(counter, str) and counter not in block.counters.values():
         raise TTException(f"Unknown counter {counter!r} in block {block_name}.")
