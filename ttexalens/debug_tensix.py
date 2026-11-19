@@ -265,7 +265,11 @@ class TensixDebug:
         return data
 
     def read_regfile(
-        self, regfile: int | str | REGFILE, num_tiles: int | None = None, signed: bool = True
+        self,
+        regfile: int | str | REGFILE,
+        num_tiles: int | None = None,
+        signed: bool = True,
+        sign_magnitude: bool = False,
     ) -> Sequence[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
@@ -273,6 +277,10 @@ class TensixDebug:
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
                 num_tiles (int | None): Number of tiles to print. Only available for direct dest read on blackhole. Default: None
+                signed (bool): Decode 32-bit integer data as signed. Default: True
+                sign_magnitude (bool): Decode signed Int32 data as sign/magnitude (the hardware's Int32 format in Dst,
+                    e.g. after Matrix Unit integer math) instead of two's complement (what kernels that copy int32
+                    data into Dst unchanged leave). Has no effect on other formats. Default: False
         Returns:
                 list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data) or num_tiles * TILE_SIZE for direct read.
         """
@@ -310,7 +318,7 @@ class TensixDebug:
             data = self.read_regfile_data(regfile, df, num_tiles)
         try:
             return (
-                unpack_data_direct_access(data, df, signed=signed)
+                unpack_data_direct_access(data, df, signed=signed, sign_magnitude=sign_magnitude)
                 if self._direct_dest_access_enabled(df, regfile)
                 else unpack_data(data, df, signed=signed)
             )
@@ -340,7 +348,13 @@ class TensixDebug:
         self.register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", df_to_write.value)
         self.direct_dest_write(data, df)
 
-    def write_regfile(self, regfile: int | str | REGFILE, data: list[int] | list[float], df: TensixDataFormat) -> None:
+    def write_regfile(
+        self,
+        regfile: int | str | REGFILE,
+        data: list[int] | list[float],
+        df: TensixDataFormat,
+        sign_magnitude: bool = False,
+    ) -> None:
         """
         Writes data to the register file.
         Writing is only supported for dest register and only for formats using 32 bit mode (Float32, Int32, UInt32, Int8, UInt8)
@@ -349,7 +363,9 @@ class TensixDebug:
                 regfile (int | str | REGFILE): Register file to write to (0: SRCA, 1: SRCB, 2: DSTACC).
                 data (list[int | float]): Data to write.
                 df (TensixDataFormat): Data format.
+                sign_magnitude (bool): Encode Int32 data as sign/magnitude instead of two's complement
+                    (see read_regfile). Has no effect on other formats. Default: False
         """
         regfile = convert_regfile(regfile)
-        packed_data = pack_data_direct_access(data, df)
+        packed_data = pack_data_direct_access(data, df, sign_magnitude=sign_magnitude)
         self.write_regfile_data(regfile, packed_data, df)

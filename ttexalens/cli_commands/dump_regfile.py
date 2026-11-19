@@ -3,13 +3,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump_regfile <regfile> [ -l <loc> ] [ -t <num-tiles> ] [ -d <device> ]
+  dump_regfile <regfile> [ -l <loc> ] [ -t <num-tiles> ] [ --sign-magnitude ] [ -d <device> ]
 
 Arguments:
   regfile      Register file to read from (0: SRCA, 1: SRCB, 2: DSTACC)
 
 Options:
   -t <num-tiles>            Number of tiles to read. Only effective for 32 bit formats on blackhole.
+  --sign-magnitude          Print Int32 data as sign/magnitude (the hardware's Int32 format in Dst) instead of
+                            two's complement. Ignored for other data formats.
 
 Description:
   Prints the specified regfile (SRCA/DSTACC).
@@ -25,6 +27,7 @@ Examples:
   dr 0 -l 0,0 -d 1
   dr 2 -l 0,0
   dr dstacc -l 0,0 -d 1
+  dr 2 -l 0,0 --sign-magnitude
 """
 
 from collections.abc import Sequence
@@ -65,6 +68,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     regfile: str = args["<regfile>"]
     num_tiles: int | None = int(args["-t"]) if args["-t"] else None
+    sign_magnitude: bool = bool(args["--sign-magnitude"])
 
     device: Device
     location: OnChipCoordinate
@@ -73,7 +77,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             INFO(f"Location {location.to_user_str()}")
             debug_tensix = TensixDebug(location)
-            data = debug_tensix.read_regfile(regfile, num_tiles)
+            data = debug_tensix.read_regfile(regfile, num_tiles, sign_magnitude=sign_magnitude)
             print_regfile(data)
 
     return None

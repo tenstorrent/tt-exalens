@@ -175,10 +175,16 @@ def unpack_data(data, df: int | TensixDataFormat, signed: bool):
 
 
 # Unpacking data read with direct access require different approach
-def unpack_value_direct_access(value: int, df: TensixDataFormat, signed: bool) -> int | float:
+# sign_magnitude: Int32 words are sign/magnitude (sign in bit 31, magnitude in the low 31 bits), the hardware's own
+# Int32 format in Dst, instead of two's complement, which is what kernels that copy int32 data into Dst unchanged leave.
+def unpack_value_direct_access(
+    value: int, df: TensixDataFormat, signed: bool, sign_magnitude: bool = False
+) -> int | float:
     if df == TensixDataFormat.Float32:
         return float(struct.unpack(">f", value.to_bytes(4, "big"))[0])
     # Because in ALU register format for dest is INT32 for both INT32 and UINT32 we need to check sign bit
+    elif df == TensixDataFormat.Int32 and signed and sign_magnitude:
+        return -(value & 0x7FFFFFFF) if value & 0x80000000 else value
     elif df == TensixDataFormat.Int32 and signed:
         # If the sign bit is set, we need to convert it to a signed integer
         return value - 0x100000000 if value & 0x80000000 else value
@@ -194,16 +200,23 @@ def unpack_value_direct_access(value: int, df: TensixDataFormat, signed: bool) -
         raise ValueError(f"Unsupported data format {df} for unpacking.")
 
 
-def unpack_data_direct_access(data: list[int], df: int | TensixDataFormat, signed: bool) -> list[int | float]:
+def unpack_data_direct_access(
+    data: list[int], df: int | TensixDataFormat, signed: bool, sign_magnitude: bool = False
+) -> list[int | float]:
     if isinstance(df, int):
         df = TensixDataFormat(df)
 
-    return [unpack_value_direct_access(value, df, signed=signed) for value in data]
+    return [unpack_value_direct_access(value, df, signed=signed, sign_magnitude=sign_magnitude) for value in data]
 
 
-def pack_value_direct_access(value: int | float, df: TensixDataFormat) -> int:
+def pack_value_direct_access(value: int | float, df: TensixDataFormat, sign_magnitude: bool = False) -> int:
     if df == TensixDataFormat.Float32:
         return int.from_bytes(struct.pack(">f", float(value)), "big")
+    elif df == TensixDataFormat.Int32 and sign_magnitude:
+        # Sign/magnitude has no -2**31.
+        if value <= -(2**31) or value > 2**31 - 1:
+            raise ValueError(f"Value {value} is out of range for sign/magnitude Int32.")
+        return int(value) if int(value) >= 0 else 0x80000000 | -int(value)
     elif df == TensixDataFormat.Int32:
         if value < -(2**31) or value > 2**31 - 1:
             raise ValueError(f"Value {value} is out of range for Int32.")
@@ -224,5 +237,7 @@ def pack_value_direct_access(value: int | float, df: TensixDataFormat) -> int:
         raise ValueError(f"Unsupported data format {df} for packing.")
 
 
-def pack_data_direct_access(data: list[int] | list[float], df: TensixDataFormat) -> list[int]:
-    return [pack_value_direct_access(value, df) for value in data]
+def pack_data_direct_access(
+    data: list[int] | list[float], df: TensixDataFormat, sign_magnitude: bool = False
+) -> list[int]:
+    return [pack_value_direct_access(value, df, sign_magnitude=sign_magnitude) for value in data]
