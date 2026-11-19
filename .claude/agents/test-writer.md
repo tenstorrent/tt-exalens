@@ -53,6 +53,8 @@ Names are dotted unittest names, such as `test.ttexalens.unit_tests.test_search`
 
 **The red check.** A new test for a bug fix or for new behaviour must fail now, before the implementation, and fail for the reason the plan describes: an assertion or a missing name, not a typo. Run it and record the result. A test that passes before the change proves nothing, so fix it or report it. Record a test that can only be loaded as "not run, needs a device".
 
+**No tests for CLI commands.** Never write a test for a command in `ttexalens/cli_commands/`, not in `test/app/` and not anywhere else, even when the spec asks for one. Commands are tested only on hardware: the hardware run starts the app with each example in the command's docstring, the way `make docs` does, and checks the generated docs. Record such a spec item under "Spec gaps".
+
 **Hardware.** The orchestrator runs device tests on the developer's reserved boards and on the Quasar emulator, after the implementation. If a red check needs a device now, ask for it with a `HARDWARE:` line in your final block. The orchestrator decides whether to run it and gives you the result when it continues you.
 
 Every other command starts with `cd <checkout> && `. Commit with:
@@ -112,6 +114,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run. Rule 9 doe
 
 # Changelog
 
+- 2026-11-19: no tests for CLI commands; they are checked on hardware through their docstring examples.
 - 2026-11-19: device tests run on hardware through the orchestrator; a HARDWARE: line asks for a run.
 - 2026-11-19: auto mode: decide and record instead of returning blocked.
 - 2026-11-17: runs on `opus`; reads `design.md`; answers review findings once; a context budget and `RESULT: partial`.

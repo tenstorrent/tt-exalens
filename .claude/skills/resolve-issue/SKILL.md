@@ -135,6 +135,8 @@ You are the only one who runs tests on hardware, and only through `.claude/pipel
 
 - It lists the developer's reservations with `ird list`, and takes one Wormhole and one Blackhole board. When the change touches Quasar, it also takes the tensix reservation this session runs on, with the emulator, or the simulator if the emulator cannot run. `.claude/pipeline/run hw-list` shows what it would take.
 - It sends the committed branch to each machine, builds it there, and runs the tests named in the plan (default: the device test modules the branch changes) with NOC0 and NOC1. It does not use a board that some process holds. After a hung test it resets the board with `tt-smi -r`, but only when nothing holds it.
+- CLI commands have no unit tests. For each command the branch changes, the Wormhole run starts the app with every example in the command's docstring, as `make docs` does, and checks that each produced output in the generated docs.
+- A target that has no reservation is noted in the `**Hardware:**` line and skipped. That is never a stop, in either mode.
 - It never reserves, extends or releases a machine, and nobody restarts a host except the developer.
 - Its last lines are a `**Hardware:**` line for the report and what comes next. `status` shows that line again.
 
@@ -142,9 +144,10 @@ What it reports for each target:
 
 | Result | What you do |
 |---|---|
-| Every target passed | Stage 4. |
-| Tests failed or timed out | Stage 3, step 4. |
-| Not tested: no reservation, busy, unreachable, the build failed there, wedged | **Guided:** tell the developer which machine is missing or held and wait. They reserve or free it (then `hw-test` again), or go on without that target (`hw-test <case> --target <target> --skip "<their words>"`; without `--target` it skips them all). **Auto:** the script has recorded it as an accepted failure; go on. |
+| Every target that could run passed | Stage 4. |
+| Tests or command examples failed, or timed out | Stage 3, step 4. |
+| No reservation for a target | Nothing: it is noted and skipped. Go on. |
+| Not tested: busy, unreachable, the build failed there, wedged | **Guided:** tell the developer which machine is missing or held and wait. They reserve or free it (then `hw-test` again), or go on without that target (`hw-test <case> --target <target> --skip "<their words>"`; without `--target` it skips them all). **Auto:** the script has recorded it as an accepted failure; go on. |
 | Refused: gates not green, the run cap, no device tests named | Do what the message says. With no tests named, ask the planner (guided) or go on (auto, the script recorded it). |
 
 **Requests from roles.** A role may end with `HARDWARE: <unittest names> on <targets> - <why>`. Run `.claude/pipeline/run hw-test <case> --tests <names> --target <target>` once for each request, in the background. When you continue that role, give it the `**Hardware:**` line and the paths of the log or the failure excerpt. If the script refuses, give the role the refusal instead. Every run counts against the run cap. A request for other tests than the case's own does not count as the case's hardware run.
@@ -173,7 +176,7 @@ Nothing was pushed. Pushing the branch and opening the pull request are the deve
 
 **Auto.** Run `.claude/pipeline/run approve <case> result <hash> --by auto`. Then tell the developer, for when they return: the branch, `pr-description.md`, the open findings, the "Not verified" list, and that the issue, the design and the result were taken by the script and not approved by a person.
 
-After the approval, tell the developer that `outcome.md` in the case directory is where they note what they changed afterwards and what CI and reviewers said, because `/papa` learns from it, and that `/fix-ci <case> <log file>` starts another round if CI fails.
+After the approval, tell the developer the time and the cost that `approve` printed (`.claude/pipeline/run ledger` lists every resolved issue), that `outcome.md` in the case directory is where they note what they changed afterwards and what CI and reviewers said, because `/papa` learns from it, and that `/fix-ci <case> <log file>` starts another round if CI fails.
 
 ## Stops (guided mode)
 
@@ -184,7 +187,7 @@ A stop condition is one of:
 - a cap or the agent-call budget is reached. Only the developer raises a cap,
 - a fix undoes an earlier one, or a role returns `partial` three times in a row on the same work,
 - the leak scan hits something you cannot fix in `pr-text.md`,
-- a hardware target cannot be tested and the developer has to reserve or free a machine, or decide to go on without it.
+- a reserved machine cannot be used (busy, unreachable, the build failed there, the board hung), and the developer has to free or fix it, or decide to go on without it. A target without a reservation is not a stop.
 
 Stop, say what happened, quote the script message or the role's `BLOCKER`, and list the developer's choices. If the case has to wait, run `.claude/pipeline/run advance <case> blocked --reason "<why>"`. A design without an implementation, or a partial result, is a valid result in guided mode. Say so plainly instead of pushing on.
 
@@ -206,7 +209,7 @@ Nobody answers, so nothing stops for an answer. The run ends when `approve resul
 | The session is over 500k tokens | Go on. In auto mode the script only warns. |
 | Anything else keeps failing, once code is on the branch | `.claude/pipeline/run finish <case> --reason "<what failed>"`. It records what is missing, writes the report and the PR description if needed, and closes the case. |
 
-When the case is closed, tell the developer: the branch, `pr-description.md`, the accepted failures and the open findings from the report, and that the gates were taken by the script, not by a person.
+When the case is closed, tell the developer: the branch, `pr-description.md`, the accepted failures and the open findings from the report, the time and cost the close printed, and that the gates were taken by the script, not by a person.
 
 ## Formats
 

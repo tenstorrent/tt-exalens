@@ -35,6 +35,8 @@
     "test_timeout": 1800,
     "nocs": [0, 1],
     "reset": "tt-smi -r",
+    "docs_target": "wormhole",
+    "docs_timeout": 1800,
     "quasar_hosts": "^tensix-l-\\d+$",
     "quasar_changes": "(?i)quasar|rocket",
     "quasar": {
@@ -79,6 +81,13 @@
     "triage_words": 300,
     "report_words": 400,
     "pr_words": 200
+  },
+  "prices": {
+    "_note": "USD per million tokens. A 5-minute cache write costs 1.25 x input, a 1-hour write 2 x input; fast mode doubles all",
+    "claude-fable-5-2": {"input": 8.0, "output": 40.0, "cache_read": 0.2},
+    "claude-opus-5-5": {"input": 4.0, "output": 20.0, "cache_read": 0.2},
+    "claude-sonnet-5-5": {"input": 2.0, "output": 10.0, "cache_read": 0.1},
+    "claude-haiku-5-5": {"input": 0.1, "output": 0.5, "cache_read": 0.01}
   },
   "device_free_tests": [
     "test.ttexalens.unit_tests.test_exception_hierarchy",

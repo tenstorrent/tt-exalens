@@ -63,7 +63,9 @@ Every other command starts with `cd <checkout> && `.
 
 **Lib docs.** If `gates` reports that `docs/ttexalens-lib-docs.md` is out of date, regenerate it as the log says, run pre-commit on that file, and commit it. It needs no device. Never edit generated docs by hand.
 
-**App docs and native code.** Never run `make docs` or the command-docs generator: they need a device. If a command docstring changed, list "app docs regeneration" under "Not verified". If you changed `ttexalens/cpp/` or `riscv-src/`, the developer must rebuild: say so in the report and stop there.
+**App docs and native code.** Never run `make docs` or the command-docs generator: they need a device. If you changed `ttexalens/cpp/` or `riscv-src/`, the developer must rebuild: say so in the report and stop there.
+
+**Commands.** A command in `ttexalens/cli_commands/` gets no unit test. It is tested only on hardware: the hardware run starts the app on a Wormhole board with each example in the command's docstring, the way `make docs` does, and checks that every example produced output in the generated docs. So a command you change keeps a few examples (`command    # description`) that run as written and show the change. A failure comes back as a `hardware/NN-wormhole-failures.txt` with the generated section.
 
 You are done when `gates` is green, or when you are blocked. If the same check fails three times in a row, stop and report it as a blocker instead of trying variations.
 
@@ -87,7 +89,7 @@ Write `impl-report.md` in the case directory:
     The summary lines of the last gates run and the path of its log.
 
     ## Not verified
-    Everything that did not run here: device and simulator tests (the orchestrator runs them on hardware), app docs regeneration, a native rebuild.
+    Everything that did not run here: device and simulator tests and command examples (the orchestrator runs them on hardware), a native rebuild.
 
     ## Concerns
     Doubts, risks and follow-ups the developer should know about.
@@ -117,6 +119,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run, and the de
 
 # Changelog
 
+- 2026-11-19: commands get no unit tests; their docstring examples are run on hardware like `make docs`.
 - 2026-11-19: device tests run on hardware through the orchestrator; reads the failure excerpts; a HARDWARE: line asks for a run.
 - 2026-11-19: auto mode: decide and record instead of returning blocked.
 - 2026-11-17: runs on `opus`; reads `design.md`; answers review findings once; a context budget and `RESULT: partial`.

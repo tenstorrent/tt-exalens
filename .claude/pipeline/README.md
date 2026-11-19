@@ -51,6 +51,8 @@ After the review round, the orchestrator runs the case's tests on your reservati
 
 - **Machines.** `ird list` and `ird list-machines`, through `ssh yyz-ird` (`hardware.ird_host`), give your reservations and their architectures. It takes one Wormhole and one Blackhole reservation. When the change touches Quasar, it also takes the tensix reservation this session runs on. A change touches Quasar when a changed path or an added line names Quasar or Rocket, or when the plan lists `quasar`. Quasar runs on the emulator, or on the simulator when the emulator cannot run: no build, no answer from the submit host, or no connection within 15 minutes.
 - **Tests.** The plan's `Hardware tests:` line, otherwise the device test modules the branch changes, with NOC0 and NOC1 on boards and NOC0 on Quasar.
+- **Commands.** CLI commands get no unit tests. For each command the branch changes (or the plan's `Hardware commands:` line names), the Wormhole run starts the app with every example in the command's docstring, through the docs generator as `make docs` does, and checks that each example produced output in the generated section.
+- **Missing reservations.** A target without a reservation (or a tensix reservation on another host) is noted in the report line and skipped. Nobody is asked, in either mode.
 - **Boards.** It sends the committed branch over ssh as a git bundle. It builds it in `/localdev/<user>/issue-pipeline` on the machine, with a venv of its own there.
 - **Quasar.** It builds in `.issue-pipeline/hardware/local/` and uses the builds under `hardware.quasar.simulators`.
 - **Safety.** It does not use a board that any process holds. It stops a hung test and resets the board with `tt-smi -r`, only when nothing holds it. It runs one emulator or simulator at a time: if one of yours is running, it waits 10 minutes, then gives up. It never reserves, extends or releases a machine, and never restarts a host.
@@ -58,10 +60,18 @@ After the review round, the orchestrator runs the case's tests on your reservati
   - Logs and failure excerpts go to `hardware/` in the case. The last lines are a `**Hardware:**` line for the report, without machine names.
   - Failing tests go back to the implementer.
   - The case keeps the latest result of each target, with the commit it tested. A run that a role asks for, with other tests, does not count.
-  - When a target cannot be tested, a guided run asks you to reserve or free the machine; auto mode records it as an accepted failure.
-  - `advance report_ready` wants every target the case needs run on the current commit. In guided mode you can go on without a target: `hw-test <case> --target <target> --skip "<reason>"`, or without `--target` for all of them.
+  - When a reserved machine cannot be used (busy, unreachable, the build failed there, the board hung), a guided run asks you to free or fix it; auto mode records it as an accepted failure.
+  - `advance report_ready` wants every target the case needs run on the current commit, or noted as not reserved. In guided mode you can go on without a target: `hw-test <case> --target <target> --skip "<reason>"`, or without `--target` for all of them.
 
 Up to 4 runs per iteration (`caps.hw_runs`). `--dry-run` finds and checks the machines without building. `--build-only` ships and builds without running tests. The settings are under `hardware` in `config.json`.
+
+## Time and cost
+
+When an issue is resolved (Gate B is approved, or `finish` closes it), the script records how long it took and what it cost, and adds a line to `.issue-pipeline/ledger.jsonl`. `.claude/pipeline/run ledger` lists every resolved issue with the totals, and `.claude/pipeline/run cost <case>` shows a running case so far.
+
+- **Time.** From the first event of the iteration to its close. "Working" leaves out the time spent waiting for you: before each approval you gave, and while the case was blocked.
+- **Cost.** The model requests in the transcripts of the case's agents, and of your session between its first and last event of the case, at the prices under `prices` in `config.json` (cache writes and reads included, each request counted once). This is exact for what the transcripts record.
+- **Estimate.** Claude Code's own side calls (permission checks in auto mode, compaction, titles) are not in the transcripts. Once a session has saved its total (on exit or resume), the estimate scales each session's share by that session's ratio of the total to the recorded requests. Run each issue in its own session for the cleanest numbers.
 
 ## Guided mode and auto mode
 
@@ -87,7 +97,7 @@ Three things auto mode cannot take over: Claude Code's permission prompts (run t
 | Triager | `.claude/agents/triager.md` | subagent | `sonnet` | read, write `triage.md` |
 | Investigator | `.claude/agents/investigator.md` | subagent | `sonnet` | read, search, read-only git, Glean |
 | Planner | `.claude/agents/planner.md` | subagent | `fable` | read, write `design.md` and `plan.md` |
-| Reviewer | `.claude/agents/reviewer.md`, on top of `.github/skills/tt-exalens-review/SKILL.md` | subagent | `fable` | read, write its review |
+| Reviewer | `.claude/agents/reviewer.md`, on top of `.github/skills/tt-exalens-review/SKILL.md` | subagent | `sonnet` | read, write its review |
 | Test writer | `.claude/agents/test-writer.md` | subagent | `opus` | read, search, edit `test/`, run checks |
 | Implementer | `.claude/agents/implementer.md`, on top of `AGENTS.md` | subagent | `opus` | read, search, edit outside `test/`, run checks |
 | Papa | `.claude/agents/papa.md` | subagent | your session's | read, search, write proposals |
@@ -131,6 +141,7 @@ Runtime data is in `.issue-pipeline/` at the repository root. The directory igno
       checkouts/<case>/    a clone of the base history only, without a remote, on the case branch
       hardware/            local/: the checkout this host builds for Quasar runs; machines.txt: machine names the
                            leak scan looks for
+      ledger.jsonl         one line per resolved issue: time and cost
       budget/              one file per agent: tool calls, context size, model
       proposals/           papa's patches
       leak-patterns.txt    your own patterns for the leak scan, one regular expression per line
@@ -152,7 +163,8 @@ The clone starts from `base_ref` in `config.json`. Type checks and tests need th
 | `gates` | pre-commit, mypy, basedpyright, lib docs, device-free tests, on the committed state |
 | `scope-check` | changed files against the plan's `## Files` list |
 | `pr` | assembles the PR description, scans it, commits it with the issue and the design |
-| `hw-list`, `hw-test` | your reservations; the case's tests on hardware. Only the orchestrator runs them |
+| `hw-list`, `hw-test` | your reservations; the case's tests and command examples on hardware. Only the orchestrator runs them |
+| `cost`, `ledger` | time and dollars of a case so far; of every resolved issue |
 | `guard` | a hook in each agent file and command file: writes, commands, reads and starts outside the limits are blocked, an agent sees only its own case, and a writing role runs only `test`, `commit`, `gates`, `env-check`, `scope-check` and `status` |
 | `guard-stop` | a Stop hook in the command files: an auto-mode session keeps working until its case is closed |
 | `build`, `finish` | copy or build the native module in the checkout; close an auto-mode case with the code that exists |

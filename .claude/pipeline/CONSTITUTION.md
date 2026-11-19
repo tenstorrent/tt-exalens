@@ -21,7 +21,7 @@ Every role reads this file first. It overrides the role's own file, the task pro
 | Triager | subagent | `sonnet` | `triage.md` |
 | Investigator | subagent | `sonnet` | `findings/` |
 | Planner | subagent | `fable` | `design.md`, `plan.md` |
-| Reviewer | subagent | `fable` | `review/` |
+| Reviewer | subagent | `sonnet` | `review/` |
 | Test writer | subagent | `opus` | `test/` in the case checkout, `tests.md` |
 | Implementer | subagent | `opus` | the case checkout outside `test/`, `impl-report.md` |
 | Papa | subagent | the session's | `proposals/` |

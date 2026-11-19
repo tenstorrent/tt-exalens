@@ -93,22 +93,15 @@ REVIEW_MODES = {"issue": ("shaping",), "plan": ("planning", "plan_review"), "dif
 WRITER_STATES = {"test-writer": "testing", "implementer": "implementing"}
 
 ISSUE_SECTIONS = {
-    "bug": (
-        "Summary",
-        "Current behavior",
-        "Desired behavior",
-        "Acceptance criteria",
-        "Scope",
-        "Out of scope",
-        "Verification",
-        "Environment",
-    ),
-    "feature": ("Summary", "Desired behavior", "Acceptance criteria", "Scope", "Out of scope", "Verification"),
+    "bug": ("Summary", "Current behavior", "Desired behavior", "Acceptance criteria", "Scope", "Verification"),
+    "feature": ("Summary", "Desired behavior", "Acceptance criteria", "Scope", "Verification"),
     "task": ("Summary", "Desired behavior", "Acceptance criteria", "Scope", "Verification"),
     "docs": ("Summary", "Desired behavior", "Acceptance criteria", "Scope", "Verification"),
-    "investigation": ("Summary", "Questions to answer", "Acceptance criteria", "Scope", "Out of scope"),
+    "investigation": ("Summary", "Questions to answer", "Acceptance criteria", "Scope"),
 }
-ISSUE_OPTIONAL = ("Scope", "Out of scope", "Verification", "Environment")
+ISSUE_OPTIONAL = ("Scope", "Verification")
+# sections the developer removed from the issue format
+ISSUE_REMOVED = ("Out of scope", "Environment")
 FITS = ("full", "plan-only", "not-agent-fit")
 MARKERS = ("(inferred, confirm)", "(unconfirmed)")
 TRIAGE_VERDICTS = ("feature", "bug-confirmed", "bug-fixed", "bug-unconfirmed")
@@ -291,8 +284,10 @@ def save_status(status: Status) -> None:
 
 
 def log_event(case_id: str, **fields: Any) -> None:
+    """Append an event. It names the Claude Code session that ran it, so the case's time and cost can be found."""
+    session = os.environ.get("CLAUDE_CODE_SESSION_ID")
     with (CASES / case_id / "run.jsonl").open("a") as stream:
-        stream.write(json.dumps({"time": now(), **fields}) + "\n")
+        stream.write(json.dumps({"time": now(), **({"session": session} if session else {}), **fields}) + "\n")
 
 
 def file_hash(path: Path) -> str:
@@ -593,7 +588,12 @@ def issue_problems(case_id: str) -> tuple[list[str], list[str]]:
         if not found.get(name):
             problems.append(f"section '## {name}' is missing or empty")
     for name in found:
-        if kind in ISSUE_SECTIONS and name not in required and name not in ISSUE_OPTIONAL:
+        if name in ISSUE_REMOVED:
+            problems.append(
+                f"issue.md has no '## {name}' section: architectures and boards go under Scope, anything else to "
+                "issue.notes.md"
+            )
+        elif kind in ISSUE_SECTIONS and name not in required and name not in ISSUE_OPTIONAL:
             problems.append(f"section '## {name}' does not belong in issue.md: move it to issue.notes.md")
     listed = found.get("Acceptance criteria", "")
     criteria = [line[2:].strip() for line in listed.splitlines() if line.startswith("- ")]
@@ -1023,6 +1023,9 @@ def cmd_status(args: argparse.Namespace) -> None:
         print(
             f"gates: {'ok' if status['gates']['ok'] else 'FAIL'} at {status['gates']['head'][:9]} ({status['gates']['log']})"
         )
+    spent = (status.get("accounting") or {}).get(str(status["iteration"]))
+    if spent:
+        print(f"resolved: {accounting_line(spent)}")
     hardware = status.get("hardware")
     if hardware:
         print(f"hardware, iteration {hardware.get('iteration')} ({case / 'hardware'}):")
@@ -1172,6 +1175,9 @@ def cmd_approve(args: argparse.Namespace) -> None:
     status["state"] = target
     save_status(status)
     log_event(args.case, event="approve", gate=args.gate, hash=current, by=args.by)
+    if args.gate == "result":
+        notes.append(record_accounting(status))
+        save_status(status)
     print(
         f"{args.case}: gate {args.gate} approved at {current} by {args.by}; state {state} -> {target}\n"
         + "".join(f"{note}\n" for note in notes)
@@ -1574,6 +1580,8 @@ HW_TITLES = {"wormhole": "Wormhole", "blackhole": "Blackhole", "quasar": "Quasar
 HW_ARCHS = {"wormhole_b0": "wormhole", "wormhole": "wormhole", "blackhole": "blackhole"}
 HW_BOARDS = {"nebula_x1": "n150", "nebula_x2": "n300"}
 HW_TESTED = ("passed", "failed", "timeout")
+# states that are only noted in the report: nothing to fix, nobody to ask
+HW_NOTED = ("no-reservation", "skipped")
 HW_REASONS = {
     "no-reservation": "no reservation",
     "unreachable": "the machine did not answer",
@@ -1642,18 +1650,37 @@ reset_board() {
   if timeout 300 @RESET@; then say "reset ok"; else say "reset failed"; return 1; fi
 }
 if [ -n "@RESET_FIRST@" ]; then reset_board || { say "wedged"; exit 76; }; fi
-for noc in @NOCS@; do
+if [ -n "@TESTS@" ]; then
+  for noc in @NOCS@; do
+    h=$(holders)
+    if [ -n "$h" ]; then say "busy: process $h holds the board"; exit 75; fi
+    say "run NOC$noc"
+    TTEXALENS_TESTS_NOC_ID=$noc timeout -k 30 @TEST_TIMEOUT@ "$V/bin/python" -m unittest -v @TESTS@ 2>&1
+    rc=$?
+    say "exit $rc NOC$noc"
+    if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then reset_board || { say "wedged"; exit 76; }; fi
+  done
+fi
+for module in @COMMANDS@; do
   h=$(holders)
   if [ -n "$h" ]; then say "busy: process $h holds the board"; exit 75; fi
-  say "run NOC$noc"
-  TTEXALENS_TESTS_NOC_ID=$noc timeout -k 30 @TEST_TIMEOUT@ "$V/bin/python" -m unittest -v @TESTS@ 2>&1
+  say "docs $module"
+  rm -f "$R/app-docs.md"
+  timeout -k 30 @DOCS_TIMEOUT@ "$V/bin/python" -m docs.bin.generate-command-docs "ttexalens/cli_commands/$module.py" \
+    "$R/app-docs.md" > "$R/docs.log" 2>&1
   rc=$?
-  say "exit $rc NOC$noc"
+  tail -20 "$R/docs.log"
+  say "docs exit $rc $module"
+  cat "$R/app-docs.md" 2>/dev/null
+  say "docs end $module"
   if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then reset_board || { say "wedged"; exit 76; }; fi
 done
 say "done"
 """
 )
+DOCS_PATTERN = r"^PIPELINE: docs ([\w-]+)\n(.*?)^PIPELINE: docs exit (-?\d+) \1\n(.*?)^PIPELINE: docs end \1$"
+# what an example's captured output shows when the command did not run: an unknown command or a usage message
+DOC_ERROR = re.compile(r"not found, use 'help'|^Usage:|Traceback \(most recent", re.MULTILINE)
 
 
 class HardwareError(Exception):
@@ -1675,6 +1702,7 @@ class HwRun:
     dry_run: bool = False
     build_only: bool = False
     reset: bool = False
+    commands: list[str] = dataclasses.field(default_factory=list)
 
     def log(self, target: str) -> Path:
         return self.directory / f"{self.number:02d}-{target}.log"
@@ -1816,6 +1844,67 @@ def hw_targets(status: Status, checkout: Path, sha: str, names: list[str], given
     return ["wormhole", "blackhole"] + (["quasar"] if quasar else [])
 
 
+def command_modules(checkout: Path) -> dict[str, dict[str, str]]:
+    """Every CLI command module of the checkout: its long and short name."""
+    modules: dict[str, dict[str, str]] = {}
+    for path in sorted((checkout / "ttexalens" / "cli_commands").glob("*.py")):
+        if path.name.startswith("__") or not re.fullmatch(r"[\w-]+", path.stem):
+            continue
+        text = path.read_text(errors="replace")
+        names = {
+            key: match.group(1)
+            for key in ("long_name", "short_name")
+            if (match := re.search(rf"{key}\s*=\s*[\"']([^\"']+)[\"']", text))
+        }
+        modules[path.stem] = names
+    return modules
+
+
+def hw_commands(status: Status, checkout: Path, sha: str) -> tuple[list[str], list[str]]:
+    """The command modules whose docstring examples a hardware run checks: the plan's 'Hardware commands:' line,
+    else the command modules the branch changes. Also what is wrong with the names the plan gives."""
+    modules, problems, chosen = command_modules(checkout), [], []
+    listed = plan_line(status["id"], "Hardware commands")
+    if listed:
+        for name in filter(None, (item.strip("`.") for item in re.split(r"[\s,]+", listed))):
+            module = name if name in modules else next((m for m, n in modules.items() if name in n.values()), "")
+            if module:
+                chosen.append(module)
+            else:
+                problems.append(f"no command '{name}' in ttexalens/cli_commands")
+    else:
+        for name in git(checkout, "diff", "--name-only", status["base_sha"], sha).splitlines():
+            if name.startswith("ttexalens/cli_commands/") and Path(name).stem in modules:
+                chosen.append(Path(name).stem)
+    return sorted(set(chosen)), problems
+
+
+def command_examples(checkout: Path, module: str) -> list[str]:
+    """The example command lines of a command's docstring: what make docs runs, one app start each."""
+    text = (checkout / "ttexalens" / "cli_commands" / f"{module}.py").read_text(errors="replace")
+    docstring = re.search(r'^[rRuU]?"""(.*?)"""', text, re.MULTILINE | re.DOTALL)
+    section = re.search(
+        r"^Examples:[ \t]*\n(.*?)(?:\n[ \t]*\n|\Z)", docstring.group(1) if docstring else "", re.M | re.S
+    )
+    lines = section.group(1).splitlines() if section else []
+    return [line.split("#")[0].strip() for line in lines if line.split("#")[0].strip()]
+
+
+def command_check(checkout: Path, module: str, generated: str, code: int) -> dict[str, Any]:
+    """Did every docstring example of a command produce output in the docs the generator wrote on the board?"""
+    title = command_modules(checkout).get(module, {}).get("long_name") or module
+    examples = command_examples(checkout, module)
+    if code in (124, 137):
+        return {"ok": False, "timeout": True, "title": title, "text": "the docs generator timed out"}
+    if not examples:
+        return {"ok": False, "title": title, "text": "no examples in its docstring"}
+    if not generated.strip():
+        return {"ok": False, "title": title, "text": f"not in the generated docs (generator exit {code})"}
+    outputs = re.findall(r"^Output:\n```\n(.*?)\n```", generated, re.MULTILINE | re.DOTALL)
+    ran = min(len([output for output in outputs if not DOC_ERROR.search(output)]), len(examples))
+    return {"ok": ran == len(examples), "title": title, "text": f"{ran} of {len(examples)} examples ran"}
+
+
 def noc_outcome(body: str, code: int) -> dict[str, Any]:
     """What one unittest run printed: 'N passed, F failed, S skipped', or why it has no result."""
     if code in (124, 137):
@@ -1844,8 +1933,9 @@ def excerpt(body: str) -> str:
 
 
 def write_excerpt(log: Path, failing: list[tuple[str, dict[str, Any], str]]) -> str:
+    """failing: (label such as 'NOC0' or 'command dump-gpr', its outcome, its output)."""
     path = log.with_name(log.stem + "-failures.txt")
-    parts = [f"NOC{noc}: {outcome['text']}\n\n{excerpt(body)}" for noc, outcome, body in failing]
+    parts = [f"{label}: {outcome['text']}\n\n{excerpt(body)}" for label, outcome, body in failing]
     path.write_text(f"Full log: {log}\n\n" + "\n\n".join(parts) + "\n")
     return str(path)
 
@@ -1903,7 +1993,12 @@ def judge_board(log: Path, code: int, run: HwRun) -> dict[str, Any]:
     for noc, body, rc in re.findall(pattern, text, re.MULTILINE | re.DOTALL):
         nocs[noc] = noc_outcome(body, int(rc))
         if not nocs[noc]["ok"]:
-            failing.append((noc, nocs[noc], body))
+            failing.append((f"NOC{noc}", nocs[noc], body))
+    commands: dict[str, Any] = {}
+    for module, tail, rc, generated in re.findall(DOCS_PATTERN, text, re.MULTILINE | re.DOTALL):
+        commands[module] = command_check(run.checkout, module, generated, int(rc))
+        if not commands[module]["ok"]:
+            failing.append((f"command {commands[module]['title']}", commands[module], f"{tail}\n{generated}"))
     busy = next((marker for marker in markers if marker.startswith("busy")), "")
     failed = next((marker for marker in markers if marker.startswith("fail: ")), "")
     if "wedged" in markers:
@@ -1914,24 +2009,28 @@ def judge_board(log: Path, code: int, run: HwRun) -> dict[str, Any]:
         state, why = ("build-failed" if failed == "fail: build" else "not-run"), failed[6:]
     elif run.build_only:
         state, why = ("built", "") if "built" in markers else ("not-run", f"the build ended early (exit {code})")
-    elif code == -1 or any(outcome.get("timeout") for outcome in nocs.values()):
+    elif code == -1 or any(outcome.get("timeout") for outcome in [*nocs.values(), *commands.values()]):
         state, why = "timeout", "a test run did not end in time"
-    elif not nocs:
+    elif not nocs and not commands:
         state, why = "not-run", f"the run ended before the tests (exit {code})"
     else:
         state, why = ("failed" if failing else "passed"), ""
     result: dict[str, Any] = {"state": state, "why": why, "nocs": nocs, "log": str(log)}
+    if commands:
+        result["commands"] = commands
     if failing and state in ("failed", "timeout"):
         result["excerpt"] = write_excerpt(log, failing)
     return result
 
 
 def board_execute(
-    reservation: dict[str, str], facts: dict[str, Any], root: str, run: HwRun, log: Path
+    reservation: dict[str, str], facts: dict[str, Any], root: str, run: HwRun, log: Path, commands: list[str]
 ) -> dict[str, Any]:
-    """Ship the commit, build it on the machine and run the tests there with every NOC; the log comes back."""
-    nocs = [int(noc) for noc in HW.get("nocs", [0, 1])]
+    """Ship the commit, build it on the machine, run the tests there with every NOC and the commands' docstring
+    examples through the docs generator; the log comes back."""
+    nocs = [int(noc) for noc in HW.get("nocs", [0, 1])] if run.names else []
     build_timeout, test_timeout = int(HW.get("build_timeout", 3600)), int(HW.get("test_timeout", 1800))
+    docs_timeout = int(HW.get("docs_timeout", 1800))
     values = {
         "ROOT": shlex.quote(root),
         "REFSPEC": shlex.quote(f"+refs/heads/{run.branch}:refs/pipeline/run"),
@@ -1945,11 +2044,13 @@ def board_execute(
         "NOCS": " ".join(str(noc) for noc in nocs),
         "TEST_TIMEOUT": str(test_timeout),
         "TESTS": " ".join(run.names),
+        "COMMANDS": " ".join(commands),
+        "DOCS_TIMEOUT": str(docs_timeout),
     }
     script = REMOTE_RUN
     for key, value in values.items():
         script = script.replace(f"@{key}@", value)
-    limit = build_timeout + len(nocs) * (test_timeout + 400) + 1800
+    limit = build_timeout + len(nocs) * (test_timeout + 400) + len(commands) * (docs_timeout + 400) + 1800
     machine = reservation["MACHINE"]
     with tempfile.TemporaryDirectory() as directory:
         bundle = ship_bundle(run, str(facts.get("head") or ""), Path(directory))
@@ -1998,7 +2099,8 @@ def board_run(target: str, candidates: list[dict[str, str]], run: HwRun) -> dict
             devices = str(facts.get("devices") or "").strip()
             result = {"state": "ready", "why": f"device {devices} is free; the machine holds {held}"}
         else:
-            result = board_execute(reservation, facts, root, run, run.log(target))
+            commands = run.commands if target == HW.get("docs_target", "wormhole") else []
+            result = board_execute(reservation, facts, root, run, run.log(target), commands)
         result["why"] = "; ".join(part for part in [str(result.get("why") or ""), *tried] if part)
         return {**found, **result}
     return {"state": first or "not-run", "why": "; ".join(tried)}
@@ -2192,7 +2294,10 @@ def quasar_run(candidates: list[dict[str, str]], run: HwRun) -> dict[str, Any]:
         if not candidates:
             return {"state": "no-reservation", "why": "no tensix reservation in 'ird list'"}
         names = ", ".join(reservation["MACHINE"] for reservation in candidates)
-        return {"state": "not-run", "why": f"the emulator is driven from the session's host {here}; reserved: {names}"}
+        why = f"no tensix reservation on this host {here}, which drives the emulator; reserved elsewhere: {names}"
+        return {"state": "no-reservation", "why": why}
+    if not run.names:
+        return {"state": "no-tests", "why": "no device tests to run"}
     settings: dict[str, Any] = HW.get("quasar") or {}
     simulators = Path(str(settings.get("simulators", "")).format(user=user_name()))
     kind = "rocket" if run.rocket else "default"
@@ -2269,8 +2374,9 @@ def hw_line(targets: dict[str, dict[str, Any]]) -> str:
         if target != "quasar" and result.get("board"):
             title += f" {result['board']}"
         if result["state"] in HW_TESTED:
-            nocs = "; ".join(f"NOC{noc} {outcome['text']}" for noc, outcome in sorted(result["nocs"].items()))
-            parts.append(f"{title}: {nocs or result['state']}")
+            ran = [f"NOC{noc} {outcome['text']}" for noc, outcome in sorted((result.get("nocs") or {}).items())]
+            ran += [f"command {check['title']} {check['text']}" for check in (result.get("commands") or {}).values()]
+            parts.append(f"{title}: {'; '.join(ran) or result['state']}")
         elif result["state"] == "skipped":
             parts.append(f"{title}: not tested; the developer decided: {result.get('why')}")
         else:
@@ -2278,19 +2384,24 @@ def hw_line(targets: dict[str, dict[str, Any]]) -> str:
     return "**Hardware:** " + (". ".join(parts) or "nothing ran") + "."
 
 
-def hw_expected(status: Status, checkout: Path, head: str) -> tuple[list[str], list[str]]:
-    """The tests and the targets of the case's own hardware run at commit head: the plan's, or the defaults."""
+def hw_expected(status: Status, checkout: Path, head: str) -> tuple[list[str], list[str], list[str]]:
+    """The tests, the commands and the targets of the case's own hardware run at commit head: the plan's, or the
+    defaults. A change with commands but no device tests runs only on the board the app docs come from."""
     names, _ = hw_tests(status, checkout, head, [])
-    return names, hw_targets(status, checkout, head, names, [])
+    commands, _ = hw_commands(status, checkout, head)
+    if not names and commands:
+        return names, commands, [str(HW.get("docs_target", "wormhole"))]
+    return names, commands, hw_targets(status, checkout, head, names, [])
 
 
 def hardware_problems(status: Status, checkout: Path) -> tuple[list[str], list[str], list[str]]:
-    """For a built case, per target the case needs: no run of the current commit, failing tests, not tested."""
+    """For a built case, per target the case needs: no run of the current commit, failing tests, not tested.
+    A target without a reservation, or one the developer skipped, is only noted."""
     if not HW.get("enabled"):
         return [], [], []
     record = status.get("hardware") or {}
     results: dict[str, Any] = (record.get("targets") or {}) if record.get("iteration") == status["iteration"] else {}
-    _, expected = hw_expected(status, checkout, git(checkout, "rev-parse", "HEAD"))
+    _, _, expected = hw_expected(status, checkout, git(checkout, "rev-parse", "HEAD"))
     missing, failing, untested = [], [], []
     for target in expected:
         result, title = results.get(target) or {}, HW_TITLES[target]
@@ -2298,7 +2409,7 @@ def hardware_problems(status: Status, checkout: Path) -> tuple[list[str], list[s
             missing.append(f"no hardware run of the current commit on {title}")
         elif result["state"] in ("failed", "timeout"):
             failing.append(f"tests fail on {title} ({result['state']}): {result.get('excerpt') or result.get('log')}")
-        elif result["state"] not in HW_TESTED and result["state"] != "skipped":
+        elif result["state"] not in HW_TESTED and result["state"] not in HW_NOTED:
             untested.append(f"{title} not tested: {HW_REASONS.get(result['state'], result['state'])}")
     return missing, failing, untested
 
@@ -2317,7 +2428,7 @@ def record_hardware(status: Status, results: dict[str, dict[str, Any]], sha: str
         accepted += [
             f"hardware: {HW_TITLES[target]} not tested: {HW_REASONS.get(result['state'], result['state'])}"
             for target, result in ordered.items()
-            if result["state"] not in HW_TESTED
+            if result["state"] not in HW_TESTED and result["state"] not in HW_NOTED
         ]
     if accepted or "accepted" in status:
         status["accepted"] = accepted
@@ -2358,7 +2469,7 @@ def cmd_hw_test(args: argparse.Namespace) -> None:
     require_clean(checkout)
     head = git(checkout, "rev-parse", "HEAD")
     trial = args.dry_run or args.build_only
-    own_names, own_targets = hw_expected(status, checkout, head)
+    own_names, own_commands, own_targets = hw_expected(status, checkout, head)
     if args.skip:
         if auto(status):
             die("auto mode does not skip hardware: run hw-test; what cannot be tested is recorded for the report")
@@ -2371,20 +2482,25 @@ def cmd_hw_test(args: argparse.Namespace) -> None:
             die(f"the gates are not green for {head[:9]}: {RUN} gates {args.case}. Hardware runs test checked code.")
         print(f"warning: the gates are not green for {head[:9]}; auto mode tests it anyway", file=sys.stderr)
     names, problems = hw_tests(status, checkout, head, args.tests or [])
-    if problems:
-        die("these tests cannot run:\n- " + "\n- ".join(problems))
+    commands, wrong = hw_commands(status, checkout, head)
+    if problems or wrong:
+        die("these cannot run:\n- " + "\n- ".join(problems + wrong))
     # the case's own run, which the report and the gate to it count; a role's request for other tests does not
     own = not args.tests or not own_names or set(names) == set(own_names)
-    if not names:
+    commands = commands if own else []
+    if not names and not commands:
         if not auto(status) or trial:
             die(
-                "no tests for hardware: the branch changes no device test module and the plan names none "
-                "('Hardware tests:' under Verification). Name them: --tests <unittest names>"
+                "nothing for hardware: the branch changes no device test module and no command, and the plan names "
+                "none ('Hardware tests:' or 'Hardware commands:' under Verification). Name tests: --tests <names>"
             )
         nothing = {target: {"state": "no-tests", "why": "no device tests were named"} for target in own_targets}
         print(f"{record_hardware(status, nothing, head, [])}\nauto mode: recorded for the report")
         return
-    targets = hw_targets(status, checkout, head, names, args.target or [])
+    if names:
+        targets = hw_targets(status, checkout, head, names, args.target or [])
+    else:
+        targets = [target for target in HW_TARGETS if target in (args.target or own_targets)]
     if not targets:
         die("no hardware target to run: choose from " + ", ".join(HW_TARGETS))
     try:
@@ -2421,10 +2537,15 @@ def cmd_hw_test(args: argparse.Namespace) -> None:
         dry_run=args.dry_run,
         build_only=args.build_only,
         reset=args.reset,
+        commands=commands,
     )
-    print(f"hardware run {run.number:02d} of {head[:9]}: {', '.join(targets)}; tests {' '.join(names)}", flush=True)
+    shown = " ".join(names) + (f"; commands {' '.join(commands)}" if commands else "")
+    print(f"hardware run {run.number:02d} of {head[:9]}: {', '.join(targets)}; tests {shown}", flush=True)
+    docs_target = str(HW.get("docs_target", "wormhole"))
 
     def one(target: str) -> dict[str, Any]:
+        if not names and target != docs_target:
+            return {"state": "no-tests", "why": "no device tests; commands run only on the docs board"}
         try:
             if target == "quasar":
                 return quasar_run(candidates[target], run)
@@ -2439,17 +2560,26 @@ def cmd_hw_test(args: argparse.Namespace) -> None:
         where = f" on {result['machine']}" if result.get("machine") else ""
         where += f" ({result['board']})" if result.get("board") else ""
         outcomes: dict[str, Any] = result.get("nocs") or {}
-        nocs = "; ".join(f"NOC{noc} {outcome['text']}" for noc, outcome in sorted(outcomes.items()))
-        detail = "  ".join(str(part) for part in (nocs, result.get("why"), result.get("log")) if part)
+        checks: dict[str, Any] = result.get("commands") or {}
+        ran = [f"NOC{noc} {outcome['text']}" for noc, outcome in sorted(outcomes.items())]
+        ran += [f"command {check['title']} {check['text']}" for check in checks.values()]
+        detail = "  ".join(str(part) for part in ("; ".join(ran), result.get("why"), result.get("log")) if part)
         print(f"{target}: {result['state']}{where}  {detail}")
     if trial:
         return
+    noted = [
+        f"{HW_TITLES[target]}: {result.get('why') or HW_REASONS.get(result['state'], result['state'])}"
+        for target, result in results.items()
+        if result["state"] in HW_NOTED
+    ]
     untested = [
         f"{HW_TITLES[target]} not tested: {HW_REASONS.get(result['state'], result['state'])}"
         for target, result in results.items()
-        if result["state"] not in HW_TESTED
+        if result["state"] not in HW_TESTED and result["state"] not in HW_NOTED
     ]
     failing = [target for target, result in results.items() if result["state"] in ("failed", "timeout")]
+    if noted:
+        print("noted, not run: " + "; ".join(noted))
     excerpts = [str(results[target].get("excerpt") or results[target].get("log")) for target in failing]
     if not own:
         log_event(args.case, event="hardware-request", sha=head, tests=names, line=hw_line(results))
@@ -2475,7 +2605,7 @@ def cmd_hw_test(args: argparse.Namespace) -> None:
                 "Only they decide about a host restart"
             )
     if not failing and not untested:
-        print("next: every target passed; go on to the report")
+        print("next: every target that could run passed; go on to the report")
     sys.exit(1 if failing else (2 if untested and not auto(status) else 0))
 
 
@@ -2694,9 +2824,12 @@ def cmd_finish(args: argparse.Namespace) -> None:
     status["state"] = "closed"
     save_status(status)
     log_event(args.case, event="finish", reason=reason, accepted=accepted)
+    spent = record_accounting(status)
+    save_status(status)
     print(
         f"{args.case}: closed by finish. Branch {status['branch']}, PR description {case / 'pr-description.md'}"
         + "".join(f"\naccepted: {problem}" for problem in accepted)
+        + (f"\n{spent}" if spent else "")
     )
 
 
@@ -3026,14 +3159,296 @@ def transcript_usage(path: Path, main: bool = False) -> tuple[int, str]:
     return 0, ""
 
 
+def claude_projects() -> Path:
+    return Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "projects"
+
+
+def session_transcript(session: str) -> Path | None:
+    if not session or not re.fullmatch(r"[\w-]+", session):
+        return None
+    return next(iter(claude_projects().glob(f"*/{session}.jsonl")), None)
+
+
 def session_tokens() -> int:
     """Context size of the session that runs this command, or 0 outside Claude Code."""
-    session = os.environ.get("CLAUDE_CODE_SESSION_ID")
-    if not session or not re.fullmatch(r"[\w-]+", session):
-        return 0
-    root = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "projects"
-    transcript = next(iter(root.glob(f"*/{session}.jsonl")), None)
+    transcript = session_transcript(os.environ.get("CLAUDE_CODE_SESSION_ID") or "")
     return transcript_usage(transcript, main=True)[0] if transcript else 0
+
+
+# ---------------------------------------------------------------- time and cost of a case
+
+PRICES: dict[str, Any] = {key: value for key, value in (CONFIG.get("prices") or {}).items() if not key.startswith("_")}
+
+
+def parse_time(text: Any) -> float | None:
+    try:
+        return datetime.datetime.fromisoformat(str(text).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def request_usd(model: str, usage: dict[str, Any]) -> float | None:
+    """What one model request cost: input, output, cache reads, 5-minute and 1-hour cache writes; fast mode doubles."""
+    price = PRICES.get(model) or PRICES.get(re.sub(r"\[.*\]$", "", model))
+    if not price:
+        return None
+    rate = {key: float(price[key]) for key in ("input", "output", "cache_read")}
+    hour = int((usage.get("cache_creation") or {}).get("ephemeral_1h_input_tokens") or 0)
+    five = int(usage.get("cache_creation_input_tokens") or 0) - hour
+    dollars = (
+        int(usage.get("input_tokens") or 0) * rate["input"]
+        + int(usage.get("output_tokens") or 0) * rate["output"]
+        + int(usage.get("cache_read_input_tokens") or 0) * rate["cache_read"]
+        + five * rate["input"] * 1.25
+        + hour * rate["input"] * 2
+    ) / 1e6
+    return dollars * (2 if usage.get("speed") == "fast" else 1)
+
+
+def transcript_requests(path: Path, start: float, end: float, main: bool) -> dict[str, tuple[str, dict[str, Any]]]:
+    """The model requests a transcript records between two times, each once: a response is logged per content block."""
+    requests: dict[str, tuple[str, dict[str, Any]]] = {}
+    try:
+        stream = path.open(encoding="utf-8", errors="replace")
+    except OSError:
+        return requests
+    with stream:
+        for line in stream:
+            if '"usage"' not in line or '"assistant"' not in line:
+                continue
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue
+            message = entry.get("message") or {}
+            model = str(message.get("model") or "")
+            if entry.get("type") != "assistant" or (main and entry.get("isSidechain")) or model in ("", "<synthetic>"):
+                continue
+            when = parse_time(entry.get("timestamp"))
+            if when is None or not start <= when <= end:
+                continue
+            requests[str(entry.get("requestId") or message.get("id") or len(requests))] = (
+                model,
+                message.get("usage") or {},
+            )
+    return requests
+
+
+def costs_of(requests: dict[str, tuple[str, dict[str, Any]]]) -> tuple[dict[str, float], set[str]]:
+    """USD per model, and the models that have no price in config.json."""
+    by_model: dict[str, float] = {}
+    unknown: set[str] = set()
+    for model, usage in requests.values():
+        usd = request_usd(model, usage)
+        if usd is None:
+            unknown.add(model)
+        else:
+            by_model[model] = by_model.get(model, 0.0) + usd
+    return by_model, unknown
+
+
+def side_call_ratio(path: Path) -> float | None:
+    """Claude Code's own cost total for a session over the cost of the requests its transcripts record, both at the
+    last point Claude Code saved its total (on exit or resume). The rest is its side calls: permission checks in auto
+    mode, compaction, titles."""
+    total, saved_at, last = None, None, None
+    try:
+        lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    for line in lines:
+        if '"cost-state"' in line or '"timestamp"' in line:
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue
+            if entry.get("type") == "cost-state":
+                total, saved_at = float(entry.get("totalCostUSD") or 0), last
+            else:
+                last = parse_time(entry.get("timestamp")) or last
+    if not total or saved_at is None:
+        return None
+    transcripts = [path, *sorted(path.with_suffix("").glob("subagents/*.jsonl"))]
+    recorded = sum(
+        sum(costs_of(transcript_requests(transcript, 0, saved_at, main=transcript == path))[0].values())
+        for transcript in transcripts
+    )
+    return max(total / recorded, 1.0) if recorded > 0 else None
+
+
+def case_events(case_id: str) -> list[dict[str, Any]]:
+    events = []
+    for line in (CASES / case_id / "run.jsonl").read_text().splitlines():
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        when = parse_time(event.get("time"))
+        if when is not None:
+            events.append({**event, "t": when})
+    return events
+
+
+def iteration_events(status: Status, events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """The events of the latest iteration: an iteration ends when its result is approved or finish closes it."""
+    closes = [
+        index
+        for index, event in enumerate(events)
+        if event.get("event") == "finish" or (event.get("event") == "approve" and event.get("gate") == "result")
+    ]
+    if status["state"] == "closed" and closes:
+        return events[(closes[-2] + 1 if len(closes) > 1 else 0) : closes[-1] + 1]
+    return events[(closes[-1] + 1 if closes else 0) :]
+
+
+def agent_transcript_path(record: dict[str, Any]) -> Path | None:
+    known = Path(str(record.get("transcript") or ""))
+    if record.get("transcript") and known.is_file():
+        return known
+    agent = agent_name(record.get("agent"))
+    return next(iter(claude_projects().glob(f"*/*/subagents/agent-{agent}.jsonl")), None) if agent else None
+
+
+def duration(seconds: float) -> str:
+    minutes = int(seconds // 60)
+    return f"{minutes // 60}h {minutes % 60:02d}m" if minutes >= 60 else f"{minutes}m"
+
+
+def case_accounting(status: Status) -> dict[str, Any]:
+    """Time and dollars of the case's latest iteration.
+
+    Time: from its first event to its close, less the time it waited for the developer (before each approval the
+    developer gave, and while blocked). Dollars: the model requests of the case's agents, and of the orchestrator
+    between its first and last event in each session, at the prices in config.json. The estimate adds Claude Code's
+    own side calls, at each session's ratio, once a session has saved its total."""
+    events = iteration_events(status, case_events(status["id"]))
+    if not events:
+        return {}
+    closed = status["state"] == "closed"
+    start, end = events[0]["t"], (events[-1]["t"] if closed else time.time())
+    waiting = 0.0
+    for previous, event in zip(events, events[1:]):
+        if (event.get("event") == "approve" and event.get("by") == "user") or (
+            previous.get("event") == "advance" and previous.get("target") == "blocked"
+        ):
+            waiting += event["t"] - previous["t"]
+    spans: dict[str, list[float]] = {}
+    for event in events:
+        session = str(event.get("session") or status.get("session") or "")
+        if session:
+            spans.setdefault(session, []).append(event["t"])
+    by_role: dict[str, float] = {}
+    by_model: dict[str, float] = {}
+    by_session: dict[str, float] = {}
+    unknown: set[str] = set()
+
+    def add(role: str, session: str, requests: dict[str, tuple[str, dict[str, Any]]]) -> None:
+        models, missing = costs_of(requests)
+        unknown.update(missing)
+        for model, usd in models.items():
+            by_model[model] = by_model.get(model, 0.0) + usd
+            by_role[role] = by_role.get(role, 0.0) + usd
+            by_session[session] = by_session.get(session, 0.0) + usd
+
+    for session, times in spans.items():
+        path = session_transcript(session)
+        if path:
+            add("orchestrator", session, transcript_requests(path, min(times), max(times) + 120, main=True))
+    for record in budget_records(status["id"]):
+        path = agent_transcript_path(record)
+        if path:
+            add(
+                str(record.get("role") or "agent"),
+                path.parent.parent.name,
+                transcript_requests(path, start, end, False),
+            )
+    ratios = {
+        session: (side_call_ratio(path) if (path := session_transcript(session)) else None) for session in by_session
+    }
+    recorded = sum(by_model.values())
+    estimated = sum(usd * (ratios[session] or 1.0) for session, usd in by_session.items())
+    return {
+        "iteration": status["iteration"],
+        "started": datetime.datetime.fromtimestamp(start).astimezone().isoformat(timespec="seconds"),
+        "ended": datetime.datetime.fromtimestamp(end).astimezone().isoformat(timespec="seconds"),
+        "closed": closed,
+        "elapsed_s": round(end - start),
+        "waiting_s": round(waiting),
+        "working_s": round(end - start - waiting),
+        "cost_usd": round(recorded, 2),
+        "cost_usd_estimated": round(estimated, 2) if ratios and all(ratios.values()) else None,
+        "by_role": {role: round(usd, 2) for role, usd in sorted(by_role.items(), key=lambda item: -item[1])},
+        "by_model": {model: round(usd, 2) for model, usd in sorted(by_model.items(), key=lambda item: -item[1])},
+        "unknown_models": sorted(unknown),
+    }
+
+
+def accounting_line(accounting: dict[str, Any]) -> str:
+    if not accounting:
+        return "time and cost: no events"
+    estimate = accounting.get("cost_usd_estimated")
+    return (
+        f"time: {duration(accounting['working_s'])} working, {duration(accounting['elapsed_s'])} in all "
+        f"({duration(accounting['waiting_s'])} waiting for the developer); cost: ${accounting['cost_usd']:.2f} for the "
+        "requests in the transcripts"
+        + (f", about ${estimate:.2f} with Claude Code's own side calls" if estimate is not None else "")
+        + (f"; no price for {', '.join(accounting['unknown_models'])}" if accounting.get("unknown_models") else "")
+    )
+
+
+def record_accounting(status: Status) -> str:
+    """At a close: keep the iteration's time and cost in the case and add a line to the ledger of resolved issues."""
+    accounting = case_accounting(status)
+    if not accounting:
+        return ""
+    status.setdefault("accounting", {})[str(status["iteration"])] = accounting
+    issue = CASES / status["id"] / "issue.md"
+    title = (
+        next((line[2:].strip() for line in issue.read_text().splitlines() if line.startswith("# ")), "")
+        if issue.is_file()
+        else ""
+    )
+    entry = {
+        "case": status["id"],
+        "title": title,
+        "issue": status.get("issue") or status.get("source") or "",
+        "mode": effective_mode(status),
+        "verdict": status.get("verdict"),
+        "branch": status.get("branch"),
+        **accounting,
+    }
+    with (HOME / "ledger.jsonl").open("a") as stream:
+        stream.write(json.dumps(entry) + "\n")
+    return accounting_line(accounting)
+
+
+def cmd_cost(args: argparse.Namespace) -> None:
+    accounting = case_accounting(load_status(args.case))
+    print(accounting_line(accounting))
+    for key in ("by_role", "by_model"):
+        if accounting.get(key):
+            print(
+                f"  {key.replace('_', ' ')}: "
+                + ", ".join(f"{name} ${usd:.2f}" for name, usd in accounting[key].items())
+            )
+
+
+def cmd_ledger(args: argparse.Namespace) -> None:
+    path = HOME / "ledger.jsonl"
+    entries = [json.loads(line) for line in path.read_text().splitlines() if line.strip()] if path.is_file() else []
+    if not entries:
+        print("no resolved issues yet")
+        return
+    print(f"{'closed':<17} {'case':<36} {'it':>2} {'mode':<6} {'working':>8} {'in all':>8} {'cost':>9} {'estimate':>9}")
+    for entry in entries:
+        estimate = entry.get("cost_usd_estimated")
+        print(
+            f"{str(entry.get('ended'))[:16]:<17} {entry['case'][:36]:<36} {entry.get('iteration', 1):>2} "
+            f"{str(entry.get('mode'))[:6]:<6} {duration(entry['working_s']):>8} {duration(entry['elapsed_s']):>8} "
+            f"${entry['cost_usd']:>8.2f} {('$' + format(estimate, '.2f')) if estimate is not None else '-':>9}"
+        )
+    working, cost = sum(entry["working_s"] for entry in entries), sum(entry["cost_usd"] for entry in entries)
+    print(f"{len(entries)} resolved: {duration(working)} working, ${cost:.2f} for the requests in the transcripts")
 
 
 def agent_name(value: Any) -> str:
@@ -3087,6 +3502,7 @@ def budget_update(role: str, event: dict[str, Any]) -> dict[str, Any]:
         if tokens:
             record.update(tokens=tokens, peak=max(int(record["peak"]), tokens), model=model or record["model"])
         record["case"] = record["case"] or transcript_case(transcript)
+        record["transcript"] = str(transcript)
     if record["tokens"] >= CONTEXT["stop_at"]:
         record["state"] = "stop"
     elif record["tokens"] >= CONTEXT["wrap_at"] or record["calls"] > CONTEXT["max_calls"].get(role, 10**9):
@@ -3491,6 +3907,8 @@ def main() -> None:
     command("gates", cmd_gates, "case", help="run the static checks and the device-free tests in the checkout")
     sub = command("test", cmd_test, "case", help="run device-free tests; other tests are only loaded")
     sub.add_argument("names", nargs="+")
+    command("cost", cmd_cost, "case", help="time and dollars of the case's current iteration so far")
+    command("ledger", cmd_ledger, help="time and dollars of every resolved issue")
     command("hw-list", cmd_hw_list, help="list the developer's reservations and the hardware target each one serves")
     sub = command("hw-test", cmd_hw_test, "case", help="orchestrator only: run the case's tests on reserved hardware")
     sub.add_argument("--target", action="append", choices=HW_TARGETS, help="run only these targets (repeat)")

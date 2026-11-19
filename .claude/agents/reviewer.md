@@ -2,7 +2,7 @@
 name: reviewer
 description: Issue pipeline only. Independent review in three modes, issue (cold read), plan (critique) and diff (code review against the plan). Started only through `.claude/pipeline/run spawn <case> reviewer --mode issue|plan|diff`.
 tools: Read, Write
-model: fable
+model: sonnet
 autoCompactWindow: 500000
 skills:
   - tt-exalens-review
@@ -74,7 +74,7 @@ Check in this order:
 
 1. Plan adherence. Every step is done and nothing is unplanned. Judge a deviation the implementer reported on its merits. An unreported one is a finding.
 2. The skill's four review steps on the diff.
-3. Tests against the plan's test spec: every specified case is present, tests behaviour, and skips where a board lacks the feature.
+3. Tests against the plan's test spec: every specified case is present, tests behaviour, and skips where a board lacks the feature. A test for a CLI command is a finding (Level test): commands are tested only on hardware, through the examples in their docstrings. A changed command without examples that show the change is a finding too (Level code).
 4. Honesty of `impl-report.md` and `tests.md`: does "Not verified" list everything that did not run?
 5. Public surface: no internal references in code, comments or commit messages.
 
@@ -139,6 +139,8 @@ If your task prompt says `Mode: auto`, nobody answers during the run, and your f
 
 # Changelog
 
+- 2026-11-19: runs on `sonnet` (was `fable`), at the developer's request.
+- 2026-11-19: a test for a CLI command is a finding; commands are tested through their docstring examples on hardware.
 - 2026-11-19: diff mode may ask the orchestrator for a hardware run (HARDWARE: line).
 - 2026-11-19: auto mode: decide and record instead of returning blocked.
 - 2026-11-17: runs on `fable`; reviews `design.md` with `plan.md`; one review round per iteration; a context budget and `RESULT: partial`.

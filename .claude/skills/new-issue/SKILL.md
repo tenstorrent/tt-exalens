@@ -121,19 +121,15 @@ Write `issue.md` exactly like this. A script checks it.
     ## Scope
     Surface (library function, CLI command, hardware module, docs), architectures and boards. One or two lines.
 
-    ## Out of scope
-    What this issue deliberately does not cover. One or two lines.
-
     ## Verification
     How a person confirms the result: device-free, simulator or hardware, on which boards. One or two lines.
-
-    ## Environment
-    Architecture and board, tt-exalens version or commit, UMD version, OS.
 
     ## Questions to answer
     For an investigation: the questions whose answers are the deliverable.
 
 Everything above the `---` line is local bookkeeping. The `# ` line is the issue title, and everything below `---` is the body as it would be posted.
+
+**No "Out of scope" and no "Environment" section.** The developer removed both from the format, and the validator refuses them. Architectures and boards go under Scope. Versions, the OS and anything else about the environment go to `issue.notes.md`.
 
 **Limits.** The body is at most 250 words outside code blocks, with at most 25 lines of code blocks. There are at most five acceptance criteria, each at most 30 words and on its own line. The validator refuses an issue over a limit. An issue is short because maintainers read it: it states the problem and what done looks like. What the code looks like today, why it might be broken, how to test it step by step and where to read more are notes, not the issue.
 
@@ -146,9 +142,7 @@ Required sections by kind. Other sections from the list above are optional, and 
 | Desired behavior | yes | yes | yes | yes | |
 | Acceptance criteria | yes | yes | yes | yes | yes |
 | Scope | yes | yes | yes | yes | yes |
-| Out of scope | yes | yes | | | yes |
 | Verification | yes | yes | yes | yes | |
-| Environment | yes | | | | |
 | Questions to answer | | | | | yes |
 
 Rules for the content:
