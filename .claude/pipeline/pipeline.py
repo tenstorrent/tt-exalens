@@ -8,8 +8,12 @@ Run it through the launcher: .claude/pipeline/run <command> ...
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
+import dataclasses
 import datetime
 import difflib
+import fcntl
+import getpass
 import hashlib
 import html
 import json
@@ -17,10 +21,13 @@ import os
 import re
 import shlex
 import shutil
+import signal
+import socket
 import ssl
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -43,7 +50,16 @@ CONTEXT: dict[str, Any] = CONFIG["context"]
 Status = dict[str, Any]
 
 ROLES = ("investigator", "planner", "reviewer", "test-writer", "implementer", "triager", "papa")
-ROUNDS = ("triage", "shaper_questions", "investigation", "plan_revisions", "test_retries", "fixes", "review")
+ROUNDS = (
+    "triage",
+    "shaper_questions",
+    "investigation",
+    "plan_revisions",
+    "test_retries",
+    "fixes",
+    "review",
+    "hw_runs",
+)
 MODES = ("guided", "auto")
 TRANSITIONS: dict[str, tuple[str, ...]] = {
     "triage": ("shaping", "rejected"),
@@ -119,9 +135,9 @@ NEXT = {
     "plan_approved": "advance testing (verdict full) or write report.md and advance report_ready (verdict plan-only)",
     "testing": "spawn test-writer; then advance implementing",
     "implementing": "spawn implementer; then gates and scope-check; then advance reviewing if the review round "
-    "is still open, otherwise write report.md and pr-text.md, run pr, advance report_ready",
+    "is still open, otherwise hw-test, write report.md and pr-text.md, run pr, advance report_ready",
     "reviewing": "spawn reviewer --mode diff; its comments are addressed once (test writer, implementer), "
-    "then report.md, pr-text.md, pr, advance report_ready. No second round unless the developer asks",
+    "then hw-test, report.md, pr-text.md, pr, advance report_ready. No second round unless the developer asks",
     "report_ready": "Gate B: show report.md and its hash; on approval approve result <hash>. "
     "Another review only when the developer asks: advance reviewing --again",
     "closed": "done; /fix-ci starts another iteration, /papa learns from the case",
@@ -143,9 +159,9 @@ AUTO_NEXT = {
     "plan_approved": "advance testing; if the checkout is not ready, run build first (in the background)",
     "testing": "start the test writer, then advance implementing",
     "implementing": "start the implementer, then gates and scope-check; then advance reviewing, or after the review "
-    "round write report.md and pr-text.md, run pr and advance report_ready",
-    "reviewing": "start the reviewer --mode diff, or route its findings once; then report.md, pr-text.md, pr, "
-    "advance report_ready",
+    "round run hw-test (in the background), write report.md and pr-text.md, run pr and advance report_ready",
+    "reviewing": "start the reviewer --mode diff, or route its findings once; then hw-test (in the background), "
+    "report.md, pr-text.md, pr, advance report_ready",
     "report_ready": "hash result, then approve result <hash> --by auto",
     "triage": "start the triager and carry its questions once; then advance shaping (feature or bug-confirmed) or "
     "advance rejected (bug-unconfirmed or bug-fixed), which ends the run",
@@ -163,6 +179,8 @@ AUTO_CAP = {
     "tests as they are.",
     "fixes": "Auto mode: the implementer had its tries. Go on with the next advance: auto mode records the remaining "
     "failures for the report.",
+    "hw_runs": "Auto mode: no more hardware runs in this iteration. Go on with the results of the last run: the next "
+    "advance records what they miss.",
 }
 LOAD_CHECK = (
     "import sys, unittest\n"
@@ -185,7 +203,10 @@ DENIED_PROGRAMS = {
     "tt-exalens.py": "agents never touch a device or simulator",
     "tt-smi": "agents never touch a device or simulator",
     "tt-flash": "agents never touch a device or simulator",
+    "ird": "agents never touch reservations; ask the orchestrator for a hardware run in your final block",
 }
+# the pipeline commands a writing role may run; every other one is the orchestrator's
+AGENT_COMMANDS = ("test", "commit", "gates", "env-check", "scope-check", "status")
 READONLY_GIT = {
     "blame",
     "cat-file",
@@ -695,6 +716,9 @@ def report_problems(case_id: str, status: Status | None = None) -> list[str]:
         problems.append(
             "report.md: add a line '**Accepted failures:** ...' under '## Verification', with: " + "; ".join(accepted)
         )
+    hardware = status.get("hardware") or {}
+    if hardware.get("iteration") == status["iteration"] and "**Hardware:**" not in text:
+        problems.append(f"report.md: add this line under '## Verification': {hardware['line']}")
     return problems + size_problems("report.md", text, LIMITS["report_words"])
 
 
@@ -703,6 +727,9 @@ def leak_hits(label: str, text: str) -> list[str]:
     local = HOME / "leak-patterns.txt"
     if local.is_file():
         raw += [line.strip() for line in local.read_text().splitlines() if line.strip() and not line.startswith("#")]
+    machines = HOME / "hardware" / "machines.txt"
+    if machines.is_file():
+        raw += [rf"\b{re.escape(name)}\b" for name in machines.read_text().split()]
     patterns = [re.compile(pattern, re.IGNORECASE) for pattern in raw]
     hits = []
     for number, line in enumerate(text.splitlines(), 1):
@@ -778,16 +805,20 @@ def require_clean(checkout: Path) -> None:
         die(f"uncommitted changes in the checkout:\n{dirty}")
 
 
-def gates_ok(status: Status, checkout: Path) -> bool:
-    """Green gates for the current commit. Commits that only add the pipeline's own documents keep them green."""
-    gates = status.get("gates") or {}
-    if not gates.get("ok"):
-        return False
+def covers(status: Status, checkout: Path, sha: str) -> bool:
+    """A check of commit sha holds for the current commit: it is that commit, or later commits only add the
+    pipeline's own documents."""
     head, docs = git(checkout, "rev-parse", "HEAD"), branch_docs(status)
-    if gates.get("head") == head:
-        return True
-    later = git(checkout, "diff", "--name-only", gates["head"], head, check=False).splitlines()
+    if not sha or sha == head:
+        return sha == head
+    later = git(checkout, "diff", "--name-only", sha, head, check=False).splitlines()
     return bool(docs) and bool(later) and all(name.startswith(docs) for name in later)
+
+
+def gates_ok(status: Status, checkout: Path) -> bool:
+    """Green gates for the current commit."""
+    gates = status.get("gates") or {}
+    return bool(gates.get("ok")) and covers(status, checkout, str(gates.get("head") or ""))
 
 
 def lib_docs_state(checkout: Path, log: list[str]) -> str:
@@ -992,6 +1023,13 @@ def cmd_status(args: argparse.Namespace) -> None:
         print(
             f"gates: {'ok' if status['gates']['ok'] else 'FAIL'} at {status['gates']['head'][:9]} ({status['gates']['log']})"
         )
+    hardware = status.get("hardware")
+    if hardware:
+        print(f"hardware, iteration {hardware.get('iteration')} ({case / 'hardware'}):")
+        for target, result in (hardware.get("targets") or {}).items():
+            why = f"  {result['why']}" if result.get("why") else ""
+            print(f"  {target}: {result.get('state')} at {str(result.get('sha'))[:9]}{why}")
+        print(f"  {hardware.get('line')}")
     if status["agents"]:
         print("agents: " + "  ".join(f"{role}={agent}" for role, agent in status["agents"].items()))
     print(f"next: {next_step(status)}")
@@ -1272,6 +1310,24 @@ def enter(status: Status, target: str, args: argparse.Namespace) -> None:
                 problems.append(f"the gates are not green for the current commit ({RUN} gates {case_id})")
             if problems:
                 fallback(status, "fixes", "gates or scope check are not green for the current commit:", problems)
+            missing, failing, untested = hardware_problems(status, checkout)
+            if missing:
+                if not (auto(status) and status["rounds"]["hw_runs"] >= CONFIG["caps"]["hw_runs"]):
+                    skip = (
+                        f'. If the developer says to go on without it: {RUN} hw-test {case_id} --skip "<their words>"'
+                    )
+                    die(
+                        f"{'; '.join(missing)}: {RUN} hw-test {case_id} (in the background){'' if auto(status) else skip}"
+                    )
+                fallback(status, "hw_runs", "", missing)
+            if failing and auto(status):
+                fallback(status, "fixes", "tests fail on hardware:", failing)
+            if untested and not auto(status):
+                die(
+                    "not tested: " + "; ".join(untested) + f". The developer reserves or frees the machine and you run "
+                    f"{RUN} hw-test {case_id} again, or they go on without it: "
+                    f'{RUN} hw-test {case_id} --target <target> --skip "<their words>"'
+                )
         hits = leak_problems(case_id, "public")
         if hits:
             fallback(status, "fixes", "possible internal information on the public surface:", hits)
@@ -1510,6 +1566,919 @@ def cmd_test(args: argparse.Namespace) -> None:
     sys.exit(1 if failed else 0)
 
 
+# ---------------------------------------------------------------- hardware runs on the developer's reservations
+
+HW: dict[str, Any] = CONFIG.get("hardware") or {}
+HW_TARGETS = ("wormhole", "blackhole", "quasar")
+HW_TITLES = {"wormhole": "Wormhole", "blackhole": "Blackhole", "quasar": "Quasar"}
+HW_ARCHS = {"wormhole_b0": "wormhole", "wormhole": "wormhole", "blackhole": "blackhole"}
+HW_BOARDS = {"nebula_x1": "n150", "nebula_x2": "n300"}
+HW_TESTED = ("passed", "failed", "timeout")
+HW_REASONS = {
+    "no-reservation": "no reservation",
+    "unreachable": "the machine did not answer",
+    "busy": "the board or the emulator was busy",
+    "no-device": "no device in the reservation",
+    "build-failed": "the build failed there",
+    "not-run": "it could not run",
+    "wedged": "a test hung and the board did not come back",
+    "no-tests": "no device tests were named",
+    "ird-failed": "'ird list' failed",
+    "skipped": "the developer decided to go on without it",
+}
+TEST_NAME = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
+KEEP_BUILD = ["-e", "/build", "-e", "/build_debug", "-e", "/build_riscv", "-e", "/compile_commands.json"]
+KEEP_BUILD += ["-e", "/ttexalens/_native_ttexalens*"]
+SIMULATOR_LOGS = ("emu_*.log", "sim_*.log", "vcs_*.log")
+TEST_REPORTED = re.compile(rb" \.\.\. (ok|FAIL|ERROR|skipped)")
+# Bash run on the machine. Placeholders @NAME@ are filled with quoted values; no text from a role reaches it.
+HOLDERS = r"""holders() {
+  s=""; [ "$(id -u)" = 0 ] || { sudo -n true 2>/dev/null && s="sudo -n"; }
+  $s find /proc/[0-9]*/fd -lname '/dev/tenstorrent/*' 2>/dev/null | cut -d/ -f3 | sort -u | tr '\n' ' ' | sed 's/ *$//'
+}
+"""
+REMOTE_PROBE = (
+    HOLDERS
+    + r"""echo "host=$(hostname)"
+echo "devices=$(ls /dev/tenstorrent 2>/dev/null | tr '\n' ' ')"
+pids=$(holders)
+echo "holders=$pids"
+for pid in $pids; do echo "holder=$(ps -o user=,etime=,args= -p "$pid" 2>/dev/null | cut -c1-120)"; done
+echo "head=$(git -C @ROOT@/tt-exalens rev-parse -q --verify HEAD 2>/dev/null)"
+for program in git python3 flock timeout sha256sum; do command -v "$program" >/dev/null || echo "missing=$program"; done
+"""
+)
+REMOTE_RUN = (
+    HOLDERS
+    + r"""say() { echo "PIPELINE: $*"; }
+R=@ROOT@; C="$R/tt-exalens"; V="$R/venv"
+mkdir -p "$R" || { say "fail: cannot create $R"; exit 70; }
+exec 9>"$R/lock"
+flock -n 9 || { say "busy: another pipeline run holds $R/lock"; exit 75; }
+cat > "$R/incoming.bundle"
+[ -d "$C/.git" ] || git init -q "$C" || { say "fail: git init"; exit 70; }
+if [ -s "$R/incoming.bundle" ]; then
+  git -C "$C" fetch -q "$R/incoming.bundle" @REFSPEC@ || { say "fail: fetch"; exit 70; }
+fi
+git -C "$C" checkout -q -f --detach @SHA@ || { say "fail: checkout"; exit 70; }
+git -C "$C" clean -q -fdx @KEEP@
+cd "$C" || exit 70
+if [ ! -x "$V/bin/python" ]; then say "creating $V"; python3 -m venv "$V" || { say "fail: venv"; exit 70; }; fi
+want=$(cat ttexalens/requirements.txt test/test_requirements.txt | sha256sum | cut -c1-16)
+if [ "$(cat "$V/.pipeline-requirements" 2>/dev/null)" != "$want" ]; then
+  say "installing the Python requirements"
+  "$V/bin/python" -m pip install -q --upgrade pip &&
+    "$V/bin/python" -m pip install -q -r ttexalens/requirements.txt -r test/test_requirements.txt ||
+    { say "fail: pip install"; exit 70; }
+  echo "$want" > "$V/.pipeline-requirements"
+fi
+export PATH="$V/bin:$PATH"
+say "build"
+timeout @BUILD_TIMEOUT@ bash -c @BUILD@ || { say "fail: build"; exit 71; }
+if [ -n "@BUILD_ONLY@" ]; then say "built"; exit 0; fi
+reset_board() {
+  h=$(holders)
+  if [ -n "$h" ]; then say "reset skipped: process $h holds the board"; return 1; fi
+  if timeout 300 @RESET@; then say "reset ok"; else say "reset failed"; return 1; fi
+}
+if [ -n "@RESET_FIRST@" ]; then reset_board || { say "wedged"; exit 76; }; fi
+for noc in @NOCS@; do
+  h=$(holders)
+  if [ -n "$h" ]; then say "busy: process $h holds the board"; exit 75; fi
+  say "run NOC$noc"
+  TTEXALENS_TESTS_NOC_ID=$noc timeout -k 30 @TEST_TIMEOUT@ "$V/bin/python" -m unittest -v @TESTS@ 2>&1
+  rc=$?
+  say "exit $rc NOC$noc"
+  if [ "$rc" -eq 124 ] || [ "$rc" -eq 137 ]; then reset_board || { say "wedged"; exit 76; }; fi
+done
+say "done"
+"""
+)
+
+
+class HardwareError(Exception):
+    """A hardware run cannot start: ird does not answer, or the commit cannot be shipped."""
+
+
+@dataclasses.dataclass
+class HwRun:
+    """One hardware run of a case: what is tested and where its files go."""
+
+    case_id: str
+    checkout: Path
+    branch: str
+    sha: str
+    names: list[str]
+    rocket: bool
+    directory: Path
+    number: int
+    dry_run: bool = False
+    build_only: bool = False
+    reset: bool = False
+
+    def log(self, target: str) -> Path:
+        return self.directory / f"{self.number:02d}-{target}.log"
+
+
+def user_name() -> str:
+    return os.environ.get("USER") or getpass.getuser()
+
+
+def local_host() -> str:
+    return os.environ.get("ISSUE_PIPELINE_HOSTNAME") or socket.gethostname().split(".")[0]
+
+
+def ssh_command(host: str, script: str, port: str = "", connect: int = 30) -> list[str]:
+    options = ["-o", "BatchMode=yes", "-o", f"ConnectTimeout={connect}", "-o", "ServerAliveInterval=30"]
+    options += ["-o", "StrictHostKeyChecking=accept-new"]
+    program = os.environ.get("ISSUE_PIPELINE_SSH") or "ssh"
+    return [program, *options, *(["-p", port] if port else []), host, f"bash -c {shlex.quote(script)}"]
+
+
+def parse_table(text: str, first: str) -> list[dict[str, str]] | None:
+    """The rows of a table that ird prints: a header of column names, then one row per line, values without spaces."""
+    lines = text.splitlines()
+    start = next((index for index, line in enumerate(lines) if line.startswith(first)), None)
+    if start is None:
+        return None
+    columns = re.split(r"\s{2,}", lines[start].strip())
+    return [dict(zip(columns, line.split())) for line in lines[start + 1 :] if line.strip()]
+
+
+def ird_tables() -> tuple[list[dict[str, str]], dict[str, dict[str, str]]]:
+    """The developer's reservations ('ird list') and the architecture of every machine ('ird list-machines')."""
+    host, problem = str(HW.get("ird_host", "yyz-ird")), "no output"
+    for flag in (" --skip-clusters-check", ""):
+        script = f"ird list{flag}; echo @@@@; ird list-machines{flag}"
+        command = ssh_command(host, script) if host else ["bash", "-c", script]
+        try:
+            result = subprocess.run(command, text=True, capture_output=True, timeout=300)
+        except subprocess.TimeoutExpired:
+            problem = "no answer within 5 minutes"
+            continue
+        listing, _, catalog = result.stdout.partition("@@@@")
+        reservations, machines = parse_table(listing, "SELECTION ID"), parse_table(catalog, "MACHINE")
+        if reservations is not None and machines is not None and (reservations or not flag):
+            return reservations, {row["MACHINE"]: row for row in machines if "MACHINE" in row}
+        problem = (result.stderr.strip().splitlines() or [f"exit {result.returncode}"])[-1]
+    raise HardwareError(f"'ird list' on {host or 'this host'} failed: {problem}")
+
+
+def minutes_left(text: str) -> int | None:
+    days, _, clock = text.rpartition("-")
+    try:
+        seconds = 0
+        for part in clock.split(":"):
+            seconds = seconds * 60 + int(part)
+        return (int(days or 0) * 86400 + seconds) // 60
+    except ValueError:
+        return None
+
+
+def board_label(machine: dict[str, str]) -> str:
+    kinds = [re.sub(r"\(.*", "", kind) for kind in machine.get("BOARD TYPES", "-").split(",")]
+    return "/".join(HW_BOARDS.get(kind, kind) for kind in kinds if kind not in ("", "-"))
+
+
+def hw_target(reservation: dict[str, str], machine: dict[str, str]) -> str | None:
+    arch, name = machine.get("ARCH", ""), reservation.get("MACHINE", "")
+    if arch in HW_ARCHS:
+        return HW_ARCHS[arch]
+    if arch == "compute" and re.match(str(HW.get("quasar_hosts", r"^tensix-l-\d+$")), name):
+        return "quasar"
+    return None
+
+
+def hw_candidates(
+    reservations: list[dict[str, str]], machines: dict[str, dict[str, str]]
+) -> dict[str, list[dict[str, str]]]:
+    found: dict[str, list[dict[str, str]]] = {target: [] for target in HW_TARGETS}
+    for reservation in reservations:
+        machine = machines.get(reservation.get("MACHINE", ""), {})
+        target = hw_target(reservation, machine)
+        if target:
+            found[target].append({**reservation, "board": board_label(machine)})
+    return found
+
+
+def remember_machines(names: list[str]) -> None:
+    """Machine names are internal: the leak scan looks for every one that a hardware run has seen."""
+    path = HOME / "hardware" / "machines.txt"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    known = set(path.read_text().split()) if path.is_file() else set()
+    new = sorted({name for name in names if name} - known)
+    if new:
+        with path.open("a") as stream:
+            stream.write("".join(f"{name}\n" for name in new))
+
+
+def plan_line(case_id: str, key: str) -> str:
+    """A 'Hardware tests:' or 'Hardware targets:' line under the plan's Verification, bold or not."""
+    path = case_dir(case_id) / "plan.md"
+    verification = sections(path.read_text()).get("Verification", "") if path.is_file() else ""
+    match = re.search(rf"^[*_\s-]*{re.escape(key)}[*_]*:[*_]*[ \t]*(.*)$", verification, re.MULTILINE | re.IGNORECASE)
+    return match.group(1).strip() if match else ""
+
+
+def hw_tests(status: Status, checkout: Path, sha: str, given: list[str]) -> tuple[list[str], list[str]]:
+    """The unittest names a hardware run tests, and what is wrong with the ones asked for."""
+    listed = plan_line(status["id"], "Hardware tests")
+    if given:
+        names = given
+    elif listed:
+        names = re.split(r"[\s,]+", listed)
+    else:
+        changed = git(checkout, "diff", "--name-only", status["base_sha"], sha).splitlines()
+        names = [name for name in test_modules(changed) if not device_free(name)]
+    names = [name.strip("`.") for name in names if name.strip("`.")]
+    tracked = set(git(checkout, "ls-tree", "-r", "--name-only", sha, "--", "test").splitlines())
+    problems = []
+    for name in names:
+        parts = name.split(".")
+        if not TEST_NAME.fullmatch(name):
+            problems.append(f"not a unittest name: {name}")
+        elif not any("/".join(parts[:end]) + ".py" in tracked for end in range(len(parts), 0, -1)):
+            problems.append(f"no test module for {name} at {sha[:9]}")
+    return names, problems
+
+
+def hw_targets(status: Status, checkout: Path, sha: str, names: list[str], given: list[str]) -> list[str]:
+    """Wormhole and Blackhole always, Quasar when the change touches it; the plan's or the orchestrator's list wins."""
+    named = " ".join(given) or plan_line(status["id"], "Hardware targets")
+    if named:
+        return [target for target in HW_TARGETS if target in named.lower()]
+    pattern = re.compile(str(HW.get("quasar_changes", "(?i)quasar|rocket")))
+    docs = branch_docs(status)
+    scope = ["--", ".", f":(exclude){docs.rstrip('/')}"] if docs else []
+    changed = git(checkout, "diff", "--name-only", status["base_sha"], sha, *scope).splitlines()
+    added = added_lines(git(checkout, "diff", "--unified=0", status["base_sha"], sha, *scope))
+    quasar = any(pattern.search(name) for name in changed + names) or bool(pattern.search(added))
+    return ["wormhole", "blackhole"] + (["quasar"] if quasar else [])
+
+
+def noc_outcome(body: str, code: int) -> dict[str, Any]:
+    """What one unittest run printed: 'N passed, F failed, S skipped', or why it has no result."""
+    if code in (124, 137):
+        return {"ok": False, "timeout": True, "text": "timed out"}
+    ran = list(re.finditer(r"^Ran (\d+) tests? in", body, re.MULTILINE))
+    if not ran:
+        return {"ok": False, "text": f"no result (exit {code})"}
+    tail = body[ran[-1].start() :]
+    counts = {
+        key: int(value) for key, value in re.findall(r"(failures|errors|skipped|unexpected successes)=(\d+)", tail)
+    }
+    failed = counts.get("failures", 0) + counts.get("errors", 0) + counts.get("unexpected successes", 0)
+    skipped, total = counts.get("skipped", 0), int(ran[-1].group(1))
+    parts = [f"{max(total - failed - skipped, 0)} passed"]
+    parts += [f"{failed} failed"] if failed else []
+    parts += [f"{skipped} skipped"] if skipped else []
+    return {"ok": code == 0 and not failed and total > 0, "text": ", ".join(parts) if total else "no tests ran"}
+
+
+def excerpt(body: str) -> str:
+    """The failures of a unittest run, or the end of its output when it has none."""
+    lines = body.splitlines()
+    start = next((index for index, line in enumerate(lines) if re.match(r"(FAIL|ERROR): ", line)), None)
+    first = max(start - 1, 0) if start is not None else max(len(lines) - 150, 0)
+    return "\n".join(lines[first : first + 300])
+
+
+def write_excerpt(log: Path, failing: list[tuple[str, dict[str, Any], str]]) -> str:
+    path = log.with_name(log.stem + "-failures.txt")
+    parts = [f"NOC{noc}: {outcome['text']}\n\n{excerpt(body)}" for noc, outcome, body in failing]
+    path.write_text(f"Full log: {log}\n\n" + "\n\n".join(parts) + "\n")
+    return str(path)
+
+
+def board_probe(reservation: dict[str, str], root: str) -> dict[str, Any]:
+    """Read-only look at a reserved machine: reachable, a device, nothing holding it, the commit it has."""
+    script = REMOTE_PROBE.replace("@ROOT@", shlex.quote(root))
+    command = ssh_command(reservation["MACHINE"], script, reservation.get("SSH PORT", ""))
+    try:
+        result = subprocess.run(command, text=True, capture_output=True, timeout=180)
+    except subprocess.TimeoutExpired:
+        return {"state": "unreachable", "why": "ssh did not answer within 3 minutes"}
+    if result.returncode != 0:
+        detail = (result.stderr.strip().splitlines() or [f"ssh exit {result.returncode}"])[-1]
+        return {"state": "unreachable", "why": detail}
+    facts: dict[str, Any] = {"holder": [], "missing": []}
+    for line in result.stdout.splitlines():
+        key, _, value = line.partition("=")
+        if key in ("holder", "missing"):
+            facts[key].append(value.strip())
+        elif key in ("host", "devices", "holders", "head"):
+            facts[key] = value.strip()
+    if facts["missing"]:
+        facts.update(state="not-run", why="missing on the machine: " + ", ".join(facts["missing"]))
+    elif not facts.get("devices"):
+        facts.update(state="no-device", why="no /dev/tenstorrent device in the reservation")
+    elif facts.get("holders"):
+        facts.update(state="busy", why="a process holds the board: " + "; ".join(facts["holder"] or [facts["holders"]]))
+    return facts
+
+
+def ship_bundle(run: HwRun, remote_head: str, directory: Path) -> Path | None:
+    """A git bundle with what the machine lacks to check the commit out; None when it has the commit already."""
+
+    def ok(*args: str) -> bool:
+        return run_cmd(["git", *args], run.checkout, check=False).returncode == 0
+
+    known = bool(remote_head) and ok("cat-file", "-e", f"{remote_head}^{{commit}}")
+    if known and ok("merge-base", "--is-ancestor", run.sha, remote_head):
+        return None
+    path = directory / "ship.bundle"
+    exclude = [f"^{remote_head}"] if known else []
+    result = run_cmd(["git", "bundle", "create", str(path), f"refs/heads/{run.branch}", *exclude], run.checkout, False)
+    if result.returncode != 0:
+        raise HardwareError(f"git bundle failed: {result.stderr.strip()}")
+    return path
+
+
+def judge_board(log: Path, code: int, run: HwRun) -> dict[str, Any]:
+    text = log.read_text(errors="replace")
+    markers = re.findall(r"^PIPELINE: (.*)$", text, re.MULTILINE)
+    nocs: dict[str, Any] = {}
+    failing: list[tuple[str, dict[str, Any], str]] = []
+    pattern = r"^PIPELINE: run NOC(\d+)[^\n]*\n(.*?)^PIPELINE: exit (-?\d+) NOC\1$"
+    for noc, body, rc in re.findall(pattern, text, re.MULTILINE | re.DOTALL):
+        nocs[noc] = noc_outcome(body, int(rc))
+        if not nocs[noc]["ok"]:
+            failing.append((noc, nocs[noc], body))
+    busy = next((marker for marker in markers if marker.startswith("busy")), "")
+    failed = next((marker for marker in markers if marker.startswith("fail: ")), "")
+    if "wedged" in markers:
+        state, why = "wedged", "a test hung and tt-smi -r did not bring the board back"
+    elif busy:
+        state, why = "busy", busy[6:]
+    elif failed:
+        state, why = ("build-failed" if failed == "fail: build" else "not-run"), failed[6:]
+    elif run.build_only:
+        state, why = ("built", "") if "built" in markers else ("not-run", f"the build ended early (exit {code})")
+    elif code == -1 or any(outcome.get("timeout") for outcome in nocs.values()):
+        state, why = "timeout", "a test run did not end in time"
+    elif not nocs:
+        state, why = "not-run", f"the run ended before the tests (exit {code})"
+    else:
+        state, why = ("failed" if failing else "passed"), ""
+    result: dict[str, Any] = {"state": state, "why": why, "nocs": nocs, "log": str(log)}
+    if failing and state in ("failed", "timeout"):
+        result["excerpt"] = write_excerpt(log, failing)
+    return result
+
+
+def board_execute(
+    reservation: dict[str, str], facts: dict[str, Any], root: str, run: HwRun, log: Path
+) -> dict[str, Any]:
+    """Ship the commit, build it on the machine and run the tests there with every NOC; the log comes back."""
+    nocs = [int(noc) for noc in HW.get("nocs", [0, 1])]
+    build_timeout, test_timeout = int(HW.get("build_timeout", 3600)), int(HW.get("test_timeout", 1800))
+    values = {
+        "ROOT": shlex.quote(root),
+        "REFSPEC": shlex.quote(f"+refs/heads/{run.branch}:refs/pipeline/run"),
+        "SHA": run.sha,
+        "KEEP": " ".join(shlex.quote(part) for part in KEEP_BUILD),
+        "BUILD": shlex.quote(str(HW.get("build"))),
+        "BUILD_TIMEOUT": str(build_timeout),
+        "BUILD_ONLY": "1" if run.build_only else "",
+        "RESET": str(HW.get("reset", "tt-smi -r")),
+        "RESET_FIRST": "1" if run.reset else "",
+        "NOCS": " ".join(str(noc) for noc in nocs),
+        "TEST_TIMEOUT": str(test_timeout),
+        "TESTS": " ".join(run.names),
+    }
+    script = REMOTE_RUN
+    for key, value in values.items():
+        script = script.replace(f"@{key}@", value)
+    limit = build_timeout + len(nocs) * (test_timeout + 400) + 1800
+    machine = reservation["MACHINE"]
+    with tempfile.TemporaryDirectory() as directory:
+        bundle = ship_bundle(run, str(facts.get("head") or ""), Path(directory))
+        command = ssh_command(machine, script, reservation.get("SSH PORT", ""))
+        with log.open("a") as out, open(bundle or os.devnull, "rb") as feed:
+            out.write(
+                f"PIPELINE: {machine} ({reservation.get('board')}), commit {run.sha}, tests {' '.join(run.names)}\n"
+            )
+            out.flush()
+            process = subprocess.Popen(command, stdin=feed, stdout=out, stderr=subprocess.STDOUT)
+            try:
+                code = process.wait(timeout=limit)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+                code = -1
+                out.write(f"PIPELINE: no end after {limit // 60} minutes; the ssh session was stopped\n")
+    return judge_board(log, code, run)
+
+
+def board_run(target: str, candidates: list[dict[str, str]], run: HwRun) -> dict[str, Any]:
+    """Wormhole or Blackhole: the first reservation of that architecture that answers and is free."""
+    if not candidates:
+        return {"state": "no-reservation", "why": f"no {HW_TITLES[target]} reservation in 'ird list'"}
+    root = str(HW.get("remote_root", "/localdev/{user}/issue-pipeline")).format(user=user_name())
+    floor, tried, first = int(HW.get("min_minutes_left", 30)), [], ""
+    for reservation in candidates:
+        machine = reservation["MACHINE"]
+        left = minutes_left(reservation.get("TIME LEFT", ""))
+        if left is not None and left < floor:
+            tried.append(f"{machine}: the reservation ends in {left} minutes")
+            first = first or "no-reservation"
+            continue
+        facts = board_probe(reservation, root)
+        if facts.get("state"):
+            tried.append(f"{machine}: {facts['why']}")
+            first = first or str(facts["state"])
+            continue
+        found = {
+            "machine": machine,
+            "board": reservation.get("board", ""),
+            "selection": reservation.get("SELECTION ID"),
+        }
+        if run.dry_run:
+            held = str(facts.get("head") or "")[:9] or "no checkout yet"
+            devices = str(facts.get("devices") or "").strip()
+            result = {"state": "ready", "why": f"device {devices} is free; the machine holds {held}"}
+        else:
+            result = board_execute(reservation, facts, root, run, run.log(target))
+        result["why"] = "; ".join(part for part in [str(result.get("why") or ""), *tried] if part)
+        return {**found, **result}
+    return {"state": first or "not-run", "why": "; ".join(tried)}
+
+
+def free_port() -> int:
+    with socket.socket() as probe:
+        probe.bind(("", 0))
+        return int(probe.getsockname()[1])
+
+
+def connected(port: int) -> bool:
+    """An established TCP connection on a local port: the emulator or simulator has connected back to UMD."""
+    for table in ("/proc/net/tcp", "/proc/net/tcp6"):
+        try:
+            rows = Path(table).read_text().splitlines()[1:]
+        except OSError:
+            continue
+        for row in rows:
+            fields = row.split()
+            if len(fields) > 3 and fields[3] == "01" and int(fields[1].rsplit(":", 1)[1], 16) == port:
+                return True
+    return False
+
+
+def stop(process: subprocess.Popen[Any]) -> None:
+    """End a test run and the simulator launcher it started: they share a process group."""
+    for number in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(process.pid, number)
+        except ProcessLookupError:
+            return
+        try:
+            process.wait(timeout=30)
+            return
+        except subprocess.TimeoutExpired:
+            continue
+
+
+def simulator_runs() -> list[str]:
+    """Emulator or simulator runs of this user on this host, by their launch script."""
+    pattern, found = re.compile(r"/(?:emu|vcs)-[^/\s]+/\S*run\S*\.sh"), []
+    for entry in Path("/proc").iterdir():
+        if not entry.name.isdigit():
+            continue
+        try:
+            if entry.stat().st_uid != os.getuid():
+                continue
+            line = (entry / "cmdline").read_bytes().replace(b"\0", b" ").decode(errors="replace")
+        except OSError:
+            continue
+        if pattern.search(line):
+            found.append(f"pid {entry.name}: {line.strip()[:100]}")
+    return found
+
+
+def submit_host(directory: Path) -> str:
+    """The host a simulator build's scripts ssh to, unless SSH_MACHINE_NAME overrides it."""
+    if os.environ.get("SSH_MACHINE_NAME"):
+        return os.environ["SSH_MACHINE_NAME"]
+    scripts = sorted(
+        directory.glob("*.sh"), key=lambda path: (path.name != "run.sh", "dev" not in path.name, path.name)
+    )
+    for script in scripts:
+        match = re.search(r"^\s*SSH_MACHINE_NAME=(\S+)", script.read_text(errors="replace"), re.MULTILINE)
+        if match:
+            return match.group(1)
+    return ""
+
+
+def backend_problem(directory: Path) -> str | None:
+    if not (directory / "run.sh").is_file():
+        return f"no build at {directory}"
+    host = submit_host(directory)
+    if host:
+        try:
+            answer = subprocess.run(ssh_command(host, "true", connect=60), capture_output=True, timeout=150)
+        except subprocess.TimeoutExpired:
+            return f"the submit host {host} did not answer over ssh"
+        if answer.returncode != 0:
+            return f"the submit host {host} did not answer over ssh"
+    return None
+
+
+def local_prepare(run: HwRun, checkout: Path, log: Path) -> str | None:
+    """Check the case commit out in this host's run checkout and build it there. A problem, or None."""
+    wrapper = REPO / "GNUmakefile"
+    build = ["make", "-f", str(wrapper), "build"] if wrapper.is_file() else ["bash", "-c", str(HW.get("build"))]
+    environment = {**os.environ, "PATH": f"{Path(sys.executable).parent}{os.pathsep}{os.environ.get('PATH', '')}"}
+    with log.open("a") as out:
+
+        def step(command: list[str], timeout: int = 600) -> int:
+            out.write(f"PIPELINE: {' '.join(command)}\n")
+            out.flush()
+            try:
+                return subprocess.run(
+                    command, cwd=checkout, stdout=out, stderr=subprocess.STDOUT, timeout=timeout, env=environment
+                ).returncode
+            except subprocess.TimeoutExpired:
+                out.write("PIPELINE: timed out\n")
+                return 124
+
+        checkout.mkdir(parents=True, exist_ok=True)
+        if not (checkout / ".git").exists() and step(["git", "init", "-q"]):
+            return "git init failed"
+        refspec = f"+refs/heads/{run.branch}:refs/pipeline/run"
+        if (
+            step(["git", "fetch", "-q", str(run.checkout), refspec])
+            or step(["git", "checkout", "-q", "-f", "--detach", run.sha])
+            or step(["git", "clean", "-q", "-fdx", *KEEP_BUILD])
+        ):
+            return "the run checkout could not be updated"
+        mark = log.stat().st_size
+        out.write("PIPELINE: build\n")
+        code = step(build, int(HW.get("build_timeout", 3600)))
+    # the make wrapper type-checks after ninja; the gates judged the types, the tests need only what ninja built
+    if code and not (wrapper.is_file() and "Running mypy" in log.read_bytes()[mark:].decode(errors="replace")):
+        return f"build failed (exit {code})"
+    return None
+
+
+def keep_simulator_logs(checkout: Path, since: float, log: Path) -> None:
+    for pattern in SIMULATOR_LOGS:
+        for path in checkout.glob(pattern):
+            if path.stat().st_mtime >= since - 5:
+                shutil.move(str(path), str(log.with_name(f"{log.stem}-{path.name}")))
+
+
+def simulator_attempt(
+    label: str, directory: Path, run: HwRun, checkout: Path, log: Path, noc: int
+) -> dict[str, Any] | None:
+    """The tests on one emulator or simulator build with one NOC. None when it never came up."""
+    settings: dict[str, Any] = HW.get("quasar") or {}
+    start_limit = 60 * int(settings.get(f"{label}_start_minutes", 15 if label == "emulation" else 30))
+    test_limit = int(settings.get("test_timeout", 3600))
+    port = free_port()
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in ("NNG_SOCKET_ADDR", "TTEXALENS_TESTS_REMOTE", "CI_PIPELINE_ID")
+    }
+    environment.update(NNG_SOCKET_LOCAL_PORT=str(port), TTEXALENS_SIMULATOR=str(directory))
+    environment["TTEXALENS_TESTS_NOC_ID"] = str(noc)
+    offset, began, up = log.stat().st_size if log.exists() else 0, time.time(), 0.0
+    code = 0
+    with log.open("a") as out:
+        out.write(f"PIPELINE: run NOC{noc} on {label} {directory.name}\n")
+        out.flush()
+        process = subprocess.Popen(
+            [sys.executable, "-m", "unittest", "-v", *run.names],
+            cwd=checkout,
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            stdout=out,
+            stderr=subprocess.STDOUT,
+            start_new_session=True,
+        )
+        while True:
+            try:
+                code = process.wait(timeout=10)
+                break
+            except subprocess.TimeoutExpired:
+                pass
+            if not up and (connected(port) or TEST_REPORTED.search(log.read_bytes()[offset:])):
+                up = time.time()
+            if not up and time.time() - began > start_limit:
+                stop(process)
+                code = -2
+                break
+            if up and time.time() - up > test_limit:
+                stop(process)
+                code = 124
+                break
+        out.write(f"PIPELINE: exit {code} NOC{noc}\n")
+    keep_simulator_logs(checkout, began, log)
+    segment = log.read_bytes()[offset:].decode(errors="replace")
+    if code == -2:
+        return None
+    outcome = noc_outcome(segment, code)
+    # a run that failed before any test reported and without the backend connecting: the backend never came up
+    if not up and not outcome["ok"] and not TEST_REPORTED.search(segment.encode()):
+        return None
+    return {**outcome, "body": segment}
+
+
+def quasar_run(candidates: list[dict[str, str]], run: HwRun) -> dict[str, Any]:
+    """Quasar: the emulator, or the simulator when the emulator cannot run, driven from this host."""
+    here = local_host()
+    local = [reservation for reservation in candidates if reservation["MACHINE"] == here]
+    if not local:
+        if not candidates:
+            return {"state": "no-reservation", "why": "no tensix reservation in 'ird list'"}
+        names = ", ".join(reservation["MACHINE"] for reservation in candidates)
+        return {"state": "not-run", "why": f"the emulator is driven from the session's host {here}; reserved: {names}"}
+    settings: dict[str, Any] = HW.get("quasar") or {}
+    simulators = Path(str(settings.get("simulators", "")).format(user=user_name()))
+    kind = "rocket" if run.rocket else "default"
+    backends, notes = [], []
+    for label in ("emulation", "simulation"):
+        directory = simulators / str((settings.get(label) or {}).get(kind, ""))
+        problem = backend_problem(directory)
+        if problem:
+            notes.append(f"{label} not possible: {problem}")
+        else:
+            backends.append((label, directory))
+    found = {"machine": here, "selection": local[0].get("SELECTION ID")}
+    if not backends:
+        return {**found, "state": "not-run", "why": "; ".join(notes)}
+    if run.dry_run:
+        others = simulator_runs()
+        label, directory = backends[0]
+        busy = f"; busy now: {others[0]}" if others else ""
+        return {
+            **found,
+            "state": "ready",
+            "why": f"{label} with {directory.name}{busy}" + "".join(f"; {n}" for n in notes),
+        }
+    root, log = HOME / "hardware" / "local", run.log("quasar")
+    root.mkdir(parents=True, exist_ok=True)
+    with (root / "lock").open("w") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return {**found, "state": "busy", "why": "another hardware run uses this host's run checkout"}
+        problem = local_prepare(run, root / "tt-exalens", log)
+        if problem:
+            state = "build-failed" if problem.startswith("build") else "not-run"
+            return {**found, "state": state, "why": problem, "log": str(log)}
+        if run.build_only:
+            return {**found, "state": "built", "why": "", "log": str(log)}
+        deadline = time.time() + 60 * int(settings.get("busy_wait_minutes", 10))
+        while simulator_runs() and time.time() < deadline:
+            time.sleep(30)
+        if simulator_runs():
+            return {
+                **found,
+                "state": "busy",
+                "why": "your own run is in progress: " + simulator_runs()[0],
+                "log": str(log),
+            }
+        for label, directory in backends:
+            nocs: dict[str, Any] = {}
+            for noc in settings.get("nocs", [0]):
+                outcome = simulator_attempt(label, directory, run, root / "tt-exalens", log, int(noc))
+                if outcome is None and not nocs:
+                    break
+                nocs[str(noc)] = outcome or {"ok": False, "text": f"{label} did not come up", "body": ""}
+            if not nocs:
+                notes.append(f"{label} with {directory.name} did not come up")
+                continue
+            failing = [(noc, outcome, outcome.pop("body")) for noc, outcome in nocs.items()]
+            failing = [entry for entry in failing if not entry[1]["ok"]]
+            timed_out = any(outcome.get("timeout") for outcome in nocs.values())
+            state = "timeout" if timed_out else ("failed" if failing else "passed")
+            result: dict[str, Any] = {**found, "state": state, "backend": label, "board": f"{label} {directory.name}"}
+            result.update(nocs=nocs, why="; ".join(notes), log=str(log))
+            if failing:
+                result["excerpt"] = write_excerpt(log, failing)
+            return result
+    return {**found, "state": "not-run", "why": "; ".join(notes), "log": str(log)}
+
+
+def hw_line(targets: dict[str, dict[str, Any]]) -> str:
+    """The report's line: per target what ran and how it ended. No machine names: it may reach the PR text."""
+    parts = []
+    for target, result in targets.items():
+        title = HW_TITLES[target] + (f" {result['backend']}" if result.get("backend") else "")
+        if target != "quasar" and result.get("board"):
+            title += f" {result['board']}"
+        if result["state"] in HW_TESTED:
+            nocs = "; ".join(f"NOC{noc} {outcome['text']}" for noc, outcome in sorted(result["nocs"].items()))
+            parts.append(f"{title}: {nocs or result['state']}")
+        elif result["state"] == "skipped":
+            parts.append(f"{title}: not tested; the developer decided: {result.get('why')}")
+        else:
+            parts.append(f"{title}: not tested, {HW_REASONS.get(result['state'], result['state'])}")
+    return "**Hardware:** " + (". ".join(parts) or "nothing ran") + "."
+
+
+def hw_expected(status: Status, checkout: Path, head: str) -> tuple[list[str], list[str]]:
+    """The tests and the targets of the case's own hardware run at commit head: the plan's, or the defaults."""
+    names, _ = hw_tests(status, checkout, head, [])
+    return names, hw_targets(status, checkout, head, names, [])
+
+
+def hardware_problems(status: Status, checkout: Path) -> tuple[list[str], list[str], list[str]]:
+    """For a built case, per target the case needs: no run of the current commit, failing tests, not tested."""
+    if not HW.get("enabled"):
+        return [], [], []
+    record = status.get("hardware") or {}
+    results: dict[str, Any] = (record.get("targets") or {}) if record.get("iteration") == status["iteration"] else {}
+    _, expected = hw_expected(status, checkout, git(checkout, "rev-parse", "HEAD"))
+    missing, failing, untested = [], [], []
+    for target in expected:
+        result, title = results.get(target) or {}, HW_TITLES[target]
+        if not covers(status, checkout, str(result.get("sha") or "")):
+            missing.append(f"no hardware run of the current commit on {title}")
+        elif result["state"] in ("failed", "timeout"):
+            failing.append(f"tests fail on {title} ({result['state']}): {result.get('excerpt') or result.get('log')}")
+        elif result["state"] not in HW_TESTED and result["state"] != "skipped":
+            untested.append(f"{title} not tested: {HW_REASONS.get(result['state'], result['state'])}")
+    return missing, failing, untested
+
+
+def record_hardware(status: Status, results: dict[str, dict[str, Any]], sha: str, tests: list[str]) -> str:
+    """Merge a run of the case's own tests into its record, which keeps the latest result per target with the commit
+    it tested. In auto mode a target that could not be tested is an accepted failure. Returns the report line."""
+    record = status.get("hardware") or {}
+    earlier = record.get("targets") if record.get("iteration") == status["iteration"] else None
+    merged = dict(earlier) if isinstance(earlier, dict) else {}
+    merged.update({target: {**result, "sha": sha, "tests": tests, "time": now()} for target, result in results.items()})
+    ordered = {target: merged[target] for target in HW_TARGETS if target in merged}
+    status["hardware"] = {"iteration": status["iteration"], "targets": ordered, "line": hw_line(ordered), "time": now()}
+    accepted = [problem for problem in status.get("accepted") or [] if not problem.startswith("hardware: ")]
+    if auto(status):
+        accepted += [
+            f"hardware: {HW_TITLES[target]} not tested: {HW_REASONS.get(result['state'], result['state'])}"
+            for target, result in ordered.items()
+            if result["state"] not in HW_TESTED
+        ]
+    if accepted or "accepted" in status:
+        status["accepted"] = accepted
+    save_status(status)
+    states = {target: result.get("state") for target, result in results.items()}
+    log_event(status["id"], event="hardware", sha=sha, tests=tests, targets=states)
+    return str(status["hardware"]["line"])
+
+
+def cmd_hw_list(args: argparse.Namespace) -> None:
+    try:
+        reservations, machines = ird_tables()
+    except HardwareError as error:
+        die(str(error))
+    remember_machines([row.get("MACHINE", "") for row in reservations] + [str(HW.get("ird_host", ""))])
+    here = local_host()
+    if not reservations:
+        print("no reservations")
+    for row in reservations:
+        machine = machines.get(row.get("MACHINE", ""), {})
+        target = hw_target(row, machine) or "-"
+        mark = "  (this host)" if row.get("MACHINE") == here else ""
+        print(
+            f"{row.get('SELECTION ID', '?'):>3}  {row.get('MACHINE', '?'):<16} {machine.get('ARCH', '?'):<12} "
+            f"{board_label(machine) or '-':<10} {row.get('TIME LEFT', '?'):<12} ssh -p {row.get('SSH PORT', '?')}  "
+            f"-> {target}{mark}"
+        )
+    found = hw_candidates(reservations, machines)
+    print("targets: " + "; ".join(f"{t} {', '.join(r['MACHINE'] for r in found[t]) or 'none'}" for t in HW_TARGETS))
+
+
+def cmd_hw_test(args: argparse.Namespace) -> None:
+    status, case, checkout = load_status(args.case), case_dir(args.case), checkout_dir(args.case)
+    if not HW.get("enabled"):
+        die("hardware runs are off: hardware.enabled in .claude/pipeline/config.json")
+    if not args.dry_run and claim(status):
+        save_status(status)
+    require_clean(checkout)
+    head = git(checkout, "rev-parse", "HEAD")
+    trial = args.dry_run or args.build_only
+    own_names, own_targets = hw_expected(status, checkout, head)
+    if args.skip:
+        if auto(status):
+            die("auto mode does not skip hardware: run hw-test; what cannot be tested is recorded for the report")
+        chosen = [target for target in HW_TARGETS if target in (args.target or own_targets)]
+        skipped = {target: {"state": "skipped", "why": args.skip.strip()} for target in chosen}
+        print(record_hardware(status, skipped, head, []))
+        return
+    if head != status["base_sha"] and not gates_ok(status, checkout) and not args.dry_run:
+        if not auto(status):
+            die(f"the gates are not green for {head[:9]}: {RUN} gates {args.case}. Hardware runs test checked code.")
+        print(f"warning: the gates are not green for {head[:9]}; auto mode tests it anyway", file=sys.stderr)
+    names, problems = hw_tests(status, checkout, head, args.tests or [])
+    if problems:
+        die("these tests cannot run:\n- " + "\n- ".join(problems))
+    # the case's own run, which the report and the gate to it count; a role's request for other tests does not
+    own = not args.tests or not own_names or set(names) == set(own_names)
+    if not names:
+        if not auto(status) or trial:
+            die(
+                "no tests for hardware: the branch changes no device test module and the plan names none "
+                "('Hardware tests:' under Verification). Name them: --tests <unittest names>"
+            )
+        nothing = {target: {"state": "no-tests", "why": "no device tests were named"} for target in own_targets}
+        print(f"{record_hardware(status, nothing, head, [])}\nauto mode: recorded for the report")
+        return
+    targets = hw_targets(status, checkout, head, names, args.target or [])
+    if not targets:
+        die("no hardware target to run: choose from " + ", ".join(HW_TARGETS))
+    try:
+        reservations, machines = ird_tables()
+    except HardwareError as error:
+        if not auto(status) or trial or not own:
+            die(f"{error}. Ask the developer to check that 'ird list' works from this host.")
+        failed = {target: {"state": "ird-failed", "why": str(error)} for target in targets}
+        print(f"{error}\n{record_hardware(status, failed, head, names)}\nauto mode: recorded for the report")
+        return
+    remember_machines([row.get("MACHINE", "") for row in reservations] + [str(HW.get("ird_host", ""))])
+    candidates = hw_candidates(reservations, machines)
+    if not trial:
+        bump(status, "hw_runs")
+        save_status(status)
+    directory = case / "hardware"
+    directory.mkdir(parents=True, exist_ok=True)
+    used = [int(match.group(1)) for path in directory.iterdir() if (match := re.match(r"(\d+)-", path.name))]
+    scope = ["--", ".", f":(exclude){branch_docs(status).rstrip('/')}"] if branch_docs(status) else []
+    rocket = bool(
+        re.search(
+            r"(?i)rocket", " ".join(names) + added_lines(git(checkout, "diff", "-U0", status["base_sha"], head, *scope))
+        )
+    )
+    run = HwRun(
+        args.case,
+        checkout,
+        status["branch"],
+        head,
+        names,
+        rocket,
+        directory,
+        max(used, default=0) + 1,
+        dry_run=args.dry_run,
+        build_only=args.build_only,
+        reset=args.reset,
+    )
+    print(f"hardware run {run.number:02d} of {head[:9]}: {', '.join(targets)}; tests {' '.join(names)}", flush=True)
+
+    def one(target: str) -> dict[str, Any]:
+        try:
+            if target == "quasar":
+                return quasar_run(candidates[target], run)
+            return board_run(target, candidates[target], run)
+        except (HardwareError, OSError, subprocess.SubprocessError) as error:
+            return {"state": "not-run", "why": str(error)}
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(targets)) as pool:
+        futures = {target: pool.submit(one, target) for target in targets}
+        results = {target: future.result() for target, future in futures.items()}
+    for target, result in results.items():
+        where = f" on {result['machine']}" if result.get("machine") else ""
+        where += f" ({result['board']})" if result.get("board") else ""
+        outcomes: dict[str, Any] = result.get("nocs") or {}
+        nocs = "; ".join(f"NOC{noc} {outcome['text']}" for noc, outcome in sorted(outcomes.items()))
+        detail = "  ".join(str(part) for part in (nocs, result.get("why"), result.get("log")) if part)
+        print(f"{target}: {result['state']}{where}  {detail}")
+    if trial:
+        return
+    untested = [
+        f"{HW_TITLES[target]} not tested: {HW_REASONS.get(result['state'], result['state'])}"
+        for target, result in results.items()
+        if result["state"] not in HW_TESTED
+    ]
+    failing = [target for target, result in results.items() if result["state"] in ("failed", "timeout")]
+    excerpts = [str(results[target].get("excerpt") or results[target].get("log")) for target in failing]
+    if not own:
+        log_event(args.case, event="hardware-request", sha=head, tests=names, line=hw_line(results))
+        print(
+            f"{hw_line(results)}\nnext: a run that a role asked for: give it this line"
+            + (f" and {', '.join(excerpts)}" if excerpts else "")
+            + ". It is not the case's own hardware run."
+        )
+        sys.exit(1 if failing else (2 if untested else 0))
+    print(record_hardware(status, results, head, names))
+    if failing:
+        print(
+            f"next: tests fail on {', '.join(failing)}. {RUN} count {args.case} fixes, then start the implementer (it "
+            f"reads {', '.join(excerpts)}), then gates, scope-check and hw-test again"
+        )
+    if untested:
+        if auto(status):
+            print("auto mode: what could not be tested is recorded as accepted failures for the report")
+        else:
+            print(
+                "next: not tested: " + "; ".join(untested) + ". Tell the developer. They reserve or free the machine "
+                '(then hw-test again), or go on without that target (--target <target> --skip "<their words>"). '
+                "Only they decide about a host restart"
+            )
+    if not failing and not untested:
+        print("next: every target passed; go on to the report")
+    sys.exit(1 if failing else (2 if untested and not auto(status) else 0))
+
+
 def cmd_commit(args: argparse.Namespace) -> None:
     status, checkout = load_status(args.case), checkout_dir(args.case)
     if status["state"] != WRITER_STATES[args.role]:
@@ -1630,6 +2599,12 @@ def finish_texts(status: Status, reason: str, changed: list[str]) -> tuple[str, 
     title = next((line[2:].strip() for line in issue.splitlines() if line.startswith("# ")), status["id"])
     checks = ", ".join(f"{name} {result}" for name, result in ((status.get("gates") or {}).get("checks") or {}).items())
     accepted = "; ".join(status.get("accepted") or []) or "none"
+    hardware = status.get("hardware") or {}
+    tested = (
+        str(hardware["line"])
+        if hardware.get("iteration") == status["iteration"]
+        else "**Not verified:** hardware and simulator tests."
+    )
     reviews = existing(case, "review/*-diff.md")
     report = [
         f"# Report: {title}",
@@ -1646,7 +2621,7 @@ def finish_texts(status: Status, reason: str, changed: list[str]) -> tuple[str, 
         "## Verification",
         f"Last gates run: {checks or 'none'}.",
         f"**Accepted failures:** {accepted}.",
-        "**Not verified:** hardware and simulator tests.",
+        tested,
         "",
         "## Review",
         ("Review files: " + ", ".join(Path(name).name for name in reviews)) if reviews else "Not reviewed.",
@@ -1661,7 +2636,8 @@ def finish_texts(status: Status, reason: str, changed: list[str]) -> tuple[str, 
         scope or "See the design below.",
         "",
         "## Verification",
-        f"Static checks and device-free tests: {checks or 'not run'}. **Not verified:** hardware and simulator tests.",
+        f"Static checks and device-free tests: {checks or 'not run'}.",
+        tested,
     ]
     return tidy("\n".join(report)), tidy("\n".join(pr_text))
 
@@ -1699,6 +2675,9 @@ def cmd_finish(args: argparse.Namespace) -> None:
         accept(problem)
     if not status["rounds"]["review"]:
         accept("the change was not reviewed")
+    missing, failing, _ = hardware_problems(status, checkout)
+    for problem in missing + failing:
+        accept(problem)
     for hit in leak_problems(args.case, "public"):
         accept(f"possible internal information: {hit}")
     reason = args.reason or "the stages could not be completed normally"
@@ -1941,6 +2920,9 @@ def cmd_spawn(args: argparse.Namespace) -> None:
             reads += existing(case, "tests.md")
             if status.get("gates") and not status["gates"]["ok"]:
                 reads.append(status["gates"]["log"])
+            hardware = status.get("hardware") or {}
+            if hardware.get("iteration") == status["iteration"]:
+                reads += [str(result["excerpt"]) for result in hardware["targets"].values() if result.get("excerpt")]
         reviews = existing(case, "review/*-diff.md")
         reads += reviews[-1:] + existing(case, "feedback/*.md")
         if report.is_file():
@@ -2383,16 +3365,28 @@ def guard_bash(role: str, command: str, own: str = "") -> str | None:
         if any(token.startswith("--output") for token in tokens):
             return "no --output: the investigator writes nothing but its findings file"
         return None
-    programs, expect_program = [], True
-    for token in tokens:
+    programs, expect_program, subcommands = [], True, []
+    for index, token in enumerate(tokens):
         if re.fullmatch(r"[;&|()]+", token):
             expect_program = True
         elif expect_program and not re.match(r"[A-Za-z_]\w*=", token):
             programs.append(Path(token).name)
+            if token.endswith(RUN):
+                subcommands.append(tokens[index + 1] if index + 1 < len(tokens) else "")
             expect_program = False
     for program in programs:
         if program in DENIED_PROGRAMS:
             return f"'{program}' is not allowed here: {DENIED_PROGRAMS[program]}"
+    if any(token.endswith("pipeline/pipeline.py") for token in tokens):
+        return f"run the pipeline only through {RUN}"
+    for subcommand in subcommands:
+        if subcommand.startswith("hw-"):
+            return (
+                "only the orchestrator runs tests on hardware. Ask for a run in your final block: "
+                "HARDWARE: <unittest names> on <wormhole|blackhole|quasar> - <why>"
+            )
+        if subcommand not in AGENT_COMMANDS:
+            return f"'{RUN} {subcommand}' is the orchestrator's. Roles use: {', '.join(AGENT_COMMANDS)}"
     if any(flag == "-m" and module in ("unittest", "pytest") for flag, module in zip(tokens, tokens[1:])):
         return f"run tests with: {RUN} test <case> <unittest names>"
     if "git" in programs and ("push" in tokens or "remote" in tokens):
@@ -2497,6 +3491,14 @@ def main() -> None:
     command("gates", cmd_gates, "case", help="run the static checks and the device-free tests in the checkout")
     sub = command("test", cmd_test, "case", help="run device-free tests; other tests are only loaded")
     sub.add_argument("names", nargs="+")
+    command("hw-list", cmd_hw_list, help="list the developer's reservations and the hardware target each one serves")
+    sub = command("hw-test", cmd_hw_test, "case", help="orchestrator only: run the case's tests on reserved hardware")
+    sub.add_argument("--target", action="append", choices=HW_TARGETS, help="run only these targets (repeat)")
+    sub.add_argument("--tests", nargs="+", help="unittest names (default: the plan's list, else the changed modules)")
+    sub.add_argument("--reset", action="store_true", help="tt-smi -r each board before the tests, if nothing holds it")
+    sub.add_argument("--dry-run", action="store_true", help="find the machines and check them; build and run nothing")
+    sub.add_argument("--build-only", action="store_true", help="ship and build on the machines; run no tests")
+    sub.add_argument("--skip", help="guided mode: the developer's reason to go on without the --target given, or all")
     sub = command("commit", cmd_commit, "case", help="commit the checkout as test-writer or implementer")
     sub.add_argument("role", choices=tuple(WRITER_STATES))
     sub.add_argument("-m", "--message", required=True)

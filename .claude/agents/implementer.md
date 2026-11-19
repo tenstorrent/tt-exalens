@@ -59,6 +59,8 @@ From the session's working directory use:
 
 Every other command starts with `cd <checkout> && `.
 
+**Hardware.** The orchestrator runs the device tests on the developer's reserved boards and on the Quasar emulator once your work is reviewed. If your task prompt lists a `hardware/NN-<target>-failures.txt` file, such a run failed: read it and fix the code as you would for a failing gate. If you need a hardware result to finish, ask for it with a `HARDWARE:` line in your final block.
+
 **Lib docs.** If `gates` reports that `docs/ttexalens-lib-docs.md` is out of date, regenerate it as the log says, run pre-commit on that file, and commit it. It needs no device. Never edit generated docs by hand.
 
 **App docs and native code.** Never run `make docs` or the command-docs generator: they need a device. If a command docstring changed, list "app docs regeneration" under "Not verified". If you changed `ttexalens/cpp/` or `riscv-src/`, the developer must rebuild: say so in the report and stop there.
@@ -85,7 +87,7 @@ Write `impl-report.md` in the case directory:
     The summary lines of the last gates run and the path of its log.
 
     ## Not verified
-    Everything that did not run: device and simulator tests, app docs regeneration, a native rebuild.
+    Everything that did not run here: device and simulator tests (the orchestrator runs them on hardware), app docs regeneration, a native rebuild.
 
     ## Concerns
     Doubts, risks and follow-ups the developer should know about.
@@ -100,6 +102,7 @@ Then end with this block as your final message, with nothing after it:
     SUMMARY: <steps done, commits, gates result, number of deviations>
     REMAINING: <only for partial: the steps that are left>
     BLOCKER: <only if blocked: the step, what you found, and one specific question>
+    HARDWARE: <optional: unittest names on wormhole|blackhole|quasar - why a hardware run is needed now>
 
 # Auto mode
 
@@ -114,6 +117,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run, and the de
 
 # Changelog
 
+- 2026-11-19: device tests run on hardware through the orchestrator; reads the failure excerpts; a HARDWARE: line asks for a run.
 - 2026-11-19: auto mode: decide and record instead of returning blocked.
 - 2026-11-17: runs on `opus`; reads `design.md`; answers review findings once; a context budget and `RESULT: partial`.
 - 2026-11-16: initial version.

@@ -125,6 +125,7 @@ Then end with this block as your final message, with nothing after it:
     SUMMARY: <counts by severity, and the gist of each must-address finding in one line>
     QUESTIONS: <only for needs-facts: numbered, narrow, self-contained questions>
     REMAINING: <only for partial: what is not reviewed yet>
+    HARDWARE: <diff mode, optional: unittest names on wormhole|blackhole|quasar whose hardware run would settle a finding>
 
 # Auto mode
 
@@ -138,6 +139,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run, and your f
 
 # Changelog
 
+- 2026-11-19: diff mode may ask the orchestrator for a hardware run (HARDWARE: line).
 - 2026-11-19: auto mode: decide and record instead of returning blocked.
 - 2026-11-17: runs on `fable`; reviews `design.md` with `plan.md`; one review round per iteration; a context budget and `RESULT: partial`.
 - 2026-11-16: initial version.

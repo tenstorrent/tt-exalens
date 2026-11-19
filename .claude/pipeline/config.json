@@ -22,7 +22,31 @@
     "test_retries": 3,
     "fixes": 3,
     "review": 1,
+    "hw_runs": 4,
     "agent_calls": 80
+  },
+  "hardware": {
+    "enabled": true,
+    "ird_host": "yyz-ird",
+    "min_minutes_left": 30,
+    "remote_root": "/localdev/{user}/issue-pipeline",
+    "build": "cmake -B build_debug -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_POLICY_VERSION_MINIMUM=3.5 && ninja -C build_debug",
+    "build_timeout": 3600,
+    "test_timeout": 1800,
+    "nocs": [0, 1],
+    "reset": "tt-smi -r",
+    "quasar_hosts": "^tensix-l-\\d+$",
+    "quasar_changes": "(?i)quasar|rocket",
+    "quasar": {
+      "simulators": "/localdev/{user}/work/tt-umd-simulators/build",
+      "emulation": {"default": "emu-quasar-1x3", "rocket": "emu-grendel-quasar-t6x1_DM"},
+      "simulation": {"default": "vcs-quasar-1x3", "rocket": "vcs-quasar-2x3_SMU"},
+      "nocs": [0],
+      "emulation_start_minutes": 15,
+      "simulation_start_minutes": 30,
+      "busy_wait_minutes": 10,
+      "test_timeout": 3600
+    }
   },
   "context": {
     "hard_cap": 500000,

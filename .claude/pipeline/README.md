@@ -1,6 +1,6 @@
 # Issue pipeline
 
-A set of Claude Code agents that take a tt-exalens change from a rough description to a reviewed local branch with a pull request description. Everything stays on your machine: the agents never push, never write to GitHub, and never touch a device or simulator. You approve the issue, the design and the result, and you publish. If you switch a case to auto mode, the script takes those approvals for you.
+A set of Claude Code agents that take a tt-exalens change from a rough description to a reviewed local branch with a pull request description. Nothing is published: the agents never push and never write to GitHub. No agent touches a device; only the orchestrator runs tests, on machines you have reserved. You approve the issue, the design and the result, and you publish. If you switch a case to auto mode, the script takes those approvals for you.
 
 ## Using it
 
@@ -9,7 +9,7 @@ Start a new Claude Code session in the repository, so that the agent files are l
 | Command | What it does |
 |---|---|
 | `/new-issue <description, issue link or file>` | Shapes a short issue with you and stops at Gate 0. An issue given by link is triaged first |
-| `/resolve-issue <case>` | Investigates, designs (Gate A), writes tests, implements, reviews once, reports (Gate B) |
+| `/resolve-issue <case>` | Investigates, designs (Gate A), writes tests, implements, reviews once, runs the tests on your reserved hardware, reports (Gate B) |
 | `/fix-ci <case> <log file>` | Another round after you pushed and CI failed |
 | `/papa [case ...]` | Proposes changes to the agent files from closed cases (Gate C) |
 
@@ -45,6 +45,24 @@ Agents work in a separate clone, never in your working tree. After every commit 
 
 There is one review round per iteration: implementation, review, then the comments are addressed once by the test writer and the implementer. The report lists each finding as fixed, not changed and why, or still open. For another round, say "review again" at Gate B. The orchestrator never starts one on its own (`caps.review` in `config.json`).
 
+## Hardware runs
+
+After the review round, the orchestrator runs the case's tests on your reservations with `.claude/pipeline/run hw-test <case>`. `.claude/pipeline/run hw-list` shows what it would use.
+
+- **Machines.** `ird list` and `ird list-machines`, through `ssh yyz-ird` (`hardware.ird_host`), give your reservations and their architectures. It takes one Wormhole and one Blackhole reservation. When the change touches Quasar, it also takes the tensix reservation this session runs on. A change touches Quasar when a changed path or an added line names Quasar or Rocket, or when the plan lists `quasar`. Quasar runs on the emulator, or on the simulator when the emulator cannot run: no build, no answer from the submit host, or no connection within 15 minutes.
+- **Tests.** The plan's `Hardware tests:` line, otherwise the device test modules the branch changes, with NOC0 and NOC1 on boards and NOC0 on Quasar.
+- **Boards.** It sends the committed branch over ssh as a git bundle. It builds it in `/localdev/<user>/issue-pipeline` on the machine, with a venv of its own there.
+- **Quasar.** It builds in `.issue-pipeline/hardware/local/` and uses the builds under `hardware.quasar.simulators`.
+- **Safety.** It does not use a board that any process holds. It stops a hung test and resets the board with `tt-smi -r`, only when nothing holds it. It runs one emulator or simulator at a time: if one of yours is running, it waits 10 minutes, then gives up. It never reserves, extends or releases a machine, and never restarts a host.
+- **Results.**
+  - Logs and failure excerpts go to `hardware/` in the case. The last lines are a `**Hardware:**` line for the report, without machine names.
+  - Failing tests go back to the implementer.
+  - The case keeps the latest result of each target, with the commit it tested. A run that a role asks for, with other tests, does not count.
+  - When a target cannot be tested, a guided run asks you to reserve or free the machine; auto mode records it as an accepted failure.
+  - `advance report_ready` wants every target the case needs run on the current commit. In guided mode you can go on without a target: `hw-test <case> --target <target> --skip "<reason>"`, or without `--target` for all of them.
+
+Up to 4 runs per iteration (`caps.hw_runs`). `--dry-run` finds and checks the machines without building. `--build-only` ships and builds without running tests. The settings are under `hardware` in `config.json`.
+
 ## Guided mode and auto mode
 
 The pipeline runs in guided mode by default: Gates 0, A and B wait for you, and a stop asks you what to do.
@@ -58,7 +76,7 @@ Auto mode runs until the case is closed with the code on its branch, next to the
 
 Start it with `/new-issue --auto <issue link or description>`, which shapes the issue and goes straight on, or with `/resolve-issue <case> --auto`. For every new case, set `"mode": "auto"` in `config.json`. Gate C (changes to the agent files) always waits for you, and so does a gate you set to `"user"` under `gates`.
 
-Three things auto mode cannot take over: Claude Code's permission prompts (run the session in a permission mode that does not prompt), an API error that ends the turn (`/resolve-issue --resume <case>` continues), and an issue link that cannot be fetched.
+Three things auto mode cannot take over: Claude Code's permission prompts (run the session in a permission mode that does not prompt), an API error that ends the turn (`/resolve-issue --resume <case>` continues), and an issue link that cannot be fetched. It does not reserve machines either: a target without a reservation is listed in the report as not tested.
 
 ## Who is who
 
@@ -108,8 +126,11 @@ Runtime data is in `.issue-pipeline/` at the repository root. The directory igno
 
     .issue-pipeline/
       cases/<case>/        status.json, issue.md, issue.notes.md, findings/, design.md, plan.md, feedback/, review/,
-                           tests.md, impl-report.md, gates/, report.md, pr-text.md, pr-description.md, outcome.md, run.jsonl
+                           tests.md, impl-report.md, gates/, hardware/, report.md, pr-text.md, pr-description.md,
+                           outcome.md, run.jsonl
       checkouts/<case>/    a clone of the base history only, without a remote, on the case branch
+      hardware/            local/: the checkout this host builds for Quasar runs; machines.txt: machine names the
+                           leak scan looks for
       budget/              one file per agent: tool calls, context size, model
       proposals/           papa's patches
       leak-patterns.txt    your own patterns for the leak scan, one regular expression per line
@@ -131,7 +152,8 @@ The clone starts from `base_ref` in `config.json`. Type checks and tests need th
 | `gates` | pre-commit, mypy, basedpyright, lib docs, device-free tests, on the committed state |
 | `scope-check` | changed files against the plan's `## Files` list |
 | `pr` | assembles the PR description, scans it, commits it with the issue and the design |
-| `guard` | a hook in each agent file and command file: writes, commands, reads and starts outside the limits are blocked, and an agent sees only its own case |
+| `hw-list`, `hw-test` | your reservations; the case's tests on hardware. Only the orchestrator runs them |
+| `guard` | a hook in each agent file and command file: writes, commands, reads and starts outside the limits are blocked, an agent sees only its own case, and a writing role runs only `test`, `commit`, `gates`, `env-check`, `scope-check` and `status` |
 | `guard-stop` | a Stop hook in the command files: an auto-mode session keeps working until its case is closed |
 | `build`, `finish` | copy or build the native module in the checkout; close an auto-mode case with the code that exists |
 

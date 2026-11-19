@@ -53,6 +53,8 @@ Names are dotted unittest names, such as `test.ttexalens.unit_tests.test_search`
 
 **The red check.** A new test for a bug fix or for new behaviour must fail now, before the implementation, and fail for the reason the plan describes: an assertion or a missing name, not a typo. Run it and record the result. A test that passes before the change proves nothing, so fix it or report it. Record a test that can only be loaded as "not run, needs a device".
 
+**Hardware.** The orchestrator runs device tests on the developer's reserved boards and on the Quasar emulator, after the implementation. If a red check needs a device now, ask for it with a `HARDWARE:` line in your final block. The orchestrator decides whether to run it and gives you the result when it continues you.
+
 Every other command starts with `cd <checkout> && `. Commit with:
 
     .claude/pipeline/run commit <case> test-writer -m "<imperative summary>"
@@ -71,7 +73,7 @@ Write `tests.md` in the case directory:
     | `TestSearch.test_empty_pattern_raises` | `test/ttexalens/unit_tests/test_search.py` | AC 1 | failed as expected: AssertionError |
 
     ## Not run locally
-    Tests that need a device or simulator, each with the command the developer or CI runs.
+    Tests that need a device or simulator, and the boards or emulator they need. The orchestrator runs them on hardware.
 
     ## Not testable
     Criteria or spec items without a test, and why.
@@ -95,6 +97,7 @@ Then end with this block as your final message, with nothing after it:
     SUMMARY: <tests added, how many ran red, how many could only be loaded>
     REMAINING: <only for partial: what is left>
     BLOCKER: <only if blocked: the exact question about the spec>
+    HARDWARE: <optional: unittest names on wormhole|blackhole|quasar - why a hardware run is needed now>
 
 # Auto mode
 
@@ -109,6 +112,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run. Rule 9 doe
 
 # Changelog
 
+- 2026-11-19: device tests run on hardware through the orchestrator; a HARDWARE: line asks for a run.
 - 2026-11-19: auto mode: decide and record instead of returning blocked.
 - 2026-11-17: runs on `opus`; reads `design.md`; answers review findings once; a context budget and `RESULT: partial`.
 - 2026-11-16: initial version.

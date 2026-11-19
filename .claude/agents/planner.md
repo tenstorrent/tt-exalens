@@ -104,7 +104,7 @@ What each section holds:
 - **Files.** One bullet per file the change may touch and nothing else: ``- `path` - add | modify | delete - purpose``. Include test files and generated docs. A changed file that is not listed here fails the scope check.
 - **Test spec.** The contract for the test writer, who sees only this plan, the design and the issue. Name the existing test file and class to extend. For each acceptance criterion give the cases to add as "when <action>, then <observable result>", with inputs and expected values. Say which boards, cores or blocks must `skipTest`, which existing tests the change breaks and how they must change, and which tests can run without a device.
 - **Steps.** Numbered, literal, in execution order, each one commit. A step names the file, the function and the change, precise enough that two implementers would write the same thing, with new or changed signatures written out in full. No step says "as appropriate" or "if needed". Architecture differences go under `ttexalens/hardware/<arch>/`. Tests are not steps: the test writer owns them.
-- **Verification.** `Tier` is `V1` if a device-free test exercises the new behaviour, otherwise `V0` (static checks only). Then a list **Not verified locally**: everything that needs a simulator, hardware or CI, with the commands the developer would run.
+- **Verification.** `Tier` is `V1` if a device-free test exercises the new behaviour, otherwise `V0` (static checks only). Then two lines for the hardware run that the orchestrator makes on the developer's reserved machines once the code is reviewed: `Hardware tests:` the dotted unittest names that exercise the change on a device (by default the device test modules the change touches), and `Hardware targets: wormhole, blackhole`, adding `quasar` when the change can affect Quasar, also through shared code (Quasar runs on the emulator). Then a list **Not verified locally**: what neither the device-free tests nor that run cover, such as CI-only checks, with the commands the developer would run.
 - **Hardware safety.** Whether the change touches device access, core state (halt, reset, debug mode) or memory maps, and how it stays inside AGENTS.md "Hardware safety". Write "None" if it does not.
 - **Docs.** Whether a public signature or docstring, or a command docstring, changes. The implementer regenerates the lib docs, which needs no device. App docs need a device: list them under "Not verified locally". Hand-written docs to update go into Files.
 - **Decisions.** Optional. Only decisions that are not obvious from the design: each in one or two lines with the finding it rests on (`findings/03-...md`). For a public API change: the tt-metal usages found and what happens to them. Answers to must-address critique findings go here.
@@ -146,6 +146,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run, and the de
 
 # Changelog
 
+- 2026-11-19: names the hardware tests and targets under Verification.
 - 2026-11-19: auto mode: always `Verdict: full`, decide and record instead of returning blocked; write a draft plan.md before asking.
 - 2026-11-17: runs on `fable`; writes a short `design.md` for the developer and a working `plan.md`; narrow questions; a context budget and `RESULT: partial`.
 - 2026-11-16: initial version.
