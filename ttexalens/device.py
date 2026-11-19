@@ -85,6 +85,52 @@ class TensixInstructions:
     def TT_OP_SHIFTXB(addr_mode, rot_shift, shift_row) -> int:
         raise NotImplementedError
 
+    @staticmethod
+    def TT_OP_SETC16(setc16_reg, setc16_value) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_SETDMAREG(Payload_SigSelSize, Payload_SigSel, SetSignalsMode, RegIndex16b) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_STOREIND(MemHierSel, SizeSel, RegSizeSel, OffsetIndex, AutoIncSpec, DataRegIndex, AddrRegIndex) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_SEMINIT(max_value, init_value, sem_sel) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_SEMPOST(sem_sel) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_SEMGET(sem_sel) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_SEMWAIT(stall_res, sem_sel, wait_sem_cond) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_ELWADD(clear_dvalid, dest_accum_en, instr_mod19, addr_mode, dst) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_SFPLOADI(lreg_ind, instr_mod0, imm16) -> int:
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_UNPACR_NOP(*args) -> int:
+        # Blackhole and Wormhole encode UNPACR_NOP with different operands.
+        raise NotImplementedError
+
+    @staticmethod
+    def TT_OP_PACR(*args) -> int:
+        # Blackhole and Wormhole encode PACR with different operands.
+        raise NotImplementedError
+
 
 #
 # Device class: generic API for talking to specific devices. This class is the parent of specific
