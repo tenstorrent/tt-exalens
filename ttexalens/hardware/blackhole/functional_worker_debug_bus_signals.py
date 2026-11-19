@@ -205,10 +205,10 @@ debug_bus_signal_map = {
     "tensix_frontend_t1_rq_head_rsrcs_rd_tdma": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x10),
     "tensix_frontend_t1_rq_head_rsrcs_wr_gpr": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x8),
     "tensix_frontend_t1_rq_head_rsrcs_rd_gpr": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x4),
-    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space_0_0": DebugBusSignalDescription(
+    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space/0": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=1, sig_sel=8, mask=0x80000000
     ),
-    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space_2_1": DebugBusSignalDescription(
+    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x3
     ),
     "tensix_frontend_t1_rq_head_rsrcs_cfg_state": DebugBusSignalDescription(
