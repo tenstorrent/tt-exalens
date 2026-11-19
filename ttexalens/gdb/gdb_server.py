@@ -410,7 +410,8 @@ class GdbServer(threading.Thread):
                 try:
                     buffer = bytearray(length)
                     self.current_process.mem_access.read(address, buffer)
-                    writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
+                    for byte in buffer:
+                        writer.append_hex(byte, 2)
                 except RestrictedMemoryAccessError as e:
                     util.ERROR(str(e), file=self.error_stream)
                     writer.append(b"E04")  # restricted memory access
@@ -452,18 +453,21 @@ class GdbServer(threading.Thread):
         elif parser.parse(b"p"):  # Read the value of register n; n is in hex.
             # ‘p n’
             register = parser.parse_hex()
-            if register is None or register < 0 or register > GdbServer.REGISTER_COUNT:
+            if register is None or register < 0 or register >= GdbServer.REGISTER_COUNT:
                 writer.append(b"E01")
             else:
                 assert self.current_process is not None, "Current process should not be None when reading registers"
                 value = self.current_process.risc_debug.read_gpr(register)
-                writer.append_hex(value, 8)
+                if register == 32 and self.current_process.risc_debug.read_status().is_ebreak_hit:
+                    # Report the ebreak address, the same pc that 'g' reports
+                    value -= 4
+                writer.append_register_hex(value)
         elif parser.parse(b"P"):  # Write register n… with value r….
             # ‘P n…=r…’
             register = parser.parse_hex()
             parser.parse(b"=")
-            value = parser.read_hex(8)
-            if register is None or value is None or register < 0 or register > GdbServer.REGISTER_COUNT:
+            value = parser.read_register_hex()
+            if register is None or value is None or register < 0 or register >= GdbServer.REGISTER_COUNT:
                 writer.append(b"E01")
             else:
                 assert self.current_process is not None, "Current process should not be None when writing registers"

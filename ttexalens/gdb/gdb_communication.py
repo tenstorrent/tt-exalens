@@ -282,7 +282,7 @@ class GdbMessageParser:
 
     def read_hex(self, length: int):
         number = 0
-        if self.position + length >= len(self.data):
+        if self.position + length > len(self.data):
             return None
         for _ in range(length):
             char = self.data[self.position]
