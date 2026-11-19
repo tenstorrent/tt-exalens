@@ -210,7 +210,14 @@ ElfVariable ElfVariable::dereference() const {
     std::vector<std::byte> bytes(*ptr_size);
     memory_access->read(address, bytes);
     uint64_t pointee = load_uint_le(bytes, *ptr_size);
-    return ElfVariable(std::move(deref_type), pointee, memory_access);
+    // A pointer held in a synthetic snapshot (a register or composite value)
+    // points into real memory, not into the snapshot.
+    std::shared_ptr<MemoryAccess> pointee_access = memory_access;
+    if (const auto* cached = dynamic_cast<const CachedReadMemoryAccess*>(memory_access.get());
+        cached != nullptr && cached->is_synthetic()) {
+        pointee_access = cached->get_base();
+    }
+    return ElfVariable(std::move(deref_type), pointee, std::move(pointee_access));
 }
 
 ElfVariable ElfVariable::get_index(int64_t i) const {
@@ -304,12 +311,14 @@ ElfVariable::Value ElfVariable::read_value() const {
             return std::string(reinterpret_cast<const char*>(bytes.data()), end);
         }
         // char* — follow the pointer, then read NUL-terminated bytes from it.
-        uint64_t pointee = dereference().get_address();
+        const ElfVariable pointee_variable = dereference();
+        const uint64_t pointee = pointee_variable.get_address();
+        const auto& pointee_access = pointee_variable.get_memory_access();
         std::string out;
         out.reserve(64);
         while (out.size() < kMaxCStringLength) {
             std::byte byte{0};
-            memory_access->read(pointee + out.size(), std::span<std::byte>(&byte, 1));
+            pointee_access->read(pointee + out.size(), std::span<std::byte>(&byte, 1));
             if (byte == std::byte{0}) {
                 break;
             }

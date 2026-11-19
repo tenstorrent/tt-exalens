@@ -829,9 +829,9 @@ static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool al
     if (const auto* a = die.get_attribute(DwarfAttributeTag::low_pc)) {
         addr = attr_as_uint(a);
     } else {
-        // Try a simple DW_OP_addr location: the byte stream is just
-        // `[0x03, addr_bytes...]`. Anything more elaborate (multi-op
-        // expressions, location lists) goes through Phase 5's evaluator.
+        // Try a simple DW_OP_addr location: the byte stream is exactly
+        // `[0x03, addr_bytes...]`. Anything more elaborate (trailing ops such
+        // as DW_OP_stack_value, location lists) goes through the evaluator.
         if (const DwarfAttribute* loc_attr = die.get_attribute(DwarfAttributeTag::location)) {
             const auto* bytes = std::get_if<std::vector<uint8_t>>(&loc_attr->get_value());
             if (bytes != nullptr && !bytes->empty() && (*bytes)[0] == DW_OP_addr) {
@@ -839,7 +839,7 @@ static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool al
                 DwarfErrorHandle error(dbg);
                 Dwarf_Half addr_size = 0;
                 if (dwarf_get_die_address_size(die, &addr_size, &error) == DW_DLV_OK &&
-                    bytes->size() >= static_cast<size_t>(1 + addr_size)) {
+                    bytes->size() == static_cast<size_t>(1 + addr_size)) {
                     uint64_t a = 0;
                     std::memcpy(&a, bytes->data() + 1, addr_size);
                     addr = a;
@@ -909,12 +909,14 @@ std::optional<uint64_t> DwarfDie::get_address() const {
     // linker-produced .symtab is the only place the address lives.
     if (const ElfSymbol* sym = find_symbol()) {
         // A STT_TLS symbol's value is its offset within the TLS block, not an
-        // absolute address. The runtime address is the containing section's VMA
-        // plus that offset.
+        // absolute address. The block starts at the TLS segment base.
         if (sym->type == ElfSymbolType::STT_TLS) {
-            if (auto info_ptr = info.lock()) {
-                return info_ptr->get_section_address(sym->section_index) + sym->value;
+            auto info_ptr = info.lock();
+            std::optional<uint64_t> tls_base = info_ptr ? info_ptr->get_tls_base() : std::nullopt;
+            if (!tls_base.has_value()) {
+                return std::nullopt;
             }
+            return *tls_base + sym->value;
         }
         return sym->value;
     }
@@ -1011,7 +1013,17 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
 
     // Static-storage variable (globals, file/function statics):
     // address is fixed at link time. memory_access alone is enough.
-    if (auto addr = get_address(); addr.has_value()) {
+    // Parameters and locals that are not `extern` live in the frame, so they
+    // must not fall back to a .symtab lookup by name: a same-named global
+    // would be read in their place.
+    auto parent = get_parent();
+    const DwarfDieTag parent_tag = parent ? parent->get_tag() : DwarfDieTag::compile_unit;
+    const bool frame_scoped = tag == DwarfDieTag::formal_parameter || tag == DwarfDieTag::template_value_parameter ||
+                              (tag == DwarfDieTag::variable && !has_attribute(DwarfAttributeTag::external) &&
+                               (parent_tag == DwarfDieTag::subprogram || parent_tag == DwarfDieTag::lexical_block ||
+                                parent_tag == DwarfDieTag::inlined_subroutine));
+    if (auto addr = frame_scoped ? get_address_recursed(*this, /*allow_recursion=*/true) : get_address();
+        addr.has_value()) {
         return ElfVariable(resolved, *addr, frame.get_memory_access());
     }
 
@@ -1026,9 +1038,9 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
     }
     // Literal value (DW_OP_stack_value / register-direct / composite via
     // DW_OP_piece): synthesise a backing buffer holding the materialised
-    // bytes and hand back a ElfVariable that reads from it. The frame's
-    // memory access stays the cache's base so that a materialised pointer or
-    // reference can still be dereferenced into live memory.
+    // bytes and hand back a ElfVariable that reads from it. The buffer has no
+    // device address, so it is marked synthetic: pointers read out of it are
+    // dereferenced into the frame's memory access, never back into the buffer.
     auto size_opt = resolved->get_size();
     if (!size_opt) {
         return std::nullopt;
@@ -1044,7 +1056,8 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
         uint64_t raw = *location->value;
         std::memcpy(bytes.data(), &raw, std::min(size, static_cast<uint64_t>(sizeof(raw))));
     }
-    auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(bytes), frame.get_memory_access());
+    auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(bytes), frame.get_memory_access(),
+                                                          /*synthetic=*/true);
     return ElfVariable(resolved, 0, std::move(cache));
 }
 

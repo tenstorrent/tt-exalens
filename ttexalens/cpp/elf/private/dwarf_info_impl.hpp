@@ -81,10 +81,10 @@ class DwarfInfoImpl : public std::enable_shared_from_this<DwarfInfoImpl> {
     const ElfSymbol* find_symbol_by_name(std::string_view name);
     const ElfSymbol* find_symbol_by_demangled_name(std::string_view demangled);
 
-    // Static VMA (sh_addr) of the section at the given st_shndx, or 0 when the
-    // index is out of range / the ELF is gone. Used to turn a STT_TLS symbol's
-    // TLS-block-relative value into an absolute address.
-    uint64_t get_section_address(uint16_t section_index);
+    // Start of the TLS block that STT_TLS symbol values are relative to (see
+    // ElfFileImpl::get_tls_base). Used to turn a STT_TLS symbol's value into
+    // an absolute address.
+    std::optional<uint64_t> get_tls_base();
 
    private:
     friend class ttexalens::native_elf::DwarfInfo;

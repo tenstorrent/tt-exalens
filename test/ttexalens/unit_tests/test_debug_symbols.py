@@ -295,7 +295,7 @@ class TestDebugSymbols(unittest.TestCase):
     def test_elf_thread_local_variable_low_level(self):
         # g_global_tls_struct lives in the per-RISC thread_local region. Its DIE
         # has no DW_AT_location, so its address is resolved from .symtab as the
-        # containing section's VMA plus the symbol's TLS-relative offset (STT_TLS
+        # TLS segment base plus the symbol's TLS-relative offset (STT_TLS
         # handling in the native ELF reader).
         variable_die = self.parsed_elf.find_die_by_name("g_global_tls_struct")
         assert variable_die is not None
