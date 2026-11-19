@@ -54,12 +54,16 @@ bool is_real_register(Dwarf_Unsigned reg) {
 // callee-saved registers should default to SameValue (preserved across the
 // call), only volatiles to Undefined.
 //
-// RISC-V psABI: x2 (sp), x3 (gp), x4 (tp), x8 (s0/fp), x9 (s1), x18..x27
-// (s2..s11). Other registers (ra, ta, ax, tx) are volatile.
+// RISC-V psABI: x3 (gp), x4 (tp), x8 (s0/fp), x9 (s1), x18..x27 (s2..s11).
+// Other registers (ra, ta, ax, tx) are volatile. x2 (sp) is preserved too, but
+// never through a register rule: a caller's sp is the callee's CFA, which
+// FrameInspection::read_register handles directly.
+constexpr uint16_t kStackPointerRegister = 2;
+
 bool is_callee_saved_register(uint16_t reg) {
-    if (reg == 2 || reg == 3 || reg == 4) return true;  // sp, gp, tp
-    if (reg == 8 || reg == 9) return true;              // s0, s1
-    if (reg >= 18 && reg <= 27) return true;            // s2..s11
+    if (reg == 3 || reg == 4) return true;    // gp, tp
+    if (reg == 8 || reg == 9) return true;    // s0, s1
+    if (reg >= 18 && reg <= 27) return true;  // s2..s11
     return false;
 }
 
@@ -153,7 +157,7 @@ std::optional<uint16_t> FrameDescription::get_return_address_register() const {
     return static_cast<uint16_t>(return_address_register);
 }
 
-std::optional<uint64_t> FrameDescription::compute_cfa(std::optional<uint64_t> inner_cfa) const {
+std::optional<uint64_t> FrameDescription::compute_cfa(const std::vector<FrameSnapshot>& inner_frames) const {
     auto info_ptr = info.lock();
     if (!info_ptr) {
         return std::nullopt;
@@ -167,29 +171,16 @@ std::optional<uint64_t> FrameDescription::compute_cfa(std::optional<uint64_t> in
         !is_real_register(cfa_rule.reg)) {
         return std::nullopt;
     }
-    const uint16_t cfa_register = static_cast<uint16_t>(cfa_rule.reg);
-    const int64_t cfa_offset = cfa_rule.offset;
 
-    // Top frame: register holds its live value.
-    if (!inner_cfa.has_value()) {
-        return memory_access->read_register(cfa_register) + cfa_offset;
-    }
-
-    // Non-top frame: does the current frame save the CFA-source register?
-    auto reg_rule = query_rule(info_ptr->dbg, fde, static_cast<Dwarf_Half>(cfa_register), pc);
-    const bool has_saved_rule =
-        reg_rule.status == DW_DLV_OK && reg_rule.value_type == DW_EXPR_OFFSET && reg_rule.offset_relevant != 0;
-    if (!has_saved_rule) {
-        return *inner_cfa + static_cast<uint64_t>(cfa_offset);
-    }
-
-    uint64_t address = *inner_cfa + static_cast<uint64_t>(reg_rule.offset);
-    auto saved = memory_access->try_read_word(address, info_ptr->pointer_size);
-
-    if (!saved.has_value()) {
+    // This frame's own CFI rule for the CFA-source register says where its
+    // caller's copy was saved, so it can't give this frame's value. That value
+    // comes from the frames this one called into, or is still live.
+    auto register_value =
+        FrameInspection(memory_access, std::nullopt, inner_frames).read_register(static_cast<int>(cfa_rule.reg));
+    if (!register_value.has_value()) {
         return std::nullopt;
     }
-    return *saved + static_cast<uint64_t>(cfa_offset);
+    return *register_value + static_cast<uint64_t>(cfa_rule.offset);
 }
 
 FrameInspection::FrameInspection(std::shared_ptr<MemoryAccess> memory_access, std::optional<FrameSnapshot> inspected,
@@ -213,6 +204,9 @@ std::optional<uint64_t> FrameInspection::read_register(int register_index) const
     // immediate-child-of-inspected last) to match the Python convention,
     // so we iterate it in reverse to start at the immediate child and
     // walk toward live.
+    if (reg == kStackPointerRegister && !inner_frames.empty()) {
+        return inner_frames.back().cfa;
+    }
     for (auto it = inner_frames.rbegin(); it != inner_frames.rend(); ++it) {
         const RegisterRule rule = it->fde.classify_register_rule(reg, it->cfa);
         if (rule.kind == RegisterRuleKind::Saved) {

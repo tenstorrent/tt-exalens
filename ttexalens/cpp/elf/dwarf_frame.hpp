@@ -19,6 +19,7 @@ class DwarfInfoImpl;
 }  // namespace details
 
 class MemoryAccess;
+struct FrameSnapshot;
 
 // Classification of a CFI rule for a single (register, PC) pair. Used when
 // walking the live frame outward to recover a callee-saved register's value
@@ -56,12 +57,12 @@ class FrameDescription {
     std::optional<uint64_t> read_register(uint16_t register_index, uint64_t cfa) const;
     std::optional<uint64_t> try_read_register(uint16_t register_index, std::optional<uint64_t> cfa) const;
 
-    // Computes this FDE's CFA at its PC. For the top frame (`inner_cfa`
-    // nullopt) reads the CFA-source register live; for any outer frame
-    // passes the inner frame's CFA so the CFI rule chain can be followed
-    // through any save/restore of the CFA-source register. Returns this
-    // FDE's frame CFA, not the inner frame's.
-    std::optional<uint64_t> compute_cfa(std::optional<uint64_t> inner_cfa = std::nullopt) const;
+    // Computes this FDE's CFA at its PC. The CFA rule is "register + offset";
+    // the register's value in this frame is recovered from the frames this
+    // frame called into (`inner_frames`, live first, immediate child last), the
+    // same way FrameInspection::read_register does. For the top frame
+    // `inner_frames` is empty and the live register is read.
+    std::optional<uint64_t> compute_cfa(const std::vector<FrameSnapshot>& inner_frames = {}) const;
 
     // Resolves the CFI rule for `register_index` at this frame's PC into one
     // of the four `RegisterRule` shapes. `cfa` must be the inspected frame's
@@ -107,6 +108,9 @@ struct FrameSnapshot {
 // of-inspected last. read_register walks the list in reverse — starting at
 // the immediate child and moving toward live — until a frame's CFI says it
 // saved the requested register; if none did, the live register is returned.
+// The stack pointer is the exception: CFI never saves it, because a frame's
+// sp at its call instruction is by definition the CFA of the frame it called,
+// so for an outer frame it is the immediate child's CFA.
 // For the top frame `inner_frames` is empty: the walk is a no-op and we
 // read the live register directly. The inspected frame's own CFI is
 // intentionally NOT consulted — it describes the caller's view, not this
