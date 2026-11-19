@@ -234,8 +234,10 @@ class TensixDebug:
             regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
 
             if regfile == REGFILE.SRCA:
+                # Save the even (address 0) and odd (address 2) columns of the Dst rows that MOVDBGA2D overwrites
+                # in two different LRegs, so that each half is written back to its own place.
                 self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
+                self.inject_instruction(ops.TT_OP_SFPLOAD(2, 0, 0, 2), thread_id)
                 self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
                 self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
             # elif regfile == REGFILE.SRCB:
@@ -255,7 +257,7 @@ class TensixDebug:
 
             if regfile == REGFILE.SRCA:
                 self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), thread_id)
+                self.inject_instruction(ops.TT_OP_SFPSTORE(2, 0, 0, 2), thread_id)
                 if row % 16 == 15:
                     self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), thread_id)
 
@@ -269,6 +271,8 @@ class TensixDebug:
     ) -> Sequence[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
+        Dumping SRCA clobbers LReg2 and LReg3 of the Vector Unit.
+        If the Dst data format is one this function cannot decode, the raw data is returned as hex strings.
 
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
@@ -277,7 +281,12 @@ class TensixDebug:
                 list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data) or num_tiles * TILE_SIZE for direct read.
         """
         regfile = convert_regfile(regfile)
-        df = TensixDataFormat(self.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc"))
+        raw_df = self.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        try:
+            df = TensixDataFormat(raw_df)
+        except ValueError:
+            WARN(f"Unknown data format {raw_df} in ALU_FORMAT_SPEC_REG2_Dstacc, returning raw data.")
+            return [hex(datum) for datum in self.read_regfile_data(regfile, TensixDataFormat.Invalid)]
 
         if not self._direct_dest_access_enabled(df, regfile) and num_tiles is not None:
             WARN("num_tiles argument only has effect for 32 bit formats on blackhole.")
@@ -308,6 +317,10 @@ class TensixDebug:
             WARN("The previous contents of DSTACC have been lost and should not be relied upon.")
         else:
             data = self.read_regfile_data(regfile, df, num_tiles)
+            if df == TensixDataFormat.Float32 and not self._direct_dest_access_enabled(df, regfile):
+                # Float32 decoding needs the upper and lower halves of each datum, which only the DSTACC reads collect.
+                WARN(f"Float32 data can be decoded only for DSTACC, returning raw {regfile.name} data.")
+                return [hex(datum) for datum in data]
         try:
             return (
                 unpack_data_direct_access(data, df, signed=signed)
