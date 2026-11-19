@@ -149,7 +149,8 @@ class GdbServer(threading.Thread):
                                 f"Could not get ELF path for {risc_debug.risc_location}, running without it:\n{traceback.format_exc()}"
                             )
                         elf_path = None
-                    if elf_path is not None and not risc_debug.is_in_reset():
+                    # Cores without an ELF loaded through ttexalens are debuggable too (with symbols from GDB)
+                    if not risc_debug.is_in_reset():
                         add_process(risc_debug, elf_path)
         self._last_available_processes = last_available_processes
         return available_processes

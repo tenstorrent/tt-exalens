@@ -11,6 +11,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.gdb.gdb_communication import ServerSocket
 from ttexalens.gdb.gdb_server import GdbServer
 from ttexalens.elf import CallstackEntry, DwarfFileLine
+from ttexalens.exceptions import TTException
 from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.tt_exalens_lib import check_context
 from ttexalens.util import DEBUG, TRACE
@@ -102,8 +103,8 @@ def get_callstack_entry(line: str) -> CallstackEntry:
     pattern = re.compile(
         r"#\d+\s+"  # Skip the frame number
         r"(?:(?P<pc>0x[0-9a-fA-F]+)\s+in\s+)?"  # Capture pc if available
-        r"(?P<function_name>\w+(::\w+)*)"  # Capture function name
-        r"(?:\s*\(.*?\))?"  # Ignore parentheses
+        r"(?P<function_name>.+?)"  # Capture function name (may hold template arguments, operator(), spaces)
+        r"(?:\s+\(.*\))?"  # Ignore the argument list, which GDB separates from the name with a space
         r"\s+at\s+"  # Skip at
         r"(?P<file_path>.*?):(?P<line>\d+)"  # Capture file path and line
     )
@@ -178,6 +179,14 @@ def get_gdb_callstack(
     process_ids = get_process_ids(gdb_server)
 
     try:
+        risc_location = RiscLocation(location, neo_id, risc_name)
+        pid = process_ids.get(risc_location)
+        if pid is None:
+            raise TTException(
+                f"GDB server does not expose {risc_location}: the core is in reset, or the server only exposes cores "
+                "with an ELF loaded through ttexalens (debug_only_with_elfs)."
+            )
+
         # Start GDB client
         gdb_client = subprocess.Popen(
             [get_gdb_client_path()],
@@ -193,7 +202,7 @@ def get_gdb_callstack(
 
         assert gdb_server.server.port is not None
         gdb_script = make_gdb_script_for_callstack(
-            process_ids[RiscLocation(location, neo_id, risc_name)],
+            pid,
             elf_paths,
             offsets,
             gdb_server.server.port,
