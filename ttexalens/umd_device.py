@@ -67,21 +67,27 @@ class UmdDevice:
             else [tt_umd.NocId.NOC0, tt_umd.NocId.NOC1]
         )
         result: list[list[list[tt_umd.CoreCoord | None]] | None] = [None] * (max(int(n) for n in supported_noc_ids) + 1)
-        for noc_id in supported_noc_ids:
-            UmdApi.select_noc_id(noc_id, arch)
-            noc_result: list[list[tt_umd.CoreCoord | None]] = []
-            for x in range(max_x):
-                row: list[tt_umd.CoreCoord | None] = []
-                for y in range(max_y):
-                    try:
-                        coords = soc_descriptor.translate_chip_coord_to_translated_coord(
-                            soc_descriptor.get_coord_at(tt_umd.tt_xy_pair(x, y), tt_umd.CoordSystem.NOC0)
-                        )
-                        row.append(coords)
-                    except Exception:
-                        row.append(None)
-                noc_result.append(row)
-            result[int(noc_id)] = noc_result
+        # Restore the thread's NOC selection afterwards, so later accesses keep using the session NOC
+        previous_noc_id = UmdApi.get_selected_noc_id()
+        try:
+            for noc_id in supported_noc_ids:
+                UmdApi.select_noc_id(noc_id, arch)
+                noc_result: list[list[tt_umd.CoreCoord | None]] = []
+                for x in range(max_x):
+                    row: list[tt_umd.CoreCoord | None] = []
+                    for y in range(max_y):
+                        try:
+                            coords = soc_descriptor.translate_chip_coord_to_translated_coord(
+                                soc_descriptor.get_coord_at(tt_umd.tt_xy_pair(x, y), tt_umd.CoordSystem.NOC0)
+                            )
+                            row.append(coords)
+                        except Exception:
+                            row.append(None)
+                    noc_result.append(row)
+                result[int(noc_id)] = noc_result
+        finally:
+            if previous_noc_id is not None:
+                UmdApi.select_noc_id(previous_noc_id, arch)
         return result
 
     @property
@@ -501,7 +507,8 @@ class UmdDevice:
             self.__reinit_device_after_sigbus()
             return self.read_firmware_telemetry_entry(noc_id, telemetry_tag)
         except Exception:
-            if not self._is_mmio_capable:
+            # Only remote devices talk over Ethernet, so only they can recover by switching Ethernet cores
+            if self.is_simulation or self._is_mmio_capable:
                 raise
             try:
                 if util.DEBUG_ENABLED:
@@ -533,7 +540,8 @@ class UmdDevice:
             self.__reinit_device_after_sigbus()
             return self.get_firmware_version(noc_id)
         except Exception:
-            if not self._is_mmio_capable:
+            # Only remote devices talk over Ethernet, so only they can recover by switching Ethernet cores
+            if self.is_simulation or self._is_mmio_capable:
                 raise
             try:
                 if util.DEBUG_ENABLED:
