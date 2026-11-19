@@ -67,28 +67,10 @@ def unpack_bfp16(data):
 
 
 def bfp8_to_float_block(exponent, bfp8_mantissas):
-    bfloat16_values = []
-    exponent = exponent - 127
-    for mantissa in bfp8_mantissas:
-        sign_mantissa = str(format(mantissa, "08b"))
-        sign = int(sign_mantissa[0], 2)
-        mantissa_value = sign_mantissa[1:]
-        int_part = mantissa_value[: exponent + 1]
-        fract_part = mantissa_value[exponent + 1 :]
-
-        if len(int_part) != 0:
-            int_value = int(int_part, 2)
-        else:
-            int_value = 0
-
-        fract_value = 0
-        for i in range(len(fract_part)):
-            if fract_part[i] == "1":
-                fract_value += 1 / (2 ** (i + 1))
-
-        bfloat16_values.append(((-1) ** sign) * (int_value + fract_value))
-
-    return bfloat16_values
+    # Each mantissa byte is a sign bit followed by seven magnitude bits, the first of which is worth 1,
+    # so a byte of 0x40 under a shared exponent of 127 is 1.0.
+    scale = 2.0 ** (exponent - 127) / 64
+    return [(-1) ** (mantissa >> 7) * (mantissa & 0x7F) * scale for mantissa in bfp8_mantissas]
 
 
 def unpack_bfp8_b(data):
@@ -186,8 +168,9 @@ def unpack_value_direct_access(value: int, df: TensixDataFormat, signed: bool) -
         return value
     # Same as for INT32/UINT32
     elif df == TensixDataFormat.Int8 and signed:
-        # Since 1-byte integers are stored in 32-bit mode sign bit is in MSB, bytes look like this: 0x80 0x00 0x00 value
-        return (value & 0x000000FF) - 0x80 if value & 0x80000000 else value
+        # 1-byte integers are stored in 32-bit mode as sign/magnitude: sign bit in MSB, magnitude in the low byte,
+        # so -1 looks like this: 0x80 0x00 0x00 0x01
+        return -(value & 0x7FFFFFFF) if value & 0x80000000 else value
     elif df == TensixDataFormat.Int8 and not signed:
         return value
     else:
@@ -207,15 +190,16 @@ def pack_value_direct_access(value: int | float, df: TensixDataFormat) -> int:
     elif df == TensixDataFormat.Int32:
         if value < -(2**31) or value > 2**31 - 1:
             raise ValueError(f"Value {value} is out of range for Int32.")
-        return int(value) if value >= 0 else int(value) + 0x100000000
+        return int(value) & 0xFFFFFFFF
     elif df == TensixDataFormat.UInt32:
         if value < 0 or value > 2**32 - 1:
             raise ValueError(f"Value {value} is out of range for UInt32.")
         return int(value)
     elif df == TensixDataFormat.Int8:
-        if value < -(2**7) or value > 2**7 - 1:
+        # Stored as sign/magnitude (see unpack_value_direct_access), which has no -128.
+        if value <= -(2**7) or value > 2**7 - 1:
             raise ValueError(f"Value {value} is out of range for Int8.")
-        return int(value) if value >= 0 else 0x80000000 | (int(value) + 0x80)
+        return int(value) if int(value) >= 0 else 0x80000000 | -int(value)
     elif df == TensixDataFormat.UInt8:
         if value < 0 or value > 2**8 - 1:
             raise ValueError(f"Value {value} is out of range for UInt8.")
