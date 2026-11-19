@@ -595,7 +595,7 @@ Writes a 32-bit word to the specified RISC-V core's private memory.
 ## get_tensix_state
 
 ```
-get_tensix_state(location: str | OnChipCoordinate, l1_address: int | None = None, device_id: int = 0, context: Context | None = None) -> TensixState
+get_tensix_state(location: str | OnChipCoordinate, l1_address: int | None = None, neo_id: int | None = None, device_id: int = 0, context: Context | None = None) -> TensixState
 ```
 
 
@@ -604,16 +604,13 @@ get_tensix_state(location: str | OnChipCoordinate, l1_address: int | None = None
 Gets the tensix state for the given device and location.
 Args:
 location (str | OnChipCoordinate): Either X-Y (noc0/translated) or X,Y (logical) location on chip in string format, dram channel (e.g. ch3, d0,0), or OnChipCoordinate object.
-l1_address (int, optional): L1 address to use for reading debug bus signals atomically. If None, debug bus signals are read unsafely.
+l1_address (int, optional): L1 address to use for reading debug bus signals atomically. If None, debug bus signals are read unsafely. Not supported on Quasar.
+neo_id (int | None, optional): NEO ID of the Tensix. Required on Quasar.
 device_id (int, default 0):     ID number of device to read from.
 context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
 Returns:
-TensixState: Tensix state for the given device and location.
+TensixState: Tensix state for the given device and location, as the architecture's subclass (WormholeTensixState, BlackholeTensixState or QuasarTensixState).
 
-
-
-
-## TensixState
 
 
 

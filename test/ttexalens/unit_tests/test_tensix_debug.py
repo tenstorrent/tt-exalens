@@ -222,3 +222,114 @@ class TestTensixDebug(unittest.TestCase):
             self.assertEqual(self._read_signal(f"rwc{thread_id}_srca"), rwc_a[thread_id])
             self.assertEqual(self._read_signal(f"rwc{thread_id}_srcb"), rwc_b[thread_id])
             self.assertEqual(self._read_signal(f"rwc{thread_id}_dst"), rwc_dst[thread_id])
+
+    @parameterized.expand(
+        [
+            # (register, SETDVALID / CLEARDVALID operand bit, signal names without the group prefix)
+            (
+                "srca",
+                0x1,
+                "unpacker0_srca_bank",
+                "mxu_srca_bank",
+                ["srca_srca_bank0_mxu_allowed", "srca_bank1_mxu_allowed"],
+                "srca_mxu_allowed",
+                "srca_unpacker0_allowed",
+            ),
+            (
+                "srcb",
+                0x2,
+                "unpacker1_srcb_bank",
+                "mxu_srcb_bank",
+                ["srcb_bank0_mxu_allowed", "srcb_bank1_mxu_allowed"],
+                "srcb_mxu_allowed",
+                "srcb_unpacker1_allowed",
+            ),
+        ]
+    )
+    def test_src_access_control_signals(
+        self,
+        _register: str,
+        operand: int,
+        unpacker_bank: str,
+        mxu_bank: str,
+        bank_mxu_allowed: list[str],
+        mxu_allowed: str,
+        unpacker_allowed: str,
+    ):
+        """SETDVALID gives the unpacker's bank to the matrix unit and CLEARDVALID gives the matrix unit's bank back.
+        The access control signals of SrcA and of SrcB must follow both."""
+        prefix = "srca_srcb_access_control_"
+        if prefix + unpacker_bank not in self.debug_bus.signal_names:
+            self.skipTest("Debug bus has no SrcA/SrcB access control signals on this device.")
+        ops = self.location.device.instructions
+
+        def read(signal_name: str) -> int:
+            return self._read_signal(prefix + signal_name)
+
+        # State of the register: (unpacker's bank, matrix unit's bank, bank 0 given, bank 1 given),
+        # where "given" means that the matrix unit is allowed to use the bank.
+        def read_state() -> tuple[int, int, int, int]:
+            return (read(unpacker_bank), read(mxu_bank), read(bank_mxu_allowed[0]), read(bank_mxu_allowed[1]))
+
+        def state_after(state: tuple[int, int, int, int], instruction: str) -> tuple[int, int, int, int]:
+            unpacker, mxu, *given = state
+            if instruction == "SETDVALID":
+                given[unpacker] = 1
+                unpacker ^= 1
+            else:
+                given[mxu] = 0
+                mxu ^= 1
+            return (unpacker, mxu, given[0], given[1])
+
+        def inject(instruction: str):
+            op = ops.TT_OP_SETDVALID(operand) if instruction == "SETDVALID" else ops.TT_OP_CLEARDVALID(operand, 0)
+            self.tensix_debug.inject_instruction(op, 0)
+
+        def go_to(target: tuple[int, int, int, int]):
+            """Injects the shortest sequence of instructions that takes the register to the target state."""
+            paths: dict[tuple[int, int, int, int], list[str]] = {read_state(): []}
+            queue = list(paths)
+            while queue and target not in paths:
+                state = queue.pop(0)
+                for instruction in ("SETDVALID", "CLEARDVALID"):
+                    if instruction == "SETDVALID" and state[2 + state[0]]:
+                        continue  # SETDVALID waits while the matrix unit holds the unpacker's bank.
+                    next_state = state_after(state, instruction)
+                    if next_state not in paths:
+                        paths[next_state] = paths[state] + [instruction]
+                        queue.append(next_state)
+            # The only states that cannot be reached are the two in which the unpacker waits for a bank
+            # that the matrix unit, being on the other bank, never gives back.
+            for instruction in paths.get(target, []):
+                inject(instruction)
+
+        # Leave the register as it was found, also if a check fails.
+        initial_state = read_state()
+        self.addCleanup(go_to, initial_state)
+
+        def check(state: tuple[int, int, int, int], step: str):
+            unpacker, mxu, *given = state
+            expected = {
+                unpacker_bank: unpacker,
+                mxu_bank: mxu,
+                bank_mxu_allowed[0]: given[0],
+                bank_mxu_allowed[1]: given[1],
+                mxu_allowed: given[mxu],
+                unpacker_allowed: 1 - given[unpacker],
+            }
+            actual = {signal_name: read(signal_name) for signal_name in expected}
+            self.assertEqual(actual, expected, f"after {step}")
+
+        # Start with both banks given back.
+        state = initial_state
+        while state[2] or state[3]:
+            inject("CLEARDVALID")
+            state = state_after(state, "CLEARDVALID")
+        check(state, "giving back both banks")
+
+        # Two rounds, so that each bank is given and given back once.
+        for round_id in range(2):
+            for instruction in ("SETDVALID", "CLEARDVALID"):
+                inject(instruction)
+                state = state_after(state, instruction)
+                check(state, f"{instruction}, round {round_id}")

@@ -846,19 +846,18 @@ debug_bus_signal_map = {
     "l1_addr_access_p1/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=8, sig_sel=2, mask=0x3),
     "l1_addr_access_p1/0": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=2, mask=0xFFFE0000),
     "l1_addr_access_p0": DebugBusSignalDescription(rd_sel=0, daisy_sel=8, sig_sel=2, mask=0x1FFFF),
+    # The SrcB fields are bits 15:0 of rd_sel 3, in the same order as the SrcA fields in bits 31:16 of rd_sel 2.
     "srca_srcb_access_control_unpacker1_srcb_bank": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x40000
-    ),
-    "srca_srcb_access_control_mxu_srcb_bank": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x10000),
-    "srca_srcb_access_control_srcb_bank0_mxu_allowed": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x8000
-    ),
-    "srca_srcb_access_control_srcb_bank1_mxu_allowed": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x4000
     ),
-    "srca_srcb_access_control_srcb_mxu_allowed": DebugBusSignalDescription(
-        rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x2000
+    "srca_srcb_access_control_mxu_srcb_bank": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x1000),
+    "srca_srcb_access_control_srcb_bank0_mxu_allowed": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x800
     ),
+    "srca_srcb_access_control_srcb_bank1_mxu_allowed": DebugBusSignalDescription(
+        rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x400
+    ),
+    "srca_srcb_access_control_srcb_mxu_allowed": DebugBusSignalDescription(rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x20),
     "srca_srcb_access_control_srcb_unpacker1_allowed": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=6, sig_sel=9, mask=0x10
     ),

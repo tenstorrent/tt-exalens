@@ -20,7 +20,10 @@ from ttexalens.hardware.blackhole.security_block import BlackholeSecurityBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription
 from ttexalens.hardware.blackhole.tensix_data_formats import BlackholeDataFormat
-from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
+from ttexalens.hardware.blackhole.tensix_register_description import (
+    BlackholeTensixRegisterDescription,
+    BlackholeTensixState,
+)
 from ttexalens.umd_device import UmdDevice
 import ttexalens.util as util
 from ttexalens.device import TensixInstructions, Device
@@ -85,6 +88,9 @@ class BlackholeDevice(Device):
 
     def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
         return tensix_debug_bus_description
+
+    def get_tensix_state_type(self) -> type[BlackholeTensixState]:
+        return BlackholeTensixState
 
     def get_data_format_type(self) -> type[BlackholeDataFormat]:
         return BlackholeDataFormat

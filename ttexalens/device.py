@@ -20,7 +20,11 @@ from ttexalens.firmware_telemetry import FirmwareTelemetry
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
-from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription, TensixRegisterDescription
+from ttexalens.hardware.tensix_registers_description import (
+    TensixDebugBusDescription,
+    TensixRegisterDescription,
+    TensixState,
+)
 from ttexalens.umd_device import UmdDevice, TimeoutDeviceRegisterError
 from ttexalens import util as util
 
@@ -571,6 +575,10 @@ class Device:
 
     @abstractmethod
     def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
+        pass
+
+    @abstractmethod
+    def get_tensix_state_type(self) -> type[TensixState]:
         pass
 
     @abstractmethod

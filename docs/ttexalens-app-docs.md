@@ -106,23 +106,23 @@ Output:
 ```
 Reading from device 0
 Sampling for 0.15625 seconds...
-1-2 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 17415 times
+1-2 (0,0) (l1) 0x00000000 (0) => 0x00001234 (4660) - 17101 times
 Sampling for 0.15625 seconds...
-1-2 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 17551 times
+1-2 (0,0) (l1) 0x00000004 (4) => 0x00001234 (4660) - 17308 times
 Sampling for 0.15625 seconds...
-1-2 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 17228 times
+1-2 (0,0) (l1) 0x00000008 (8) => 0x00001234 (4660) - 17378 times
 Sampling for 0.15625 seconds...
-1-2 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 17161 times
+1-2 (0,0) (l1) 0x0000000c (12) => 0x00001234 (4660) - 17326 times
 Sampling for 0.15625 seconds...
-1-2 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 17588 times
+1-2 (0,0) (l1) 0x00000010 (16) => 0x00001234 (4660) - 17100 times
 Sampling for 0.15625 seconds...
-1-2 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 17624 times
+1-2 (0,0) (l1) 0x00000014 (20) => 0x00001234 (4660) - 17526 times
 Sampling for 0.15625 seconds...
-1-2 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 17614 times
+1-2 (0,0) (l1) 0x00000018 (24) => 0x00001234 (4660) - 17384 times
 Sampling for 0.15625 seconds...
-1-2 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 17541 times
+1-2 (0,0) (l1) 0x0000001c (28) => 0x00001234 (4660) - 17653 times
 Sampling for 0.15625 seconds...
-1-2 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 17489 times
+1-2 (0,0) (l1) 0x00000020 (32) => 0x00001234 (4660) - 17432 times
 Sampling for 0.15625 seconds...
 ...
 ```
@@ -331,9 +331,9 @@ There are matches remaining. To see more results, increase the --max value.
 ╭────────────────┬───────────────────────┬────────────╮
 │ Group          │ Name                  │ Value      │
 ├────────────────┼───────────────────────┼────────────┤
-│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x258      │
-│ brisc_group_a  │ brisc_pc              │ 0x254      │
-│ brisc_group_b  │ brisc_id_ex_pc        │ 0x244      │
+│ brisc_group_a  │ brisc_dbg_obs_cmt_pc  │ 0x240      │
+│ brisc_group_a  │ brisc_pc              │ 0x248      │
+│ brisc_group_b  │ brisc_id_ex_pc        │ 0x24c      │
 │ ncrisc_group_a │ ncrisc_dbg_obs_cmt_pc │ 0x32951492 │
 │ ncrisc_group_b │ ncrisc_id_ex_pc       │ 0x3a2b1c3f │
 ╰────────────────┴───────────────────────┴────────────╯
@@ -392,16 +392,16 @@ Output:
 ╭────────────────────────┬──────────────────────────────────────────────────╮
 │ Name                   │ Value                                            │
 ├────────────────────────┼──────────────────────────────────────────────────┤
-│ brisc_dbg_obs_cmt_pc   │ [0x240, 0x244, 0x250, 0x240]                     │
-│ brisc_dbg_obs_cmt_vld  │ [False, False, True, False]                      │
+│ brisc_dbg_obs_cmt_pc   │ [0x244, 0x24c, 0x25c, 0x244]                     │
+│ brisc_dbg_obs_cmt_vld  │ [False, True, False, False]                      │
 │ brisc_dbg_obs_mem_addr │ [0x3fb00fe8, 0x3fb00fe8, 0x3fb00fe8, 0x3fb00fe8] │
 │ brisc_dbg_obs_mem_rden │ [False, False, False, False]                     │
-│ brisc_i_instrn         │ [0xc7b7, 0x0, 0xf037b3, 0xc7b7]                  │
+│ brisc_i_instrn         │ [0x0, 0xf707b3, 0x0, 0x0]                        │
 │ brisc_i_instrn_req_rtr │ [True, True, True, True]                         │
-│ brisc_i_instrn_vld     │ [True, False, True, True]                        │
-│ brisc_o_instrn_addr    │ [0x244, 0x24c, 0x258, 0x244]                     │
+│ brisc_i_instrn_vld     │ [False, True, False, False]                      │
+│ brisc_o_instrn_addr    │ [0x24c, 0x254, 0x260, 0x24c]                     │
 │ brisc_o_instrn_req     │ [False, False, False, False]                     │
-│ brisc_pc               │ [0x240, 0x244, 0x250, 0x240]                     │
+│ brisc_pc               │ [0x244, 0x24c, 0x25c, 0x244]                     │
 ╰────────────────────────┴──────────────────────────────────────────────────╯
 
 ```
@@ -416,8 +416,8 @@ Output:
 ╭──────────────────────┬───────╮
 │ Name                 │ Value │
 ├──────────────────────┼───────┤
-│ brisc_dbg_obs_cmt_pc │ 0x250 │
-│ brisc_pc             │ 0x250 │
+│ brisc_dbg_obs_cmt_pc │ 0x254 │
+│ brisc_pc             │ 0x254 │
 ╰──────────────────────┴───────╯
 
 ```
@@ -775,8 +775,8 @@ Prints the tensix state group of the given name, at the specified location and d
 
 ### Options
 
-- `group`: Tensix state group to dump. Options: [all, alu, pack, unpack, gpr, rwc, adc]
-- `-t` = **\<thread-id\>**: Thread ID. Options: [0, 1, 2] Default: all (only for gpr group)
+- `group`: Tensix state group to dump. Options: [all, alu, pack, unpack, gpr, rwc, adc, bfd, addr_mod, dest, src, sfpu, global]. Groups bfd, addr_mod, dest, src, sfpu and global are available only on Quasar.
+- `-t` = **\<thread-id\>**: Thread IDs, comma separated. Default: all threads (only for gpr group)
 - `-a` = **\<l1-address\>**: L1 address to save group data. Only used for RWC and ADC groups.
 
 
@@ -1760,23 +1760,23 @@ Output:
 
 === Perf Counter Read: chip=0 core=1-2 (0,0) ===
 
-                           FPU                                                      INSTRN_THREAD
-╭─────┬────────────────────┬────────────────┬───────────╮  ╭─────┬───────────────────────────┬────────────────┬───────────╮
-│ ID  │ Counter            │ Value          │ ref_cnt   │  │ ID  │ Counter                   │ Value          │ ref_cnt   │
-├─────┼────────────────────┼────────────────┼───────────┤  ├─────┼───────────────────────────┼────────────────┼───────────┤
-│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 170458468 │  │ 0   │ cfg_instrn[0]             │ 0 (0x00000000) │ 170530407 │
-│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 170487541 │  │ 1   │ cfg_instrn[1]             │ 0 (0x00000000) │ 170556378 │
-│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 170514767 │  │ 2   │ cfg_instrn[2]             │ 0 (0x00000000) │ 170583251 │
-╰─────┴────────────────────┴────────────────┴───────────╯  │ 4   │ sync_instrn[0]            │ 0 (0x00000000) │ 170609759 │
-                                                           │ 5   │ sync_instrn[1]            │ 0 (0x00000000) │ 170636013 │
-                                                           │ 6   │ sync_instrn[2]            │ 0 (0x00000000) │ 170662434 │
-                                                           │ 8   │ thcon_instrn[0]           │ 0 (0x00000000) │ 170688888 │
-                                                           │ 9   │ thcon_instrn[1]           │ 0 (0x00000000) │ 170715197 │
-                                                           │ 10  │ thcon_instrn[2]           │ 0 (0x00000000) │ 170742847 │
-                                                           │ 12  │ xsrch_instrn[0]           │ 0 (0x00000000) │ 170768761 │
-                                                           │ 13  │ xsrch_instrn[1]           │ 0 (0x00000000) │ 170795043 │
-                                                           │ 14  │ xsrch_instrn[2]           │ 0 (0x00000000) │ 170821575 │
-                                                           │ 16  │ instissue_instrn[0]       │ 0 (0x00000000) │ 170847842 │
+                           FPU                                                           INSTRN_THREAD                            ...
+╭─────┬────────────────────┬────────────────┬───────────╮       ╭─────┬───────────────────────────┬────────────────┬───────────╮ ╭...
+│ ID  │ Counter            │ Value          │ ref_cnt   │       │ ID  │ Counter                   │ Value          │ ref_cnt   │ │...
+├─────┼────────────────────┼────────────────┼───────────┤       ├─────┼───────────────────────────┼────────────────┼───────────┤ ├...
+│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 187793362 │       │ 0   │ cfg_instrn[0]             │ 0 (0x00000000) │ 187867153 │ │...
+│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 187822573 │       │ 1   │ cfg_instrn[1]             │ 0 (0x00000000) │ 187893967 │ │...
+│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 187851137 │       │ 2   │ cfg_instrn[2]             │ 0 (0x00000000) │ 187920651 │ │...
+╰─────┴────────────────────┴────────────────┴───────────╯       │ 4   │ sync_instrn[0]            │ 0 (0x00000000) │ 187947619 │ │...
+                                                                │ 5   │ sync_instrn[1]            │ 0 (0x00000000) │ 187974533 │ │...
+                                                                │ 6   │ sync_instrn[2]            │ 0 (0x00000000) │ 188001204 │ │...
+                                                                │ 8   │ thcon_instrn[0]           │ 0 (0x00000000) │ 188027153 │ │...
+                                                                │ 9   │ thcon_instrn[1]           │ 0 (0x00000000) │ 188052902 │ │...
+                                                                │ 10  │ thcon_instrn[2]           │ 0 (0x00000000) │ 188079532 │ │...
+                                                                │ 12  │ xsrch_instrn[0]           │ 0 (0x00000000) │ 188105588 │ │...
+                                                                │ 13  │ xsrch_instrn[1]           │ 0 (0x00000000) │ 188131682 │ │...
+                                                                │ 14  │ xsrch_instrn[2]           │ 0 (0x00000000) │ 188157670 │ │...
+                                                                │ 16  │ instissue_instrn[0]       │ 0 (0x00000000) │ 188184147 │ ╰...
 ...
 ```
 Command:
@@ -1803,9 +1803,9 @@ Output:
 ╭─────┬────────────────────┬────────────────┬───────────╮
 │ ID  │ Counter            │ Value          │ ref_cnt   │
 ├─────┼────────────────────┼────────────────┼───────────┤
-│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 588271187 │
-│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 588299662 │
-│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 588326523 │
+│ 0   │ fpu_op_valid       │ 0 (0x00000000) │ 642955985 │
+│ 1   │ sfpu_op_valid      │ 0 (0x00000000) │ 642987168 │
+│ 257 │ fpu_or_sfpu_instrn │ 0 (0x00000000) │ 643015928 │
 ╰─────┴────────────────────┴────────────────┴───────────╯
 
 ```
