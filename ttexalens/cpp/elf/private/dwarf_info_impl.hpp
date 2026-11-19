@@ -74,6 +74,9 @@ class DwarfInfoImpl : public std::enable_shared_from_this<DwarfInfoImpl> {
 
     Dwarf_Debug get_dbg() const { return dbg; }
 
+    // The ELF file this DWARF info was read from, or null once it is gone.
+    std::shared_ptr<ElfFileImpl> lock_elf() const { return elf_impl.lock(); }
+
     DwarfDiePtr register_die(DwarfDieHandle handle);
     DwarfDiePtr get_or_create_die(Dwarf_Off offset);
     DwarfDiePtr find_parent(Dwarf_Off target_offset);

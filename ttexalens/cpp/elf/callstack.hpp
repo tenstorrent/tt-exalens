@@ -24,6 +24,8 @@ class ElfFile;
 struct CallstackEntryVariable {
     DwarfDiePtr die;
     std::optional<ElfVariable> value;
+    // Keeps the ELF file that owns `die` alive.
+    std::shared_ptr<const void> elf_owner;
 };
 
 // One entry on a callstack. `function_name` is the DIE's qualified path (nullopt

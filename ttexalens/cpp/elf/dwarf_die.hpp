@@ -182,6 +182,13 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     // DwarfInfoImpl that owns it, so the CU stays valid while it is held.
     std::shared_ptr<const DwarfCompileUnit> get_cu() const;
 
+    // Returns a reference that keeps the ELF file this DIE was read from
+    // alive (null once the ELF file is gone). DIEs are cached by the ELF file,
+    // so they cannot hold it themselves; objects handed out to callers that
+    // outlive the lookup (variables, frame descriptions, callstack entries)
+    // hold this instead.
+    std::shared_ptr<const void> get_elf_owner() const;
+
     // Lazily reads DW_AT_name off this DIE. First call invokes dwarf_diename
     // and caches the result; later calls return the cached view. Returns an
     // empty view when the DIE has no name attribute.

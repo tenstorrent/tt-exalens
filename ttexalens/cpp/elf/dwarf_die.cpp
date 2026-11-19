@@ -393,6 +393,14 @@ std::shared_ptr<const DwarfCompileUnit> DwarfDie::get_cu() const {
     return std::shared_ptr<const DwarfCompileUnit>(std::move(info_ptr), cu);
 }
 
+std::shared_ptr<const void> DwarfDie::get_elf_owner() const {
+    auto info_ptr = info.lock();
+    if (!info_ptr) {
+        return nullptr;
+    }
+    return info_ptr->lock_elf();
+}
+
 DwarfDiePtr DwarfDie::get_resolved_type() const {
     auto current = std::const_pointer_cast<DwarfDie>(shared_from_this());
     while (current) {

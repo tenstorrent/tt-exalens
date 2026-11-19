@@ -3,6 +3,7 @@
 
 #include <nanobind/make_iterator.h>
 #include <nanobind/nanobind.h>
+#include <nanobind/ndarray.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/shared_ptr.h>
 #include <nanobind/stl/string.h>
@@ -56,15 +57,14 @@ void bind_elf_file(nb::module_& m) {
         .def_prop_ro(
             "data",
             [](const ElfSection& s) {
+                // The bytes belong to the ElfFile. The memoryview's owner is
+                // this ElfSection object, which keeps its ElfFile alive.
                 std::span<const std::byte> sp = s.data();
-                PyObject* mv = PyMemoryView_FromMemory(const_cast<char*>(reinterpret_cast<const char*>(sp.data())),
-                                                       static_cast<Py_ssize_t>(sp.size()), PyBUF_READ);
-                if (mv == nullptr) {
-                    throw nb::python_error();
-                }
-                return nb::steal<nb::object>(mv);
+                const size_t shape[1] = {sp.size()};
+                nb::ndarray<nb::memview, const uint8_t, nb::ndim<1>> view(sp.data(), 1, shape, nb::find(&s));
+                return view.cast();
             },
-            nb::rv_policy::reference_internal, nb::sig("def data(self) -> memoryview"));
+            nb::sig("def data(self) -> memoryview"));
 
     nb::enum_<ElfSymbolType>(m, "ElfSymbolType")
         .value("STT_NOTYPE", ElfSymbolType::STT_NOTYPE)
@@ -147,12 +147,13 @@ void bind_elf_file(nb::module_& m) {
                     nb::type<ElfSection>(), "ElfSectionIterator", ElfSectionIterator(&self, 0),
                     ElfSectionIterator(&self, self.get_sections_count()));
             },
-            nb::rv_policy::reference_internal)
+            nb::rv_policy::reference_internal, nb::keep_alive<0, 1>())
         .def("get_frame_description", &ElfFile::get_frame_description, nb::arg("pc"), nb::arg("memory_access"),
              nb::call_guard<nb::gil_scoped_release>(), nb::rv_policy::reference_internal)
         .def("find_symbol_by_name", &ElfFile::find_symbol_by_name, nb::arg("name"), nb::rv_policy::reference_internal,
              nb::sig("def find_symbol_by_name(self, name: str) -> ElfSymbol | None"))
-        .def("find_die_by_name", &ElfFile::find_die_by_name, nb::arg("name"), nb::rv_policy::reference_internal)
+        .def("find_die_by_name", &ElfFile::find_die_by_name, nb::arg("name"), nb::rv_policy::reference_internal,
+             nb::keep_alive<0, 1>())
         .def("get_enum_value", &ElfFile::get_enum_value, nb::arg("name"))
         .def("get_constant", &ElfFile::get_constant, nb::arg("name"))
         .def("get_global", &ElfFile::get_global, nb::arg("name"), nb::arg("memory_access"),

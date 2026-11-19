@@ -30,7 +30,7 @@ void bind_dwarf_info(nb::module_& m) {
                 return nb::make_iterator<nb::rv_policy::reference_internal>(
                     nb::type<DwarfInfo>(), "DwarfCompileUnitIterator", units.begin(), units.end());
             },
-            nb::rv_policy::reference_internal)
+            nb::rv_policy::reference_internal, nb::keep_alive<0, 1>())
         .def("find_file_line_by_address", &DwarfInfo::find_file_line_by_address, nb::arg("address"))
         .def(
             "get_die_by_name",
@@ -38,11 +38,11 @@ void bind_dwarf_info(nb::module_& m) {
                std::optional<std::function<bool(const DwarfDiePtr&)>> filter) {
                 return self.get_die_by_name(name, filter ? *filter : std::function<bool(const DwarfDiePtr&)>{});
             },
-            nb::arg("name"), nb::arg("filter") = nb::none(), nb::rv_policy::reference_internal,
+            nb::arg("name"), nb::arg("filter") = nb::none(), nb::rv_policy::reference_internal, nb::keep_alive<0, 1>(),
             nb::sig("def get_die_by_name(self, name: str, filter: collections.abc.Callable[[DwarfDie], bool] | None = "
                     "None) -> DwarfDie | None"))
         .def("find_function_by_address", &DwarfInfo::find_function_by_address, nb::arg("address"),
-             nb::rv_policy::reference_internal,
+             nb::rv_policy::reference_internal, nb::keep_alive<0, 1>(),
              nb::sig("def find_function_by_address(self, address: int) -> DwarfDie | None"))
         // nb::rv_policy::reference_internal: the returned FrameDescription holds a raw
         // Dwarf_Fde owned by self (DwarfInfo). Tie its Python-side
