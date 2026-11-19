@@ -138,7 +138,7 @@ class ElfFile {
     // sites don't need to reach for `.dwarf_info` for every lookup.
     const ElfSymbol* find_symbol_by_name(std::string_view name) const;
     DwarfDiePtr find_die_by_name(std::string_view name) const;
-    std::optional<uint64_t> get_enum_value(std::string_view name) const;
+    std::optional<DwarfInfo::EnumValue> get_enum_value(std::string_view name) const;
     DwarfDie::ConstantValue get_constant(std::string_view name) const;
     ElfVariable get_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const;
     ElfVariable read_global(std::string_view name, std::shared_ptr<MemoryAccess> memory_access) const;

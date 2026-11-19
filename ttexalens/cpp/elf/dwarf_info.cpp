@@ -229,18 +229,22 @@ const ElfSymbol* DwarfInfo::find_symbol_by_demangled_name(std::string_view deman
     return impl->find_symbol_by_demangled_name(demangled_name);
 }
 
-std::optional<uint64_t> DwarfInfo::get_enum_value(std::string_view name) const {
-    auto die = get_die_by_name(name);
+std::optional<DwarfInfo::EnumValue> DwarfInfo::get_enum_value(std::string_view name) const {
+    // A type can share the name of a constant (`enum noc_mode` and `noc_mode`),
+    // so the last path component must not resolve to a type.
+    auto die = get_die_by_name(name, [](const DwarfDiePtr& d) { return !d->is_type(); });
     if (!die) {
         return std::nullopt;
     }
     return std::visit(
-        [](const auto& v) -> std::optional<uint64_t> {
+        [](const auto& v) -> std::optional<EnumValue> {
             using T = std::decay_t<decltype(v)>;
-            if constexpr (std::is_same_v<T, std::monostate>) {
-                return std::nullopt;
+            if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
+                return v;
+            } else if constexpr (std::is_same_v<T, bool>) {
+                return uint64_t{v ? 1u : 0u};
             } else {
-                return static_cast<uint64_t>(v);
+                return std::nullopt;
             }
         },
         die->get_constant_value());
