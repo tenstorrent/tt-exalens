@@ -4,6 +4,7 @@
 
 
 import ast
+import pathlib
 import unittest
 from collections import Counter
 from parameterized import parameterized_class, parameterized
@@ -372,7 +373,7 @@ class TestDebugBus(unittest.TestCase):
     def test_blackhole_renamed_signals_readable(self):
         if not self.device.is_blackhole():
             self.skipTest("The renamed signals exist only in the Blackhole Tensix debug bus map.")
-        if "brisc_icache_ctrl_req_fifo_empty" not in self.debug_bus.signal_names:
+        if "brisc_icache_req_fifo_empty" not in self.debug_bus.signal_names:
             self.skipTest(f"Core {self.core_desc}[neo={self.neo_id}] does not use the Blackhole Tensix debug bus map.")
 
         for name in [
@@ -382,8 +383,8 @@ class TestDebugBus(unittest.TestCase):
             "brisc_icache_req_fifo_full",
         ]:
             self.assertIn(self.debug_bus.read_signal(name), (0, 1), name)
-        self.assertIn(self.debug_bus.read_signal(T1_TARGET_CFG_SPACE + "/0"), (0, 1))
-        self.assertIn(self.debug_bus.read_signal(T1_TARGET_CFG_SPACE + "/1"), range(4))
+        self.assertIn(self.debug_bus.read_signal(T1_TARGET_CFG_SPACE + "/0"), (0, 1), T1_TARGET_CFG_SPACE + "/0")
+        self.assertIn(self.debug_bus.read_signal(T1_TARGET_CFG_SPACE + "/1"), range(4), T1_TARGET_CFG_SPACE + "/1")
         self.assertTrue(self.debug_bus.is_combined_signal(T1_TARGET_CFG_SPACE))
         self.assertCountEqual(
             self.debug_bus.get_signal_part_names(T1_TARGET_CFG_SPACE),
@@ -401,8 +402,7 @@ class TestBlackholeDebugBusSignalMap(unittest.TestCase):
         )
 
     def test_no_repeated_signal_names(self):
-        with open(blackhole_signals.__file__) as source_file:
-            tree = ast.parse(source_file.read())
+        tree = ast.parse(pathlib.Path(blackhole_signals.__file__).read_bytes())
         map_dicts = [
             node.value
             for node in tree.body
