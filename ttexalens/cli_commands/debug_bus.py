@@ -287,8 +287,8 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
 
     group_name: str = params["group-name"]
     l1_address: int = params["l1-address"]
-    samples: int = params["samples"] or 1
-    sampling_interval: int = params["sampling-interval"] or 2
+    samples: int = params["samples"] if params["samples"] is not None else 1
+    sampling_interval: int = params["sampling-interval"] if params["sampling-interval"] is not None else 2
 
     if samples == 1 and params.get("sampling-interval") is not None:
         util.WARN("Sampling interval is ignored when --samples=1.")
@@ -356,7 +356,7 @@ def handle_signal_reading_command(device: Device, loc: OnChipCoordinate, params:
                 )
                 for s in debug_bus_signal_store.get_signal_part_names(signal):
                     print(s)
-                return
+                continue
 
             value = debug_bus_signal_store.read_signal(signal)
             _display_signal_value(where, signal, value)
