@@ -1,18 +1,27 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+import contextlib
+import io
 import math
 import unittest
 from parameterized import parameterized_class, parameterized
 import tt_umd
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 
+from ttexalens.cli_commands import dump_regfile
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.debug_tensix import TensixDebug, TILE_SIZE, TensixDataFormat, REGFILE
 from ttexalens.device import TensixInstructions
+from ttexalens.uistate import UIState
 from ttexalens.exceptions import TTException
+from ttexalens.register_store import ConfigurationRegisterDescription
+
+# Format of the Dst window that TRISC0 (the core exalens accesses Dst through) sees.
+# 0: raw 32-bit words, 1: hardware converts between two's complement and the sign/magnitude integers Dst holds.
+RISC_DEST_ACCESS_CTRL_SEC0_fmt = ConfigurationRegisterDescription(index=3, mask=0x70000, shift=16)
 
 
 @parameterized_class(
@@ -120,6 +129,63 @@ class TestTensixDebug(unittest.TestCase):
         data = [i for i in range(num_of_elements - 1)] + [max_value]
         self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.UInt32)
         assert self.tensix_debug.read_regfile(regfile, num_tiles, signed=False) == data
+
+    def _read_write_dest_as_twos_complement(self, data: list[int] | None = None) -> list[int]:
+        """Reads (or writes, if data is given) the first words of Dst through the window that converts between
+        two's complement and sign/magnitude, so the hardware itself decides what the stored words mean."""
+        register_store = self.tensix_debug.register_store
+        previous_fmt = register_store.read_register(RISC_DEST_ACCESS_CTRL_SEC0_fmt)
+        register_store.write_register(RISC_DEST_ACCESS_CTRL_SEC0_fmt, 1)
+        try:
+            if data is not None:
+                self.tensix_debug.direct_dest_write([value & 0xFFFFFFFF for value in data], TensixDataFormat.Int32)
+                return data
+            words = self.tensix_debug.direct_dest_read(TensixDataFormat.Int32, 1)
+            return [word - 2**32 if word & 0x80000000 else word for word in words]
+        finally:
+            register_store.write_register(RISC_DEST_ACCESS_CTRL_SEC0_fmt, previous_fmt)
+
+    def _dump_regfile_command(self, extra_args: str = "") -> list[str]:
+        """Runs the dump-regfile command for the first tile of Dst and returns the printed values."""
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            dump_regfile.run(f"dr 2 -l {self.location_str} -t 1 {extra_args}", self.context, UIState(self.context))
+        # Values are printed tab separated; the other lines are headers.
+        return [value for line in output.getvalue().splitlines() if "\t" in line for value in line.split("\t") if value]
+
+    def test_read_write_regfile_int32_sign_magnitude(self):
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        regfile = REGFILE.DSTACC
+        data = [-1, -2, -(2**31 - 1), 0, 1, 2**31 - 1]
+        # What the same words mean as two's complement.
+        as_twos_complement = [-(2**31 - 1), -(2**31 - 2), -1, 0, 1, 2**31 - 1]
+        n = len(data)
+
+        # The hardware stores these integers as sign/magnitude words.
+        self.tensix_debug.register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", TensixDataFormat.Int32.value)
+        self._read_write_dest_as_twos_complement(data)
+        self.assertEqual(list(self.tensix_debug.read_regfile(regfile, 1, sign_magnitude=True)[:n]), data)
+        self.assertEqual(list(self.tensix_debug.read_regfile(regfile, 1)[:n]), as_twos_complement)
+        self.assertEqual([int(value) for value in self._dump_regfile_command("--sign-magnitude")[:n]], data)
+        self.assertEqual([int(value) for value in self._dump_regfile_command()[:n]], as_twos_complement)
+
+        # What exalens writes as sign/magnitude is what the hardware reads as these integers.
+        self.tensix_debug.write_regfile(regfile, list(reversed(data)), TensixDataFormat.Int32, sign_magnitude=True)
+        self.assertEqual(self._read_write_dest_as_twos_complement()[:n], list(reversed(data)))
+        self.assertEqual(
+            list(self.tensix_debug.read_regfile(regfile, 1, sign_magnitude=True)[:n]), list(reversed(data))
+        )
+
+    def test_sign_magnitude_ignored_for_float32(self):
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        data = [-1.5, 2.0, -0.25]
+        self.tensix_debug.write_regfile(REGFILE.DSTACC, data, TensixDataFormat.Float32, sign_magnitude=True)
+        self.assertEqual(list(self.tensix_debug.read_regfile(REGFILE.DSTACC, 1, sign_magnitude=True)[:3]), data)
+        self.assertEqual([float(value) for value in self._dump_regfile_command("--sign-magnitude")[:3]], data)
 
     @parameterized.expand(
         [
