@@ -3,15 +3,25 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import ast
 import unittest
+from collections import Counter
 from parameterized import parameterized_class, parameterized
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from test.ttexalens.unit_tests.test_base import get_core_location, init_cached_test_context
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
+from ttexalens.debug_bus_signal_store import (
+    DebugBusSignalDescription,
+    DebugBusSignalStore,
+    DebugBusSignalStoreInitialization,
+    ShiftMask,
+)
 from ttexalens.context import Context
 from ttexalens.cli_commands.debug_bus import parse_string
 from ttexalens.device import Device
+from ttexalens.hardware.blackhole import functional_worker_debug_bus_signals as blackhole_signals
+
+T1_TARGET_CFG_SPACE = "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space"
 
 
 @parameterized_class(
@@ -358,3 +368,126 @@ class TestDebugBus(unittest.TestCase):
                         # single signal
                         single_value = self.debug_bus.read_signal(signal_name)
                         self.assertEqual(first_val, single_value, f"Signal {signal_name} value mismatch.")
+
+    def test_blackhole_renamed_signals_readable(self):
+        if not self.device.is_blackhole():
+            self.skipTest("The renamed signals exist only in the Blackhole Tensix debug bus map.")
+        if "brisc_icache_ctrl_req_fifo_empty" not in self.debug_bus.signal_names:
+            self.skipTest(f"Core {self.core_desc}[neo={self.neo_id}] does not use the Blackhole Tensix debug bus map.")
+
+        for name in [
+            "brisc_icache_ctrl_req_fifo_empty",
+            "brisc_icache_ctrl_req_fifo_full",
+            "brisc_icache_req_fifo_empty",
+            "brisc_icache_req_fifo_full",
+        ]:
+            self.assertIn(self.debug_bus.read_signal(name), (0, 1), name)
+        self.assertIn(self.debug_bus.read_signal(T1_TARGET_CFG_SPACE + "/0"), (0, 1))
+        self.assertIn(self.debug_bus.read_signal(T1_TARGET_CFG_SPACE + "/1"), range(4))
+        self.assertTrue(self.debug_bus.is_combined_signal(T1_TARGET_CFG_SPACE))
+        self.assertCountEqual(
+            self.debug_bus.get_signal_part_names(T1_TARGET_CFG_SPACE),
+            [T1_TARGET_CFG_SPACE + "/0", T1_TARGET_CFG_SPACE + "/1"],
+        )
+
+
+class TestBlackholeDebugBusSignalMap(unittest.TestCase):
+    initialization: DebugBusSignalStoreInitialization
+
+    @classmethod
+    def setUpClass(cls):
+        cls.initialization = DebugBusSignalStore.create_initialization(
+            blackhole_signals.group_map, blackhole_signals.debug_bus_signal_map
+        )
+
+    def test_no_repeated_signal_names(self):
+        with open(blackhole_signals.__file__) as source_file:
+            tree = ast.parse(source_file.read())
+        map_dicts = [
+            node.value
+            for node in tree.body
+            if isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "debug_bus_signal_map"
+            and isinstance(node.value, ast.Dict)
+        ]
+        self.assertEqual(len(map_dicts), 1)
+        keys = map_dicts[0].keys
+        names = [key.value for key in keys if isinstance(key, ast.Constant) and isinstance(key.value, str)]
+        self.assertEqual(len(names), len(keys), "Not every key of debug_bus_signal_map is a string constant.")
+        repeated = sorted(name for name, count in Counter(names).items() if count > 1)
+        self.assertEqual(repeated, [], f"Repeated keys in debug_bus_signal_map: {repeated}")
+        self.assertEqual(len(names), len(blackhole_signals.debug_bus_signal_map))
+
+    def test_brisc_icache_req_fifo_keeps_group_c_bits(self):
+        signals = self.initialization.signals
+        signal_groups = self.initialization.signal_groups
+        self.assertEqual(
+            signals.get("brisc_icache_req_fifo_empty"),
+            DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x1),
+        )
+        self.assertEqual(
+            signals.get("brisc_icache_req_fifo_full"),
+            DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x2),
+        )
+        self.assertEqual(
+            signal_groups["brisc_group_c"].get("brisc_icache_req_fifo_empty"), ShiftMask(shift=0, mask=0x1)
+        )
+        self.assertEqual(signal_groups["brisc_group_c"].get("brisc_icache_req_fifo_full"), ShiftMask(shift=1, mask=0x2))
+        self.assertNotIn("brisc_icache_req_fifo_empty", signal_groups["tensix_icache_ctrl"])
+        self.assertNotIn("brisc_icache_req_fifo_full", signal_groups["tensix_icache_ctrl"])
+
+    def test_tensix_icache_ctrl_has_brisc_req_fifo_flags(self):
+        signals = self.initialization.signals
+        icache_ctrl = self.initialization.signal_groups["tensix_icache_ctrl"]
+        self.assertEqual(
+            signals.get("brisc_icache_ctrl_req_fifo_empty"),
+            DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x200),
+        )
+        self.assertEqual(
+            signals.get("brisc_icache_ctrl_req_fifo_full"),
+            DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x100),
+        )
+        self.assertEqual(icache_ctrl.get("brisc_icache_ctrl_req_fifo_empty"), ShiftMask(shift=41, mask=0x200 << 32))
+        self.assertEqual(icache_ctrl.get("brisc_icache_ctrl_req_fifo_full"), ShiftMask(shift=40, mask=0x100 << 32))
+        for name in ["trisc0_icache_req_fifo_empty", "trisc1_icache_req_fifo_empty", "trisc2_icache_req_fifo_empty"]:
+            self.assertIn(name, icache_ctrl)
+
+    def test_t1_target_cfg_space_parts(self):
+        signals = self.initialization.signals
+        combined_signals = self.initialization.combined_signals
+        self.assertEqual(
+            signals.get(T1_TARGET_CFG_SPACE + "/0"),
+            DebugBusSignalDescription(rd_sel=2, daisy_sel=1, sig_sel=8, mask=0x80000000),
+        )
+        self.assertEqual(
+            signals.get(T1_TARGET_CFG_SPACE + "/1"),
+            DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x3),
+        )
+        self.assertIn(T1_TARGET_CFG_SPACE, combined_signals)
+        self.assertCountEqual(
+            combined_signals[T1_TARGET_CFG_SPACE], [T1_TARGET_CFG_SPACE + "/0", T1_TARGET_CFG_SPACE + "/1"]
+        )
+        for name in [T1_TARGET_CFG_SPACE, T1_TARGET_CFG_SPACE + "_0_0", T1_TARGET_CFG_SPACE + "_2_1"]:
+            self.assertNotIn(name, signals)
+
+    def test_t1_target_cfg_space_is_one_group_signal(self):
+        signal_groups = self.initialization.signal_groups
+        three_bit_signal = ShiftMask(shift=95, mask=0x7 << 95)
+        self.assertEqual(signal_groups["tensix_frontend_t1"].get(T1_TARGET_CFG_SPACE), three_bit_signal)
+        for name in [
+            T1_TARGET_CFG_SPACE + "_0_0",
+            T1_TARGET_CFG_SPACE + "_2_1",
+            T1_TARGET_CFG_SPACE + "/0",
+            T1_TARGET_CFG_SPACE + "/1",
+        ]:
+            self.assertNotIn(name, signal_groups["tensix_frontend_t1"])
+        self.assertEqual(
+            signal_groups["tensix_frontend_t0"].get("tensix_frontend_t0_rq_head_rsrcs_target_cfg_space"),
+            three_bit_signal,
+        )
+        self.assertEqual(
+            signal_groups["tensix_frontend_t2"].get("tensix_frontend_t2_rq_head_rsrcs_target_cfg_space"),
+            three_bit_signal,
+        )
