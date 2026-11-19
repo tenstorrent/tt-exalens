@@ -196,7 +196,7 @@ class OnChipCoordinate:
         """
         noc0 = self.to_str("noc0")
         logical = self.to_str("logical")
-        if neo_id is not None and self.noc_block.neo_ids:
+        if self.noc_block.neo_ids:
             return f"{noc0} ({logical}) (neo {neo_id})"
         return f"{noc0} ({logical})"
 
