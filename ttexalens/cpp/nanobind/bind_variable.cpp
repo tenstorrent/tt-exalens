@@ -29,7 +29,21 @@ namespace {
 // (raised when read_value is called on a non-base/pointer/enum type) to
 // Python's NotImplemented so the arithmetic/comparison operators degrade
 // gracefully, matching the Python ElfVariable contract.
-nb::object var_value_obj(const ElfVariable& self) { return nb::cast(self.read_value()); }
+// Device strings are raw bytes and need not be valid UTF-8 (uninitialised
+// buffers, binary data). Decode them leniently, replacing invalid bytes with
+// U+FFFD, instead of letting the strict std::string caster raise.
+nb::object value_to_py(const ElfVariable::Value& value) {
+    if (const auto* s = std::get_if<std::string>(&value)) {
+        PyObject* text = PyUnicode_DecodeUTF8(s->data(), static_cast<Py_ssize_t>(s->size()), "replace");
+        if (text == nullptr) {
+            throw nb::python_error();
+        }
+        return nb::steal(text);
+    }
+    return nb::cast(value);
+}
+
+nb::object var_value_obj(const ElfVariable& self) { return value_to_py(self.read_value()); }
 
 template <typename Op>
 nb::object try_binop(const ElfVariable& self, nb::handle other, Op&& op) {
@@ -66,7 +80,7 @@ void bind_variable(nb::module_& m) {
                  auto v = self.read_bytes();
                  return nb::bytes(reinterpret_cast<const char*>(v.data()), v.size());
              })
-        .def("read_value", &ElfVariable::read_value)
+        .def("read_value", &var_value_obj, nb::sig("def read_value(self) -> bool | int | float | str"))
         .def("write_value", &ElfVariable::write_value, nb::arg("value"), nb::arg("check_data_loss") = true)
         // Snapshots the variable's bytes; subsequent member/index walks read
         // from the cache instead of re-hitting live memory.
@@ -86,7 +100,7 @@ void bind_variable(nb::module_& m) {
                  const uint64_t n = self.get_length();
                  nb::list out;
                  for (uint64_t i = 0; i < n; ++i) {
-                     out.append(nb::cast(self.get_index(static_cast<int64_t>(i)).read_value()));
+                     out.append(var_value_obj(self.get_index(static_cast<int64_t>(i))));
                  }
                  return out;
              })
