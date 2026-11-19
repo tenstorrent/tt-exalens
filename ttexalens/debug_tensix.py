@@ -3,7 +3,6 @@
 # SPDX-License-Identifier: Apache-2.0
 from collections.abc import Sequence
 from enum import Enum
-from typing import TypeVar, cast
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.exceptions import TTException
@@ -48,21 +47,9 @@ def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
     raise TTException(f"Invalid regfile {regfile}.")
 
 
-T = TypeVar("T", bound="TensixDebug")
-
-
 class TensixDebug:
     thread_count: int
     dest_risc_name: str
-
-    def __new__(cls: type[T], location: OnChipCoordinate, neo_id: int | None = None) -> T:
-        # TensixDebug(location, neo_id) creates the architecture's class, the one that the block's get_tensix_debug returns.
-        if cls is not TensixDebug:
-            return object.__new__(cls)
-        tensix_debug = location.noc_block.get_tensix_debug(neo_id)
-        if tensix_debug is None:
-            raise TTException(f"There is no Tensix at {location.to_user_str_with_neo(neo_id)}.")
-        return cast(T, object.__new__(type(tensix_debug)))
 
     def __init__(
         self,
