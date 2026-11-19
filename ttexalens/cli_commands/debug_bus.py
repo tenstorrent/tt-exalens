@@ -287,8 +287,8 @@ def handle_group_reading_command(device: Device, loc: OnChipCoordinate, params: 
 
     group_name: str = params["group-name"]
     l1_address: int = params["l1-address"]
-    samples: int = params["samples"] or 1
-    sampling_interval: int = params["sampling-interval"] or 2
+    samples: int = 1 if params["samples"] is None else params["samples"]
+    sampling_interval: int = 2 if params["sampling-interval"] is None else params["sampling-interval"]
 
     if samples == 1 and params.get("sampling-interval") is not None:
         util.WARN("Sampling interval is ignored when --samples=1.")
