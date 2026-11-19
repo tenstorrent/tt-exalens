@@ -218,8 +218,6 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
 
     @cache
     def get_tensix_debug(self, neo_id: int | None = None) -> BlackholeTensixDebug | None:
-        if neo_id is not None:
-            return None
         return BlackholeTensixDebug(self.location)
 
     @cache

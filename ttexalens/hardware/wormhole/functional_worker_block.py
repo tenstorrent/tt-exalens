@@ -218,8 +218,6 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
 
     @cache
     def get_tensix_debug(self, neo_id: int | None = None) -> WormholeTensixDebug | None:
-        if neo_id is not None:
-            return None
         return WormholeTensixDebug(self.location)
 
     @cache
