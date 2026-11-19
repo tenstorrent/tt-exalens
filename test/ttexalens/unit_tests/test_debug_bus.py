@@ -3,14 +3,26 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import io
 import unittest
+from contextlib import redirect_stdout
+from unittest.mock import MagicMock, patch
 from parameterized import parameterized_class, parameterized
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from test.ttexalens.unit_tests.test_base import get_core_location, init_cached_test_context
-from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
+from ttexalens import util
+from ttexalens.debug_bus_signal_store import (
+    DebugBusSignalDescription,
+    DebugBusSignalStore,
+    DebugBusSignalStoreInitialization,
+)
 from ttexalens.context import Context
-from ttexalens.cli_commands.debug_bus import parse_string
+from ttexalens.cli_commands.debug_bus import (
+    handle_group_reading_command,
+    handle_signal_reading_command,
+    parse_string,
+)
 from ttexalens.device import Device
 
 
@@ -358,3 +370,125 @@ class TestDebugBus(unittest.TestCase):
                         # single signal
                         single_value = self.debug_bus.read_signal(signal_name)
                         self.assertEqual(first_val, single_value, f"Signal {signal_name} value mismatch.")
+
+
+class TestDebugBusCommand(unittest.TestCase):
+    def setUp(self):
+        self.noc_block = MagicMock()
+        self.noc_block.device.is_wormhole.return_value = True
+        self.noc_block.location.noc_read32.return_value = 0x1234
+        self.noc_block.get_register_store.return_value.get_register_noc_address.return_value = 0x100
+        init = DebugBusSignalStoreInitialization(
+            group_map={"grp": (1, 2)},
+            signals={
+                name: DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0xFFFFFFFF)
+                for name in ("trisc0_pc", "trisc1_pc", "comb/0", "comb/1")
+            },
+            signal_groups={"grp": {}},
+            combined_signals={"comb": ["comb/0", "comb/1"]},
+        )
+        self.store = DebugBusSignalStore(init, self.noc_block)
+        self.noc_block.get_debug_bus.return_value = self.store
+        self.device = MagicMock()
+        self.device.id = 0
+        self.device.get_block.return_value = self.noc_block
+
+    @staticmethod
+    def _location(user_str: str) -> MagicMock:
+        loc = MagicMock()
+        loc.to_user_str.return_value = user_str
+        return loc
+
+    @staticmethod
+    def _signal_list_params() -> dict:
+        return {"signals": ["trisc0_pc", "comb", "trisc1_pc"], "neo_id": None}
+
+    @staticmethod
+    def _group_params(samples: int | None, sampling_interval: int | None) -> dict:
+        return {
+            "group-name": "grp",
+            "l1-address": 0x1000,
+            "samples": samples,
+            "sampling-interval": sampling_interval,
+            "search": "*",
+            "max": "10",
+            "simple": False,
+            "neo_id": None,
+        }
+
+    @staticmethod
+    def _lines_containing(lines: list[str], *texts: str) -> list[int]:
+        return [i for i, line in enumerate(lines) if all(text in line for text in texts)]
+
+    def _assert_no_device_access(self):
+        self.noc_block.location.noc_write32.assert_not_called()
+        self.noc_block.location.noc_read32.assert_not_called()
+        self.noc_block.location.noc_write.assert_not_called()
+        self.noc_block.location.noc_read.assert_not_called()
+
+    def test_signal_list_continues_after_combined_signal(self):
+        output = io.StringIO()
+        with patch.object(util, "WARN") as warn, redirect_stdout(output):
+            handle_signal_reading_command(self.device, self._location("1-1"), self._signal_list_params())
+
+        warn.assert_called_once()
+        self.assertIn("'comb' is a combined signal", warn.call_args.args[0])
+        lines = output.getvalue().splitlines()
+        self.assertIn("comb/0", lines)
+        self.assertIn("comb/1", lines)
+        trisc0_lines = self._lines_containing(lines, "trisc0_pc: 0x1234")
+        trisc1_lines = self._lines_containing(lines, "trisc1_pc: 0x1234")
+        self.assertTrue(trisc0_lines, f"No 'trisc0_pc: 0x1234' line in output: {lines}")
+        self.assertTrue(trisc1_lines, f"No 'trisc1_pc: 0x1234' line in output: {lines}")
+        order = [trisc0_lines[0], lines.index("comb/0"), lines.index("comb/1"), trisc1_lines[0]]
+        self.assertEqual(order, sorted(order), f"Unexpected output order: {lines}")
+
+    def test_signal_list_continues_at_each_location(self):
+        output = io.StringIO()
+        params = self._signal_list_params()
+        with patch.object(util, "WARN") as warn, redirect_stdout(output):
+            for user_str in ("1-1", "2-1"):
+                handle_signal_reading_command(self.device, self._location(user_str), params)
+
+        lines = output.getvalue().splitlines()
+        for user_str in ("1-1", "2-1"):
+            for signal in ("trisc0_pc", "trisc1_pc"):
+                with self.subTest(location=user_str, signal=signal):
+                    matches = self._lines_containing(lines, f"loc:{user_str}", f"{signal}: 0x1234")
+                    self.assertEqual(len(matches), 1, f"Output: {lines}")
+        self.assertEqual(warn.call_count, 2)
+
+    def test_group_explicit_zero_samples_is_rejected(self):
+        params = self._group_params(samples=0, sampling_interval=None)
+        with redirect_stdout(io.StringIO()), self.assertRaises(ValueError) as raised:
+            handle_group_reading_command(self.device, self._location("1-1"), params)
+
+        self.assertIn("samples count must be at least 1", str(raised.exception))
+        self._assert_no_device_access()
+
+    def test_group_explicit_zero_interval_is_rejected(self):
+        params = self._group_params(samples=4, sampling_interval=0)
+        with redirect_stdout(io.StringIO()), self.assertRaises(ValueError) as raised:
+            handle_group_reading_command(self.device, self._location("1-1"), params)
+
+        self.assertIn("sampling_interval must be between 2 and 256", str(raised.exception))
+        self._assert_no_device_access()
+
+    def test_group_omitted_options_use_defaults(self):
+        for samples in (None, 1):
+            with self.subTest(samples=samples):
+                params = self._group_params(samples=samples, sampling_interval=None)
+                with patch.object(self.store, "sample_signal_group", return_value=[]) as sample_signal_group:
+                    with patch.object(util, "WARN") as warn, redirect_stdout(io.StringIO()):
+                        handle_group_reading_command(self.device, self._location("1-1"), params)
+
+                sample_signal_group.assert_called_once_with("grp", 0x1000, samples=1, sampling_interval=2)
+                warn.assert_not_called()
+
+    def test_group_explicit_values_are_passed_through(self):
+        params = self._group_params(samples=4, sampling_interval=10)
+        with patch.object(self.store, "sample_signal_group", return_value=[]) as sample_signal_group:
+            with redirect_stdout(io.StringIO()):
+                handle_group_reading_command(self.device, self._location("1-1"), params)
+
+        sample_signal_group.assert_called_once_with("grp", 0x1000, samples=4, sampling_interval=10)
