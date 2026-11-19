@@ -55,7 +55,7 @@ def reset_perf_counters(
     """Reset Tensix perf counters on this core. Raises if perf counters are not wired here.
 
     Notes:
-        neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+        - neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
     """
     perf = _check_and_get_perf_counters(location, neo_id)
     noc_id = _lib_helpers.check_noc_id(noc_id, location.context)
@@ -78,7 +78,7 @@ def start_perf_counters(
     """Start Tensix perf counters on this core. Raises if perf counters are not wired here.
 
     Notes:
-        neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+        - neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
     """
     perf = _check_and_get_perf_counters(location, neo_id)
     noc_id = _lib_helpers.check_noc_id(noc_id, location.context)
@@ -101,7 +101,7 @@ def stop_perf_counters(
     """Stop Tensix perf counters on this core. Raises if perf counters are not wired here.
 
     Notes:
-        neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+        - neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
     """
     perf = _check_and_get_perf_counters(location, neo_id)
     noc_id = _lib_helpers.check_noc_id(noc_id, location.context)
@@ -128,7 +128,7 @@ def read_perf_counters(
     are not wired here.
 
     Notes:
-        neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+        - neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
     """
     perf = _check_and_get_perf_counters(location, neo_id)
     resolved_noc = _lib_helpers.check_noc_id(noc_id, location.context)
@@ -168,7 +168,7 @@ def read_perf_counter(
         int: The counter value, unsigned 32-bit.
 
     Notes:
-        neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+        - neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
     """
     perf = _check_and_get_perf_counters(location, neo_id)
     if isinstance(counter, int) and not 0 <= counter < COUNTER_ID_LIMIT:
