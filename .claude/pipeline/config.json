@@ -15,6 +15,7 @@
   "auto_stop_limit": 6,
   "pr_footer": "🤖 Generated with [Claude Code](https://claude.com/claude-code)",
   "caps": {
+    "triage": 1,
     "shaper_questions": 2,
     "investigation": 2,
     "plan_revisions": 3,
@@ -33,6 +34,7 @@
     "diff_context_lines": 12,
     "max_calls": {
       "investigator": 50,
+      "triager": 40,
       "planner": 80,
       "reviewer": 80,
       "test-writer": 200,
@@ -50,6 +52,7 @@
     "plan_words": 2500,
     "plan_code_lines": 150,
     "findings_words": 1200,
+    "triage_words": 300,
     "report_words": 400,
     "pr_words": 200
   },

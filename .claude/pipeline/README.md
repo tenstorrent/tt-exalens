@@ -8,7 +8,7 @@ Start a new Claude Code session in the repository, so that the agent files are l
 
 | Command | What it does |
 |---|---|
-| `/new-issue <description, issue link or file>` | Shapes a short issue with you and stops at Gate 0 |
+| `/new-issue <description, issue link or file>` | Shapes a short issue with you and stops at Gate 0. An issue given by link is triaged first |
 | `/resolve-issue <case>` | Investigates, designs (Gate A), writes tests, implements, reviews once, reports (Gate B) |
 | `/fix-ci <case> <log file>` | Another round after you pushed and CI failed |
 | `/papa [case ...]` | Proposes changes to the agent files from closed cases (Gate C) |
@@ -66,6 +66,7 @@ Three things auto mode cannot take over: Claude Code's permission prompts (run t
 |---|---|---|---|---|
 | Issue shaper | `.claude/skills/new-issue/SKILL.md` (also holds the issue format) | your session | your session's | all of your session's tools |
 | Orchestrator | `.claude/skills/resolve-issue/SKILL.md` | your session | your session's | all of your session's tools |
+| Triager | `.claude/agents/triager.md` | subagent | `sonnet` | read, write `triage.md` |
 | Investigator | `.claude/agents/investigator.md` | subagent | `sonnet` | read, search, read-only git, Glean |
 | Planner | `.claude/agents/planner.md` | subagent | `fable` | read, write `design.md` and `plan.md` |
 | Reviewer | `.claude/agents/reviewer.md`, on top of `.github/skills/tt-exalens-review/SKILL.md` | subagent | `fable` | read, write its review |
@@ -75,7 +76,9 @@ Three things auto mode cannot take over: Claude Code's permission prompts (run t
 
 Rules shared by all roles are in `CONSTITUTION.md` in this directory. To change how a role behaves, edit its file rather than its output. `/papa` proposes such edits from what you corrected.
 
-**Facts.** Only the investigator searches the code, its history and Glean. Only the shaper, the planner and the reviewer may ask it, and the orchestrator carries their questions. `run spawn` refuses any other requester. The planner and the reviewer have no search tools. The test writer and the implementer work in the code they change and report a missing fact as a gap in the plan.
+**Triage.** An existing issue, given by link, is triaged before it is shaped. The triager decides from the issue and the investigator's findings: `feature` (also tasks, docs and investigations) and `bug-confirmed` go on to the shaper. `bug-unconfirmed` and `bug-fixed` stop the case in state `rejected`, in auto mode too, and `triage.md` says how to confirm the bug. A bug counts as confirmed only when cited code at the base commit produces it: agents never run anything on hardware, so a bug only hardware can show stops as unconfirmed. Gate 0 refuses an existing issue without a triage. `advance <case> triage` triages again.
+
+**Facts.** Only the investigator searches the code, its history and Glean. Only the triager, the shaper, the planner and the reviewer may ask it, and the orchestrator carries their questions. `run spawn` refuses any other requester. The planner and the reviewer have no search tools. The test writer and the implementer work in the code they change and report a missing fact as a gap in the plan.
 
 **Glean.** The investigator uses the MCP server named `glean_default`, through `search`, `code_search` and `read_document` only. If your server has another name, change the `mcp__glean_default__*` entries in `investigator.md`. Without Glean the investigator still works and says so in its findings.
 

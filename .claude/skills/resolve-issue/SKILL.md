@@ -31,7 +31,7 @@ First read `.claude/pipeline/CONSTITUTION.md`. Its rules override this file.
 2. `.claude/pipeline/run` decides, and its exit code is the truth. When it refuses something, do what its message says. Never work around it and never edit `status.json`.
 3. Run `.claude/pipeline/run spawn ...` before you start any subagent. If it refuses, that role may not start now.
 4. Subagents get file paths, not your summaries. The developer's words reach them verbatim, never paraphrased.
-5. Only the shaper, the planner and the reviewer may ask the investigator. You carry their questions unchanged and ask none of your own. When the test writer or the implementer reports a missing fact, that is a gap in the plan, and it goes to the planner.
+5. Only the triager, the shaper, the planner and the reviewer may ask the investigator. You carry their questions unchanged and ask none of your own. When the test writer or the implementer reports a missing fact, that is a gap in the plan, and it goes to the planner.
 6. Never pass a model when you start a role. Each role runs on the model named in its file under `.claude/agents/`, and a start with another model is refused.
 7. Keep your own context small. You need the roles' result blocks, the output of `run`, and at a gate the short document the developer approves. Do not read findings, `plan.md`, reviews or diffs: the roles read them.
 8. After a restart or a context compaction, and whenever you are unsure where the case stands, run `.claude/pipeline/run status <case>` and read this file again before you do anything else. Everything you need is in the case files.
