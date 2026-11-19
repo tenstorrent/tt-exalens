@@ -301,6 +301,18 @@ class DebugBusSignalStore:
         # remove trailing zeros from mask
         return value >> ((signal_desc.mask & -signal_desc.mask).bit_length() - 1)
 
+    def read_signal_parts(self, base_name: str) -> int:
+        """Reads the parts of a signal (base_name/0, base_name/1, ...) one at a time and joins them, part 0 holding the lowest bits. The parts are read at different times, so the value is not read atomically."""
+        if not self.is_combined_signal(base_name):
+            raise ValueError(f"Signal '{base_name}' has no parts.")
+        part_names = sorted(self.get_signal_part_names(base_name), key=lambda name: int(name.split("/")[1]))
+        value = 0
+        width = 0
+        for part_name in part_names:
+            value |= self.read_signal(part_name) << width
+            width += self.signals[part_name].mask.bit_count()
+        return value
+
     def _read_signal_group_samples(
         self,
         signal_group: str,
@@ -515,14 +527,15 @@ class DebugBusSignalStore:
                     # Compute mask and shift for the signal within the 128-bit sample.
                     signal_group[base_name] = ShiftMask(shift=(mask & -mask).bit_length() - 1, mask=mask)
 
-                    # Build combined_signals dictionary
-                    if DebugBusSignalStore.is_signal_part(signal_name):
-                        base_name = DebugBusSignalStore.get_base_signal_name(signal_name)
-                        if base_name not in combined_signals:
-                            combined_signals[base_name] = []
-                        combined_signals[base_name].append(signal_name)
-
             signal_groups[group_key] = signal_group
+
+        # Build combined_signals dictionary, including signals whose parts span groups
+        for signal_name in signals:
+            if DebugBusSignalStore.is_signal_part(signal_name):
+                base_name = DebugBusSignalStore.get_base_signal_name(signal_name)
+                if base_name not in combined_signals:
+                    combined_signals[base_name] = []
+                combined_signals[base_name].append(signal_name)
 
         return DebugBusSignalStoreInitialization(
             group_map=group_map,

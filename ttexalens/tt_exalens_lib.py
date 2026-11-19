@@ -862,5 +862,8 @@ def get_tensix_state(
         if util.DEBUG_ENABLED:
             util.DEBUG("No L1 address provided. Disabling atomic group reading ADC and RWC groups.")
     rwc = _read_signal_groups(tensix_debug_bus_desc.register_window_counter_groups, group_reader)
+    if "rwc0_dst/0" in debug_bus.signal_names:
+        # rwc0_dst spans two groups, so it is read part by part
+        rwc["rwc0_dst"] = debug_bus.read_signal_parts("rwc0_dst")
     adc = _read_signal_groups(tensix_debug_bus_desc.address_counter_groups, group_reader)
     return tensix_state_type(**register_groups, register_window_counters=rwc, address_counters=adc)
