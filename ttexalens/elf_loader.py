@@ -82,6 +82,19 @@ class ElfLoader:
             memory_block.address.private_address <= address < memory_block.address.private_address + memory_block.size
         )
 
+    def __private_memory_noc_address(self, private_address: int) -> int | None:
+        """
+        Returns the NOC address of a private memory address when that private memory has its own NOC mapping.
+        """
+        for memory_block in (self.risc_debug.get_data_private_memory(), self.risc_debug.get_code_private_memory()):
+            if (
+                memory_block is not None
+                and memory_block.address.noc_address is not None
+                and ElfLoader.__inside_private_memory(memory_block, private_address)
+            ):
+                return memory_block.translate_to_noc_address(private_address)
+        return None
+
     def write_block(self, private_address: int, data: memoryview | bytes | bytearray):
         """
         Writes a block of bytes to a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
@@ -100,6 +113,8 @@ class ElfLoader:
         ):
             # Use debug interface
             self.write_block_through_debug(private_address, data)
+        elif (noc_address := self.__private_memory_noc_address(private_address)) is not None:
+            self.location.noc_write(noc_address, data)
         elif self.l1_block is not None and self.l1_block.memory_block.contains_private_address(private_address):
             self.l1_mem_access.write(private_address, data)
         else:
@@ -123,6 +138,8 @@ class ElfLoader:
         ):
             # Use debug interface
             self.read_block_through_debug(private_address, buffer)
+        elif (noc_address := self.__private_memory_noc_address(private_address)) is not None:
+            self.location.noc_read(noc_address, buffer)
         elif self.l1_block is not None and self.l1_block.memory_block.contains_private_address(private_address):
             self.l1_mem_access.read(private_address, buffer)
         else:
@@ -198,8 +215,9 @@ class ElfLoader:
                         read_data = bytearray(len(section.data))
                         self.read_block(address, read_data)
                         if memoryview(read_data) != section.data:
-                            util.ERROR(f"Error writing section {section.name} to address 0x{address:08x}.")
-                            continue
+                            raise TTException(
+                                f"{elf_path}: section {section.name} written to address 0x{address:08x} does not read back correctly"
+                            )
                         else:
                             if util.VERBOSE_ENABLED:
                                 util.VERBOSE(
@@ -207,7 +225,7 @@ class ElfLoader:
                                 )
         except Exception as e:
             util.ERROR(e)
-            raise TTException(f"Error loading elf file {elf_path}")
+            raise TTException(f"Error loading elf file {elf_path}") from e
 
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
