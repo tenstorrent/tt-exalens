@@ -356,7 +356,7 @@ def handle_signal_reading_command(device: Device, loc: OnChipCoordinate, params:
                 )
                 for s in debug_bus_signal_store.get_signal_part_names(signal):
                     print(s)
-                return
+                continue
 
             value = debug_bus_signal_store.read_signal(signal)
             _display_signal_value(where, signal, value)
