@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import Mock
 from parameterized import parameterized
 from test.ttexalens.unit_tests.test_base import get_core_location, init_cached_test_context
-from ttexalens.context import Context
+from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.exceptions import TTException
@@ -65,6 +65,14 @@ class TestPerfCountersNeoId(unittest.TestCase):
             read_perf_counter(self.location, "FPU", counter)
         self.assertIn("out of range", str(cm.exception))
         self.assertEqual(self.perf.mock_calls, [])
+
+    def test_read_perf_counter_passes_unnamed_id_to_the_block(self):
+        self.location.context.noc_id = NocId.NOC1
+        self.perf.block_names = ["FPU"]
+        self.perf.get_block.return_value.counters = {0: "counter_0", 1: "counter_1", 257: "counter_257"}
+        result = read_perf_counter(self.location, "FPU", 2)
+        self.perf.read_counter.assert_called_once_with("FPU", 2, noc_id=NocId.NOC1, safe_mode=None)
+        self.assertIs(result, self.perf.read_counter.return_value)
 
     def test_list_perf_counters_with_neo_id_returns_empty(self):
         self.assertEqual(list_perf_counters(self.location, neo_id=1), {})
