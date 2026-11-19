@@ -90,9 +90,9 @@ _DEBUG_VERBOSE_EXTRA = [
     "SBDATA1",
 ]
 
+# CLAIM_COMPLETE is left out: reading it claims the highest pending interrupt, so a dump would change the state it reports.
 _PLIC_FIELDS = {
     "THRESHOLD": "THRESHOLD",
-    "CLAIM_COMP": "CLAIM_COMPLETE",
     "IE_0": "IE_0_",
     "IE_1": "IE_1_",
     "IE_2": "IE_2_",
