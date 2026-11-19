@@ -29,6 +29,7 @@ from .tt_exalens_lib import (
 )
 from .perf_counters import (
     list_perf_counters,
+    read_perf_counter,
     read_perf_counters,
     reset_perf_counters,
     start_perf_counters,
@@ -97,6 +98,7 @@ __all__ = [
     # perf_counters.py
     "list_perf_counters",
     "PerfCounterBlockDescription",
+    "read_perf_counter",
     "read_perf_counters",
     "reset_perf_counters",
     "start_perf_counters",
