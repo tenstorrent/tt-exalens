@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import math
+import struct
 import unittest
 from parameterized import parameterized_class, parameterized
 import tt_umd
@@ -181,6 +182,38 @@ class TestTensixDebug(unittest.TestCase):
 
         with self.assertRaises((TTException, ValueError)):
             self.tensix_debug.write_regfile(regfile, [value], df)
+
+    def test_read_regfile_fp32_wormhole(self):
+        if self.is_blackhole():
+            self.skipTest("Blackhole reads Float32 Dst directly.")
+
+        register_store = self.tensix_debug.register_store
+        previous_format = register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        self.addCleanup(register_store.write_register, "ALU_FORMAT_SPEC_REG2_Dstacc", previous_format)
+        register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", TensixDataFormat.Float32.value)
+
+        # Fill the 32 rows of 32-bit Dst that read_regfile returns. One SFPSTORE writes four rows and either
+        # the even (address + 0) or the odd (address + 2) columns, so each of the 16 stores gets its own value.
+        # The low 16 bits of the values differ too, and the first one looks like a denormal once shifted up.
+        def inject(instruction: int):
+            self.tensix_debug.inject_instruction(instruction, 1)
+
+        # Earlier kernels can leave a Dst offset, another address modifier set or a Dst increment in address
+        # modifier 0 in the math thread; clear them (thread configuration words 1, 2 and 23) and the Dst counter.
+        for cfg_index in (1, 2, 23):
+            inject(self.ops.TT_OP_SETC16(cfg_index, 0))
+        inject(self.ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0x4))
+        expected: list[float] = []
+        for address in range(0, 32, 2):
+            upper = 0x4000 + address
+            lower = (address << 8) | 0x01
+            inject(self.ops.TT_OP_SFPLOADI(0, 8, upper))  # upper 16 bits of LReg0
+            inject(self.ops.TT_OP_SFPLOADI(0, 10, lower))  # lower 16 bits of LReg0
+            inject(self.ops.TT_OP_SFPSTORE(0, 4, 0, address))  # store all 32 bits unchanged
+            expected += [struct.unpack(">f", ((upper << 16) | lower).to_bytes(4, "big"))[0]] * 32
+
+        result = self.tensix_debug.read_regfile(REGFILE.DSTACC)
+        self.assertEqual(sorted(result), sorted(expected))
 
     def _read_signal(self, signal_name: str) -> int:
         if signal_name in self.debug_bus.signal_names:
