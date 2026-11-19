@@ -182,6 +182,37 @@ class TestTensixDebug(unittest.TestCase):
         with self.assertRaises((TTException, ValueError)):
             self.tensix_debug.write_regfile(regfile, [value], df)
 
+    def _set_dest_format(self, raw_format: int):
+        """Writes the Dst format register for the duration of the test."""
+        register_store = self.tensix_debug.register_store
+        previous_format = register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        self.addCleanup(register_store.write_register, "ALU_FORMAT_SPEC_REG2_Dstacc", previous_format)
+        register_store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", raw_format)
+
+    def test_read_srca_keeps_dest(self):
+        if not self.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        # Every datum differs from its neighbours, so a column written back to the wrong place shows.
+        num_tiles = 8
+        data = [float(i) for i in range(num_tiles * TILE_SIZE)]
+        self.tensix_debug.write_regfile(REGFILE.DSTACC, data, TensixDataFormat.Float32)
+        self.tensix_debug.read_regfile(REGFILE.SRCA)
+        self.assertEqual(list(self.tensix_debug.read_regfile(REGFILE.DSTACC, num_tiles)), data)
+
+    def test_read_srca_with_float32_dest_format_returns_raw_data(self):
+        # A Float32 decode needs the upper and lower halves that only the Dst read collects.
+        self._set_dest_format(TensixDataFormat.Float32.value)
+        result = self.tensix_debug.read_regfile(REGFILE.SRCA)
+        self.assertTrue(all(isinstance(value, str) for value in result))
+
+    @parameterized.expand([(12,), (13,)])
+    def test_read_regfile_unknown_dest_format_returns_raw_data(self, raw_format: int):
+        self._set_dest_format(raw_format)
+        result = self.tensix_debug.read_regfile(REGFILE.DSTACC)
+        self.assertGreater(len(result), 0)
+        self.assertTrue(all(isinstance(value, str) for value in result))
+
     def _read_signal(self, signal_name: str) -> int:
         if signal_name in self.debug_bus.signal_names:
             return self.debug_bus.read_signal(signal_name)
