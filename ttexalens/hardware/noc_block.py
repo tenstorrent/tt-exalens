@@ -48,7 +48,9 @@ class NocBlock:
         return None
 
     def get_perf_counters(self, neo_id: int | None = None) -> TensixPerfCounters | None:
-        return self.perf_counters
+        if neo_id is None:
+            return self.perf_counters
+        return None
 
     @cached_property
     def has_risc_cores(self) -> bool:
