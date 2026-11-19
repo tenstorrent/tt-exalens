@@ -154,7 +154,8 @@ def read_perf_counter(
     safe_mode: bool | None = None,
 ) -> int:
     """
-    Read one Tensix perf counter on this core, by id or by name. The id does not have to be named in the block's counter map.
+    Read one Tensix perf counter on this core, by id or by name.
+    The id does not have to be named in the block's counter map.
 
     Args:
         location (OnChipCoordinate): Core to read from.

@@ -707,7 +707,8 @@ read_perf_counter(location: OnChipCoordinate, block_name: str, counter: int | st
 
 ### Description
 
-Read one Tensix perf counter on this core, by id or by name. The id does not have to be named in the block's counter map.
+Read one Tensix perf counter on this core, by id or by name.
+The id does not have to be named in the block's counter map.
 
 
 ### Args
