@@ -49,13 +49,16 @@ There is one review round per iteration: implementation, review, then the commen
 
 The pipeline runs in guided mode by default: Gates 0, A and B wait for you, and a stop asks you what to do.
 
-In auto mode nobody is asked. The shaper asks no questions and records its assumptions in `issue.notes.md`. The script takes a gate when its checks pass, and records the approval as made by `auto`. A stop ends the run with a message instead of a question. Nothing is pushed in either mode.
+Auto mode runs until the case is closed with the code on its branch, next to the approved `issue.md` and `design.md`. Nobody is asked and nothing waits:
 
-- **One run:** `/new-issue --auto <description>` or `/resolve-issue <case> --auto`, or tell the session "auto mode". It runs `.claude/pipeline/run mode <case> auto`.
-- **Every new case:** `"mode": "auto"` in `config.json`.
-- **Keeping a gate for yourself in auto mode:** set it to `"user"` under `gates` in `config.json`. Gate C (changes to the agent files) always waits for you.
+- **The verdict is always `full`.** Auto mode builds every issue, also one that only hardware can verify. The report says what was not verified.
+- **Gates.** The script takes a gate when its checks pass, and records the approval as made by `auto`.
+- **No stops.** Every refusal of the script names what auto mode does instead. A role that cannot decide is told to decide and record its assumption. Checks that still fail after three fixes (`caps.fixes`), a checkout that cannot be built, and an agent budget that is used up are listed in the report as accepted failures, and the run goes on. Once code is on the branch, `run finish <case>` closes the case with what exists.
+- **Enforced by hooks.** While the case is open and no pipeline agent or command runs, a Stop hook in `/new-issue`, `/resolve-issue` and `/fix-ci` sends the session back to work with the next step, up to `auto_stop_limit` reminders without progress. Questions to you are refused.
 
-Auto mode covers the pipeline's own questions. Claude Code's permission prompts are separate: an unattended run also needs a permission mode that does not prompt for the commands the agents run.
+Start it with `/new-issue --auto <issue link or description>`, which shapes the issue and goes straight on, or with `/resolve-issue <case> --auto`. For every new case, set `"mode": "auto"` in `config.json`. Gate C (changes to the agent files) always waits for you, and so does a gate you set to `"user"` under `gates`.
+
+Three things auto mode cannot take over: Claude Code's permission prompts (run the session in a permission mode that does not prompt), an API error that ends the turn (`/resolve-issue --resume <case>` continues), and an issue link that cannot be fetched.
 
 ## Who is who
 
@@ -126,6 +129,8 @@ The clone starts from `base_ref` in `config.json`. Type checks and tests need th
 | `scope-check` | changed files against the plan's `## Files` list |
 | `pr` | assembles the PR description, scans it, commits it with the issue and the design |
 | `guard` | a hook in each agent file and command file: writes, commands, reads and starts outside the limits are blocked, and an agent sees only its own case |
+| `guard-stop` | a Stop hook in the command files: an auto-mode session keeps working until its case is closed |
+| `build`, `finish` | copy or build the native module in the checkout; close an auto-mode case with the code that exists |
 
 The hooks run only in a trusted workspace. To avoid a permission prompt per check, allow `Bash(.claude/pipeline/run *)` in `.claude/settings.local.json`.
 

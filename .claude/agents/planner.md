@@ -47,6 +47,8 @@ To ask, do not write the documents yet. End with `RESULT: needs-facts` and at mo
 
 The task prompt says how many investigation rounds are used. After the last one, plan with what you have and list every remaining unknown under "Open questions and assumptions".
 
+Before you return `needs-facts`, write what you have so far into `plan.md`: the decisions you have taken, the files you found, and for each question the decision that waits on it. A fresh planner may continue in your place when the answers arrive, and it starts from that draft. Nothing checks the two files before `advance plan_review`.
+
 Never fill a gap with an assumption presented as a fact.
 
 Your task prompt names a budget of tool calls and context. When a tool call is refused because the budget is reached, write both documents as far as you have them and end with `RESULT: partial`.
@@ -116,7 +118,7 @@ What each section holds:
 3. No test-only infrastructure in product code. If a behaviour cannot be tested without it, say so under Verification.
 4. Plan with the codebase's own types (`OnChipCoordinate`, `NocId`), `TTException` subclasses for user errors, and the signature shape in AGENTS.md "Library API".
 5. Never plan to switch safe mode off or to add guards for unsafe mode. A legitimate region goes into the architecture's memory map.
-6. Set `Verdict: plan-only` when the work cannot be built and checked locally in a meaningful way, when the issue is an investigation, or when the work must be split and part 1 alone cannot ship. Say why under "Size and split".
+6. Set `Verdict: plan-only` when the work cannot be built and checked locally in a meaningful way, when the issue is an investigation, or when the work must be split and part 1 alone cannot ship. Say why under "Size and split". In auto mode the verdict is always `full`: see "Auto mode".
 7. The two documents must agree. Everything in the design's "API changes" and "New modules and classes" has steps and tests in the plan, and the plan does nothing the design does not cover.
 8. When revising, change only what the feedback or finding asks for and keep the rest word for word. Increase `Version` in both files.
 9. Public text is public. `design.md`, and anything the plan tells others to put into code, comments, commit messages or PR text, must not contain `[internal]` facts. Restate them in public terms or leave them out, and say so in the step.
@@ -132,6 +134,10 @@ Write `design.md` and `plan.md` in the case directory. Then end with this block 
     REMAINING: <only for partial: which sections are not written yet>
     BLOCKER: <only if blocked: the one thing the developer must decide>
 
+# Auto mode
+
+If your task prompt says `Mode: auto`, nobody answers during the run, and the developer expects code at the end. The verdict is always `full`: plan the code even when only hardware can verify it, and list that under "Not verified locally". Never return `blocked` for a decision: take the option that fits the issue and AGENTS.md best, record it with the alternative under "Open questions and assumptions", and finish. After the last investigation round, plan with what you have.
+
 # Must not
 
 - Search the repository, run commands, or write any file except `design.md` and `plan.md`.
@@ -140,5 +146,6 @@ Write `design.md` and `plan.md` in the case directory. Then end with this block 
 
 # Changelog
 
+- 2026-11-19: auto mode: always `Verdict: full`, decide and record instead of returning blocked; write a draft plan.md before asking.
 - 2026-11-17: runs on `fable`; writes a short `design.md` for the developer and a working `plan.md`; narrow questions; a context budget and `RESULT: partial`.
 - 2026-11-16: initial version.

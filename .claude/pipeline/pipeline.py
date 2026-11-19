@@ -43,7 +43,7 @@ CONTEXT: dict[str, Any] = CONFIG["context"]
 Status = dict[str, Any]
 
 ROLES = ("investigator", "planner", "reviewer", "test-writer", "implementer", "papa")
-ROUNDS = ("shaper_questions", "investigation", "plan_revisions", "test_retries", "review")
+ROUNDS = ("shaper_questions", "investigation", "plan_revisions", "test_retries", "fixes", "review")
 MODES = ("guided", "auto")
 TRANSITIONS: dict[str, tuple[str, ...]] = {
     "shaping": ("issue_ready",),
@@ -122,6 +122,34 @@ NEXT = {
     "closed": "done; /fix-ci starts another iteration, /papa learns from the case",
     "blocked": "waiting for the developer; advance back to the state it was blocked from",
     "abandoned": "nothing",
+}
+# auto mode: what comes next when nobody is asked
+AUTO_NEXT = {
+    "shaping": "finish issue.md (validate-issue, leak-scan, the cold read), then hash issue and approve issue <hash> "
+    "--by auto, and go on with /resolve-issue stage 1 in this run",
+    "issue_ready": "advance planning and start the planner",
+    "planning": "start or continue the planner and carry its questions; critique once (spawn reviewer --mode plan); "
+    "validate-design; advance plan_review",
+    "plan_review": "hash plan, then approve plan <hash> --by auto",
+    "plan_approved": "advance testing; if the checkout is not ready, run build first (in the background)",
+    "testing": "start the test writer, then advance implementing",
+    "implementing": "start the implementer, then gates and scope-check; then advance reviewing, or after the review "
+    "round write report.md and pr-text.md, run pr and advance report_ready",
+    "reviewing": "start the reviewer --mode diff, or route its findings once; then report.md, pr-text.md, pr, "
+    "advance report_ready",
+    "report_ready": "hash result, then approve result <hash> --by auto",
+}
+# auto mode: what a loop that reached its cap does instead of asking
+AUTO_CAP = {
+    "shaper_questions": "Auto mode asks the developer nothing: decide, and record the assumption in issue.notes.md.",
+    "investigation": "Auto mode: no more investigation rounds. Continue the role that asked with: 'No more "
+    "investigation rounds: decide with the findings you have and record what is unknown.'",
+    "plan_revisions": "Auto mode: the design gets no more revisions. Keep the approved design; the role that needed a "
+    "change works with it and records the gap.",
+    "test_retries": "Auto mode: the test writer had its tries. Go on with advance implementing: auto mode takes the "
+    "tests as they are.",
+    "fixes": "Auto mode: the implementer had its tries. Go on with the next advance: auto mode records the remaining "
+    "failures for the report.",
 }
 LOAD_CHECK = (
     "import sys, unittest\n"
@@ -216,6 +244,8 @@ def checkout_dir(case_id: str) -> Path:
 
 def load_status(case_id: str) -> Status:
     status: Status = json.loads((case_dir(case_id) / "status.json").read_text())
+    for name in ROUNDS:
+        status["rounds"].setdefault(name, 0)
     return status
 
 
@@ -242,6 +272,37 @@ def schema(status: Status) -> int:
 def effective_mode(status: Status) -> str:
     mode = status.get("mode") or CONFIG["mode"]
     return mode if mode in MODES else "guided"
+
+
+def auto(status: Status) -> bool:
+    return effective_mode(status) == "auto"
+
+
+def claim(status: Status) -> bool:
+    """Record the Claude Code session that drives the case, so that its Stop hook knows what is unfinished."""
+    session = os.environ.get("CLAUDE_CODE_SESSION_ID")
+    if not session or status.get("session") == session:
+        return False
+    status["session"] = session
+    return True
+
+
+def auto_cases(session: str) -> list[Status]:
+    """Unfinished auto-mode cases that this session drives, the most recently active first."""
+    found = [load_status(case_id) for case_id in case_ids()] if session else []
+    found = [
+        status
+        for status in found
+        if status.get("session") == session and auto(status) and status["state"] not in ("closed", "abandoned")
+    ]
+    return sorted(found, key=lambda status: -(CASES / status["id"] / "run.jsonl").stat().st_mtime)
+
+
+def next_step(status: Status) -> str:
+    state = status["state"]
+    if auto(status) and state == "blocked":
+        return f"{RUN} advance {status['id']} {status.get('blocked_from')}, then go on"
+    return (AUTO_NEXT if auto(status) else NEXT).get(state) or NEXT.get(state, "")
 
 
 def gate_file(status: Status, gate: str) -> str:
@@ -298,11 +359,30 @@ def role_meta(role: str) -> dict[str, str]:
 def bump(status: Status, name: str) -> None:
     cap = CONFIG["caps"][name]
     if status["rounds"][name] >= cap:
+        if auto(status) and name in AUTO_CAP:
+            die(f"cap reached: {name} {status['rounds'][name]}/{cap}. {AUTO_CAP[name]}")
         die(
             f"cap reached: {name} {status['rounds'][name]}/{cap}. Stop and ask the developer. "
             f"Only the developer raises caps.{name} in .claude/pipeline/config.json."
         )
     status["rounds"][name] += 1
+
+
+def fallback(status: Status, counter: str, message: str, problems: list[str]) -> None:
+    """Auto mode, once a loop has had its tries: record the problems for the report and go on. Otherwise refuse."""
+    cap = CONFIG["caps"][counter]
+    if not (auto(status) and status["rounds"][counter] >= cap):
+        hint = (
+            f"\nAuto mode: {RUN} count {status['id']} {counter}, then the role tries again with this message. After "
+            f"{cap} tries the script records what is left and goes on."
+            if auto(status)
+            else ""
+        )
+        die(message + "".join(f"\n- {problem}" for problem in problems) + hint)
+    accepted = status.setdefault("accepted", [])
+    accepted += [problem for problem in problems if problem not in accepted]
+    log_event(status["id"], event="accepted", problems=problems)
+    print("auto mode: accepted, and listed in the report:" + "".join(f"\n- {problem}" for problem in problems))
 
 
 # ---------------------------------------------------------------- text sizes and public copies
@@ -450,8 +530,11 @@ def issue_problems(case_id: str) -> tuple[list[str], list[str]]:
     kind = header(head, "Kind").lower()
     if kind not in ISSUE_SECTIONS:
         problems.append(f"Kind must be one of: {', '.join(ISSUE_SECTIONS)}")
-    if header(head, "Agent fit").lower() not in FITS:
+    fit = header(head, "Agent fit").lower()
+    if fit not in FITS:
         problems.append(f"Agent fit must be one of: {', '.join(FITS)}")
+    elif fit != "full" and auto(load_status(case_id)):
+        problems.append("auto mode builds every issue: write 'Agent fit: full'; reasons for doubt go to issue.notes.md")
     known = {
         line.strip().lower()
         for line in (PIPELINE / "labels.txt").read_text().splitlines()
@@ -545,15 +628,21 @@ def plan_problems(case_id: str) -> list[str]:
 
 def planning_problems(case_id: str) -> list[str]:
     """Everything that must hold before the design goes to the developer."""
-    if schema(load_status(case_id)) < 2:
+    status = load_status(case_id)
+    if schema(status) < 2:
         return plan_problems(case_id)
     problems = design_problems(case_id) + plan_problems(case_id)
-    design = case_dir(case_id) / "design.md"
+    design, plan = case_dir(case_id) / "design.md", case_dir(case_id) / "plan.md"
+    if auto(status) and plan.is_file() and header(plan.read_text(), "Verdict") != "full":
+        problems.append(
+            "auto mode builds the change: write 'Verdict: full' in plan.md, and list what only hardware can verify "
+            "under 'Not verified locally'"
+        )
     return problems + (leak_hits("design.md", design.read_text()) if design.is_file() else [])
 
 
-def report_problems(case_id: str) -> list[str]:
-    status, path = load_status(case_id), case_dir(case_id) / "report.md"
+def report_problems(case_id: str, status: Status | None = None) -> list[str]:
+    status, path = status or load_status(case_id), case_dir(case_id) / "report.md"
     if not path.is_file():
         return ["report.md is missing"]
     if schema(status) < 2:
@@ -562,6 +651,11 @@ def report_problems(case_id: str) -> list[str]:
     found = sections(text)
     required = REPORT_SECTIONS if status["verdict"] == "full" else REPORT_SECTIONS[:1]
     problems = [f"report.md: section '## {name}' is missing or empty" for name in required if not found.get(name)]
+    accepted = status.get("accepted") or []
+    if accepted and "Accepted failures" not in text:
+        problems.append(
+            "report.md: add a line '**Accepted failures:** ...' under '## Verification', with: " + "; ".join(accepted)
+        )
     return problems + size_problems("report.md", text, LIMITS["report_words"])
 
 
@@ -736,6 +830,7 @@ def cmd_new_case(args: argparse.Namespace) -> None:
         "marks": {},
         "agents": {},
     }
+    claim(status)
     save_status(status)
     if args.issue_file:
         shutil.copy2(args.issue_file, case / "issue.md")
@@ -856,7 +951,7 @@ def cmd_status(args: argparse.Namespace) -> None:
         )
     if status["agents"]:
         print("agents: " + "  ".join(f"{role}={agent}" for role, agent in status["agents"].items()))
-    print(f"next: {NEXT[state]}")
+    print(f"next: {next_step(status)}")
 
 
 def cmd_path(args: argparse.Namespace) -> None:
@@ -905,17 +1000,19 @@ def cmd_hash(args: argparse.Namespace) -> None:
 
 def cmd_mode(args: argparse.Namespace) -> None:
     status = load_status(args.case)
+    claim(status)
     if args.mode:
         status["mode"] = args.mode
-        save_status(status)
         log_event(args.case, event="mode", mode=args.mode)
+    save_status(status)
     mode = effective_mode(status)
     print(f"{args.case}: mode {mode}")
     if mode == "auto":
         waiting = [gate for gate in GATES if CONFIG["gates"][gate] != "auto"]
         print(
-            "auto mode: nobody is asked. The script takes a gate when its checks pass (approve ... --by auto), "
-            "and a stop ends the run with a report instead of a question. Nothing is pushed."
+            "auto mode: nobody is asked and nothing waits. The script takes a gate when its checks pass (approve ... "
+            "--by auto), every refusal names what to do instead, and the session's Stop hook keeps the run going "
+            "until the case is closed with the code on its branch. Nothing is pushed."
             + (f"\nstill waiting for the developer (gates.* in config.json): {', '.join(waiting)}" if waiting else "")
             + "\nClaude Code's own permission prompts are separate: an unattended run needs a permission mode that "
             "does not prompt for the commands the agents run"
@@ -924,6 +1021,7 @@ def cmd_mode(args: argparse.Namespace) -> None:
 
 def cmd_approve(args: argparse.Namespace) -> None:
     status, case = load_status(args.case), case_dir(args.case)
+    claim(status)
     if args.by == "auto":
         if effective_mode(status) != "auto":
             die(
@@ -954,7 +1052,7 @@ def cmd_approve(args: argparse.Namespace) -> None:
         if problems:
             die("the issue cannot be approved yet:\n- " + "\n- ".join(problems))
         text = path.read_text()
-        status["verdict"] = header(text, "Agent fit").lower()
+        status["verdict"] = "full" if auto(status) else header(text, "Agent fit").lower()
         if schema(status) >= 2:
             named = header(text, "Branch")
             if named and status.get("branch_given") and args.by == "auto":
@@ -971,13 +1069,15 @@ def cmd_approve(args: argparse.Namespace) -> None:
             die("the design cannot be approved yet:\n- " + "\n- ".join(problems))
         plan = (case / "plan.md").read_text()
         status["tier"] = header(plan, "Tier")
-        if header(plan, "Verdict") == "plan-only":
+        if auto(status):
+            status["verdict"] = "full"
+        elif header(plan, "Verdict") == "plan-only":
             status["verdict"] = "plan-only"
         if schema(status) >= 2:
             approval["plan_hash"] = file_hash(case / "plan.md")
             snapshot(case, "plan.md", f"approved-{approval['plan_hash']}")
     else:
-        problems = report_problems(args.case)
+        problems = report_problems(args.case, status)
         built = schema(status) >= 2 and status["verdict"] == "full"
         if built and (status.get("pr") or {}).get("inputs") != pr_inputs(status):
             problems.append(f"the PR description is older than pr-text.md, issue.md or design.md: {RUN} pr {args.case}")
@@ -992,7 +1092,7 @@ def cmd_approve(args: argparse.Namespace) -> None:
     print(
         f"{args.case}: gate {args.gate} approved at {current} by {args.by}; state {state} -> {target}\n"
         + "".join(f"{note}\n" for note in notes)
-        + f"next: {NEXT[target]}"
+        + f"next: {next_step(status)}"
     )
 
 
@@ -1006,7 +1106,12 @@ def enter(status: Status, target: str, args: argparse.Namespace) -> None:
             if not approval_valid(status, "issue"):
                 die("issue.md changed after approval; advance shaping and approve it again")
             if status["verdict"] == "not-agent-fit":
-                die("the verdict is not-agent-fit; only the developer changes it (set <case> verdict plan-only|full)")
+                if not auto(status):
+                    die(
+                        "the verdict is not-agent-fit; only the developer changes it (set <case> verdict plan-only|full)"
+                    )
+                status["verdict"] = "full"
+                log_event(case_id, event="auto", note="verdict not-agent-fit -> full: auto mode builds every case")
         elif current in ("report_ready", "closed"):
             status["iteration"] += 1
             status["rounds"] = dict.fromkeys(ROUNDS, 0)
@@ -1026,50 +1131,72 @@ def enter(status: Status, target: str, args: argparse.Namespace) -> None:
                 snapshot(case, artifact, f"v{versions + 1:02d}")
     elif target == "testing":
         if status["verdict"] != "full":
+            if auto(status):
+                die(
+                    f"auto mode builds every case, but this design was approved as {status['verdict']}: "
+                    f"{RUN} advance {case_id} planning, and the planner writes 'Verdict: full'"
+                )
             die("only cases with verdict 'full' are built; a plan-only case goes to report_ready")
         problems = env_problems(case_id)
         if problems:
-            die("the checkout is not ready:\n- " + "\n- ".join(problems))
+            if not auto(status) or (status.get("build") or {}).get("ok") is not False:
+                die(
+                    "the checkout is not ready:\n- "
+                    + "\n- ".join(problems)
+                    + f"\n{RUN} build {case_id} copies or builds the native module; it can take minutes, so run it "
+                    "in the background"
+                )
+            accepted = status.setdefault("accepted", [])
+            note = f"the checkout could not be built ({status['build']['log']}), so tests and type checks could not run"
+            if note not in accepted:
+                accepted.append(note)
         require_clean(checkout)
         status["marks"]["testing"] = git(checkout, "rev-parse", "HEAD")
     elif target == "implementing":
         if current == "testing":
-            if not (case / "tests.md").is_file():
-                die("tests.md is missing; the test writer has not reported")
+            problems = (
+                [] if (case / "tests.md").is_file() else ["tests.md is missing: the test writer has not reported"]
+            )
             outside = [
                 name
                 for name in git(checkout, "diff", "--name-only", status["marks"]["testing"], "HEAD").splitlines()
                 if not name.startswith("test/")
             ]
             if outside:
-                die("the test writer changed files outside test/: " + ", ".join(outside))
+                problems.append("the test writer changed files outside test/: " + ", ".join(outside))
+            if problems:
+                fallback(status, "test_retries", "the tests are not ready:", problems)
+                if not (case / "tests.md").is_file():
+                    (case / "tests.md").write_text(f"# Tests: case {case_id}\n\nThe test writer did not report.\n")
         require_clean(checkout)
         status["marks"]["implementing"] = git(checkout, "rev-parse", "HEAD")
     elif target == "reviewing":
-        if not (case / "impl-report.md").is_file():
-            die("impl-report.md is missing; the implementer has not reported")
-        require_clean(checkout)
-        problems = scope_problems(case_id)
-        if problems:
-            die("scope check failed:\n- " + "\n- ".join(problems))
-        if not gates_ok(status, checkout):
-            die(f"the gates are not green for the current commit: {RUN} gates {case_id}")
         cap = CONFIG["caps"]["review"]
-        if args.again:
-            log_event(case_id, event="review-again", round=status["rounds"]["review"] + 1)
-        elif current == "report_ready" or status["rounds"]["review"] >= cap:
+        if not args.again and (current == "report_ready" or status["rounds"]["review"] >= cap):
             die(
                 f"the review round of this iteration is used ({status['rounds']['review']} of {cap}). Its comments are "
                 f"addressed once and the case goes to the report: {RUN} advance {case_id} report_ready. Another round "
                 f"runs only when the developer asks for one: {RUN} advance {case_id} reviewing --again"
             )
+        require_clean(checkout)
+        problems = (
+            []
+            if (case / "impl-report.md").is_file()
+            else ["impl-report.md is missing: the implementer has not reported"]
+        )
+        problems += scope_problems(case_id)
+        if not gates_ok(status, checkout):
+            problems.append(f"the gates are not green for the current commit ({RUN} gates {case_id})")
+        if problems:
+            fallback(status, "fixes", "the change is not ready for review:", problems)
+            if not (case / "impl-report.md").is_file():
+                (case / "impl-report.md").write_text(f"# Implementation report: case {case_id}\n\nNo report.\n")
+        if args.again:
+            log_event(case_id, event="review-again", round=status["rounds"]["review"] + 1)
         status["rounds"]["review"] += 1
     elif target == "report_ready":
         if current == "implementing" and not status["rounds"]["review"]:
             die(f"the change has not been reviewed in this iteration: {RUN} advance {case_id} reviewing")
-        problems = report_problems(case_id)
-        if problems:
-            die("the report is not ready:\n- " + "\n- ".join(problems))
         if current == "plan_approved":
             if status["verdict"] != "plan-only":
                 die(
@@ -1083,20 +1210,31 @@ def enter(status: Status, target: str, args: argparse.Namespace) -> None:
                 die(f"the PR description is missing or out of date: {RUN} pr {case_id}")
             require_clean(checkout)
             problems = scope_problems(case_id)
-            if problems or not gates_ok(status, checkout):
-                die("gates or scope check are not green for the current commit:\n- " + "\n- ".join(problems))
+            if not gates_ok(status, checkout):
+                problems.append(f"the gates are not green for the current commit ({RUN} gates {case_id})")
+            if problems:
+                fallback(status, "fixes", "gates or scope check are not green for the current commit:", problems)
         hits = leak_problems(case_id, "public")
         if hits:
-            die("possible internal information on the public surface:\n" + "\n".join(hits))
+            fallback(status, "fixes", "possible internal information on the public surface:", hits)
+        problems = report_problems(case_id, status)
+        if problems:
+            die("the report is not ready:\n- " + "\n- ".join(problems))
         status["agent_head"] = git(checkout, "rev-parse", "HEAD")
 
 
 def cmd_advance(args: argparse.Namespace) -> None:
     status = load_status(args.case)
+    claim(status)
     current, target = status["state"], args.state
     if target == "abandoned":
         pass
     elif target == "blocked":
+        if auto(status):
+            die(
+                "auto mode does not block or wait: take the fallback in /resolve-issue 'Auto mode' (decide, record, "
+                f"go on). Once code is on the branch, {RUN} finish {args.case} ends the case with what exists."
+            )
         if current in ("blocked", "abandoned", "closed") or not args.reason:
             die("blocking needs --reason and a case that is in progress")
         status["blocked_from"], status["blocked_reason"] = current, args.reason
@@ -1115,11 +1253,12 @@ def cmd_advance(args: argparse.Namespace) -> None:
     status["state"] = target
     save_status(status)
     log_event(args.case, event="advance", source=current, target=target, reason=args.reason)
-    print(f"{args.case}: {current} -> {target}\nnext: {NEXT[target]}")
+    print(f"{args.case}: {current} -> {target}\nnext: {next_step(status)}")
 
 
 def cmd_set(args: argparse.Namespace) -> None:
     status = load_status(args.case)
+    claim(status)
     if args.key == "verdict":
         if args.value not in FITS:
             die(f"verdict must be one of: {', '.join(FITS)}")
@@ -1142,13 +1281,16 @@ def cmd_set(args: argparse.Namespace) -> None:
 
 def cmd_count(args: argparse.Namespace) -> None:
     status = load_status(args.case)
+    claim(status)
     bump(status, args.name)
     save_status(status)
     print(f"{args.case}: {args.name} {status['rounds'][args.name]}/{CONFIG['caps'][args.name]}")
 
 
 def cmd_log(args: argparse.Namespace) -> None:
-    case_dir(args.case)
+    status = load_status(args.case)
+    if claim(status):
+        save_status(status)
     fields: dict[str, Any] = {"event": args.event, "role": args.role, "note": args.note}
     record = budget_record(args.agent) if args.agent else None
     if args.agent:
@@ -1162,26 +1304,70 @@ def cmd_log(args: argparse.Namespace) -> None:
     log_event(args.case, **fields)
 
 
-def cmd_provision(args: argparse.Namespace) -> None:
-    checkout = checkout_dir(args.case)
-    case_dir(args.case)
+def provision_problem(case_id: str) -> str | None:
+    """Copy the working tree's native build into the checkout when both have the same native sources."""
+    checkout = checkout_dir(case_id)
 
     def native_tree(repo: Path) -> str:
         return git(repo, "rev-parse", "HEAD:ttexalens/cpp", check=False)
 
     if native_tree(REPO) != native_tree(checkout) or git(REPO, "status", "--porcelain", "--", "ttexalens/cpp"):
-        die(
-            f"the native sources of the working tree and the checkout differ. Build in the checkout: make -C {checkout}"
-        )
+        return f"the native sources of the working tree and the checkout differ: {RUN} build {case_id}"
     products = sorted((REPO / "ttexalens").glob("_native_ttexalens*.so"))
     stub = REPO / "ttexalens" / "_native_ttexalens"
     if not products or not (stub / "__init__.pyi").is_file():
-        die(f"the working tree has no native build to copy. Run make in {REPO} or in {checkout}")
+        return f"the working tree has no native build to copy: {RUN} build {case_id}"
     for product in products:
         shutil.copy2(product, checkout / "ttexalens" / product.name)
     shutil.copytree(stub, checkout / "ttexalens" / "_native_ttexalens", dirs_exist_ok=True)
-    print(f"copied the native module and its stub into {checkout}")
+    return None
+
+
+def cmd_provision(args: argparse.Namespace) -> None:
+    case_dir(args.case)
+    problem = provision_problem(args.case)
+    if problem:
+        die(problem)
+    print(f"copied the native module and its stub into {checkout_dir(args.case)}")
     cmd_env_check(args)
+
+
+def cmd_build(args: argparse.Namespace) -> None:
+    status, case, checkout = load_status(args.case), case_dir(args.case), checkout_dir(args.case)
+    claim(status)
+    log, notes = numbered(case / "gates", "build.log"), []
+    if env_problems(args.case):
+        problem = provision_problem(args.case)
+        notes.append(problem or "copied the native module and its stub from the working tree")
+        if problem:
+            wrapper = REPO / "GNUmakefile"
+            cmd = ["make", *(["-f", str(wrapper)] if wrapper.is_file() else [])]
+            environment = {**os.environ, "PATH": f"{REPO / '.venv' / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}"}
+            try:
+                result = subprocess.run(
+                    cmd, cwd=checkout, text=True, capture_output=True, timeout=5400, env=environment
+                )
+                notes.append(
+                    f"{' '.join(cmd)} -> exit {result.returncode}\n{result.stdout[-20000:]}{result.stderr[-20000:]}"
+                )
+            except subprocess.TimeoutExpired:
+                notes.append(f"{' '.join(cmd)} did not finish in 90 minutes")
+    problems = env_problems(args.case)
+    log.write_text("\n\n".join(notes + problems) + "\n")
+    status["build"] = {"ok": not problems, "log": str(log), "time": now()}
+    save_status(status)
+    log_event(args.case, event="build", ok=not problems, log=str(log))
+    if problems:
+        die(
+            f"the checkout is still not ready (log: {log}):\n- "
+            + "\n- ".join(problems)
+            + (
+                "\nAuto mode: advance testing goes on without a working checkout and records it."
+                if auto(status)
+                else ""
+            )
+        )
+    print(f"build: ok (log: {log})")
 
 
 def cmd_env_check(args: argparse.Namespace) -> None:
@@ -1326,11 +1512,19 @@ def pr_description(status: Status) -> str:
 
 
 def cmd_pr(args: argparse.Namespace) -> None:
-    status, case, checkout = load_status(args.case), case_dir(args.case), checkout_dir(args.case)
+    status = load_status(args.case)
+    claim(status)
     if schema(status) < 2:
         die("this case was made before PR descriptions were assembled; it uses pr-text.md as it is")
     if status["state"] not in ("implementing", "reviewing", "report_ready"):
         die(f"the PR description is assembled once the change is built; the case is in {status['state']}")
+    assemble_pr(status)
+    save_status(status)
+
+
+def assemble_pr(status: Status) -> None:
+    """Write pr-description.md and commit the published issue, design and PR description to the branch."""
+    case, checkout = CASES / status["id"], checkout_dir(status["id"])
     stale = [gate for gate in ("issue", "plan") if not approval_valid(status, gate)]
     if stale:
         die(f"not the approved version any more: {', '.join(gate_file(status, gate) for gate in stale)}")
@@ -1359,7 +1553,7 @@ def cmd_pr(args: argparse.Namespace) -> None:
             existed = bool(git(checkout, "ls-tree", "--name-only", "HEAD", "--", docs.rstrip("/")))
             subject = f"{'Update' if existed else 'Add'} issue, design and PR description for {docs.split('/')[-2]}"
             git(checkout, "commit", "--quiet", "-m", subject)
-            log_event(args.case, event="commit", role="pipeline", head=git(checkout, "rev-parse", "HEAD"))
+            log_event(status["id"], event="commit", role="pipeline", head=git(checkout, "rev-parse", "HEAD"))
             print(git(checkout, "log", "-1", "--stat", "--format=%h %s"))
         else:
             print(f"{docs} on the branch is already up to date")
@@ -1367,9 +1561,106 @@ def cmd_pr(args: argparse.Namespace) -> None:
     if status["state"] == "report_ready":
         status["agent_head"] = status["pr"]["head"]
     mirrored = mirror(status)
-    save_status(status)
     if mirrored:
         print(mirrored)
+
+
+def finish_texts(status: Status, reason: str, changed: list[str]) -> tuple[str, str]:
+    """A plain report.md and pr-text.md for a case that finish ends."""
+    case, checkout = CASES / status["id"], checkout_dir(status["id"])
+    issue = (case / "issue.md").read_text()
+    title = next((line[2:].strip() for line in issue.splitlines() if line.startswith("# ")), status["id"])
+    checks = ", ".join(f"{name} {result}" for name, result in ((status.get("gates") or {}).get("checks") or {}).items())
+    accepted = "; ".join(status.get("accepted") or []) or "none"
+    reviews = existing(case, "review/*-diff.md")
+    report = [
+        f"# Report: {title}",
+        "",
+        f"Case: {status['id']}",
+        f"Branch: {status['branch']} on base {status['base_sha'][:9]}",
+        "",
+        "## Outcome",
+        f"The change is on the branch. Auto mode ended the case with finish: {reason}.",
+        "",
+        "## Changes",
+        *[f"- `{name}`" for name in changed[:30]],
+        "",
+        "## Verification",
+        f"Last gates run: {checks or 'none'}.",
+        f"**Accepted failures:** {accepted}.",
+        "**Not verified:** hardware and simulator tests.",
+        "",
+        "## Review",
+        ("Review files: " + ", ".join(Path(name).name for name in reviews)) if reviews else "Not reviewed.",
+    ]
+    scope = (
+        sections(body_of((case / "design.md").read_text())).get("Scope", "") if (case / "design.md").is_file() else ""
+    )
+    plain = re.sub(r"^(\[[^\]]*\]\s*)+", "", title)
+    pr_text = [
+        f"# {plain}",
+        "",
+        scope or "See the design below.",
+        "",
+        "## Verification",
+        f"Static checks and device-free tests: {checks or 'not run'}. **Not verified:** hardware and simulator tests.",
+    ]
+    return tidy("\n".join(report)), tidy("\n".join(pr_text))
+
+
+def cmd_finish(args: argparse.Namespace) -> None:
+    status, case, checkout = load_status(args.case), case_dir(args.case), checkout_dir(args.case)
+    if not auto(status):
+        die("finish ends an auto-mode case with what exists; in guided mode the developer decides at the gates")
+    claim(status)
+    if status["state"] == "blocked":
+        status["state"] = status.get("blocked_from") or "implementing"
+    if status["state"] == "closed":
+        print(f"{args.case} is closed already")
+        return
+    if status["state"] not in ("testing", "implementing", "reviewing", "report_ready"):
+        die(f"finish needs code on the branch; the case is in {status['state']}. Next: {next_step(status)}")
+    accepted = status.setdefault("accepted", [])
+
+    def accept(problem: str) -> None:
+        if problem not in accepted:
+            accepted.append(problem)
+
+    if git(checkout, "status", "--porcelain"):
+        git(checkout, "add", "-A")
+        git(checkout, "commit", "--quiet", "-m", "Add the work an agent left uncommitted")
+        accept("an agent left uncommitted changes; finish committed them as they were")
+    docs = branch_docs(status)
+    changed = git(checkout, "diff", "--name-only", status["base_sha"], "HEAD").splitlines()
+    changed = [name for name in changed if not (docs and name.startswith(docs))]
+    if not [name for name in changed if not name.startswith("test/")]:
+        die("no code on the branch yet, only tests or nothing: start the implementer")
+    if not gates_ok(status, checkout):
+        accept("the gates are not green for the final commit")
+    for problem in scope_problems(args.case):
+        accept(problem)
+    if not status["rounds"]["review"]:
+        accept("the change was not reviewed")
+    for hit in leak_problems(args.case, "public"):
+        accept(f"possible internal information: {hit}")
+    reason = args.reason or "the stages could not be completed normally"
+    report_text, pr_text = finish_texts(status, reason, changed)
+    if not (case / "report.md").is_file() or report_problems(args.case, status):
+        (case / "report.md").write_text(report_text)
+    current = (case / "pr-text.md").read_text() if (case / "pr-text.md").is_file() else ""
+    pr_problems = size_problems("pr-text.md", current, LIMITS["pr_words"]) + leak_hits("pr-text.md", current)
+    if not current.startswith("# ") or pr_problems:
+        (case / "pr-text.md").write_text(pr_text)
+    assemble_pr(status)
+    status["agent_head"] = git(checkout, "rev-parse", "HEAD")
+    status["approvals"]["result"] = {"hash": file_hash(case / "report.md"), "time": now(), "by": "auto"}
+    status["state"] = "closed"
+    save_status(status)
+    log_event(args.case, event="finish", reason=reason, accepted=accepted)
+    print(
+        f"{args.case}: closed by finish. Branch {status['branch']}, PR description {case / 'pr-description.md'}"
+        + "".join(f"\naccepted: {problem}" for problem in accepted)
+    )
 
 
 def cmd_scope_check(args: argparse.Namespace) -> None:
@@ -1485,10 +1776,25 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     status, case, checkout = load_status(args.case), case_dir(args.case), checkout_dir(args.case)
     state, role = status["state"], args.role
     spawned = sum(1 for line in (case / "run.jsonl").read_text().splitlines() if '"event": "spawn"' in line)
-    if spawned >= CONFIG["caps"]["agent_calls"]:
-        die(f"budget reached: {spawned} agent calls. Stop and ask the developer (caps.agent_calls in the config).")
+    budget = CONFIG["caps"]["agent_calls"]
+    if spawned >= budget:
+        if not auto(status):
+            die(f"budget reached: {spawned} agent calls. Stop and ask the developer (caps.agent_calls in the config).")
+        if role in ("investigator", "reviewer"):
+            die(
+                f"auto mode: the agent budget ({budget}) is used, so no more investigators or reviewers. The role that "
+                f"asked decides with what it has; once the change is built, {RUN} finish {args.case} ends the case."
+            )
+        if spawned >= budget * 3 // 2:
+            die(f"auto mode: the hard agent budget ({budget * 3 // 2}) is used. End the case: {RUN} finish {args.case}")
     session, cap = session_tokens(), CONTEXT["hard_cap"]
-    if session >= cap:
+    if session >= cap and auto(status):
+        print(
+            f"warning: this session holds {session // 1000}k tokens of context, over the {cap // 1000}k cap. "
+            "Auto mode goes on.",
+            file=sys.stderr,
+        )
+    elif session >= cap:
         die(
             f"this session holds {session // 1000}k tokens of context and the cap is {cap // 1000}k. Run /compact, or "
             f"continue in a new session with /resolve-issue {args.case}: the case state is in files. "
@@ -1497,10 +1803,14 @@ def cmd_spawn(args: argparse.Namespace) -> None:
     refusal = spawn_refusal(status, role, args)
     if refusal:
         die(refusal)
+    if claim(status):
+        save_status(status)
     if args.resume and continued(status, role, args):
         return
     meta = role_meta(role)
     lines = [f"Role: {role}", f"Case: {args.case}", f"Case directory: {case}"]
+    if auto(status):
+        lines.append("Mode: auto. Nobody answers questions during this run: follow 'Auto mode' in your role file.")
     repository = (
         f"Repository: {checkout} (branch {status['branch']}, base {status['base_sha'][:9]}). Every repository path "
         "in the issue, the findings and the plan is relative to this directory. The session's working directory is "
@@ -1881,8 +2191,18 @@ def read_reason(tool_input: dict[str, Any]) -> str | None:
 def guard_orchestrator(event: dict[str, Any]) -> str | None:
     """The developer's session, once a pipeline command ran in it: how it may start the roles."""
     tool_input = event.get("tool_input") or {}
+    if event.get("agent_id"):
+        return None
+    if event.get("tool_name") == "AskUserQuestion":
+        driving = auto_cases(str(event.get("session_id") or ""))
+        if driving:
+            return (
+                f"auto mode: nobody answers questions while case {driving[0]['id']} runs. Decide yourself, record the "
+                "assumption where the role files say, and go on."
+            )
+        return None
     role = tool_input.get("subagent_type")
-    if event.get("agent_id") or event.get("tool_name") != "Agent" or role not in ROLES:
+    if event.get("tool_name") != "Agent" or role not in ROLES:
         return None
     if tool_input.get("model"):
         return f"do not pass a model: the {role} runs on the model named in .claude/agents/{role}.md"
@@ -1892,12 +2212,62 @@ def guard_orchestrator(event: dict[str, Any]) -> str | None:
         transcript_usage(Path(str(event.get("transcript_path") or "")).expanduser(), main=True)[0],
         CONTEXT["hard_cap"],
     )
+    named = re.search(r"\nCase: ([\w.-]+)", str(tool_input.get("prompt") or ""))
+    if named and (CASES / named.group(1) / "status.json").is_file() and auto(load_status(named.group(1))):
+        return None
     if tokens >= cap:
         return (
             f"this session holds {tokens // 1000}k tokens of context and the cap is {cap // 1000}k. Run /compact, or "
             "continue in a new session with /resolve-issue <case>: the case state is in files."
         )
     return None
+
+
+def cmd_guard_stop(args: argparse.Namespace) -> None:
+    """Stop hook: while an auto-mode case of this session is unfinished and nothing runs, the session goes on."""
+    try:
+        event = json.load(sys.stdin)
+    except ValueError:
+        return
+    tasks = event.get("background_tasks")
+    if not isinstance(tasks, list) or not CASES.is_dir():
+        return
+    waiting_types = ("subagent", "shell", "workflow", "teammate")
+    if any(isinstance(task, dict) and task.get("type") in waiting_types for task in tasks):
+        return
+    driving = auto_cases(str(event.get("session_id") or ""))
+    if not driving:
+        return
+    status = driving[0]
+    case_id, state = status["id"], status["state"]
+    gate = next((name for name, (taken_in, _, _) in GATES.items() if taken_in == state), None)
+    if gate and CONFIG["gates"].get(gate) != "auto":
+        return
+    events = len((CASES / case_id / "run.jsonl").read_text().splitlines())
+    fingerprint = f"{state}:{events}"
+    earlier = status.get("auto_stop") or {}
+    count = int(earlier.get("count", 0)) + 1 if earlier.get("fingerprint") == fingerprint else 1
+    status["auto_stop"] = {"fingerprint": fingerprint, "count": count, "time": now()}
+    save_status(status)
+    limit = int(CONFIG.get("auto_stop_limit", 6))
+    if count > limit:
+        log_event(case_id, event="auto-stop", state=state, note=f"no progress after {limit} reminders")
+        message = (
+            f"Auto run of {case_id} made no progress after {limit} reminders in state {state} and stops here. "
+            f"Continue it with /resolve-issue --resume {case_id}."
+        )
+        print(json.dumps({"systemMessage": message}))
+        return
+    reason = (
+        f"Auto mode: case {case_id} is not finished (state {state}) and no pipeline agent or command is running, so "
+        f"the run goes on. Do not ask the developer and do not wait. Next: {next_step(status)}."
+    )
+    if count >= 3:
+        reason += (
+            " The case has not moved since the last reminder. If a step keeps failing, take its auto fallback in "
+            f"/resolve-issue; once code is on the branch, {RUN} finish {case_id} ends the case with what exists."
+        )
+    print(json.dumps({"decision": "block", "reason": reason}))
 
 
 def guard_read(role: str, path: Path) -> str | None:
@@ -2040,12 +2410,13 @@ def main() -> None:
     sub.add_argument("--again", action="store_true", help="reviewing: one more round, because the developer asked")
     command("set", cmd_set, "case", "key", "value", help="set verdict, issue, branch or agent.<role>")
     sub = command("count", cmd_count, "case", help="count one more round of a capped loop")
-    sub.add_argument("name", choices=("shaper_questions", "investigation", "test_retries"))
+    sub.add_argument("name", choices=("shaper_questions", "investigation", "test_retries", "fixes"))
     sub = command("log", cmd_log, "case", "role", "event", help="append an event to run.jsonl")
     sub.add_argument("--note")
     sub.add_argument("--agent", help="agent id, to record how large its context got")
     command("provision", cmd_provision, "case", help="copy the working tree's native build into the checkout")
     command("env-check", cmd_env_check, "case", help="check that the checkout is the tree that gets tested")
+    command("build", cmd_build, "case", help="copy or build the native module in the checkout (can take minutes)")
     command("gates", cmd_gates, "case", help="run the static checks and the device-free tests in the checkout")
     sub = command("test", cmd_test, "case", help="run device-free tests; other tests are only loaded")
     sub.add_argument("names", nargs="+")
@@ -2055,6 +2426,8 @@ def main() -> None:
     command("scope-check", cmd_scope_check, "case", help="compare the changed files with the plan's Files list")
     command("diff", cmd_diff, "case", help="write the branch diff to a file for the reviewer")
     command("pr", cmd_pr, "case", help="assemble the PR description and put it, the issue and the design on the branch")
+    sub = command("finish", cmd_finish, "case", help="auto mode: close the case with the code that exists")
+    sub.add_argument("--reason")
     sub = command("spawn", cmd_spawn, "case", help="check that a role may start now and print its task prompt")
     sub.add_argument("role", choices=ROLES)
     sub.add_argument("--mode", choices=tuple(REVIEW_MODES))
@@ -2068,6 +2441,7 @@ def main() -> None:
     sub.add_argument("cases", nargs="+")
     sub = command("guard", cmd_guard, help="PreToolUse hook: block tool calls outside a role's limits and budget")
     sub.add_argument("role", choices=(*ROLES, "orchestrator"))
+    command("guard-stop", cmd_guard_stop, help="Stop hook: keep a session going while its auto-mode case is unfinished")
 
     args = parser.parse_args()
     args.function(args)

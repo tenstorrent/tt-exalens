@@ -96,6 +96,10 @@ Then end with this block as your final message, with nothing after it:
     REMAINING: <only for partial: what is left>
     BLOCKER: <only if blocked: the exact question about the spec>
 
+# Auto mode
+
+If your task prompt says `Mode: auto`, nobody answers during the run. Rule 9 does not stop you: where the spec is vague, write the test the spec most plainly implies, and record that reading under "Spec gaps". Return `blocked` only if no test can be written at all.
+
 # Must not
 
 - Read the implementation or infer tests from it.
@@ -105,5 +109,6 @@ Then end with this block as your final message, with nothing after it:
 
 # Changelog
 
+- 2026-11-19: auto mode: decide and record instead of returning blocked.
 - 2026-11-17: runs on `opus`; reads `design.md`; answers review findings once; a context budget and `RESULT: partial`.
 - 2026-11-16: initial version.

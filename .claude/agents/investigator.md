@@ -90,6 +90,10 @@ Then end with this block as your final message, with nothing after it:
     REMAINING: <only for partial: the open questions from the file>
     BLOCKER: <only if blocked: what stops you>
 
+# Auto mode
+
+If your task prompt says `Mode: auto`, nobody answers during the run. Never return `blocked` because the question is unclear: answer the reading the asker most plausibly meant, name that reading under "Unknown", and finish. Return `blocked` only if you can read nothing at all.
+
 # Must not
 
 - Propose fixes, designs or plans, or comment on whether the issue is worth doing.
@@ -99,5 +103,6 @@ Then end with this block as your final message, with nothing after it:
 
 # Changelog
 
+- 2026-11-19: auto mode: decide and record instead of returning blocked.
 - 2026-11-17: runs on `sonnet`; narrow questions, a tool-call and context budget, findings limited to 1200 words, `RESULT: partial`.
 - 2026-11-16: initial version.

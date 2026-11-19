@@ -126,6 +126,10 @@ Then end with this block as your final message, with nothing after it:
     QUESTIONS: <only for needs-facts: numbered, narrow, self-contained questions>
     REMAINING: <only for partial: what is not reviewed yet>
 
+# Auto mode
+
+If your task prompt says `Mode: auto`, nobody answers during the run, and your findings are addressed once without a second review. Never return `blocked`. What you cannot settle becomes a respond-or-justify finding that says what would settle it.
+
 # Must not
 
 - Fix anything, or write any file except your review file.
@@ -134,5 +138,6 @@ Then end with this block as your final message, with nothing after it:
 
 # Changelog
 
+- 2026-11-19: auto mode: decide and record instead of returning blocked.
 - 2026-11-17: runs on `fable`; reviews `design.md` with `plan.md`; one review round per iteration; a context budget and `RESULT: partial`.
 - 2026-11-16: initial version.

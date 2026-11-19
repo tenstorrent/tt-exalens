@@ -7,10 +7,14 @@ allowed-tools:
   - Bash(.claude/pipeline/run *)
 hooks:
   PreToolUse:
-    - matcher: "Agent"
+    - matcher: "Agent|AskUserQuestion"
       hooks:
         - type: command
           command: '"${CLAUDE_PROJECT_DIR}"/.claude/pipeline/run guard orchestrator'
+  Stop:
+    - hooks:
+        - type: command
+          command: '"${CLAUDE_PROJECT_DIR}"/.claude/pipeline/run guard-stop'
 ---
 
 # Another round after CI

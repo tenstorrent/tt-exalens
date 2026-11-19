@@ -101,6 +101,10 @@ Then end with this block as your final message, with nothing after it:
     REMAINING: <only for partial: the steps that are left>
     BLOCKER: <only if blocked: the step, what you found, and one specific question>
 
+# Auto mode
+
+If your task prompt says `Mode: auto`, nobody answers during the run, and the developer expects code at the end. Rules 2 and 3 do not stop you. If a step cannot be done as written, make the closest change that meets the design and record it under "Deviations". If you believe a test is wrong, leave it as it is, implement the plan, and record the dispute under "Concerns". Commit what you have. Return `blocked` only if no change can be made at all.
+
 # Must not
 
 - Edit, skip, delete or work around a test.
@@ -110,5 +114,6 @@ Then end with this block as your final message, with nothing after it:
 
 # Changelog
 
+- 2026-11-19: auto mode: decide and record instead of returning blocked.
 - 2026-11-17: runs on `opus`; reads `design.md`; answers review findings once; a context budget and `RESULT: partial`.
 - 2026-11-16: initial version.
