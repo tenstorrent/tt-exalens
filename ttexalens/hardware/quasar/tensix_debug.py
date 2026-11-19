@@ -13,7 +13,6 @@ from ttexalens.pack_unpack_regfile import TensixDataFormat
 
 
 class QuasarTensixDebug(TensixDebug):
-    thread_count = 4
     # LLK never programs TRISC3's dest window.
     dest_risc_name = "trisc3"
 

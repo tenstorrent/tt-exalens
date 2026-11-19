@@ -8,7 +8,6 @@ from ttexalens.util import WARN
 
 
 class WormholeTensixDebug(TensixDebug):
-    thread_count = 3
     dest_risc_name = "trisc0"
 
     def _read_regfile_raw(self, regfile: REGFILE, df: TensixDataFormat, num_tiles: int | None) -> list[int]:

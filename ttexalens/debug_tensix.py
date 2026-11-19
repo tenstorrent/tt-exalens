@@ -48,7 +48,6 @@ def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
 
 
 class TensixDebug:
-    thread_count: int
     dest_risc_name: str
 
     def __init__(
@@ -60,6 +59,7 @@ class TensixDebug:
         self.device = location.device
         self.noc_block = location.noc_block
         self.register_store = self.noc_block.get_register_store(neo_id=neo_id)
+        self.thread_count = self.noc_block.get_tensix_thread_count(neo_id)
 
         # Using TRISC debug hardware to read/write memory
         # Use restricted_access=False because the Tensix dest is outside L1/data_private, but we still need to read/write it via TRISC debug hardware.
