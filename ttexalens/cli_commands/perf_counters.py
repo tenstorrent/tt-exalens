@@ -43,6 +43,8 @@ Examples:
   perf-counters read --snapshot --active
   perf-counters read --block=FPU
   perf-counters read --block=FPU --counter=fpu_or_sfpu_instrn
+  perf-counters read --block=FPU --counter=2    # Read a counter by id, also one without a name
+  perf-counters read --block=FPU --counter=600    # An id outside 0..511 is reported and not read
 """
 
 import time
@@ -54,8 +56,10 @@ from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.device import Device
 from ttexalens.hardware.noc_block import neo_id_to_str
+from ttexalens.hardware.perf_counters import COUNTER_ID_LIMIT
 from ttexalens.perf_counters import (
     list_perf_counters,
+    read_perf_counter,
     read_perf_counters,
     reset_perf_counters,
     start_perf_counters,
@@ -226,25 +230,27 @@ def _run_read(
     ui_state: UIState,
     block_name: str | None,
 ) -> None:
+    counter_arg = _parse_counter(args["--counter"]) if args["--counter"] is not None else None
+    if isinstance(counter_arg, int) and not 0 <= counter_arg < COUNTER_ID_LIMIT:
+        util.WARN(f"counter id {counter_arg} out of range (0..{COUNTER_ID_LIMIT - 1})")
+        return
     targets = list(_iter_perf_targets(dopt, context, ui_state))
     if not targets:
         util.WARN("no perf-counter targets in scope")
         return
 
-    if args["--counter"] is not None:
+    if counter_arg is not None:
         if block_name is None:
             util.WARN("--counter requires --block (counter ids are not unique across blocks)")
             return
-        counter_arg = _parse_counter(args["--counter"])
         matched = False
         for _device, loc, neo_id in targets:
-            per_core = read_perf_counters(loc, block_name=block_name, neo_id=neo_id)
-            for (_bname, cid, cname), (value, _ref) in per_core.items():
-                if (isinstance(counter_arg, int) and cid == counter_arg) or (
-                    isinstance(counter_arg, str) and cname == counter_arg
-                ):
-                    print(value)
-                    matched = True
+            if isinstance(counter_arg, str):
+                named = list_perf_counters(loc, neo_id=neo_id).get(block_name, [])
+                if counter_arg not in [cname for _cid, cname in named]:
+                    continue
+            print(read_perf_counter(loc, block_name, counter_arg, neo_id=neo_id))
+            matched = True
         if not matched:
             util.WARN(f"counter {counter_arg!r} not found in block {block_name}")
         return
