@@ -287,7 +287,7 @@ register_map: dict[str, RegisterDescription] = {
     "PACK_CONFIG01_add_l1_dest_addr_offset": ConfigurationRegisterDescription(
         index=58, mask=0x2, shift=1, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
-    "PACK_CONFIG01_reserved_0": ConfigurationRegisterDescription(
+    "PACK_CONFIG01_addr_cnt_context": ConfigurationRegisterDescription(
         index=58, mask=0xC, shift=2, data_type=REGISTER_DATA_TYPE.INT_VALUE
     ),
     "PACK_CONFIG01_out_data_format": ConfigurationRegisterDescription(
@@ -296,14 +296,29 @@ register_map: dict[str, RegisterDescription] = {
     "PACK_CONFIG01_in_data_format": ConfigurationRegisterDescription(
         index=58, mask=0xF00, shift=8, data_type=REGISTER_DATA_TYPE.TENSIX_DATA_FORMAT
     ),
-    "PACK_CONFIG01_reserved_1": ConfigurationRegisterDescription(
-        index=58, mask=0xF000, shift=12, data_type=REGISTER_DATA_TYPE.INT_VALUE
+    "PACK_CONFIG01_dis_shared_exp_assembler": ConfigurationRegisterDescription(
+        index=58, mask=0x1000, shift=12, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG01_force_pack_per_max_xy_plane": ConfigurationRegisterDescription(
+        index=58, mask=0x2000, shift=13, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG01_enable_out_fifo": ConfigurationRegisterDescription(
+        index=58, mask=0x4000, shift=14, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG01_sub_l1_tile_header_size": ConfigurationRegisterDescription(
+        index=58, mask=0x8000, shift=15, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
     "PACK_CONFIG01_src_if_sel": ConfigurationRegisterDescription(
         index=58, mask=0x10000, shift=16, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
-    "PACK_CONFIG01_pack_per_xy_plane": ConfigurationRegisterDescription(
-        index=58, mask=0xFE0000, shift=17, data_type=REGISTER_DATA_TYPE.INT_VALUE
+    "PACK_CONFIG01_all_pack_disable_zero_compress": ConfigurationRegisterDescription(
+        index=58, mask=0x1E0000, shift=17, data_type=REGISTER_DATA_TYPE.MASK
+    ),
+    "PACK_CONFIG01_all_pack_disable_zero_compress_ovrd": ConfigurationRegisterDescription(
+        index=58, mask=0x200000, shift=21, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG01_add_tile_header_size": ConfigurationRegisterDescription(
+        index=58, mask=0x400000, shift=22, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
     "PACK_CONFIG01_l1_src_addr": ConfigurationRegisterDescription(
         index=58, mask=0xFF000000, shift=24, data_type=REGISTER_DATA_TYPE.ADDRESS
@@ -345,7 +360,7 @@ register_map: dict[str, RegisterDescription] = {
     "PACK_CONFIG08_add_l1_dest_addr_offset": ConfigurationRegisterDescription(
         index=86, mask=0x2, shift=1, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
-    "PACK_CONFIG08_reserved_0": ConfigurationRegisterDescription(
+    "PACK_CONFIG08_addr_cnt_context": ConfigurationRegisterDescription(
         index=86, mask=0xC, shift=2, data_type=REGISTER_DATA_TYPE.INT_VALUE
     ),
     "PACK_CONFIG08_out_data_format": ConfigurationRegisterDescription(
@@ -354,14 +369,23 @@ register_map: dict[str, RegisterDescription] = {
     "PACK_CONFIG08_in_data_format": ConfigurationRegisterDescription(
         index=86, mask=0xF00, shift=8, data_type=REGISTER_DATA_TYPE.TENSIX_DATA_FORMAT
     ),
-    "PACK_CONFIG08_reserved_1": ConfigurationRegisterDescription(
-        index=86, mask=0xF000, shift=12, data_type=REGISTER_DATA_TYPE.INT_VALUE
+    "PACK_CONFIG08_dis_shared_exp_assembler": ConfigurationRegisterDescription(
+        index=86, mask=0x1000, shift=12, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG08_force_pack_per_max_xy_plane": ConfigurationRegisterDescription(
+        index=86, mask=0x2000, shift=13, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG08_enable_out_fifo": ConfigurationRegisterDescription(
+        index=86, mask=0x4000, shift=14, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG08_sub_l1_tile_header_size": ConfigurationRegisterDescription(
+        index=86, mask=0x8000, shift=15, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
     "PACK_CONFIG08_src_if_sel": ConfigurationRegisterDescription(
         index=86, mask=0x10000, shift=16, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
-    "PACK_CONFIG08_pack_per_xy_plane": ConfigurationRegisterDescription(
-        index=86, mask=0xFE0000, shift=17, data_type=REGISTER_DATA_TYPE.INT_VALUE
+    "PACK_CONFIG08_add_tile_header_size": ConfigurationRegisterDescription(
+        index=86, mask=0x20000, shift=17, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
     "PACK_CONFIG08_l1_src_addr": ConfigurationRegisterDescription(
         index=86, mask=0xFF000000, shift=24, data_type=REGISTER_DATA_TYPE.ADDRESS
@@ -403,7 +427,7 @@ register_map: dict[str, RegisterDescription] = {
     "PACK_CONFIG11_add_l1_dest_addr_offset": ConfigurationRegisterDescription(
         index=98, mask=0x2, shift=1, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
-    "PACK_CONFIG11_reserved_0": ConfigurationRegisterDescription(
+    "PACK_CONFIG11_addr_cnt_context": ConfigurationRegisterDescription(
         index=98, mask=0xC, shift=2, data_type=REGISTER_DATA_TYPE.INT_VALUE
     ),
     "PACK_CONFIG11_out_data_format": ConfigurationRegisterDescription(
@@ -412,14 +436,29 @@ register_map: dict[str, RegisterDescription] = {
     "PACK_CONFIG11_in_data_format": ConfigurationRegisterDescription(
         index=98, mask=0xF00, shift=8, data_type=REGISTER_DATA_TYPE.TENSIX_DATA_FORMAT
     ),
-    "PACK_CONFIG11_reserved_1": ConfigurationRegisterDescription(
-        index=98, mask=0xF000, shift=12, data_type=REGISTER_DATA_TYPE.INT_VALUE
+    "PACK_CONFIG11_dis_shared_exp_assembler": ConfigurationRegisterDescription(
+        index=98, mask=0x1000, shift=12, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG11_force_pack_per_max_xy_plane": ConfigurationRegisterDescription(
+        index=98, mask=0x2000, shift=13, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG11_enable_out_fifo": ConfigurationRegisterDescription(
+        index=98, mask=0x4000, shift=14, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG11_sub_l1_tile_header_size": ConfigurationRegisterDescription(
+        index=98, mask=0x8000, shift=15, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
     "PACK_CONFIG11_src_if_sel": ConfigurationRegisterDescription(
         index=98, mask=0x10000, shift=16, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
-    "PACK_CONFIG11_pack_per_xy_plane": ConfigurationRegisterDescription(
-        index=98, mask=0xFE0000, shift=17, data_type=REGISTER_DATA_TYPE.INT_VALUE
+    "PACK_CONFIG11_all_pack_disable_zero_compress": ConfigurationRegisterDescription(
+        index=98, mask=0x1E0000, shift=17, data_type=REGISTER_DATA_TYPE.MASK
+    ),
+    "PACK_CONFIG11_all_pack_disable_zero_compress_ovrd": ConfigurationRegisterDescription(
+        index=98, mask=0x200000, shift=21, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG11_add_tile_header_size": ConfigurationRegisterDescription(
+        index=98, mask=0x400000, shift=22, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
     "PACK_CONFIG11_l1_src_addr": ConfigurationRegisterDescription(
         index=98, mask=0xFF000000, shift=24, data_type=REGISTER_DATA_TYPE.ADDRESS
@@ -461,7 +500,7 @@ register_map: dict[str, RegisterDescription] = {
     "PACK_CONFIG18_add_l1_dest_addr_offset": ConfigurationRegisterDescription(
         index=126, mask=0x2, shift=1, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
-    "PACK_CONFIG18_reserved_0": ConfigurationRegisterDescription(
+    "PACK_CONFIG18_addr_cnt_context": ConfigurationRegisterDescription(
         index=126, mask=0xC, shift=2, data_type=REGISTER_DATA_TYPE.INT_VALUE
     ),
     "PACK_CONFIG18_out_data_format": ConfigurationRegisterDescription(
@@ -470,14 +509,23 @@ register_map: dict[str, RegisterDescription] = {
     "PACK_CONFIG18_in_data_format": ConfigurationRegisterDescription(
         index=126, mask=0xF00, shift=8, data_type=REGISTER_DATA_TYPE.TENSIX_DATA_FORMAT
     ),
-    "PACK_CONFIG18_reserved_1": ConfigurationRegisterDescription(
-        index=126, mask=0xF000, shift=12, data_type=REGISTER_DATA_TYPE.INT_VALUE
+    "PACK_CONFIG18_dis_shared_exp_assembler": ConfigurationRegisterDescription(
+        index=126, mask=0x1000, shift=12, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG18_force_pack_per_max_xy_plane": ConfigurationRegisterDescription(
+        index=126, mask=0x2000, shift=13, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG18_enable_out_fifo": ConfigurationRegisterDescription(
+        index=126, mask=0x4000, shift=14, data_type=REGISTER_DATA_TYPE.FLAGS
+    ),
+    "PACK_CONFIG18_sub_l1_tile_header_size": ConfigurationRegisterDescription(
+        index=126, mask=0x8000, shift=15, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
     "PACK_CONFIG18_src_if_sel": ConfigurationRegisterDescription(
         index=126, mask=0x10000, shift=16, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
-    "PACK_CONFIG18_pack_per_xy_plane": ConfigurationRegisterDescription(
-        index=126, mask=0xFE0000, shift=17, data_type=REGISTER_DATA_TYPE.INT_VALUE
+    "PACK_CONFIG18_add_tile_header_size": ConfigurationRegisterDescription(
+        index=126, mask=0x20000, shift=17, data_type=REGISTER_DATA_TYPE.FLAGS
     ),
     "PACK_CONFIG18_l1_src_addr": ConfigurationRegisterDescription(
         index=126, mask=0xFF000000, shift=24, data_type=REGISTER_DATA_TYPE.ADDRESS
@@ -1019,11 +1067,17 @@ def get_pack_config() -> list[dict[str, str]]:
         "l1_dest_addr",
         "uncompress",
         "add_l1_dest_addr_offset",
-        "reserved_0",
+        "addr_cnt_context",
         "out_data_format",
         "in_data_format",
-        "reserved_1",
+        "dis_shared_exp_assembler",
+        "force_pack_per_max_xy_plane",
+        "enable_out_fifo",
+        "sub_l1_tile_header_size",
         "src_if_sel",
+        "all_pack_disable_zero_compress",
+        "all_pack_disable_zero_compress_ovrd",
+        "add_tile_header_size",
         "l1_src_addr",
         "downsample_mask",
         "downsample_shift_count",
@@ -1034,7 +1088,11 @@ def get_pack_config() -> list[dict[str, str]]:
         "exp_threshold",
     ]
 
-    return [{field: f"{struct_name}{i}{j}_{field}" for field in fields} for i in [0, 1] for j in [1, 8]]
+    return [
+        {field: f"{struct_name}{i}{j}_{field}" for field in fields if f"{struct_name}{i}{j}_{field}" in register_map}
+        for i in [0, 1]
+        for j in [1, 8]
+    ]
 
 
 def get_pack_edge_offset() -> list[dict[str, str]]:
