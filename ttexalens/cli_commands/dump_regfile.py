@@ -72,7 +72,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         INFO(f"Dump regfile on device {device.id}")
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             neo_id = dopt.get_neo_id(ui_state, location.noc_block)
-            INFO(f"Location {location.to_user_str_with_neo(neo_id)}")
+            INFO(f"Location {location.to_user_str(neo_id)}")
             tensix_debug = location.noc_block.get_tensix_debug(neo_id)
             if tensix_debug is None:
                 ERROR("This location does not have a Tensix.")

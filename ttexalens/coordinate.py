@@ -187,23 +187,18 @@ class OnChipCoordinate:
             return f"{output_tuple[0]},{output_tuple[1]}"
         return f"{output_tuple[0]}-{output_tuple[1]}"
 
-    def to_user_str(self) -> str:
+    def to_user_str(self, neo_id: int | None = None) -> str:
         """
         Returns a string representation of the coordinate that is suitable for the user.
+
+        Args:
+            neo_id (int | None): NEO to add to the string, if the block at this coordinate has NEOs.
         """
         noc0 = self.to_str("noc0")
         logical = self.to_str("logical")
+        if neo_id is not None and self.noc_block.neo_ids:
+            return f"{noc0} ({logical}) (neo {neo_id})"
         return f"{noc0} ({logical})"
-
-    def to_user_str_with_neo(self, neo_id: int | None) -> str:
-        """
-        Returns to_user_str() followed by the NEO, if the block at this coordinate has NEOs.
-        """
-        from ttexalens.hardware.noc_block import neo_id_to_str
-
-        if not self.noc_block.neo_ids:
-            return self.to_user_str()
-        return f"{self.to_user_str()} (neo {neo_id_to_str(neo_id)})"
 
     def change_device(self, device):
         """

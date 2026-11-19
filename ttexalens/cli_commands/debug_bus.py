@@ -190,7 +190,7 @@ def _get_debug_bus_signal_store(
 
     debug_bus_signal_store = noc_block.get_debug_bus(neo_id)
     if debug_bus_signal_store is None:
-        util.ERROR(f"Device {device.id} at location {loc.to_user_str_with_neo(neo_id)} does not have a debug bus.")
+        util.ERROR(f"Device {device.id} at location {loc.to_user_str(neo_id)} does not have a debug bus.")
         return None
 
     return debug_bus_signal_store

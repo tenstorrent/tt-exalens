@@ -41,7 +41,7 @@ class TestTensixDebug(unittest.TestCase):
 
         tensix_debug = self.location.noc_block.get_tensix_debug(self.neo_id)
         if tensix_debug is None:
-            self.skipTest(f"There is no Tensix at {self.location.to_user_str_with_neo(self.neo_id)}.")
+            self.skipTest(f"There is no Tensix at {self.location.to_user_str(self.neo_id)}.")
         self.tensix_debug = tensix_debug
         debug_bus = self.location.noc_block.get_debug_bus(self.neo_id)
         assert debug_bus is not None

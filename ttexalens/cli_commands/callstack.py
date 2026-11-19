@@ -94,7 +94,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     stop_on_main=stop_on_main,
                 )
                 print(
-                    f"Location: {util.CLR_INFO}{loc.to_user_str_with_neo(neo_id)}{util.CLR_END}, core: {util.CLR_WHITE}{risc_name}{util.CLR_END}"
+                    f"Location: {util.CLR_INFO}{loc.to_user_str(neo_id)}{util.CLR_END}, core: {util.CLR_WHITE}{risc_name}{util.CLR_END}"
                 )
 
                 frame_number_width = len(str(len(callstack) - 1))

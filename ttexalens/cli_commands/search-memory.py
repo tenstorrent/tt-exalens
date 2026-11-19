@@ -318,7 +318,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
             noc_block = location.noc_block
             neo_id = dopt.get_neo_id(ui_state, noc_block)
-            location_str = location.to_user_str_with_neo(neo_id)
+            location_str = location.to_user_str(neo_id)
 
             try:
                 if risc_name:
