@@ -235,9 +235,9 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     }
 
     // Compile-time constant value for this DIE (e.g. constexpr globals,
-    // enumerators). Walks DW_AT_const_value, then DW_AT_const_expr, and
-    // finally follows DW_AT_abstract_origin one hop if neither is present.
-    // Returns std::monostate when no constant value is found.
+    // enumerators). Reads DW_AT_const_value, or follows DW_AT_abstract_origin
+    // one hop if it is absent. DW_AT_const_expr is only a flag and is not a
+    // value. Returns std::monostate when no constant value is found.
     //
     // When the DIE's resolved type is a base type named "bool" / "float" /
     // "double" the raw DWARF encoding (often packed integer or bytes) is
