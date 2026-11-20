@@ -3,13 +3,9 @@
 # SPDX-License-Identifier: Apache-2.0
 """Wormhole Tensix perf-counter block descriptions.
 
-Counter-id maps copied from the production tt-metal reference at
-``tools/triage/check_perf_counters.py``. The ids are RTL bank indices from
-``tt_instruction_thread.sv`` and the surrounding perf-counter generators —
-see ``perf_counters.md`` in the tensix RTL repo for the full reference.
-
-Blackhole shares this exact layout; ``ttexalens/hardware/blackhole/perf_counters.py``
-re-exports from this module.
+Counter ids and names follow tt-llk ``tools/include/perf_counters/wormhole.h``. A counter id is the bank select
+written to REG1; ids of 256 and up are the grant view of bank (id - 256). Not every select has a name; any
+select can still be read by its numeric id.
 """
 
 from ttexalens.hardware.perf_counters import (
@@ -26,51 +22,62 @@ INSTRN_THREAD = PerfCounterBlockDescription(
     out_l="RISCV_DEBUG_REG_PERF_CNT_OUT_L_INSTRN_THREAD",
     out_h="RISCV_DEBUG_REG_PERF_CNT_OUT_H_INSTRN_THREAD",
     counters={
-        0: "cfg_instrn[0]",
-        1: "cfg_instrn[1]",
-        2: "cfg_instrn[2]",
-        4: "sync_instrn[0]",
-        5: "sync_instrn[1]",
-        6: "sync_instrn[2]",
-        8: "thcon_instrn[0]",
-        9: "thcon_instrn[1]",
-        10: "thcon_instrn[2]",
-        12: "xsrch_instrn[0]",
-        13: "xsrch_instrn[1]",
-        14: "xsrch_instrn[2]",
-        16: "instissue_instrn[0]",
-        17: "instissue_instrn[1]",
-        18: "instissue_instrn[2]",
-        20: "math_instrn[0]",
-        21: "math_instrn[1]",
-        22: "math_instrn[2]",
-        24: "unpack_instrn[0]",
-        25: "unpack_instrn[1]",
-        26: "unpack_instrn[2]",
-        28: "pack_instrn[0]",
-        29: "pack_instrn[1]",
-        30: "pack_instrn[2]",
-        32: "thread_stalls[0]",
-        33: "thread_stalls[1]",
-        34: "thread_stalls[2]",
-        36: "srca_stall_math",
-        37: "dvalid_stall_math",
-        38: "srca_stall_unpack",
-        39: "srcb_stall_unpack",
-        40: "fpu_data_hazard_stall",
-        41: "sfpu_data_hazard_stall",
-        42: "dest_stall_unpack",
-        43: "dest_stall_math",
-        44: "dest_stall_sfpu",
-        45: "dest_stall_pack",
-        46: "srcs_stall_unpack",
-        47: "srcs_stall_sfpu",
-        48: "srcs_stall_pack",
-        49: "tile_counter_stall_unpack",
-        50: "tile_counter_stall_pack",
-        256: "thread_instr[0]",
-        257: "thread_instr[1]",
-        258: "thread_instr[2]",
+        # Selects 0-23 are instruction class x thread (3 * class + thread) for the classes cfg, sync, thcon,
+        # xsearch, move, math, unpack and pack. The xsearch selects read 0; the move selects are not listed.
+        0: "cfg_instrn_available_0",
+        1: "cfg_instrn_available_1",
+        2: "cfg_instrn_available_2",
+        3: "sync_instrn_available_0",
+        4: "sync_instrn_available_1",
+        5: "sync_instrn_available_2",
+        6: "thcon_instrn_available_0",
+        7: "thcon_instrn_available_1",
+        8: "thcon_instrn_available_2",
+        15: "math_instrn_available_0",
+        16: "math_instrn_available_1",
+        17: "math_instrn_available_2",
+        18: "unpack_instrn_available_0",
+        19: "unpack_instrn_available_1",
+        20: "unpack_instrn_available_2",
+        21: "pack_instrn_available_0",
+        22: "pack_instrn_available_1",
+        23: "pack_instrn_available_2",
+        24: "thread_stalls_0",
+        25: "thread_stalls_1",
+        26: "thread_stalls_2",
+        # The SrcA/SrcB stall conditions are each replicated over three selects; only the first is listed.
+        27: "waiting_for_srca_clear",
+        30: "waiting_for_srcb_clear",
+        33: "waiting_for_srca_valid",
+        36: "waiting_for_srcb_valid",
+        # Per-thread stall reasons: 39 + 9 * thread + reason, for the reasons thcon, unpack, pack, math,
+        # non-zero semaphore, non-full semaphore, mover, config and SFPU. The mover and config waits are not listed.
+        39: "waiting_for_thcon_idle_0",
+        40: "waiting_for_unpack_idle_0",
+        41: "waiting_for_pack_idle_0",
+        42: "waiting_for_math_idle_0",
+        43: "waiting_for_nonzero_sem_0",
+        44: "waiting_for_nonfull_sem_0",
+        47: "waiting_for_sfpu_idle_0",
+        48: "waiting_for_thcon_idle_1",
+        49: "waiting_for_unpack_idle_1",
+        50: "waiting_for_pack_idle_1",
+        51: "waiting_for_math_idle_1",
+        52: "waiting_for_nonzero_sem_1",
+        53: "waiting_for_nonfull_sem_1",
+        56: "waiting_for_sfpu_idle_1",
+        57: "waiting_for_thcon_idle_2",
+        58: "waiting_for_unpack_idle_2",
+        59: "waiting_for_pack_idle_2",
+        60: "waiting_for_math_idle_2",
+        61: "waiting_for_nonzero_sem_2",
+        62: "waiting_for_nonfull_sem_2",
+        65: "waiting_for_sfpu_idle_2",
+        # Grant view: selects 256, 264 and 272 count the instructions each thread issued.
+        256: "thread_instructions_0",
+        264: "thread_instructions_1",
+        272: "thread_instructions_2",
+        283: "any_thread_stall",
     },
 )
 
@@ -82,9 +89,9 @@ FPU = PerfCounterBlockDescription(
     out_l="RISCV_DEBUG_REG_PERF_CNT_OUT_L_FPU",
     out_h="RISCV_DEBUG_REG_PERF_CNT_OUT_H_FPU",
     counters={
-        0: "fpu_op_valid",
-        1: "sfpu_op_valid",
-        257: "fpu_or_sfpu_instrn",
+        0: "fpu_counter",
+        1: "sfpu_counter",
+        257: "math_counter",
     },
 )
 
@@ -96,22 +103,29 @@ TDMA_UNPACK = PerfCounterBlockDescription(
     out_l="RISCV_DEBUG_REG_PERF_CNT_OUT_L_TDMA_UNPACK",
     out_h="RISCV_DEBUG_REG_PERF_CNT_OUT_H_TDMA_UNPACK",
     counters={
-        # Unpacker busy: tdma_unpack_busy[3..0] -> banks 0..3 (MSB first in i_req concatenation).
-        0: "unpack_busy[3]",
-        1: "unpack_busy[2]",
-        2: "unpack_busy[1]",
-        3: "unpack_busy[0]",
-        4: "srca_write_req",
+        0: "math_src_data_ready",
+        1: "math_not_d2s_stalled",
+        3: "math_instrn_started",
+        4: "math_instrn_available",
         5: "srcb_write_req",
-        6: "math_instrn_avail",
-        7: "math_instrn_started",
-        9: "math_no_post_stall",
-        10: "math_no_data_hazard",
-        261: "srca_write",
-        263: "srcb_write",
+        6: "srca_write_req",
+        7: "unpack0_busy_thread0",
+        8: "unpack1_busy_thread0",
+        9: "unpack0_busy_thread1",
+        10: "unpack1_busy_thread1",
+        259: "srcb_write_not_blocked_ovr",
+        260: "srcb_write_not_blocked_port",
+        261: "srca_write_not_blocked_ovr",
+        262: "srca_write_not_blocked_port",
+        263: "srca_write_tid_even",
+        264: "srcb_write_tid_even",
+        265: "srca_write_tid_odd",
+        266: "srcb_write_tid_odd",
     },
 )
 
+# TDMA_UNPACK and TDMA_PACK index one shared readout: entries 0..10 belong to unpack, 11..18 to pack.
+# Select 18 does not count packer 0 activity on Wormhole and is not listed.
 TDMA_PACK = PerfCounterBlockDescription(
     name="TDMA_PACK",
     reg0="RISCV_DEBUG_REG_PERF_CNT_TDMA_PACK0",
@@ -120,10 +134,19 @@ TDMA_PACK = PerfCounterBlockDescription(
     out_l="RISCV_DEBUG_REG_PERF_CNT_OUT_L_TDMA_PACK",
     out_h="RISCV_DEBUG_REG_PERF_CNT_OUT_H_TDMA_PACK",
     counters={
-        0: "packer_dest_read_avail",
-        7: "packer_busy",
-        260: "math_no_dest_wr_stall",
-        261: "math_no_scoreboard_stall",
+        11: "packer0_dest_read_req",
+        12: "packer_dest_read_1",
+        13: "packer_dest_read_2",
+        14: "packer_dest_read_3",
+        15: "packer_busy_0",
+        16: "packer_busy_1",
+        17: "packer_busy_2",
+        267: "dest_read_granted_0",
+        268: "dest_read_granted_1",
+        269: "dest_read_granted_2",
+        270: "dest_read_granted_3",
+        271: "math_not_stalled_dest_wr_port",
+        272: "math_not_scoreboard_stalled",
     },
 )
 

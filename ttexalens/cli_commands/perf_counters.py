@@ -42,7 +42,7 @@ Examples:
   perf-counters read
   perf-counters read --snapshot --active
   perf-counters read --block=FPU
-  perf-counters read --block=FPU --counter=fpu_or_sfpu_instrn
+  perf-counters read --block=FPU --counter=math_counter
 """
 
 import time
