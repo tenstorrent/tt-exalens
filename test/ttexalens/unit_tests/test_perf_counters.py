@@ -7,8 +7,8 @@ Each test injects a known instruction stream into the Tensix threads of one core
 buffer, with the counter blocks running, and checks that the named counters count exactly that work and that the
 counters for other instruction classes, threads, units and stall reasons stay at zero.
 """
-import time
 import unittest
+from typing import Callable
 
 from parameterized import parameterized
 
@@ -20,7 +20,9 @@ from ttexalens.device import Device, TensixInstructions
 from ttexalens.hardware.perf_counters import TensixPerfCounters
 
 N = 20  # Instructions injected per experiment
-STALL_SECONDS = 0.01  # How long a stalled thread is held before it is released
+# Upper bound on counter reads while waiting for the device to reach a state. Real hardware is almost always there
+# after one read, an emulator after a few and a simulator after about ten, so this is far above all of them.
+MAX_POLLS = 1000
 SEMAPHORE = 1 << 7  # Semaphore mask used by the semaphore stall tests
 SRCA, SRCB = 1, 2  # SETDVALID / CLEARDVALID operand bits
 
@@ -93,6 +95,26 @@ class TestPerfCounters(unittest.TestCase):
         """Gives both banks of SrcA and of SrcB back to the unpackers. CLEARDVALID never waits."""
         for _ in range(2):
             self.inject(self.ops.TT_OP_CLEARDVALID(SRCA | SRCB, 0), 2)
+
+    def wait_for_counter(self, block: str, name: str, condition: Callable[[int], bool], description: str) -> int:
+        """Reads counter ``name`` of the running ``block`` until ``condition`` holds for its value and returns that
+        value. Waiting on device state instead of for a fixed time works whatever the speed of the device."""
+        value = 0
+        for _ in range(MAX_POLLS):
+            value = self.perf_counters.read_counter(block, name)
+            if condition(value):
+                return value
+        self.fail(f"{name} is {value} after {MAX_POLLS} reads, expected {description}")
+
+    def wait_for_thread_stall(self, thread_id: int):
+        """Waits until the thread has been seen stalled."""
+        self.wait_for_counter("INSTRN_THREAD", f"thread_stalls_{thread_id}", lambda v: v > 0, "the thread to stall")
+
+    def wait_for_thread_instructions(self, thread_id: int, count: int):
+        """Waits until the thread has issued ``count`` instructions."""
+        self.wait_for_counter(
+            "INSTRN_THREAD", f"thread_instructions_{thread_id}", lambda v: v >= count, f"at least {count}"
+        )
 
     def measure(self, work, blocks: tuple[str, ...]) -> dict[str, int]:
         """Runs ``work`` with ``blocks`` counting and returns every named counter of those blocks."""
@@ -213,7 +235,8 @@ class TestPerfCounters(unittest.TestCase):
                 "thread_instructions_0": 2 * N,
                 "thread_instructions_1": N,
                 "thread_instructions_2": N,
-                "fpu_op_valid": N,
+                "fpu_counter": N,
+                "math_counter": N,  # FPU or SFPU instructions: one per ELWADD
                 # Only ELWADD reads SrcA and SrcB; the Matrix Unit starts both ELWADD and CLEARDVALID.
                 "math_src_data_ready": N,
                 "math_not_d2s_stalled": 2 * N,
@@ -231,7 +254,18 @@ class TestPerfCounters(unittest.TestCase):
 
         def work():
             self.inject(pacr, thread_id, N)
-            time.sleep(STALL_SECONDS)  # Let the packer finish
+            # Let the packer finish: all PACRs issued and its Dst reads requested, granted and no longer growing.
+            self.wait_for_thread_instructions(thread_id, N)
+            previous = -1
+
+            def settled(requests: int) -> bool:
+                nonlocal previous
+                granted = self.perf_counters.read_counter("TDMA_PACK", "dest_read_granted_0")
+                done = requests >= N and granted == requests and requests == previous
+                previous = requests
+                return done
+
+            self.wait_for_counter("TDMA_PACK", "packer0_dest_read_req", settled, "all Dst reads to be granted")
 
         values = self.measure(work, ("INSTRN_THREAD", "TDMA_UNPACK", "TDMA_PACK"))
         self.assertGreaterEqual(values["packer0_dest_read_req"], N)
@@ -276,7 +310,7 @@ class TestPerfCounters(unittest.TestCase):
             for _ in range(N):
                 self.inject(instruction, thread_id)
                 self.inject(stallwait, thread_id)
-            time.sleep(STALL_SECONDS)
+            self.wait_for_thread_instructions(thread_id, 2 * N)  # Every wait is over
 
         values = self.measure(work, ("INSTRN_THREAD",))
         self.assertCounters(values, {f"waiting_for_{unit}_idle_{thread_id}": -1}, ("waiting_for_",))
@@ -297,7 +331,7 @@ class TestPerfCounters(unittest.TestCase):
                 self.inject(self.ops.TT_OP_SEMWAIT(BLOCK_CFG, SEMAPHORE, 2), thread_id)
                 release = self.ops.TT_OP_SEMGET(SEMAPHORE)
             self.inject(self.ops.TT_OP_SETC16(0, 0), thread_id)  # Blocked until the wait ends
-            time.sleep(STALL_SECONDS)
+            self.wait_for_thread_stall(thread_id)
             self.inject(release, other_thread)
 
         values = self.measure(work, ("INSTRN_THREAD",))
@@ -325,7 +359,7 @@ class TestPerfCounters(unittest.TestCase):
                 self.inject(self.ops.TT_OP_SETDVALID(operand), 1, 2)
             self.inject(self.ops.TT_OP_STALLWAIT(BLOCK_CFG, wait_condition), 0)
             self.inject(self.ops.TT_OP_SETC16(0, 0), 0)  # Blocked until the wait ends
-            time.sleep(STALL_SECONDS)
+            self.wait_for_thread_stall(0)
             if condition == "valid":
                 self.inject(self.ops.TT_OP_SETDVALID(operand), 1, 2)
             else:

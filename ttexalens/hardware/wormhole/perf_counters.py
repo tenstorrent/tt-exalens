@@ -89,9 +89,9 @@ FPU = PerfCounterBlockDescription(
     out_l="RISCV_DEBUG_REG_PERF_CNT_OUT_L_FPU",
     out_h="RISCV_DEBUG_REG_PERF_CNT_OUT_H_FPU",
     counters={
-        0: "fpu_op_valid",
-        1: "sfpu_op_valid",
-        257: "fpu_or_sfpu_instrn",
+        0: "fpu_counter",
+        1: "sfpu_counter",
+        257: "math_counter",
     },
 )
 
