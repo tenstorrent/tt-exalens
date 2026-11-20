@@ -19,6 +19,8 @@ from ttexalens.register_store import RegisterStore
 
 
 class QuasarFunctionalWorkerBlock(QuasarNocBlock):
+    tensix_thread_count = 4
+
     def __init__(self, location: OnChipCoordinate):
         super().__init__(location, block_type="functional_workers")
 

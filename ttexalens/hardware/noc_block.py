@@ -22,6 +22,8 @@ if TYPE_CHECKING:
 
 
 class NocBlock:
+    tensix_thread_count: int = 0
+
     def __init__(
         self,
         location: OnChipCoordinate,
@@ -73,9 +75,6 @@ class NocBlock:
 
     def get_riscs(self, neo_id: int | None = None) -> list[RiscDebug]:
         return [risc for risc in self.all_riscs if risc.risc_location.neo_id == neo_id]
-
-    def get_tensix_thread_count(self, neo_id: int | None = None) -> int:
-        return len([risc for risc in self.get_riscs(neo_id) if risc.risc_location.risc_name.startswith("trisc")])
 
     @cached_property
     def risc_names(self) -> list[str]:

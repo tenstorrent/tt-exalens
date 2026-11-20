@@ -60,6 +60,8 @@ debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(gro
 
 
 class WormholeFunctionalWorkerBlock(WormholeNocBlock):
+    tensix_thread_count = 3
+
     def __init__(self, location: OnChipCoordinate):
         super().__init__(
             location,
