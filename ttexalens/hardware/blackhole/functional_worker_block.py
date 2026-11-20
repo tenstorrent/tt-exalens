@@ -220,7 +220,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
 
     @cache
     def get_tensix_debug(self, neo_id: int | None = None) -> BlackholeTensixDebug | None:
-        return BlackholeTensixDebug(self.location)
+        return BlackholeTensixDebug(self.get_risc_debug(self.trisc0.risc_name, self.trisc0.neo_id))
 
     @cache
     def get_default_risc_debug(self, neo_id: int | None = None) -> RiscDebug:

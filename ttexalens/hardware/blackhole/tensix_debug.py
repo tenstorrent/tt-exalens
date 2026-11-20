@@ -6,4 +6,4 @@ from ttexalens.debug_tensix import TensixDebug
 
 
 class BlackholeTensixDebug(TensixDebug):
-    dest_risc_name = "trisc0"
+    pass

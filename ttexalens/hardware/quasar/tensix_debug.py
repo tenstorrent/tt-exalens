@@ -13,9 +13,6 @@ from ttexalens.pack_unpack_regfile import TensixDataFormat
 
 
 class QuasarTensixDebug(TensixDebug):
-    # LLK never programs TRISC3's dest window.
-    dest_risc_name = "trisc3"
-
     def _direct_dest_format(self, df: TensixDataFormat) -> TensixDataFormat:
         if df == TensixDataFormat.Int8:
             return TensixDataFormat.CompactInt8
@@ -33,10 +30,11 @@ class QuasarTensixDebug(TensixDebug):
         # so each datum takes one debug access at its exact address.
         assert self.dest is not None and self.dest.address.private_address is not None
         assert isinstance(self.risc_debug, BabyRiscDebug) and self.risc_debug.debug_hardware is not None
+        prefix = f"RISC_DEST_ACCESS_CTRL_SEC{self.risc_debug.risc_info.risc_id}"
         fields = {
-            "RISC_DEST_ACCESS_CTRL_SEC3_fmt": QuasarRiscDestFormat.INT8.value,
-            "RISC_DEST_ACCESS_CTRL_SEC3_unsigned_int": int(df == TensixDataFormat.UInt8),
-            "RISC_DEST_ACCESS_CTRL_SEC3_no_swizzle": 0,
+            f"{prefix}_fmt": QuasarRiscDestFormat.INT8.value,
+            f"{prefix}_unsigned_int": int(df == TensixDataFormat.UInt8),
+            f"{prefix}_no_swizzle": 0,
         }
         with self.risc_debug.ensure_private_memory_access():
             saved = {name: self.register_store.read_register(name) for name in fields}

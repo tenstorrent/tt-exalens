@@ -4,7 +4,7 @@
 from collections.abc import Sequence
 from enum import Enum
 
-from ttexalens.coordinate import OnChipCoordinate
+from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.exceptions import TTException
 from ttexalens.util import WARN
 from ttexalens.pack_unpack_regfile import (
@@ -48,22 +48,16 @@ def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
 
 
 class TensixDebug:
-    dest_risc_name: str
-
-    def __init__(
-        self,
-        location: OnChipCoordinate,
-        neo_id: int | None = None,
-    ) -> None:
-        self.location = location
-        self.device = location.device
-        self.noc_block = location.noc_block
-        self.register_store = self.noc_block.get_register_store(neo_id=neo_id)
+    def __init__(self, risc_debug: RiscDebug) -> None:
+        self.location = risc_debug.risc_location.location
+        self.device = self.location.device
+        self.noc_block = self.location.noc_block
+        self.register_store = self.noc_block.get_register_store(neo_id=risc_debug.risc_location.neo_id)
         self.thread_count = self.noc_block.tensix_thread_count
 
         # Using TRISC debug hardware to read/write memory
         # Use restricted_access=False because the Tensix dest is outside L1/data_private, but we still need to read/write it via TRISC debug hardware.
-        self.risc_debug = self.noc_block.get_risc_debug(self.dest_risc_name, neo_id)
+        self.risc_debug = risc_debug
         self.mem_access = create_memory_access(self.risc_debug, restricted_access=False)
         dest = self.risc_debug.risc_info.memory_map.find_by_name("dest")
         self.dest = dest.memory_block if dest is not None else None
