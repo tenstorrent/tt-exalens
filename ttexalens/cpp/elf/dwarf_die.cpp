@@ -326,10 +326,9 @@ const DwarfAttribute* DwarfDie::get_attribute(DwarfAttributeTag attribute_tag) c
 bool DwarfDie::has_attribute(DwarfAttributeTag attribute_tag) const { return get_attribute(attribute_tag) != nullptr; }
 
 DwarfDie::ConstantValue DwarfDie::get_constant_value() const {
+    // DW_AT_const_expr only flags a constexpr declaration; it carries no
+    // value. Without DW_AT_const_value the constant lives in memory, if at all.
     const DwarfAttribute* attr = get_attribute(DwarfAttributeTag::const_value);
-    if (attr == nullptr) {
-        attr = get_attribute(DwarfAttributeTag::const_expr);
-    }
     if (attr == nullptr) {
         if (auto origin = get_die_from_attribute(DwarfAttributeTag::abstract_origin)) {
             return origin->get_constant_value();
