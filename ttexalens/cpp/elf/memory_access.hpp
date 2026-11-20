@@ -53,11 +53,22 @@ class MemoryAccess {
 // delegates to `base`. Writes and register access always pass through to
 // `base`. Used by ElfVariable::read() to freeze a variable's bytes so
 // later member/dereference walks don't re-hit live memory.
+//
+// A synthetic snapshot holds a value that has no device address (one
+// materialised from registers or composite pieces); its cached_address is a
+// placeholder. Pointers read out of it must be followed through `base`, so
+// pointee_access() returns `base` for a synthetic snapshot.
 class CachedReadMemoryAccess : public MemoryAccess {
    public:
     CachedReadMemoryAccess(uint64_t cached_address, std::vector<std::byte> cached_data,
-                           std::shared_ptr<MemoryAccess> base)
-        : cached_address_(cached_address), cached_data_(std::move(cached_data)), base_(std::move(base)) {}
+                           std::shared_ptr<MemoryAccess> base, bool synthetic = false)
+        : cached_address_(cached_address),
+          cached_data_(std::move(cached_data)),
+          base_(std::move(base)),
+          synthetic_(synthetic) {}
+
+    bool is_synthetic() const { return synthetic_; }
+    const std::shared_ptr<MemoryAccess>& get_base() const { return base_; }
 
     void read(uint64_t address, std::span<std::byte> buffer) const override {
         if (address >= cached_address_ && address + buffer.size() <= cached_address_ + cached_data_.size()) {
@@ -77,6 +88,7 @@ class CachedReadMemoryAccess : public MemoryAccess {
     uint64_t cached_address_;
     std::vector<std::byte> cached_data_;
     std::shared_ptr<MemoryAccess> base_;
+    bool synthetic_;
 };
 
 // Singleton MemoryAccess that raises on every operation. Used as the base of

@@ -429,13 +429,12 @@ const ElfSymbol* DwarfInfoImpl::find_symbol_by_demangled_name(std::string_view d
     return it == symbol_by_demangled_name.end() ? nullptr : it->second;
 }
 
-uint64_t DwarfInfoImpl::get_section_address(uint16_t section_index) {
+std::optional<uint64_t> DwarfInfoImpl::get_tls_base() {
     auto elf_impl_locked = elf_impl.lock();
     if (!elf_impl_locked) {
-        return 0;
+        return std::nullopt;
     }
-    const ElfSection* section = elf_impl_locked->get_section_by_index(section_index);
-    return section == nullptr ? 0 : section->address();
+    return elf_impl_locked->get_tls_base();
 }
 
 }  // namespace ttexalens::native_elf::details

@@ -71,6 +71,24 @@ std::optional<std::vector<Op>> parse_die_attribute_location(const DwarfDie& die,
     }
     unsigned int lkind = DW_LKIND_unknown;
     dwarf_get_loclist_head_kind(head.get(), &lkind, &error);
+
+    auto read_ops = [&](Dwarf_Locdesc_c locdesc, Dwarf_Unsigned op_count) -> std::optional<std::vector<Op>> {
+        std::vector<Op> ops;
+        ops.reserve(op_count);
+        for (Dwarf_Unsigned j = 0; j < op_count; ++j) {
+            Op op;
+            Dwarf_Unsigned op_offset = 0;
+            if (dwarf_get_location_op_value_c(locdesc, j, &op.op, &op.a, &op.b, &op.c, &op_offset, &error) !=
+                DW_DLV_OK) {
+                return std::nullopt;
+            }
+            ops.push_back(op);
+        }
+        return ops;
+    };
+
+    Dwarf_Locdesc_c default_locdesc = nullptr;
+    Dwarf_Unsigned default_op_count = 0;
     for (Dwarf_Unsigned i = 0; i < list_len; ++i) {
         Dwarf_Small lle = 0;
         Dwarf_Unsigned raw_lopc = 0, raw_hipc = 0;
@@ -85,26 +103,35 @@ std::optional<std::vector<Op>> parse_die_attribute_location(const DwarfDie& die,
                                       &error) != DW_DLV_OK) {
             continue;
         }
-        // For a plain expression (DW_LKIND_expression) the range covers
-        // everything — accept it. For a location list, the cooked range
-        // selects which entry applies at `pc`.
-        const bool in_range =
-            (lkind == DW_LKIND_expression) || (pc >= cooked_lopc && (cooked_hipc == 0 || pc < cooked_hipc));
-        if (!in_range) {
+        // A plain expression (DW_LKIND_expression) covers every pc.
+        if (lkind == DW_LKIND_expression) {
+            return read_ops(locdesc, op_count);
+        }
+        // In a location list only bounded entries whose cooked range covers
+        // `pc` apply. Base-address entries carry no location (libdwarf has
+        // already applied them to the cooked ranges of the entries after
+        // them), an entry whose address lookup failed has no usable range, a
+        // default-location entry applies only when no bounded entry covers
+        // `pc`, and end-of-list ends the walk.
+        if (lle == DW_LLE_end_of_list) {
+            break;
+        }
+        if (lle == DW_LLE_default_location) {
+            if (default_locdesc == nullptr) {
+                default_locdesc = locdesc;
+                default_op_count = op_count;
+            }
             continue;
         }
-        std::vector<Op> ops;
-        ops.reserve(op_count);
-        for (Dwarf_Unsigned j = 0; j < op_count; ++j) {
-            Op op;
-            Dwarf_Unsigned op_offset = 0;
-            if (dwarf_get_location_op_value_c(locdesc, j, &op.op, &op.a, &op.b, &op.c, &op_offset, &error) !=
-                DW_DLV_OK) {
-                return std::nullopt;
-            }
-            ops.push_back(op);
+        if (lle == DW_LLE_base_address || lle == DW_LLE_base_addressx || addr_unavail) {
+            continue;
         }
-        return ops;
+        if (pc >= cooked_lopc && pc < cooked_hipc) {
+            return read_ops(locdesc, op_count);
+        }
+    }
+    if (default_locdesc != nullptr) {
+        return read_ops(default_locdesc, default_op_count);
     }
     return std::nullopt;
 }
@@ -232,7 +259,6 @@ class Evaluator {
         // Literal pushes -----------------------------------------------------
         if (code >= DW_OP_lit0 && code <= DW_OP_lit31) {
             stack.push_back(static_cast<uint64_t>(code - DW_OP_lit0));
-            result.is_address = false;
             return true;
         }
         // Register direct ----------------------------------------------------
@@ -260,7 +286,6 @@ class Evaluator {
             case DW_OP_const8u:
             case DW_OP_constu:
                 stack.push_back(op.a);
-                result.is_address = false;
                 return true;
             case DW_OP_const1s:
             case DW_OP_const2s:
@@ -271,7 +296,6 @@ class Evaluator {
                 // slot; reinterpret as signed and let the stack store the
                 // two's-complement bits.
                 stack.push_back(static_cast<uint64_t>(static_cast<int64_t>(op.a)));
-                result.is_address = false;
                 return true;
             case DW_OP_fbreg: {
                 auto fb = evaluate_frame_base();
@@ -466,7 +490,6 @@ class Evaluator {
         auto v = frame->read_memory(addr, size);
         if (!v.has_value()) return false;
         stack.push_back(*v);
-        result.is_address = false;
         return true;
     }
 

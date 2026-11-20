@@ -37,6 +37,12 @@ class ElfFileImpl : public std::enable_shared_from_this<ElfFileImpl> {
     // ELF header e_entry — the program's start-of-execution address.
     uint64_t get_entry() const { return static_cast<uint64_t>(elf.get_entry()); }
 
+    // Start of the TLS block that STT_TLS symbol values are relative to: the
+    // PT_TLS segment's virtual address, or the lowest address of an SHF_TLS
+    // section when the ELF has no program headers. nullopt when it has
+    // neither.
+    std::optional<uint64_t> get_tls_base() const;
+
    protected:
     void populate_sections();
     void try_open_dwarf();
