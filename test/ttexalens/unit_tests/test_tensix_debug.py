@@ -61,7 +61,7 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_fp32(self, num_tiles: int, value: float | None = None):
-        if self.tensix_debug.dest is None:
+        if not self.tensix_debug.has_direct_dest_access:
             self.skipTest("Direct read/write of dest is not supported on this device.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
@@ -92,7 +92,7 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_int32(self, num_tiles: int, value: int | None = None):
-        if self.tensix_debug.dest is None:
+        if not self.tensix_debug.has_direct_dest_access:
             self.skipTest("Direct read/write of dest is not supported on this device.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
@@ -113,7 +113,7 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_uint32(self, num_tiles: int):
-        if self.tensix_debug.dest is None:
+        if not self.tensix_debug.has_direct_dest_access:
             self.skipTest("Direct read/write of dest is not supported on this device.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
@@ -133,7 +133,7 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_int8(self, num_tiles: int):
-        if self.tensix_debug.dest is None:
+        if not self.tensix_debug.has_direct_dest_access:
             self.skipTest("Direct read/write of dest is not supported on this device.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
@@ -152,7 +152,7 @@ class TestTensixDebug(unittest.TestCase):
         ]
     )
     def test_read_write_regfile_uint8(self, num_tiles: int):
-        if self.tensix_debug.dest is None:
+        if not self.tensix_debug.has_direct_dest_access:
             self.skipTest("Direct read/write of dest is not supported on this device.")
 
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
@@ -179,7 +179,7 @@ class TestTensixDebug(unittest.TestCase):
     def test_invalid_write_regfile(
         self, df: TensixDataFormat, regfile: int | str | REGFILE = REGFILE.DSTACC, value: int | float = 1
     ):
-        if self.tensix_debug.dest is None:
+        if not self.tensix_debug.has_direct_dest_access:
             self.skipTest("Direct read/write of dest is not supported on this device.")
 
         with self.assertRaises((TTException, ValueError)):

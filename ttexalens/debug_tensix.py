@@ -161,10 +161,14 @@ class TensixDebug:
     def _direct_dest_datum_size(self, df: TensixDataFormat) -> int:
         return 4
 
+    @property
+    def has_direct_dest_access(self) -> bool:
+        return self.dest is not None
+
     def _direct_dest_access_enabled(self, df: TensixDataFormat, regfile: REGFILE) -> bool:
         return (
             regfile == REGFILE.DSTACC
-            and self.dest is not None
+            and self.has_direct_dest_access
             and (self._is_32_bit_format(df) or self._is_8_bit_int_format(df))
         )
 
