@@ -435,11 +435,15 @@ DwarfDiePtr DwarfDie::get_resolved_type() const {
             continue;
         }
 
-        // Check DwarfAttributeTag::type for enumeration_type
+        // Check DwarfAttributeTag::type for enumeration_type: the underlying
+        // type, reached either directly or through typedef/cv wrappers.
         if (tag == DwarfDieTag::enumeration_type) {
             if (auto next = current->get_die_from_attribute(DwarfAttributeTag::type)) {
-                current = std::move(next);
-                continue;
+                if (is_type_wrapper(next->get_tag())) {
+                    current = std::move(next);
+                    continue;
+                }
+                return next;
             }
         }
 
@@ -764,14 +768,15 @@ bool DwarfDie::is_char_type() const {
 }
 
 bool DwarfDie::is_string_type() const {
+    // Only plain `char` makes a string. `signed char` / `unsigned char`
+    // (int8_t, uint8_t) share its encodings but hold byte data.
+    auto is_plain_char = [](const DwarfDiePtr& d) { return d && d->is_char_type() && d->get_name() == "char"; };
     const auto t = get_tag();
     if (t == DwarfDieTag::array_type) {
-        auto elem = get_array_element_type();
-        return elem && elem->is_char_type();
+        return is_plain_char(get_array_element_type());
     }
     if (t == DwarfDieTag::pointer_type) {
-        auto pointee = get_dereference_type();
-        return pointee && pointee->is_char_type();
+        return is_plain_char(get_dereference_type());
     }
     return false;
 }

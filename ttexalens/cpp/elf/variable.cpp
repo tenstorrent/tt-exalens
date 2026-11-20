@@ -4,6 +4,7 @@
 #include "variable.hpp"
 
 #include <cstring>
+#include <limits>
 
 #include "dwarf_attribute.hpp"
 #include "dwarf_die.hpp"
@@ -13,6 +14,11 @@ using namespace std::literals;
 namespace ttexalens::native_elf {
 
 namespace {
+
+// Member lookups must skip a nested type that shares the member's name
+// (`struct S { enum class mode {...}; mode mode; }`); such a type DIE comes
+// first and has no data_member_location.
+bool is_not_type(const DwarfDiePtr& die) { return !die->is_type(); }
 
 // Walks the unnamed struct/union members of `type_die` looking for a child
 // named `member_name`. Returns {offset_into_type_die, member_die} on hit or
@@ -27,7 +33,7 @@ std::pair<std::optional<uint64_t>, DwarfDiePtr> resolve_unnamed_struct_union_mem
         if (!struct_union_type) {
             continue;
         }
-        if (auto member = struct_union_type->find_child_by_name(name)) {
+        if (auto member = struct_union_type->find_child_by_name(name, is_not_type)) {
             return {child->get_data_member_location(), member};
         }
         auto [nested_offset, nested_member] = resolve_unnamed_struct_union_member(*struct_union_type, name);
@@ -59,7 +65,7 @@ std::pair<std::optional<uint64_t>, DwarfDiePtr> resolve_inheritance_member(const
         if (!child_type) {
             continue;
         }
-        if (auto member = child_type->find_child_by_name(name)) {
+        if (auto member = child_type->find_child_by_name(name, is_not_type)) {
             return {data_member_location, member};
         }
         auto [inherited_offset, inherited_member] = resolve_inheritance_member(*child_type, name, data_member_location);
@@ -162,7 +168,7 @@ ElfVariable ElfVariable::get_member(std::string_view member_name) const {
     }
 
     uint64_t offset = 0;
-    DwarfDiePtr child_die = type_die->find_child_by_name(member_name);
+    DwarfDiePtr child_die = type_die->find_child_by_name(member_name, is_not_type);
     if (!child_die) {
         auto [resolved_offset, resolved_child] = resolve_unnamed_struct_union_member(*type_die, member_name);
         if (resolved_child && resolved_offset.has_value()) {
@@ -468,6 +474,11 @@ void ElfVariable::write_value(Value value, bool check_data_loss) {
         uint64_t unsigned_val = 0;
         bool came_from_float = false;
         double float_input = 0.0;
+        // The reload compare below cannot see a sign change when the value
+        // fills all 64 bits, so track the source's range explicitly.
+        bool source_negative = false;
+        bool source_above_int64 = false;
+        bool source_out_of_range = false;
 
         std::visit(
             [&](auto&& x) {
@@ -478,14 +489,26 @@ void ElfVariable::write_value(Value value, bool check_data_loss) {
                 } else if constexpr (std::is_same_v<T, int64_t>) {
                     signed_val = x;
                     unsigned_val = static_cast<uint64_t>(x);
+                    source_negative = x < 0;
                 } else if constexpr (std::is_same_v<T, uint64_t>) {
                     signed_val = static_cast<int64_t>(x);
                     unsigned_val = x;
+                    source_above_int64 = x > static_cast<uint64_t>(std::numeric_limits<int64_t>::max());
                 } else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
                     came_from_float = true;
                     float_input = static_cast<double>(x);
-                    signed_val = static_cast<int64_t>(x);
-                    unsigned_val = static_cast<uint64_t>(static_cast<int64_t>(x));
+                    source_negative = float_input < 0;
+                    // Casting a value outside the target range is undefined.
+                    if (float_input >= -0x1p63 && float_input < 0x1p63) {
+                        signed_val = static_cast<int64_t>(x);
+                        unsigned_val = static_cast<uint64_t>(signed_val);
+                    } else if (float_input >= 0x1p63 && float_input < 0x1p64) {
+                        unsigned_val = static_cast<uint64_t>(x);
+                        signed_val = static_cast<int64_t>(unsigned_val);
+                        source_above_int64 = true;
+                    } else {
+                        source_out_of_range = true;
+                    }
                 }
             },
             value);
@@ -497,8 +520,10 @@ void ElfVariable::write_value(Value value, bool check_data_loss) {
             const uint64_t loaded = load_uint_le(bytes, type_size);
             const int64_t loaded_signed = sign_extend(loaded, type_size);
             bool ok;
-            if (came_from_float) {
-                ok = static_cast<double>(signed_dest ? loaded_signed : static_cast<int64_t>(loaded)) == float_input;
+            if (source_out_of_range || (!signed_dest && source_negative) || (signed_dest && source_above_int64)) {
+                ok = false;
+            } else if (came_from_float) {
+                ok = (signed_dest ? static_cast<double>(loaded_signed) : static_cast<double>(loaded)) == float_input;
             } else if (signed_dest) {
                 ok = loaded_signed == signed_val;
             } else {
