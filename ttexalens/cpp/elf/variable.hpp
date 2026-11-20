@@ -80,7 +80,16 @@ class ElfVariable {
     // Variant returned by read_value / accepted by write_value.
     using Value = std::variant<bool, int64_t, uint64_t, float, double, std::string>;
 
-    ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access);
+    // Placement of a bitfield member: its value occupies `bit_size` bits
+    // starting `bit_offset` bits (0..7) above the least significant bit of the
+    // byte at the variable's address (little-endian).
+    struct Bitfield {
+        uint32_t bit_offset = 0;
+        uint32_t bit_size = 0;
+    };
+
+    ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access,
+                std::optional<Bitfield> bitfield = std::nullopt);
     ~ElfVariable();
     ElfVariable(const ElfVariable&);
     ElfVariable(ElfVariable&&) noexcept;
@@ -90,9 +99,10 @@ class ElfVariable {
     const DwarfDiePtr& get_type_die() const { return type_die; }
     uint64_t get_address() const { return address; }
     const std::shared_ptr<MemoryAccess>& get_memory_access() const { return memory_access; }
+    const std::optional<Bitfield>& get_bitfield() const { return bitfield; }
 
     // Size in bytes of this variable's resolved type. Throws if the type DIE
-    // doesn't expose a size.
+    // doesn't expose a size, or if the variable is a bitfield.
     uint64_t get_size() const;
 
     // Walks struct/union/inheritance members to find `member_name`.
@@ -134,6 +144,12 @@ class ElfVariable {
     DwarfDiePtr type_die;
     uint64_t address;
     std::shared_ptr<MemoryAccess> memory_access;
+    std::optional<Bitfield> bitfield;
+
+    // Number of bytes that hold the bitfield's bits, starting at `address`.
+    size_t get_bitfield_storage_size() const;
+    Value read_bitfield_value(const DwarfDiePtr& type) const;
+    void write_bitfield_value(const DwarfDiePtr& type, const Value& value, bool check_data_loss);
 };
 
 }  // namespace ttexalens::native_elf

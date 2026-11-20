@@ -3,6 +3,7 @@
 
 #include "variable.hpp"
 
+#include <algorithm>
 #include <cstring>
 
 #include "dwarf_attribute.hpp"
@@ -133,13 +134,80 @@ double value_as_double(const ElfVariable::Value& v) {
         v);
 }
 
+// Reads an integer attribute that may be stored signed or unsigned.
+std::optional<int64_t> get_integer_attribute(const DwarfDie& die, DwarfAttributeTag tag) {
+    const DwarfAttribute* attr = die.get_attribute(tag);
+    if (attr == nullptr) {
+        return std::nullopt;
+    }
+    if (const auto* u = std::get_if<uint64_t>(&attr->get_value())) {
+        return static_cast<int64_t>(*u);
+    }
+    if (const auto* s = std::get_if<int64_t>(&attr->get_value())) {
+        return *s;
+    }
+    return std::nullopt;
+}
+
+// Where a struct/union member lives: its byte offset in the parent, plus the
+// bit placement within those bytes when the member is a bitfield.
+struct MemberLocation {
+    uint64_t byte_offset = 0;
+    std::optional<ElfVariable::Bitfield> bitfield;
+};
+
+std::optional<MemberLocation> get_member_location(const DwarfDie& member) {
+    const auto bit_size = get_integer_attribute(member, DwarfAttributeTag::bit_size);
+    if (!bit_size.has_value()) {
+        auto offset = member.get_data_member_location();
+        if (!offset.has_value()) {
+            return std::nullopt;
+        }
+        return MemberLocation{*offset, std::nullopt};
+    }
+    // DWARF 5 gives the bitfield's offset in bits from the start of the
+    // parent (DW_AT_data_bit_offset). DWARF 4 gives the byte offset of a
+    // storage unit of DW_AT_byte_size bytes plus DW_AT_bit_offset, counted from
+    // the unit's most significant bit; on a little-endian target that converts
+    // to unit_start*8 + unit_size*8 - bit_offset - bit_size.
+    int64_t data_bit_offset = 0;
+    if (auto dbo = get_integer_attribute(member, DwarfAttributeTag::data_bit_offset)) {
+        data_bit_offset = *dbo;
+    } else {
+        auto offset = member.get_data_member_location();
+        if (!offset.has_value()) {
+            return std::nullopt;
+        }
+        data_bit_offset = static_cast<int64_t>(*offset) * 8;
+        if (auto msb_bit_offset = get_integer_attribute(member, DwarfAttributeTag::bit_offset)) {
+            std::optional<uint64_t> unit_size;
+            if (auto byte_size = get_integer_attribute(member, DwarfAttributeTag::byte_size)) {
+                unit_size = static_cast<uint64_t>(*byte_size);
+            } else if (auto member_type = member.get_resolved_type()) {
+                unit_size = member_type->get_size();
+            }
+            if (!unit_size.has_value()) {
+                return std::nullopt;
+            }
+            data_bit_offset += static_cast<int64_t>(*unit_size) * 8 - *msb_bit_offset - *bit_size;
+        }
+    }
+    if (data_bit_offset < 0 || *bit_size <= 0 || *bit_size > 64) {
+        return std::nullopt;
+    }
+    return MemberLocation{
+        static_cast<uint64_t>(data_bit_offset) / 8,
+        ElfVariable::Bitfield{static_cast<uint32_t>(data_bit_offset % 8), static_cast<uint32_t>(*bit_size)}};
+}
+
 // Upper bound on bytes scanned when materialising a C string.
 constexpr size_t kMaxCStringLength = 64 * 1024;
 
 }  // namespace
 
-ElfVariable::ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access)
-    : type_die(std::move(type_die)), address(address), memory_access(std::move(memory_access)) {}
+ElfVariable::ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access,
+                         std::optional<Bitfield> bitfield)
+    : type_die(std::move(type_die)), address(address), memory_access(std::move(memory_access)), bitfield(bitfield) {}
 
 ElfVariable::~ElfVariable() = default;
 ElfVariable::ElfVariable(const ElfVariable&) = default;
@@ -148,6 +216,10 @@ ElfVariable& ElfVariable::operator=(const ElfVariable&) = default;
 ElfVariable& ElfVariable::operator=(ElfVariable&&) noexcept = default;
 
 uint64_t ElfVariable::get_size() const {
+    if (bitfield.has_value()) {
+        // A bitfield does not occupy whole bytes of its own.
+        throw TypeMismatchException("get_size", type_die->get_path());
+    }
     auto size = type_die->get_size();
     if (!size.has_value()) {
         throw TypeMismatchException("get_size", type_die->get_path());
@@ -183,15 +255,16 @@ ElfVariable ElfVariable::get_member(std::string_view member_name) const {
         path += member_name;
         throw SymbolNotFoundException(std::move(path));
     }
-    auto child_offset = child_die->get_data_member_location();
-    if (!child_offset.has_value()) {
+    auto child_location = get_member_location(*child_die);
+    if (!child_location.has_value()) {
         std::string path = type_die->get_path();
         path += "::";
         path += member_name;
         throw SymbolNotFoundException(std::move(path));
     }
     auto resolved_type = child_die->get_resolved_type();
-    return ElfVariable(std::move(resolved_type), address + *child_offset + offset, memory_access);
+    return ElfVariable(std::move(resolved_type), address + child_location->byte_offset + offset, memory_access,
+                       child_location->bitfield);
 }
 
 ElfVariable ElfVariable::dereference() const {
@@ -324,6 +397,9 @@ ElfVariable::Value ElfVariable::read_value() const {
     if (tag == DwarfDieTag::enumeration_type) {
         type = resolve_enum_base(type);
     }
+    if (bitfield.has_value()) {
+        return read_bitfield_value(type);
+    }
 
     auto type_size_opt = type->get_size();
     if (!type_size_opt.has_value()) {
@@ -391,6 +467,10 @@ void ElfVariable::write_value(Value value, bool check_data_loss) {
     }
     if (tag == DwarfDieTag::enumeration_type) {
         type = resolve_enum_base(type);
+    }
+    if (bitfield.has_value()) {
+        write_bitfield_value(type, value, check_data_loss);
+        return;
     }
 
     auto type_size_opt = type->get_size();
@@ -514,10 +594,108 @@ void ElfVariable::write_value(Value value, bool check_data_loss) {
                          std::span<const std::byte>(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size()));
 }
 
+size_t ElfVariable::get_bitfield_storage_size() const {
+    const size_t size = (bitfield->bit_offset + bitfield->bit_size + 7) / 8;
+    if (size > sizeof(uint64_t)) {
+        throw TypeMismatchException("bitfield access", type_die->get_path());
+    }
+    return size;
+}
+
+ElfVariable::Value ElfVariable::read_bitfield_value(const DwarfDiePtr& type) const {
+    const size_t storage_size = get_bitfield_storage_size();
+    std::vector<std::byte> bytes(storage_size);
+    memory_access->read(address, bytes);
+    const uint32_t bit_size = bitfield->bit_size;
+    const uint64_t mask = bit_size >= 64 ? ~uint64_t{0} : (uint64_t{1} << bit_size) - 1;
+    const uint64_t raw = (load_uint_le(bytes, storage_size) >> bitfield->bit_offset) & mask;
+    if (type->get_name() == "bool"sv) {
+        return raw != 0;
+    }
+    if (type->is_signed_type() && bit_size < 64 && (raw >> (bit_size - 1)) != 0) {
+        return static_cast<int64_t>(raw | ~mask);
+    }
+    if (type->is_signed_type()) {
+        return static_cast<int64_t>(raw);
+    }
+    return raw;
+}
+
+void ElfVariable::write_bitfield_value(const DwarfDiePtr& type, const Value& value, bool check_data_loss) {
+    const uint32_t bit_size = bitfield->bit_size;
+    const uint64_t mask = bit_size >= 64 ? ~uint64_t{0} : (uint64_t{1} << bit_size) - 1;
+    const bool signed_dest = type->is_signed_type();
+    const bool bool_dest = type->get_name() == "bool"sv;
+
+    // Take the source as a signed or unsigned 64-bit integer, keeping its sign.
+    bool negative = false;
+    uint64_t bits = 0;
+    bool exact = true;
+    std::visit(
+        [&](auto&& x) {
+            using T = std::decay_t<decltype(x)>;
+            if constexpr (std::is_same_v<T, bool>) {
+                bits = x ? 1 : 0;
+            } else if constexpr (std::is_same_v<T, int64_t>) {
+                negative = x < 0;
+                bits = static_cast<uint64_t>(x);
+            } else if constexpr (std::is_same_v<T, uint64_t>) {
+                bits = x;
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                throw TypeMismatchException("write_value", type->get_path());
+            } else {
+                const double d = static_cast<double>(x);
+                // Out-of-range doubles are caught by the range check below; the
+                // clamp only keeps the conversion defined.
+                const double clamped = std::max(-9.2e18, std::min(d, 9.2e18));
+                const int64_t i = static_cast<int64_t>(clamped);
+                exact = static_cast<double>(i) == d;
+                negative = i < 0;
+                bits = static_cast<uint64_t>(i);
+            }
+        },
+        value);
+
+    if (bool_dest) {
+        bits = bits != 0 ? 1 : 0;
+        negative = false;
+    }
+    if (check_data_loss) {
+        bool fits = exact;
+        if (signed_dest) {
+            // Representable range is [-2^(n-1), 2^(n-1) - 1].
+            const uint64_t limit = uint64_t{1} << (bit_size - 1);
+            fits = fits && (negative ? (bit_size >= 64 || ~bits < limit) : bits < limit);
+        } else {
+            fits = fits && !negative && (bits & ~mask) == 0;
+        }
+        if (!fits) {
+            throw DataLossException(value_to_string(value), std::string(type->get_name()));
+        }
+    }
+
+    const size_t storage_size = get_bitfield_storage_size();
+    std::vector<std::byte> bytes(storage_size);
+    memory_access->read(address, bytes);
+    uint64_t storage = load_uint_le(bytes, storage_size);
+    storage &= ~(mask << bitfield->bit_offset);
+    storage |= (bits & mask) << bitfield->bit_offset;
+    store_uint_le(bytes, storage, storage_size);
+    memory_access->write(address,
+                         std::span<const std::byte>(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size()));
+}
+
 ElfVariable ElfVariable::read() const {
     const DwarfDieTag tag = type_die->get_tag();
     if (tag == DwarfDieTag::pointer_type || is_reference_tag(tag)) {
         return dereference().read();
+    }
+    if (bitfield.has_value()) {
+        // Snapshot the bytes that hold the bitfield's bits.
+        std::vector<std::byte> data(get_bitfield_storage_size());
+        memory_access->read(address, data);
+        auto cached = std::make_shared<CachedReadMemoryAccess>(address, std::move(data), memory_access);
+        return ElfVariable(type_die, address, std::move(cached), bitfield);
     }
     auto data = read_bytes();
     auto cached = std::make_shared<CachedReadMemoryAccess>(address, std::move(data), memory_access);
