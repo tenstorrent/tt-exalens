@@ -60,7 +60,6 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBus
 from ttexalens.uistate import UIState
 from ttexalens.context import Context
 from ttexalens.device import Device
-from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.command_parser import CommandMetadata, tt_docopt, CommonCommandOptions
 
@@ -191,10 +190,7 @@ def _get_debug_bus_signal_store(
 
     debug_bus_signal_store = noc_block.get_debug_bus(neo_id)
     if debug_bus_signal_store is None:
-        where = f"Device {device.id} at location {loc.to_user_str()}"
-        if noc_block.neo_ids:
-            where += f" (neo {neo_id_to_str(neo_id)})"
-        util.ERROR(f"{where} does not have a debug bus.")
+        util.ERROR(f"Device {device.id} at location {loc.to_user_str(neo_id)} does not have a debug bus.")
         return None
 
     return debug_bus_signal_store

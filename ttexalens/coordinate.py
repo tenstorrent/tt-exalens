@@ -187,12 +187,17 @@ class OnChipCoordinate:
             return f"{output_tuple[0]},{output_tuple[1]}"
         return f"{output_tuple[0]}-{output_tuple[1]}"
 
-    def to_user_str(self) -> str:
+    def to_user_str(self, neo_id: int | None = None) -> str:
         """
         Returns a string representation of the coordinate that is suitable for the user.
+
+        Args:
+            neo_id (int | None): NEO to add to the string, if the block at this coordinate has NEOs.
         """
         noc0 = self.to_str("noc0")
         logical = self.to_str("logical")
+        if self.noc_block.neo_ids:
+            return f"{noc0} ({logical}) (neo {neo_id})"
         return f"{noc0} ({logical})"
 
     def change_device(self, device):
