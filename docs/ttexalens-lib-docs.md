@@ -884,6 +884,10 @@ Check if the verbosity level is supported and should be printed.
 
 
 
+A device read or write timed out, which usually means the PCIe link to the device failed.
+The device, and often the host, may need a reset or a reboot before it works again.
+NOC failover retries the access on the other NOC, but that rarely recovers from this error,
+so don't retry it or keep using the device after it.
 ## RestrictedMemoryAccessError
 
 

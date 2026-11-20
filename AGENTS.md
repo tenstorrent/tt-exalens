@@ -8,7 +8,7 @@ tt-exalens is a low-level debugger for Tenstorrent hardware: Wormhole, Blackhole
 
 - `ttexalens/tt_exalens_lib.py`: public library functions, exported through `ttexalens/__init__.py`.
 - `ttexalens/context.py`, `device.py`, `coordinate.py`: the core model. A `Context` holds `Device`s, and an `OnChipCoordinate` addresses a block on a device.
-- `ttexalens/umd_device.py`: local device access through tt-umd (version pinned in `ttexalens/requirements.txt`). `ttexalens/server.py`: remote access.
+- `ttexalens/umd_device.py`: local device access through tt-umd (version pinned in `ttexalens/requirements.txt`). `ttexalens/server.py`: remote access over Pyro5 (see "Remote server").
 - `ttexalens/hardware/`: blocks, memory maps, registers and RISC debug, with per-architecture code in `wormhole/`, `blackhole/` and `quasar/`.
 - `ttexalens/cli.py`, `ttexalens/cli_commands/`: the CLI application, one module per command.
 - `ttexalens/cpp/`: native ELF/DWARF code, built into `ttexalens._native_ttexalens` with nanobind. The Python side is `ttexalens/elf/`.
@@ -16,6 +16,17 @@ tt-exalens is a low-level debugger for Tenstorrent hardware: Wormhole, Blackhole
 - `riscv-src/`: RISC-V test kernels that the tests load onto cores.
 - `test/ttexalens/unit_tests/`, `test/app/`, `test/wheel/`: library tests, CLI tests and installed-wheel tests.
 - `docs/`: tutorials and generated references. The generators are in `docs/bin/`.
+
+## Docs to read first
+
+Read the matching hand-written doc before changing or reviewing code in that area:
+
+- Raising, catching or translating exceptions: `docs/exceptions.md`.
+- Coordinates and `OnChipCoordinate`: `docs/coordinates.md`.
+- The GDB server: `docs/gdb.md`.
+- ELF loading: `docs/elf_loader.md`.
+- CLI behaviour, including `--server` and `--remote`: `docs/ttexalens-app-tutorial.md`.
+- The library API: `docs/ttexalens-lib-tutorial.md`.
 
 ## Build and static checks
 
@@ -37,6 +48,7 @@ tt-exalens is a low-level debugger for Tenstorrent hardware: Wormhole, Blackhole
 - Run tests from the repository root after `make`, because they load kernels from `build/riscv-src/<arch>/`. Example: `python3 -m pytest test/ttexalens/unit_tests/test_lib.py -k write_read`.
 - CI runs the suites with `python3 -m unittest discover`. Write tests as `unittest.TestCase` classes and parametrize them with `parameterized`. pytest-only features such as fixtures and marks don't run in CI.
 - CI runs on a Blackhole p150b, a Wormhole n150 and a Wormhole n300, each with NOC0 and NOC1. If a test needs a device, core or block that some board lacks, call `self.skipTest(...)` rather than fail.
+- Don't wait on a device with a fixed sleep: time passes differently on the simulator and emulator.
 
 ## Library API
 
@@ -68,15 +80,30 @@ tt-exalens is a low-level debugger for Tenstorrent hardware: Wormhole, Blackhole
   - Write arguments as `name (type): description`, and return values as `type: description`. A malformed `Args:`, `Returns:` or `Notes:` section can make generation fail.
 - The other files in `docs/` (tutorials, `coordinates.md`, `exceptions.md`, `gdb.md` and the rest) are hand-written. Update them when the behavior they describe changes.
 
+## Remote server
+
+`ttexalens/server.py` serves `UmdApi` and `FileAccessApi` over Pyro5 5.16, and its `Remote*` adapters wrap the client-side proxies. Every feature must behave the same with `--remote` as locally. On the client, remote objects are proxies, so identity, `isinstance` and `==` against local values differ, and exceptions and return values cross a serialization boundary.
+
+It relies on this Pyro5 behaviour:
+
+- The daemon serves each connection on a worker from a pool of at most 80 threads (`THREADPOOL_SIZE`). Every proxy is its own connection. When the pool is full, new connections are refused.
+- The request handler catches `Exception` only. A `BaseException` such as `HardwareError` kills the worker without a reply, and the client sees `ConnectionClosedError`.
+- Only builtin and Pyro5 exceptions deserialize on the client. Other classes raise `SerializeError` unless registered with `register_dict_to_class`.
+- A proxy can be used only from the thread that created it, unless that thread calls `_pyroClaimOwnership()`. `Proxy(uri)` connects on first use, not when created.
+- `Daemon()` binds `localhost` unless `host=` is given.
+- `register_class_to_dict` and `SERPENT_BYTES_REPR` are process-wide, and `server.py` sets them on import.
+
 ## Hardware safety
 
+- A device may be attached to the machine you run on. Don't run commands or tests that access it unless the task asks for it.
 - A bad device access can hang or crash the device, not just fail. Safe mode checks every NOC access against the memory map of the block it targets. It is on by default. Turn it off with `--unsafe-mode` for the whole app, `--unsafe` for one command, or `safe_mode=False` in the library. If the check rejects a legitimate region, add the region to the architecture's memory map rather than turning safe mode off.
 - NOC accesses outside L1 and DRAM use UMD's register API, 4 bytes at a time. The memory map decides this through `register_access`. Don't force bulk access on register space.
 - Halting a RISC core, resetting it or putting it in debug mode changes its state. Leave cores in a known state, and prefer non-intrusive reads. Ethernet cores run base firmware, and halting them can wedge it.
+- `TimeoutDeviceRegisterError` usually means the PCIe link failed, and the device, and often the host, may need a reset or a reboot. Treat it as fatal: don't retry it, and don't keep using the device after it.
 
 ## Design and review
 
-`.github/skills/tt-exalens-review/SKILL.md` is the guide for reviewing pull requests, and its principles set the bar for new code too. The main ones:
+For any review request, use `.github/skills/tt-exalens-review/SKILL.md`, not a generic review workflow. It is the guide for reviewing pull requests and files, and its principles set the bar for new code too. The main ones:
 
 - Keep architecture differences in the classes under `ttexalens/hardware/<arch>/`.
 - Pass the codebase's own types, such as `OnChipCoordinate` and `NocId`, rather than raw values.
