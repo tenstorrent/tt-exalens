@@ -78,20 +78,20 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
         neo = self.get_sub_block(neo_id)
-        if neo is not None and not isinstance(neo, QuasarFunctionalOverlayBlock):
+        if neo is not None and isinstance(neo, QuasarFunctionalNeoBlock):
             return neo.debug_bus
         return super().get_debug_bus(neo_id)
 
     def get_perf_counters(self, neo_id: int | None = None) -> TensixPerfCounters | None:
         neo = self.get_sub_block(neo_id)
-        if neo is not None and not isinstance(neo, QuasarFunctionalOverlayBlock):
+        if neo is not None and isinstance(neo, QuasarFunctionalNeoBlock):
             return neo.perf_counters
         return super().get_perf_counters(neo_id)
 
     @cache
     def get_tensix_debug(self, neo_id: int | None = None) -> QuasarTensixDebug | None:
         neo = self.get_sub_block(neo_id)
-        if neo is not None and not isinstance(neo, QuasarFunctionalOverlayBlock):
+        if neo is not None and isinstance(neo, QuasarFunctionalNeoBlock):
             return neo.tensix_debug
         return None
 
