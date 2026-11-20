@@ -64,9 +64,9 @@ except HardwareError as e:
 
 ### `TimeoutDeviceRegisterError(HardwareError)`
 
-Raised when a device read or write does not complete within the expected time.
+Raised when a device read or write does not complete within the expected time. This usually means the PCIe link to the device failed, and the device, and often the host, may need a reset or a reboot before it works again. NOC failover retries the access on the other NOC, but that rarely recovers from this error, so don't retry it or keep using the device after it.
 
-**Attributes:** `chip_id`, `coord`, `address`, `size`, `is_read`, `duration`
+**Attributes:** `chip_id`, `coord`, `address`, `size`, `is_read`, `umd_error`
 
 ```python
 from ttexalens.exceptions import TimeoutDeviceRegisterError
