@@ -80,7 +80,11 @@ class ElfVariable {
     // Variant returned by read_value / accepted by write_value.
     using Value = std::variant<bool, int64_t, uint64_t, float, double, std::string>;
 
-    ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access);
+    // `array_dimension` is how many leading dimensions of a multi-dimensional
+    // array_type `type_die` have already been indexed: `a[1]` of `int a[3][4]`
+    // keeps the array_type DIE with array_dimension 1 and describes an int[4].
+    ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access,
+                uint32_t array_dimension = 0);
     ~ElfVariable();
     ElfVariable(const ElfVariable&);
     ElfVariable(ElfVariable&&) noexcept;
@@ -105,7 +109,7 @@ class ElfVariable {
     // Indexes into an array or pointer variable.
     ElfVariable get_index(int64_t i) const;
 
-    // Number of elements in the first array dimension.
+    // Number of elements in the array dimension this variable describes.
     uint64_t get_length() const;
 
     // Reads `get_size()` bytes from the live address.
@@ -134,6 +138,11 @@ class ElfVariable {
     DwarfDiePtr type_die;
     uint64_t address;
     std::shared_ptr<MemoryAccess> memory_access;
+    uint32_t array_dimension = 0;
+
+    // Dimensions of an array_type variable not yet indexed (all of them unless
+    // this variable is a sub-array of a multi-dimensional array).
+    std::vector<std::optional<uint64_t>> get_remaining_dimensions() const;
 };
 
 }  // namespace ttexalens::native_elf
