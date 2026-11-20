@@ -60,8 +60,6 @@ debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(gro
 
 
 class WormholeFunctionalWorkerBlock(WormholeNocBlock):
-    tensix_thread_count = 3
-
     def __init__(self, location: OnChipCoordinate):
         super().__init__(
             location,
@@ -218,8 +216,13 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             self.get_risc_debug(self.ncrisc.risc_name, self.ncrisc.neo_id),
         ]
 
+    @property
+    def tensix_thread_count(self) -> int:
+        return 3
+
     @cache
     def get_tensix_debug(self, neo_id: int | None = None) -> WormholeTensixDebug | None:
+        assert neo_id == self.trisc0.neo_id, "NEO ID must match the trisc0 NEO ID."
         return WormholeTensixDebug(self.get_risc_debug(self.trisc0.risc_name, self.trisc0.neo_id))
 
     @cache

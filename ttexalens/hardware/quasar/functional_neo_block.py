@@ -248,7 +248,7 @@ class QuasarFunctionalNeoBlock:
 
     @cached_property
     def tensix_debug(self) -> QuasarTensixDebug:
-        # LLK never programs TRISC3's dest window.
+        # We use TRISC3 as the default RISC for the tensix debug since LLK never programs its dest window.
         return QuasarTensixDebug(self.get_risc_debug(self.trisc3.risc_name))
 
     def get_default_risc_debug(self) -> RiscDebug:

@@ -19,8 +19,6 @@ from ttexalens.register_store import RegisterStore
 
 
 class QuasarFunctionalWorkerBlock(QuasarNocBlock):
-    tensix_thread_count = 4
-
     def __init__(self, location: OnChipCoordinate):
         super().__init__(location, block_type="functional_workers")
 
@@ -89,6 +87,10 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
         if neo is not None and isinstance(neo, QuasarFunctionalNeoBlock):
             return neo.perf_counters
         return super().get_perf_counters(neo_id)
+
+    @property
+    def tensix_thread_count(self) -> int:
+        return 4
 
     @cache
     def get_tensix_debug(self, neo_id: int | None = None) -> QuasarTensixDebug | None:

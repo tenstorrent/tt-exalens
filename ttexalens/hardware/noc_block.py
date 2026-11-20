@@ -22,8 +22,6 @@ if TYPE_CHECKING:
 
 
 class NocBlock:
-    tensix_thread_count: int = 0
-
     def __init__(
         self,
         location: OnChipCoordinate,
@@ -52,6 +50,10 @@ class NocBlock:
 
     def get_perf_counters(self, neo_id: int | None = None) -> TensixPerfCounters | None:
         return self.perf_counters
+
+    @property
+    def tensix_thread_count(self) -> int:
+        return 0
 
     @cache
     def get_tensix_debug(self, neo_id: int | None = None) -> TensixDebug | None:

@@ -7,6 +7,7 @@ from typing import Callable
 from ttexalens.context import NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+from ttexalens.debug_tensix import TensixDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.blackhole.baby_risc_debug import BlackholeBabyRiscDebug
 from ttexalens.hardware.blackhole.perf_counters import initialization as perf_counters_initialization
@@ -18,7 +19,6 @@ from ttexalens.hardware.blackhole.functional_worker_debug_bus_signals import deb
 from ttexalens.hardware.blackhole.functional_worker_registers import register_map
 from ttexalens.hardware.blackhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.blackhole.noc_block import BlackholeNocBlock
-from ttexalens.hardware.blackhole.tensix_debug import BlackholeTensixDebug
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
@@ -60,8 +60,6 @@ debug_bus_signals_initialization = DebugBusSignalStore.create_initialization(gro
 
 
 class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
-    tensix_thread_count = 3
-
     def __init__(self, location: OnChipCoordinate):
         super().__init__(
             location,
@@ -218,9 +216,14 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             self.get_risc_debug(self.ncrisc.risc_name, self.ncrisc.neo_id),
         ]
 
+    @property
+    def tensix_thread_count(self) -> int:
+        return 3
+
     @cache
-    def get_tensix_debug(self, neo_id: int | None = None) -> BlackholeTensixDebug | None:
-        return BlackholeTensixDebug(self.get_risc_debug(self.trisc0.risc_name, self.trisc0.neo_id))
+    def get_tensix_debug(self, neo_id: int | None = None) -> TensixDebug | None:
+        assert neo_id == self.trisc0.neo_id, "NEO ID must match the trisc0 NEO ID."
+        return TensixDebug(self.get_risc_debug(self.trisc0.risc_name, self.trisc0.neo_id))
 
     @cache
     def get_default_risc_debug(self, neo_id: int | None = None) -> RiscDebug:
