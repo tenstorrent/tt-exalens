@@ -61,14 +61,33 @@ DwarfAttribute::Value decode_attribute_value(Dwarf_Debug dbg, Dwarf_Attribute at
             }
             return std::monostate{};
         }
+        case DwarfAttributeForm::implicit_const: {
+            // The constant stored in the abbreviation is signed (for example an
+            // enumerator value of -1 shared by several DIEs).
+            Dwarf_Signed v = 0;
+            if (dwarf_formsdata(attr, &v, &error) == DW_DLV_OK) {
+                if (v < 0) {
+                    return static_cast<int64_t>(v);
+                }
+                return static_cast<uint64_t>(v);
+            }
+            return std::monostate{};
+        }
+        case DwarfAttributeForm::sec_offset: {
+            // Offset into another debug section (.debug_line, .debug_loclists,
+            // ...), sized by the compile unit's offset size.
+            Dwarf_Off off = 0;
+            if (dwarf_global_formref(attr, &off, &error) == DW_DLV_OK) {
+                return static_cast<uint64_t>(off);
+            }
+            return std::monostate{};
+        }
         case DwarfAttributeForm::data1:
         case DwarfAttributeForm::data2:
         case DwarfAttributeForm::data4:
         case DwarfAttributeForm::data8:
         case DwarfAttributeForm::data16:
         case DwarfAttributeForm::udata:
-        case DwarfAttributeForm::implicit_const:
-        case DwarfAttributeForm::sec_offset:
         case DwarfAttributeForm::loclistx:
         case DwarfAttributeForm::rnglistx: {
             Dwarf_Unsigned v = 0;
@@ -83,18 +102,24 @@ DwarfAttribute::Value decode_attribute_value(Dwarf_Debug dbg, Dwarf_Attribute at
         case DwarfAttributeForm::ref8:
         case DwarfAttributeForm::ref_udata:
         case DwarfAttributeForm::ref_addr:
-        case DwarfAttributeForm::ref_sig8:
-        case DwarfAttributeForm::ref_sup4:
-        case DwarfAttributeForm::ref_sup8:
-        case DwarfAttributeForm::GNU_ref_alt: {
-            // Always hand back a global .debug_info offset so callers can
-            // feed it to get_or_create_die without knowing the encoding.
+        case DwarfAttributeForm::ref_sig8: {
+            // Hand back a global .debug_info offset so callers can feed it to
+            // get_or_create_die without knowing the encoding. A type signature
+            // can resolve into .debug_types instead, which is not addressable
+            // that way.
             Dwarf_Off off = 0;
-            if (dwarf_global_formref(attr, &off, &error) == DW_DLV_OK) {
+            Dwarf_Bool is_info = 0;
+            if (dwarf_global_formref_b(attr, &off, &is_info, &error) == DW_DLV_OK && is_info) {
                 return static_cast<uint64_t>(off);
             }
             return std::monostate{};
         }
+        case DwarfAttributeForm::ref_sup4:
+        case DwarfAttributeForm::ref_sup8:
+        case DwarfAttributeForm::GNU_ref_alt:
+            // References into a supplementary or alternate debug file, which
+            // this reader does not open.
+            return std::monostate{};
         case DwarfAttributeForm::block:
         case DwarfAttributeForm::block1:
         case DwarfAttributeForm::block2:

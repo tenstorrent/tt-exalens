@@ -378,13 +378,15 @@ void bind_variable(nb::module_& m) {
                      if (self.get_type_die()->get_tag() == DwarfDieTag::enumeration_type) {
                          for (auto child = self.get_type_die()->get_first_child(); child;
                               child = child->get_next_sibling()) {
+                             // Compare as Python ints: a negative value never
+                             // converts to an unsigned enumerator constant.
                              auto cv = child->get_constant_value();
                              if (auto* iv = std::get_if<int64_t>(&cv)) {
-                                 if (nb::cast<int64_t>(val) == *iv) {
+                                 if (val.equal(nb::int_(*iv))) {
                                      return child->get_path();
                                  }
                              } else if (auto* uv = std::get_if<uint64_t>(&cv)) {
-                                 if (nb::cast<uint64_t>(val) == *uv) {
+                                 if (val.equal(nb::int_(*uv))) {
                                      return child->get_path();
                                  }
                              }

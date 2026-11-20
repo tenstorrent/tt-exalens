@@ -355,6 +355,7 @@ void bind_dwarf_attribute(nb::module_& m) {
         .value("visibility", DwarfAttributeTag::visibility)
         .value("VMS_rtnbeg_pd_address", DwarfAttributeTag::VMS_rtnbeg_pd_address)
         .value("vtable_elem_location", DwarfAttributeTag::vtable_elem_location);
+    alias_duplicate_enum_members(m.attr("DwarfAttributeTag"));
 
     // DW_FORM_* — attribute form. Determines which std::variant alternative
     // DwarfAttribute.value will hold (see dwarf_attribute.hpp).

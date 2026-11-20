@@ -491,8 +491,16 @@ DwarfDiePtr DwarfDie::get_die_from_attribute(DwarfAttributeTag attribute_tag) co
     if (dwarf_attr(die, static_cast<Dwarf_Half>(attribute_tag), &attr, &error) != DW_DLV_OK) {
         return nullptr;
     }
+    Dwarf_Half form = 0;
+    if (dwarf_whatform(attr, &form, &error) != DW_DLV_OK || form == DW_FORM_GNU_ref_alt || form == DW_FORM_ref_sup4 ||
+        form == DW_FORM_ref_sup8) {
+        // The target lives in a supplementary or alternate debug file.
+        return nullptr;
+    }
     Dwarf_Off offset = 0;
-    if (dwarf_global_formref(attr, &offset, &error) != DW_DLV_OK) {
+    Dwarf_Bool is_info = 0;
+    if (dwarf_global_formref_b(attr, &offset, &is_info, &error) != DW_DLV_OK || !is_info) {
+        // Not resolvable, or a type signature that resolves into .debug_types.
         return nullptr;
     }
     return info_ptr->get_or_create_die(offset);

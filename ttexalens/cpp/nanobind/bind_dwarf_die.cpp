@@ -176,6 +176,7 @@ void bind_dwarf_die(nb::module_& m) {
         .value("variant_part", DwarfDieTag::variant_part)
         .value("volatile_type", DwarfDieTag::volatile_type)
         .value("with_stmt", DwarfDieTag::with_stmt);
+    alias_duplicate_enum_members(m.attr("DwarfDieTag"));
 
     nb::class_<DwarfFileLine>(m, "DwarfFileLine")
         .def(nb::init<std::string, uint32_t, uint32_t>(), nb::arg("file"), nb::arg("line"), nb::arg("column") = 0)

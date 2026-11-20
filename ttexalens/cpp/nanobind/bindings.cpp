@@ -52,6 +52,26 @@ void register_exception_translators() {
 
 }  // namespace
 
+void alias_duplicate_enum_members(nb::handle enum_type) {
+    nb::dict by_value = nb::borrow<nb::dict>(enum_type.attr("_value2member_map_"));
+    nb::object member_map = enum_type.attr("_member_map_");
+    nb::object items = nb::module_::import_("builtins").attr("list")(enum_type.attr("__dict__").attr("items")());
+    nb::object set_type_attr = nb::handle(reinterpret_cast<PyObject*>(&PyType_Type)).attr("__setattr__");
+    for (nb::handle item : items) {
+        nb::handle name = item[0];
+        nb::handle member = item[1];
+        if (!nb::isinstance(member, enum_type)) {
+            continue;
+        }
+        nb::object canonical = by_value[member.attr("value")];
+        if (!canonical.is(member)) {
+            // type.__setattr__ bypasses the Enum guard against rebinding a member name.
+            set_type_attr(enum_type, name, canonical);
+            member_map[name] = canonical;
+        }
+    }
+}
+
 }  // namespace ttexalens::native_elf::bindings
 
 NB_MODULE(_native_ttexalens, m) {
