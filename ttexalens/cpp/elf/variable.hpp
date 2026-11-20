@@ -134,6 +134,8 @@ class ElfVariable {
     DwarfDiePtr type_die;
     uint64_t address;
     std::shared_ptr<MemoryAccess> memory_access;
+    // Keeps the ELF file that owns type_die alive.
+    std::shared_ptr<const void> elf_owner;
 };
 
 }  // namespace ttexalens::native_elf

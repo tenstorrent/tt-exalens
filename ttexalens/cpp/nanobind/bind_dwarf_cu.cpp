@@ -16,7 +16,7 @@ void bind_dwarf_cu(nb::module_& m) {
     // by reference (DwarfInfo.iter_compile_units(), DwarfDie.cu), so there is no
     // Python constructor.
     nb::class_<DwarfCompileUnit>(m, "DwarfCompileUnit")
-        .def_prop_ro("die", &DwarfCompileUnit::get_die, nb::rv_policy::reference_internal,
+        .def_prop_ro("die", &DwarfCompileUnit::get_die, nb::rv_policy::reference_internal, nb::keep_alive<0, 1>(),
                      nb::sig("def die(self) -> DwarfDie | None"))
         .def_prop_ro("header_length", &DwarfCompileUnit::get_header_length)
         .def_prop_ro("version", &DwarfCompileUnit::get_version)

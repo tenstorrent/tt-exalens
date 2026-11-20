@@ -26,7 +26,7 @@ void bind_callstack(nb::module_& m) {
     // CallstackEntryVariable dataclass's cached properties, so existing call
     // sites that read .name / .value / .type / .declared_at keep working.
     nb::class_<CallstackEntryVariable>(m, "CallstackEntryVariable")
-        .def_ro("die", &CallstackEntryVariable::die, nb::rv_policy::reference_internal)
+        .def_ro("die", &CallstackEntryVariable::die, nb::rv_policy::reference_internal, nb::keep_alive<0, 1>())
         .def_ro("value", &CallstackEntryVariable::value, nb::rv_policy::reference_internal)
         .def_prop_ro(
             "name",
@@ -44,7 +44,7 @@ void bind_callstack(nb::module_& m) {
         .def_prop_ro(
             "type",
             [](const CallstackEntryVariable& self) { return self.die ? self.die->get_resolved_type() : nullptr; },
-            nb::rv_policy::reference_internal, nb::sig("def type(self) -> DwarfDie | None"))
+            nb::rv_policy::reference_internal, nb::keep_alive<0, 1>(), nb::sig("def type(self) -> DwarfDie | None"))
         .def_prop_ro("declared_at", [](const CallstackEntryVariable& self) -> std::optional<DwarfFileLine> {
             return self.die ? self.die->get_decl_file_info() : std::nullopt;
         });

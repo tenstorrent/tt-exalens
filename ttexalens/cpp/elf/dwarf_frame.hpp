@@ -74,6 +74,8 @@ class FrameDescription {
     Dwarf_Fde fde;
     uint64_t pc;
     std::shared_ptr<MemoryAccess> memory_access;
+    // Keeps the ELF file that owns the FDE alive.
+    std::shared_ptr<const void> elf_owner;
 };
 
 // Snapshot of one frame on the callstack at the PC where execution was
