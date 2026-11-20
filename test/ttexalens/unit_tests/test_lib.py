@@ -2023,6 +2023,39 @@ class TestCallStack(unittest.TestCase):
             )
             self.compare_callstacks(callstack, gdb_callstack)
 
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_frame_pointer_caller(self, elf_name: str):
+        # 0xFFFFFFF5 selects frame_pointer_test: fp_caller has a variable-length array, so its frame is
+        # addressed through the frame pointer, and it calls fp_leaf, which in the optimized build has no
+        # frame and leaves the frame pointer alone. Unwinding past fp_caller must take the frame pointer
+        # from the live register, not from a stack slot of fp_leaf's frame.
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0xFFFFFFF5)
+        # fp_caller's array length (offset 0 of the host-written value buffer).
+        self.l1_mem_access.write(self.get_mailbox_value_address(parsed_elf), struct.pack("<i", 4))
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
+        )
+
+        expected = [
+            "frame_pointer_test::fp_leaf",
+            "frame_pointer_test::fp_caller",
+            "frame_pointer_test::run",
+            "main",
+        ]
+        self.assertEqual([entry.function_name for entry in callstack], expected)
+
+        if self.gdb_server is not None:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
+            )
+            self.compare_callstacks(callstack, gdb_callstack)
+
     @parameterized.expand([(x,) for x in RECURSION_COUNT])
     def test_top_callstack_with_parsing(self, recursion_count: int):
         elf_path = self.get_elf_path("callstack.debug")

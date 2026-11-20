@@ -36,7 +36,7 @@ void bind_dwarf_frame(nb::module_& m) {
         .def("read_register", &FrameDescription::read_register, nb::arg("register_index"), nb::arg("cfa"))
         .def("try_read_register", &FrameDescription::try_read_register, nb::arg("register_index"),
              nb::arg("cfa").none())
-        .def("compute_cfa", &FrameDescription::compute_cfa, nb::arg("inner_cfa").none() = nb::none());
+        .def("compute_cfa", &FrameDescription::compute_cfa, nb::arg("inner_frames") = std::vector<FrameSnapshot>{});
 
     // Snapshot of one frame on the callstack at a particular PC. Used as
     // the building block for FrameInspection — both for the

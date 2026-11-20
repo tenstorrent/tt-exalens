@@ -536,9 +536,39 @@ __attribute__((noinline)) int run(int a) {
 }
 }  // namespace tail_multi_test
 
+namespace frame_pointer_test {
+// fp_caller() has a variable-length array, so its frame is addressed through the
+// frame pointer (s0) rather than sp. fp_leaf() has no frame of its own in the
+// optimized build and never touches s0, so at the halt point the caller's frame
+// pointer is still live in s0 and must be read from there to unwind past fp_caller().
+volatile int fp_marker;
+
+__attribute__((noinline, noclone)) int fp_leaf(int a) {
+    asm volatile("ebreak");
+    return a + 1;
+}
+
+__attribute__((noinline, noclone)) int fp_caller(int n) {
+    volatile int buf[n];
+    for (int i = 0; i < n; i++) {
+        buf[i] = i;
+    }
+    int r = fp_leaf(buf[n - 1]);
+    fp_marker = buf[0];
+    return r;
+}
+
+// fp_caller() is not in tail position here, so run() stays a real frame.
+__attribute__((noinline)) int run(int n) {
+    int r = fp_caller(n);
+    asm volatile("" ::: "memory");
+    return r;
+}
+}  // namespace frame_pointer_test
+
 // Scenario selectors occupy the top of the range plus the 0xFFFFFE00 block; any
 // other value is a recursion count. Lower the bound when adding a scenario.
-constexpr uint32_t kLowestScenarioSelector = 0xFFFFFFF6;
+constexpr uint32_t kLowestScenarioSelector = 0xFFFFFFF5;
 
 static bool is_scenario_selector(uint32_t mailbox) {
     return mailbox >= kLowestScenarioSelector || (mailbox & 0xFFFFFF00) == 0xFFFFFE00;
@@ -573,6 +603,8 @@ int main() {
         tail_multi_test::run(host_value<int>(0));
     } else if (*g_MAILBOX == 0xFFFFFFF6) {
         reference_test::run();
+    } else if (*g_MAILBOX == 0xFFFFFFF5) {
+        frame_pointer_test::run(host_value<int>(0));
     } else {
         int sum = recurse(*g_MAILBOX);
         *g_MAILBOX = sum;
