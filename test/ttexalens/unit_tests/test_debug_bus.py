@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import contextlib
+import io
 import unittest
 from parameterized import parameterized_class, parameterized
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
@@ -10,7 +12,7 @@ from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from test.ttexalens.unit_tests.test_base import get_core_location, init_cached_test_context
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.context import Context
-from ttexalens.cli_commands.debug_bus import parse_string
+from ttexalens.cli_commands.debug_bus import handle_group_reading_command, handle_signal_reading_command, parse_string
 from ttexalens.device import Device
 
 
@@ -358,3 +360,46 @@ class TestDebugBus(unittest.TestCase):
                         # single signal
                         single_value = self.debug_bus.read_signal(signal_name)
                         self.assertEqual(first_val, single_value, f"Signal {signal_name} value mismatch.")
+
+    def test_debug_bus_command_reads_signals_after_combined_signal(self):
+        """A combined signal in the list is only listed by its parts; the signals after it must still be read."""
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
+        if not self.debug_bus.combined_signals:
+            self.skipTest(f"No combined signals on core {self.core_desc}.")
+
+        combined_signal = sorted(self.debug_bus.combined_signals)[0]
+        signal = f"{self.location.noc_block.risc_names[0].lower()}_pc"
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            handle_signal_reading_command(
+                self.device, self.location, {"signals": [combined_signal, signal], "neo_id": self.neo_id}
+            )
+        self.assertIn(f" {signal}: 0x", output.getvalue())
+
+    @parameterized.expand(
+        [
+            (0, None, "samples count must be at least 1"),
+            (4, 0, "sampling_interval must be between 2 and 256"),
+        ]
+    )
+    def test_debug_bus_group_command_rejects_zero(self, samples, sampling_interval, message):
+        """An explicit 0 for --samples or --sampling-interval is rejected, not replaced by the default."""
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
+        if self.location.noc_block.block_type != "functional_workers":
+            self.skipTest("Samples are written to L1 of a Tensix core only.")
+
+        params = {
+            "group-name": next(iter(self.debug_bus.group_map.keys())),
+            "l1-address": 0x1000,
+            "samples": samples,
+            "sampling-interval": sampling_interval,
+            "search": "*",
+            "max": "all",
+            "simple": True,
+            "neo_id": self.neo_id,
+        }
+        with self.assertRaises(ValueError) as cm, contextlib.redirect_stdout(io.StringIO()):
+            handle_group_reading_command(self.device, self.location, params)
+        self.assertIn(message, str(cm.exception))
