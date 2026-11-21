@@ -83,13 +83,13 @@ class BlackholeArcBlock(ArcBlock):
         if self.device.is_local:
             self.register_store_noc0 = RegisterStore(register_store_noc0_initialization_local, self.location)
             self.register_store_noc1 = RegisterStore(register_store_noc1_initialization_local, self.location)
-            self.noc0_regs = MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x80050000))
-            self.noc1_regs = MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x80058000))
         else:
             self.register_store_noc0 = RegisterStore(register_store_noc0_initialization_remote, self.location)
             self.register_store_noc1 = RegisterStore(register_store_noc1_initialization_remote, self.location)
-            self.noc0_regs = MemoryBlock(size=0x10000, address=DeviceAddress(noc_address=0x80050000))
-            self.noc1_regs = MemoryBlock(size=0x10000, address=DeviceAddress(noc_address=0x80058000))
+
+        # NOC0 and NOC1 register blocks are adjacent on local and remote devices, so the memory map does not depend on locality
+        self.noc0_regs = MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x80050000))
+        self.noc1_regs = MemoryBlock(size=0x8000, address=DeviceAddress(noc_address=0x80058000))
 
         self.arc_reset_regs = MemoryBlock(size=0x200, address=DeviceAddress(noc_address=0x80030000))
         self.arc_csm = MemoryBlock(size=0x80000, address=DeviceAddress(noc_address=0x10000000))
