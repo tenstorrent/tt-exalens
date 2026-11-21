@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import unittest
+from unittest.mock import MagicMock, patch
 import os
 import struct
 
@@ -40,6 +41,8 @@ from ttexalens.register_store import (
     TensixGeneralPurposeRegisterDescription,
 )
 from ttexalens.elf_loader import ElfLoader
+from ttexalens.hardware.memory_block import MemoryBlock
+from ttexalens.hardware.device_address import DeviceAddress
 from ttexalens.firmware_telemetry import CUTOFF_FIRMWARE_VERSION
 
 from ttexalens.gdb.gdb_client import get_gdb_callstack
@@ -1357,6 +1360,25 @@ class TestRunElf(unittest.TestCase):
         ret = lib.read_words_from_device(location, addr, context=self.context)
         self.assertEqual(ret[0], 0x12345678)
 
+    def test_run_elf_fails_when_verification_fails(self):
+        """A section that does not read back correctly fails run_elf and leaves the RISC in reset."""
+        location = OnChipCoordinate.create("0,0", self.device)
+        risc_name = "brisc"
+        risc_debug = location.noc_block.get_risc_debug(risc_name)
+        elf_path = self.get_elf_path("run_elf_test.debug", risc_name)
+        self.context.loaded_elfs.pop(risc_debug.risc_location, None)
+        read_block = ElfLoader.read_block
+
+        def corrupted_read_block(loader: ElfLoader, address: int, buffer: bytearray | memoryview) -> None:
+            read_block(loader, address, buffer)
+            buffer[0] ^= 0xFF
+
+        with patch.object(ElfLoader, "read_block", corrupted_read_block):
+            with self.assertRaises(TTException):
+                lib.run_elf(elf_path, location, risc_name, context=self.context)
+        self.assertTrue(risc_debug.is_in_reset(), "RISC should stay in reset after a failed load.")
+        self.assertIsNone(self.context.get_risc_elf_path(risc_debug.risc_location))
+
     @parameterized.expand(
         [
             ("", "0,0", "brisc", 0),  # Invalid ELF path
@@ -2391,3 +2413,24 @@ class TestCallStack(unittest.TestCase):
                 device_id=device_id,
                 context=self.context,
             )
+
+
+class TestElfLoaderWithoutDevice(unittest.TestCase):
+    """ElfLoader routing checks that do not need a device."""
+
+    def test_private_memory_with_noc_mapping_is_translated(self):
+        """A private memory that has its own NOC mapping is written and read at its NOC address."""
+        risc_debug = MagicMock()
+        risc_debug.get_data_private_memory.return_value = MemoryBlock(
+            size=0x1000, address=DeviceAddress(private_address=0x00802000, noc_address=0x01802000)
+        )
+        risc_debug.get_code_private_memory.return_value = None
+        location = risc_debug.risc_location.location
+        location.noc_block.noc_memory_map.find_by_name.return_value = None
+        with patch("ttexalens.elf_loader.create_memory_access"), patch("ttexalens.elf_loader.create_l1_memory_access"):
+            loader = ElfLoader(risc_debug)
+        loader.write_block(0x00802004, b"\x01\x02\x03\x04")
+        location.noc_write.assert_called_once_with(0x01802004, b"\x01\x02\x03\x04")
+        buffer = bytearray(4)
+        loader.read_block(0x00802004, buffer)
+        location.noc_read.assert_called_once_with(0x01802004, buffer)
