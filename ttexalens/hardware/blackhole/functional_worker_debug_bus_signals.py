@@ -205,10 +205,10 @@ debug_bus_signal_map = {
     "tensix_frontend_t1_rq_head_rsrcs_rd_tdma": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x10),
     "tensix_frontend_t1_rq_head_rsrcs_wr_gpr": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x8),
     "tensix_frontend_t1_rq_head_rsrcs_rd_gpr": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x4),
-    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space_0_0": DebugBusSignalDescription(
+    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space/0": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=1, sig_sel=8, mask=0x80000000
     ),
-    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space_2_1": DebugBusSignalDescription(
+    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x3
     ),
     "tensix_frontend_t1_rq_head_rsrcs_cfg_state": DebugBusSignalDescription(
@@ -1776,8 +1776,8 @@ debug_bus_signal_map = {
     "brisc_intf_wrack/1": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=1, mask=0x3F),
     "brisc_rv_out_dmem_rden": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x100000),
     "brisc_rv_out_dmem_wren": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x80000),
-    "brisc_icache_req_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x2),
-    "brisc_icache_req_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x1),
+    "brisc_risc_wrapper_icache_req_fifo_full": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x2),
+    "brisc_risc_wrapper_icache_req_fifo_empty": DebugBusSignalDescription(rd_sel=0, daisy_sel=7, sig_sel=1, mask=0x1),
     "perf_cnt_fpu_dbg0_stall_cnt": DebugBusSignalDescription(rd_sel=3, daisy_sel=7, sig_sel=0, mask=0xFFFFFFFF),
     "perf_cnt_fpu_dbg0_grant_cnt": DebugBusSignalDescription(rd_sel=2, daisy_sel=7, sig_sel=0, mask=0xFFFFFFFF),
     "perf_cnt_fpu_dbg0_req_cnt": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=0, mask=0xFFFFFFFF),
