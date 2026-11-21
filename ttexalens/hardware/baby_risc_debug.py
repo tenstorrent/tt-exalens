@@ -598,27 +598,30 @@ class BabyRiscDebug(RiscDebug):
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
         if not self.is_in_reset():
-            with self.debug_hardware.ensure_halted():
+            with self.ensure_halted():
                 yield
         else:
             start_address = self.baby_risc_info.get_code_start_address(self.register_store)
 
             # Save 4 bytes from the start address (we need to return it to previous state)
             saved_bytes = self.__read(start_address)
+            taken_out_of_reset = False
             try:
                 # Write endless loop to the start address
                 self.__write(start_address, 0x6F)  # JAL x0, 0
 
                 # Take core out of reset
                 self.set_reset_signal(False)
+                taken_out_of_reset = True
 
                 # Ensure it is halted and yield
-                with self.debug_hardware.ensure_halted():
+                with self.ensure_halted():
                     yield
-
-                # Take core back to reset
-                self.set_reset_signal(True)
             finally:
+                # Take core back to reset, also when halting or the access failed
+                if taken_out_of_reset:
+                    self.set_reset_signal(True)
+
                 # Write back the 4 bytes to the start address
                 self.__write(start_address, saved_bytes)
 
@@ -676,8 +679,15 @@ class BabyRiscDebug(RiscDebug):
             self.assert_not_in_reset()
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        with self.debug_hardware.ensure_halted():
+        was_halted = self.debug_hardware.is_halted()
+        if not was_halted:
+            self.debug_hardware.halt()
+        try:
             yield
+        finally:
+            if not was_halted:
+                # Resume through cont() so architecture-specific workarounds are applied
+                self.cont()
 
     def read_gpr(self, register_index: int) -> int:
         if self.enable_asserts:
@@ -703,13 +713,15 @@ class BabyRiscDebug(RiscDebug):
                 util.DEBUG(f"Unexpected exception getting debug bus PC signal:\n{traceback.format_exc()}")
         return None
 
+    def _restore_debug_bus_pc(self, pc: int) -> int:
+        if (self.risc_info.risc_name in ["ncrisc", "erisc"]) and pc & 0xF0000000 == 0x70000000:
+            pc = pc | 0x80000000  # Turn the topmost bit on as it was lost on debug bus
+        return pc
+
     def get_pc(self) -> int:
         debug_bus_pc_signal = self.debug_bus_pc_signal
         if debug_bus_pc_signal is not None and self.risc_info.noc_block.debug_bus is not None:
-            pc = self.risc_info.noc_block.debug_bus.read_signal(debug_bus_pc_signal)
-            if (self.risc_info.risc_name in ["ncrisc", "erisc"]) and pc & 0xF0000000 == 0x70000000:
-                pc = pc | 0x80000000  # Turn the topmost bit on as it was lost on debug bus
-            return pc
+            return self._restore_debug_bus_pc(self.risc_info.noc_block.debug_bus.read_signal(debug_bus_pc_signal))
 
         with self.ensure_halted():
             return self.read_gpr(32)
@@ -757,27 +769,32 @@ class BabyRiscDebug(RiscDebug):
     def disable_watchpoint(self, watchpoint_index: int) -> None:
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        self.debug_hardware.disable_watchpoint(watchpoint_index)
+        with self.ensure_halted():
+            self.debug_hardware.disable_watchpoint(watchpoint_index)
 
     def set_watchpoint_on_pc_address(self, watchpoint_index: int, address: int) -> None:
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        self.debug_hardware.set_watchpoint_on_pc_address(watchpoint_index, address)
+        with self.ensure_halted():
+            self.debug_hardware.set_watchpoint_on_pc_address(watchpoint_index, address)
 
     def set_watchpoint_on_memory_read(self, watchpoint_index: int, address: int) -> None:
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        self.debug_hardware.set_watchpoint_on_memory_read(watchpoint_index, address)
+        with self.ensure_halted():
+            self.debug_hardware.set_watchpoint_on_memory_read(watchpoint_index, address)
 
     def set_watchpoint_on_memory_write(self, watchpoint_index: int, address: int) -> None:
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        self.debug_hardware.set_watchpoint_on_memory_write(watchpoint_index, address)
+        with self.ensure_halted():
+            self.debug_hardware.set_watchpoint_on_memory_write(watchpoint_index, address)
 
     def set_watchpoint_on_memory_access(self, watchpoint_index: int, address: int) -> None:
         self.assert_debug_hardware()
         assert self.debug_hardware is not None, "Debug hardware is not initialized"
-        self.debug_hardware.set_watchpoint_on_memory_access(watchpoint_index, address)
+        with self.ensure_halted():
+            self.debug_hardware.set_watchpoint_on_memory_access(watchpoint_index, address)
 
     def can_debug(self) -> bool:
         return self.baby_risc_info.debug_hardware_present

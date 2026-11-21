@@ -26,7 +26,8 @@ class WormholeBabyRiscDebug(BabyRiscDebug):
                 self.assert_not_in_reset()
             self.assert_debug_hardware()
             assert self.debug_hardware is not None, "Debug hardware is not initialized"
-            self.debug_hardware.flush(self.get_pc())
+            if self.debug_hardware.is_halted():
+                self.debug_hardware.flush(self.get_pc())
             super().cont()
 
     def step(self):
@@ -40,4 +41,6 @@ class WormholeBabyRiscDebug(BabyRiscDebug):
             return super().read_gpr(register_index)
         else:
             assert self.noc_block.debug_bus is not None, "Debug bus is not initialized."
-            return int(self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc"))
+            return self._restore_debug_bus_pc(
+                int(self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc"))
+            )

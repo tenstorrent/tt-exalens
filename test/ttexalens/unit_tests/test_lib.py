@@ -939,19 +939,26 @@ class TestReadWrite(unittest.TestCase):
     @parameterized.expand(
         [
             ("0,0", 0x0),
-            ("0,0", 0x1),
+            ("0,0", 0x4),
             ("0,0", 0x8),
-            ("0,0", 0x9),
+            ("0,0", 0xC),
             ("1,0", 0x0),
-            ("1,0", 0x1),
+            ("1,0", 0x4),
             ("1,0", 0x8),
-            ("1,0", 0x9),
+            ("1,0", 0xC),
         ]
     )
     def test_trisc2_write_private_memory(self, loc_str: str, offset: int):
-        """Test that writing to trisc2 private memory on Blackhole works for offsets
+        """Test that writing whole words to trisc2 private memory on Blackhole works for offsets
         the debug hardware cannot read back due to hardware bug described in #528.
         """
+        location, risc_debug, private_address, noc_address = self._get_trisc2_private_memory(loc_str, offset)
+        data = bytes([0xAA, 0x22, 0x88, 0xBB, 0xCC, 0xDD, 0x77, 0x11])
+        with risc_debug.ensure_private_memory_access():
+            risc_debug.write_memory_bytes(private_address, data)
+            self.assertEqual(lib.read_from_device(location, noc_address, num_bytes=len(data)), data)
+
+    def _get_trisc2_private_memory(self, loc_str: str, offset: int) -> tuple[OnChipCoordinate, RiscDebug, int, int]:
         device = self.context.devices[0]
         if not device.is_blackhole():
             self.skipTest("This test is only applicable to blackhole devices.")
@@ -967,10 +974,62 @@ class TestReadWrite(unittest.TestCase):
         private_address = private_memory.address.private_address + offset
         noc_address = private_memory.translate_to_noc_address(private_address)
         assert noc_address is not None, "Private memory address cannot be translated to a NOC address."
-        data = bytes([0xAA, 0x22, 0x88, 0xBB, 0xCC, 0xDD, 0x77, 0x11])
+        return location, risc_debug, private_address, noc_address
+
+    @parameterized.expand(
+        [
+            ("1,0", 0x1, 8, True),  # Last word at offset 0x8 is read back
+            ("1,0", 0x9, 1, True),  # Only word at offset 0x8 is read back
+            ("1,0", 0x9, 8, True),  # First word at offset 0x8 is read back
+            ("1,0", 0x6, 1, False),  # Only word at offset 0x4 is read back
+            ("1,0", 0x1, 3, False),  # Only word at offset 0x0 is read back
+        ]
+    )
+    def test_trisc2_partial_word_write_private_memory(self, loc_str: str, offset: int, size: int, should_fail: bool):
+        """Test that a trisc2 write on Blackhole is refused when it needs to read back a word
+        the debug hardware cannot read due to hardware bug described in #528.
+        """
+        location, risc_debug, private_address, noc_address = self._get_trisc2_private_memory(loc_str, offset)
+        block_noc_address = noc_address & ~0xF
+        pattern = bytes(range(0x10, 0x30))
+        data = bytes([0xA0 + i for i in range(size)])
         with risc_debug.ensure_private_memory_access():
-            risc_debug.write_memory_bytes(private_address, data)
-            self.assertEqual(lib.read_from_device(location, noc_address, num_bytes=len(data)), data)
+            lib.write_to_device(location, block_noc_address, pattern)
+            if should_fail:
+                with self.assertRaises(TTException):
+                    risc_debug.write_memory_bytes(private_address, data)
+                expected = pattern
+            else:
+                risc_debug.write_memory_bytes(private_address, data)
+                start = noc_address - block_noc_address
+                expected = pattern[:start] + data + pattern[start + size :]
+            self.assertEqual(lib.read_from_device(location, block_noc_address, num_bytes=len(pattern)), expected)
+
+    @parameterized.expand(
+        [
+            ("1,0", 0x0, 16, True),
+            ("1,0", 0x4, 8, True),
+            ("1,0", 0x8, 4, True),
+            ("1,0", 0x0, 8, False),
+            ("1,0", 0x4, 4, False),
+            ("1,0", 0x5, 3, False),
+        ]
+    )
+    def test_trisc2_read_private_memory(self, loc_str: str, offset: int, size: int, should_fail: bool):
+        """Test that a trisc2 read on Blackhole is refused when any word it reads is one
+        the debug hardware cannot read due to hardware bug described in #528.
+        """
+        location, risc_debug, private_address, noc_address = self._get_trisc2_private_memory(loc_str, offset)
+        pattern = bytes(range(0x40, 0x40 + size))
+        buffer = bytearray(size)
+        with risc_debug.ensure_private_memory_access():
+            lib.write_to_device(location, noc_address, pattern)
+            if should_fail:
+                with self.assertRaises(TTException):
+                    risc_debug.read_memory_bytes(private_address, buffer)
+            else:
+                risc_debug.read_memory_bytes(private_address, buffer)
+                self.assertEqual(bytes(buffer), pattern)
 
 
 class TestSafeAccess(unittest.TestCase):

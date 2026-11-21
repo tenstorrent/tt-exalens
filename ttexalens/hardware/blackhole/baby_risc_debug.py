@@ -35,10 +35,18 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             return int(self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc"))
 
     def read_memory_bytes(self, address: int, buffer: bytearray | memoryview, safe_mode: bool | None = None) -> None:
-        self.assert_trisc2_address(address)
+        # Every word of the buffer is read through the debug hardware
+        for word_address in range(address & ~3, address + len(buffer), 4):
+            self.assert_trisc2_address(word_address)
         super().read_memory_bytes(address, buffer, safe_mode=safe_mode)
 
     def write_memory_bytes(self, address: int, data: bytes | bytearray | memoryview, safe_mode: bool | None = None):
+        # Whole words are only written, but a partially covered first or last word is read back first
+        end_address = address + len(data)
+        if len(data) > 0 and address % 4 != 0:
+            self.assert_trisc2_address(address & ~3)
+        if len(data) > 0 and end_address % 4 != 0:
+            self.assert_trisc2_address(end_address & ~3)
         super().write_memory_bytes(address, data, safe_mode=safe_mode)
 
     def assert_trisc2_address(self, address: int):

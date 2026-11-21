@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import unittest
+from unittest.mock import MagicMock, patch
 from parameterized import parameterized_class, parameterized
 
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
@@ -11,6 +12,7 @@ from ttexalens import Context, write_to_device
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebugWatchpointState, get_register_index
 from ttexalens.exceptions import RiscHaltError
+from ttexalens.hardware.wormhole.baby_risc_debug import WormholeBabyRiscDebug
 
 
 @parameterized_class(
@@ -1235,6 +1237,87 @@ class TestDebugging(unittest.TestCase):
                 elif i == 2:
                     self.assertEqual(self.core_sim.read_data(noc_addresses[2]), 0x87654000)
 
+    def test_ensure_private_memory_access_keeps_core_in_reset_on_error(self):
+        """A failed private memory access on a core held in reset must put the core back into reset."""
+        if not self.core_sim.has_debug_hardware():
+            self.skipTest("Private memory access needs debug hardware.")
+
+        # Code at the start address is an endless loop, so the core stays harmless if it is left running
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+        start_word = self.core_sim.read_data(self.core_sim.code_start_address)
+        self.assertTrue(self.core_sim.is_in_reset())
+
+        with self.assertRaises(RuntimeError):
+            with self.core_sim.risc_debug.ensure_private_memory_access():
+                raise RuntimeError("Private memory access failed")
+
+        self.assertTrue(self.core_sim.is_in_reset(), "Core should be back in reset after a failed access.")
+        self.assertEqual(self.core_sim.read_data(self.core_sim.code_start_address), start_word)
+
+    def test_ensure_halted_resumes_through_cont(self):
+        """A core halted by ensure_halted, ensure_private_memory_access or a watchpoint setter is resumed through cont(),
+        which applies the architecture-specific continue workarounds."""
+        if not self.core_sim.has_debug_hardware():
+            self.skipTest("Halting needs debug hardware.")
+
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+        self.core_sim.set_reset(False)
+        self.assertFalse(self.core_sim.is_halted(), "Core should be running.")
+
+        risc_debug = self.core_sim.risc_debug
+        accesses = [risc_debug.ensure_halted, risc_debug.ensure_private_memory_access]
+        for access in accesses:
+            with patch.object(risc_debug, "cont", wraps=risc_debug.cont) as cont:
+                with access():
+                    self.assertTrue(self.core_sim.is_halted(), "Core should be halted inside the block.")
+                cont.assert_called_once()
+            self.assertFalse(self.core_sim.is_halted(), "Core should be running again.")
+
+        if risc_debug.baby_risc_info.max_watchpoints > 0:
+            with patch.object(risc_debug, "cont", wraps=risc_debug.cont) as cont:
+                risc_debug.set_watchpoint_on_memory_write(0, 0x10000)
+                risc_debug.disable_watchpoint(0)
+                self.assertEqual(cont.call_count, 2)
+            self.assertFalse(self.core_sim.is_halted(), "Core should be running again.")
+
+    def test_ensure_halted_disables_branch_prediction(self):
+        """On Wormhole, resuming after ensure_halted must disable branch prediction like cont() does."""
+        if not self.device.is_wormhole():
+            self.skipTest("Branch prediction workaround is needed only on wormhole.")
+        if self.core_sim.risc_debug.baby_risc_info.branch_prediction_register is None:
+            self.skipTest("Branch prediction cannot be disabled on this RISC.")
+
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+        self.core_sim.set_branch_prediction(True)
+        self.core_sim.set_reset(False)
+
+        with self.core_sim.risc_debug.ensure_halted():
+            pass
+
+        risc_info = self.core_sim.risc_debug.baby_risc_info
+        assert risc_info.branch_prediction_register is not None and risc_info.branch_prediction_mask is not None
+        value = self.core_sim.risc_debug.register_store.read_register(risc_info.branch_prediction_register)
+        self.assertEqual(value & risc_info.branch_prediction_mask, risc_info.branch_prediction_mask)
+        self.assertFalse(self.core_sim.is_halted(), "Core should be running again.")
+
+    def test_cont_on_running_core_keeps_pc(self):
+        """cont() on a running core only warns, it must not redirect the core."""
+        if not self.core_sim.has_debug_hardware():
+            self.skipTest("Continue needs debug hardware.")
+
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+        self.core_sim.set_reset(False)
+        self.assertFalse(self.core_sim.is_halted(), "Core should be running.")
+
+        with patch.object(self.core_sim.debug_hardware, "flush") as flush:
+            self.core_sim.risc_debug.cont()
+            flush.assert_not_called()
+        self.assertFalse(self.core_sim.is_halted(), "Core should still be running.")
+
     def test_bne_with_debug_fail(self):
         """Test running 48 bytes of generated code that confirms problem with BNE when debugging hardware is enabled."""
 
@@ -1437,3 +1520,46 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.halt()
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
+
+
+class TestWormholeBabyRiscDebugWithoutDevice(unittest.TestCase):
+    """Checks of the Wormhole RISC debug workarounds that do not need a device."""
+
+    def create_risc_debug(self, risc_name: str, debug_bus: MagicMock | None = None):
+        risc_info = MagicMock()
+        risc_info.noc_block.debug_bus = debug_bus
+        risc_info.risc_name = risc_name
+        risc_info.neo_id = None
+        risc_info.debug_hardware_present = False
+        risc_info.branch_prediction_register = None
+        risc_debug = WormholeBabyRiscDebug(risc_info)
+        risc_debug.debug_hardware = MagicMock()
+        risc_debug.enable_asserts = False
+        return risc_debug
+
+    def test_erisc_cont_on_running_core_does_not_flush(self):
+        risc_debug = self.create_risc_debug("erisc")
+        assert isinstance(risc_debug.debug_hardware, MagicMock)
+        risc_debug.debug_hardware.is_halted.return_value = False
+        with patch.object(risc_debug, "get_pc", return_value=0x1000):
+            risc_debug.cont()
+        risc_debug.debug_hardware.flush.assert_not_called()
+        risc_debug.debug_hardware.cont.assert_called_once()
+
+    def test_erisc_cont_on_halted_core_flushes(self):
+        risc_debug = self.create_risc_debug("erisc")
+        assert isinstance(risc_debug.debug_hardware, MagicMock)
+        risc_debug.debug_hardware.is_halted.return_value = True
+        with patch.object(risc_debug, "get_pc", return_value=0x1000):
+            risc_debug.cont()
+        risc_debug.debug_hardware.flush.assert_called_once_with(0x1000)
+        risc_debug.debug_hardware.cont.assert_called_once()
+
+    @parameterized.expand(
+        [("ncrisc", 0x7FC00010, 0xFFC00010), ("erisc", 0x7FC00010, 0xFFC00010), ("brisc", 0x10, 0x10)]
+    )
+    def test_read_pc_restores_top_bit(self, risc_name: str, debug_bus_value: int, expected_pc: int):
+        debug_bus = MagicMock()
+        debug_bus.read_signal.return_value = debug_bus_value
+        risc_debug = self.create_risc_debug(risc_name, debug_bus)
+        self.assertEqual(risc_debug.read_gpr(32), expected_pc)
