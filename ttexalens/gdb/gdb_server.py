@@ -947,7 +947,6 @@ class GdbServer(threading.Thread):
             offset = parser.parse_hex()
             parser.parse(b",")
             data = parser.read_rest()
-            writer.append(b"F-1")
             if fd is None or data is None or offset is None:
                 util.ERROR(
                     f"GDB: Something wrong with fd, data or offset of vFile:pwrite: {parser.data!r}",

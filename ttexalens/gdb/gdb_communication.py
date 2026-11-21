@@ -135,13 +135,15 @@ class GdbInputStream:
         self.error_stream = error_stream
 
     def ensure_input_buffer(self, position: int = 0):
-        # Check if input buffer is empty
-        if position < len(self.input_buffer):
-            return True
-        self.input_buffer = self.socket.read()
-
-        # Check if there is data to read
-        return len(self.input_buffer) > 0
+        # Read until the buffer holds the byte at position. A packet can arrive split across several reads, so
+        # new data is appended: position counts from the start of the packet being parsed.
+        while position >= len(self.input_buffer):
+            data = self.socket.read()
+            if len(data) == 0:
+                # Connection closed
+                return False
+            self.input_buffer += data
+        return True
 
     def read(self):
         # Check if input buffer is empty
