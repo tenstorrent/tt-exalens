@@ -2098,6 +2098,11 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[4].template_parameters[1].name, "ClassT1")
         self.assertEqual(callstack[4].template_parameters[1].value, 3)
         self.assertEqual(callstack[5].function_name, "main")
+        if self.gdb_server is not None:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
+            )
+            self.assertEqual([e.function_name for e in gdb_callstack], [e.function_name for e in callstack])
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_template_arguments2(self, elf_name):
@@ -2122,6 +2127,39 @@ class TestCallStack(unittest.TestCase):
         self.assertEqual(callstack[3].template_parameters[1].name, "ClassT1")
         self.assertEqual(callstack[3].template_parameters[1].value, 4)
         self.assertEqual(callstack[4].function_name, "main")
+        if self.gdb_server is not None:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
+            )
+            self.assertEqual([e.function_name for e in gdb_callstack], [e.function_name for e in callstack])
+
+    def test_gdb_callstack_without_registered_elf(self):
+        """
+        A core whose ELF was not loaded through ttexalens (for example, firmware loaded by another runtime) can still
+        be debugged: the default GDB server exposes every running core, and the caller supplies the ELF.
+        """
+        if self.gdb_server is None:
+            self.skipTest("GDB server is not used on this platform")
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path("callstack.release")
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 1)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
+        )
+        risc_location = self.risc_debug.risc_location
+        registered_elf = self.context.loaded_elfs.pop(risc_location)
+        try:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], context=self.context
+            )
+        finally:
+            self.context.loaded_elfs[risc_location] = registered_elf
+        # Without the ELF as GDB's exec file, GDB does not know the entry point and also unwinds the frame below main
+        self.compare_callstacks(callstack, gdb_callstack[: len(callstack)])
 
     # Argument and local variable values used by every value-test scenario in callstack.cc. Each
     # entry is (chained_function, single_frame_type, struct_format, argument, local).
