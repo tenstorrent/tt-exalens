@@ -146,7 +146,9 @@ class TestDebugBus(unittest.TestCase):
                 samples=samples,
             )
         end_address = l1_address + (samples * self.debug_bus.L1_SAMPLE_SIZE_BYTES) - 1
-        self.assertIn(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit", str(cm.exception))
+        self.assertIn(
+            f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds L1 sampling limit", str(cm.exception)
+        )
 
     def test_read_signal_group_invalid_signal_name(self):
         if self.device.is_quasar():

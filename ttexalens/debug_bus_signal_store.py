@@ -237,6 +237,12 @@ class DebugBusSignalStore:
         if not (0 <= signal.mask <= 0xFFFFFFFF):
             raise ValueError(f"mask must be a valid 32-bit integer, got {signal.mask}")
 
+    @property
+    def l1_sampling_limit(self) -> int:
+        """End (exclusive) of the L1 range that samples can be written to: the low 1 MiB, or the whole L1 if it is smaller."""
+        l1 = getattr(self.noc_block, "l1", None)
+        return min(self.L1_LOW_MEMORY_SIZE, l1.size) if l1 is not None else self.L1_LOW_MEMORY_SIZE
+
     def _validate_l1_parameters(self, l1_address: int, samples: int = 1, sampling_interval: int = 2) -> None:
         """Validate L1 sampling parameters and raise appropriate errors."""
         if samples < 1:
@@ -245,10 +251,12 @@ class DebugBusSignalStore:
         if l1_address % 16 != 0:
             raise ValueError(f"L1 address must be 16-byte aligned, got 0x{l1_address:x}")
 
-        # check that all samples fit within low 1MiB L1 memory range
+        # check that all samples fit within the block's L1 and within its low 1 MiB
         end_address = l1_address + (samples * self.L1_SAMPLE_SIZE_BYTES) - 1
-        if end_address >= self.L1_LOW_MEMORY_SIZE:
-            raise ValueError(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit")
+        if end_address >= self.l1_sampling_limit:
+            raise ValueError(
+                f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds L1 sampling limit 0x{self.l1_sampling_limit:x}"
+            )
 
         if samples > 1 and not (2 <= sampling_interval <= 256):
             raise ValueError(
@@ -427,7 +435,7 @@ class DebugBusSignalStore:
             The signal group to read. It is signal group name from `group_map`.
         l1_address : int
             Byte-address in L1 memory for the first 128-bit word. Must be 16-byte aligned.
-            Must be within low L1 memory range (0x0 - 0xFFFFF, first 1 MiB). All samples must fit within this range.
+            Must be within the block's L1 and within its first 1 MiB (0x0 - 0xFFFFF). All samples must fit within this range.
         samples : int, default=1
             Number of 128-bit samples to capture. If `samples > 1`, hardware performs repeated sampling.
         sampling_interval : int, default=2
@@ -463,7 +471,7 @@ class DebugBusSignalStore:
             The signal group to read. It is signal group name from `group_map`.
         l1_address : int
             Byte-address in L1 memory for the first 128-bit word. Must be 16-byte aligned.
-            Must be within low L1 memory range (0x0 - 0xFFFFF, first 1 MiB). All samples must fit within this range.
+            Must be within the block's L1 and within its first 1 MiB (0x0 - 0xFFFFF). All samples must fit within this range.
 
         Returns
         -------
