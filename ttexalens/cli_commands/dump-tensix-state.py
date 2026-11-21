@@ -115,10 +115,10 @@ def config_regs_to_table(
                 if key.endswith("_hi"):
                     continue
                 elif key.endswith("_lo"):
-                    # Merging split registers into one
-                    value = (register_store.read_register(config[key]) << 16) + register_store.read_register(
-                        config[key[:-3] + "_hi"]
-                    )
+                    # Merging split registers into one: _lo holds the low 16 bits and _hi the high 16 bits
+                    value = (
+                        register_store.read_register(config[key[:-3] + "_hi"]) << 16
+                    ) + register_store.read_register(config[key])
                     name = key[:-3]
                 else:
                     value = register_store.read_register(config[key])
@@ -130,6 +130,14 @@ def config_regs_to_table(
     return dict_list_to_table(
         config_reg_values, table_name, column_names or create_column_names(len(config_reg_values))
     )
+
+
+# General purpose register pairs that hold one value, by name without the _lo/_hi suffix,
+# with how the value is made from the high and low register and its width in bits
+GPR_PAIRS = {
+    "tmp": (lambda hi, lo: hi | lo, 32),  # high register holds bits 31:16 in place, low register bits 15:0
+    "perf_first_unp": (lambda hi, lo: (hi << 32) | lo, 64),  # high and low 32 bits of a timestamp
+}
 
 
 # Converts list of indexed register entries to table with one row per entry
@@ -324,13 +332,15 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     for register_name in gpr_mapping:
                         if verbose or not register_name.startswith("ID"):
                             reg_desc = register_store.registers[gpr_mapping[register_name]]
-                            if register_name.endswith("_lo"):
+                            if register_name.endswith("_lo") and register_name[:-3] in GPR_PAIRS:
                                 # Merging split registers into one
-                                value = (
-                                    register_store.read_register(gpr_mapping[register_name[:-3] + "_hi"]) << 16
-                                ) + register_store.read_register(gpr_mapping[register_name])
+                                merge, width = GPR_PAIRS[register_name[:-3]]
+                                value = merge(
+                                    register_store.read_register(gpr_mapping[register_name[:-3] + "_hi"]),
+                                    register_store.read_register(gpr_mapping[register_name]),
+                                )
                                 merged_registers[register_name[:-3]] = format_register_value(
-                                    value, reg_desc.data_type, reg_desc.mask.bit_count()
+                                    value, reg_desc.data_type, width
                                 )
                             value = register_store.read_register(gpr_mapping[register_name])
                             rows.append(
