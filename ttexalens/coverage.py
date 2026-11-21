@@ -37,8 +37,11 @@ def dump_coverage(
         raise TTException("__coverage_end not found")
     coverage_end = end_sym.value
 
+    # Coverage data lives in L1 at RISC private addresses, which can differ from its NOC addresses.
+    l1_memory_access = create_l1_memory_access(location)
+
     # Find coverage header in device memory.
-    coverage_header = elf.get_global("coverage_header", create_l1_memory_access(location))
+    coverage_header = elf.get_global("coverage_header", l1_memory_access)
     coverage_header = coverage_header.dereference()
     if coverage_header.get_address() != coverage_start:
         raise TTException("coverage_header address does not match __coverage_start")
@@ -64,7 +67,7 @@ def dump_coverage(
         assert isinstance(filename_len, int)
         filename_addr = coverage_header.filename.dereference().get_address()
         filename_buffer = bytearray(filename_len)
-        location.noc_read(filename_addr, filename_buffer)
+        l1_memory_access.read(filename_addr, filename_buffer)
         filename: str = filename_buffer.decode("ascii")
 
         # This points to the expected gcda file, which is in the same directory where the compiler placed the gcno,
@@ -76,6 +79,6 @@ def dump_coverage(
                 f.write(gcno_reader.read())
 
     data = bytearray(length - header_size)
-    location.noc_read(coverage_start + header_size, data)
+    l1_memory_access.read(coverage_start + header_size, data)
     with open(gcda_path, "wb") as f:
         f.write(data)
