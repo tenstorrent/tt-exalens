@@ -48,7 +48,7 @@ Examples:
 import time
 from typing import Iterator
 
-from ttexalens import util as util
+from ttexalens import _lib_helpers, util as util
 from ttexalens.command_parser import CommandMetadata, CommonCommandOptions, tt_docopt
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
@@ -236,17 +236,16 @@ def _run_read(
             util.WARN("--counter requires --block (counter ids are not unique across blocks)")
             return
         counter_arg = _parse_counter(args["--counter"])
-        matched = False
         for _device, loc, neo_id in targets:
-            per_core = read_perf_counters(loc, block_name=block_name, neo_id=neo_id)
-            for (_bname, cid, cname), (value, _ref) in per_core.items():
-                if (isinstance(counter_arg, int) and cid == counter_arg) or (
-                    isinstance(counter_arg, str) and cname == counter_arg
-                ):
-                    print(value)
-                    matched = True
-        if not matched:
-            util.WARN(f"counter {counter_arg!r} not found in block {block_name}")
+            # Read the counter directly: a numeric id need not have a name in the block's counter map.
+            perf = loc.noc_block.get_perf_counters(neo_id)
+            assert perf is not None  # _iter_perf_targets skips targets without perf counters
+            try:
+                value = perf.read_counter(block_name, counter_arg, noc_id=_lib_helpers.check_noc_id(None, loc.context))
+            except ValueError as e:
+                util.WARN(f"counter {counter_arg!r} not found in block {block_name}: {e}")
+                return
+            print(value)
         return
 
     snapshot_mode = args["--snapshot"]
