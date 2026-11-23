@@ -31,7 +31,6 @@ Examples:
 
 from ttexalens.context import Context
 from ttexalens.device import Device
-from ttexalens.hardware.noc_block import neo_id_to_str
 from ttexalens.uistate import UIState
 
 from ttexalens.coordinate import OnChipCoordinate
@@ -73,10 +72,9 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         if device.unique_id is not None:
             device_id_str += f" [0x{device.unique_id:x}]"
         for location in dopt.for_each(CommonCommandOptions.Location, context, ui_state, device=device):
-            location_str = location.to_user_str()
             noc_block = location.noc_block
             neo_id = dopt.get_neo_id(ui_state, noc_block)
-            neo_str = f" | Neo {neo_id_to_str(neo_id)}" if noc_block.neo_ids else ""
+            location_str = location.to_user_str(neo_id)
             read_bytes = 0
             read_address = address
             while read_bytes < bytes_to_read:
@@ -88,7 +86,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     bytes, memory_block_name = execute_safe_read(
                         location, read_address, bytes_to_read - read_bytes, risc_name, neo_id, register_access
                     )
-                header = f"Device {device_id_str} | Location {location_str}{neo_str} | Block {memory_block_name} : 0x{read_address:08x} ({len(bytes)} bytes)"
+                header = f"Device {device_id_str} | Location {location_str} | Block {memory_block_name} : 0x{read_address:08x} ({len(bytes)} bytes)"
                 da = util.DataArray(header, bytes_per_entry)
                 da.from_bytes(bytes)
                 util.INFO(header)

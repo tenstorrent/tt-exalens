@@ -19,6 +19,7 @@ from ttexalens.firmware_telemetry import FirmwareTelemetry
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.risc_debug import RiscDebug
+from ttexalens.pack_unpack_regfile import TensixDataFormat
 from ttexalens.hardware.tensix_registers_description import (
     TensixDebugBusDescription,
     TensixRegisterDescription,
@@ -624,6 +625,10 @@ class Device:
 
     @abstractmethod
     def get_tensix_state_type(self) -> type[TensixState]:
+        pass
+
+    @abstractmethod
+    def get_tensix_data_formats(self) -> dict[TensixDataFormat, int]:
         pass
 
     def get_block_locations(self, block_type="functional_workers") -> list[OnChipCoordinate]:

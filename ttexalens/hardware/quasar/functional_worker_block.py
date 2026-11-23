@@ -12,6 +12,7 @@ from ttexalens.hardware.perf_counters import TensixPerfCounters
 from ttexalens.hardware.quasar.functional_neo_block import QuasarFunctionalNeoBlock
 from ttexalens.hardware.quasar.functional_overlay_block import QuasarFunctionalOverlayBlock
 from ttexalens.hardware.quasar.noc_block import QuasarNocBlock
+from ttexalens.hardware.quasar.tensix_debug import QuasarTensixDebug
 from ttexalens.hardware.risc_debug import RiscDebug
 from ttexalens.memory_map import MemoryMapBlockInfo
 from ttexalens.register_store import RegisterStore
@@ -77,15 +78,26 @@ class QuasarFunctionalWorkerBlock(QuasarNocBlock):
 
     def get_debug_bus(self, neo_id: int | None = None) -> DebugBusSignalStore | None:
         neo = self.get_sub_block(neo_id)
-        if neo is not None and not isinstance(neo, QuasarFunctionalOverlayBlock):
+        if neo is not None and isinstance(neo, QuasarFunctionalNeoBlock):
             return neo.debug_bus
         return super().get_debug_bus(neo_id)
 
     def get_perf_counters(self, neo_id: int | None = None) -> TensixPerfCounters | None:
         neo = self.get_sub_block(neo_id)
-        if neo is not None and not isinstance(neo, QuasarFunctionalOverlayBlock):
+        if neo is not None and isinstance(neo, QuasarFunctionalNeoBlock):
             return neo.perf_counters
         return super().get_perf_counters(neo_id)
+
+    @property
+    def tensix_thread_count(self) -> int:
+        return 4
+
+    @cache
+    def get_tensix_debug(self, neo_id: int | None = None) -> QuasarTensixDebug | None:
+        neo = self.get_sub_block(neo_id)
+        if neo is not None and isinstance(neo, QuasarFunctionalNeoBlock):
+            return neo.tensix_debug
+        return None
 
     def get_register_store(self, noc_id: NocId | None = None, neo_id: int | None = None) -> RegisterStore:
         neo = self.get_sub_block(neo_id)
