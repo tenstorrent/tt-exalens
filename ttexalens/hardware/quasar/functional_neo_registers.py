@@ -9,6 +9,7 @@ from ttexalens.register_store import (
     DebugRegisterDescription,
     RegisterDescription,
     TensixGeneralPurposeRegisterDescription,
+    get_general_purpose_registers,
 )
 
 
@@ -2000,4 +2001,6 @@ tensix_registers_descriptions = QuasarTensixRegisterDescription(
     watchpoints=get_watchpoints(),
     # GLOBAL
     global_config=get_global_config(),
+    # GENERAL PURPOSE REGISTERS
+    general_purpose_registers=get_general_purpose_registers(register_map),
 )

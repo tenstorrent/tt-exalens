@@ -14,6 +14,7 @@ from ttexalens.hardware.quasar.baby_risc_debug import QuasarBabyRiscDebug
 from ttexalens.hardware.quasar.functional_neo_debug_bus_signals import debug_bus_signal_map, group_map
 from ttexalens.hardware.quasar.functional_neo_registers import register_map
 from ttexalens.hardware.quasar.perf_counters import initialization as perf_counters_initialization
+from ttexalens.hardware.quasar.tensix_debug import QuasarTensixDebug
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 from typing import TYPE_CHECKING
 
@@ -204,6 +205,11 @@ class QuasarFunctionalNeoBlock:
             address=DeviceAddress(private_address=neo_base_address.private_address + 0x20000),
         )
 
+        self.dest = MemoryBlock(
+            size=0x8000,
+            address=DeviceAddress(private_address=neo_base_address.private_address + 0x18000),
+        )
+
         self.noc_memory_list: list[MemoryMapBlockInfo] = [
             MemoryMapBlockInfo(f"neo{neo_id}.trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[union-attr]
             MemoryMapBlockInfo(f"neo{neo_id}.trisc1.data_private_memory", self.trisc1.data_private_memory.just_noc_address(), safe_to_write=True),  # type: ignore[union-attr]
@@ -225,6 +231,7 @@ class QuasarFunctionalNeoBlock:
                 MemoryMapBlockInfo("trisc2.data_private_memory", self.trisc2.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
                 MemoryMapBlockInfo("trisc3.data_private_memory", self.trisc3.data_private_memory, safe_to_write=True),  # type: ignore[arg-type]
                 MemoryMapBlockInfo("config_regs", self.config_regs),
+                MemoryMapBlockInfo("dest", self.dest),
             ],
         )
         for risc_info in [self.trisc0, self.trisc1, self.trisc2, self.trisc3]:
@@ -238,6 +245,11 @@ class QuasarFunctionalNeoBlock:
             self.get_risc_debug(self.trisc2.risc_name),
             self.get_risc_debug(self.trisc3.risc_name),
         ]
+
+    @cached_property
+    def tensix_debug(self) -> QuasarTensixDebug:
+        # We use TRISC3 as the default RISC for the tensix debug since LLK never programs its dest window.
+        return QuasarTensixDebug(self.get_risc_debug(self.trisc3.risc_name))
 
     def get_default_risc_debug(self) -> RiscDebug:
         return self.get_risc_debug(self.trisc3.risc_name)

@@ -6,7 +6,12 @@ from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.noc_block import NocBlock
 from ttexalens.hardware.tensix_registers_description import TensixDebugBusDescription
-from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
+from ttexalens.hardware.wormhole.tensix_data_formats import tensix_data_formats
+from ttexalens.pack_unpack_regfile import TensixDataFormat
+from ttexalens.hardware.wormhole.tensix_register_description import (
+    WormholeTensixRegisterDescription,
+    WormholeTensixState,
+)
 from ttexalens.hardware.wormhole.arc_block import WormholeArcBlock
 from ttexalens.hardware.wormhole.dram_block import WormholeDramBlock
 from ttexalens.hardware.wormhole.eth_block import WormholeEthBlock
@@ -73,6 +78,12 @@ class WormholeDevice(Device):
 
     def get_tensix_debug_bus_description(self) -> TensixDebugBusDescription:
         return tensix_debug_bus_description
+
+    def get_tensix_state_type(self) -> type[WormholeTensixState]:
+        return WormholeTensixState
+
+    def get_tensix_data_formats(self) -> dict[TensixDataFormat, int]:
+        return tensix_data_formats
 
 
 # end of class WormholeDevice

@@ -16,7 +16,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
     steps:
       - name: Collect CI/CD data
-        uses: tenstorrent/tt-github-actions/.github/actions/collect_data@main
+        uses: tenstorrent/tt-github-actions/.github/actions/collect_data@5f18fe6f86d825c87924d5559ac442ac7eca534f # main, 2026-11-06
         if: ${{ github.event_name == 'workflow_run' }}
         with:
           repository: ${{ github.repository }}
