@@ -18,7 +18,6 @@ GLOBAL_CONTEXT: Context | None = None
 
 
 def init_ttexalens(
-    init_jtag: bool = False,
     noc_id: NocId = NocId.NOC1,
     simulation_directory: str | None = None,
     noc_failover: bool = True,
@@ -29,7 +28,6 @@ def init_ttexalens(
     Interfacing device is local, through pybind.
 
     Args:
-        init_jtag (bool): Whether to initialize JTAG interface. Default is False.
         noc_id (NocId): NOC used for all communication with the device, including topology discovery
             (NocId.NOC0, NocId.NOC1, or NocId.SYSTEM_NOC). Default is NocId.NOC1 except for Quasar which uses NocId.NOC0 as default.
         simulation_directory (str, optional): If specified, describes the simulator. Either a path to
@@ -48,7 +46,6 @@ def init_ttexalens(
     noc_id = to_noc_id(noc_id)
 
     umd_api = local_init(
-        init_jtag=init_jtag,
         noc_id=noc_id,
         simulation_directory=simulation_directory,
         serve_over_sockets=serve_over_sockets,
