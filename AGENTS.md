@@ -4,6 +4,8 @@ Guidance for coding agents working in this repository. Setup instructions for pe
 
 tt-exalens is a low-level debugger for Tenstorrent hardware: Wormhole, Blackhole and Quasar. It ships as the `ttexalens` Python library and the `tt-exalens` CLI. Both reach devices through tt-umd locally, or through a tt-exalens server remotely.
 
+How tt-exalens is built is in [docs/design.md](docs/design.md): the device model, memory maps, the three ways a read reaches the hardware and what each one costs and changes, RISC debug, and multi-chip. Read it before changing how the library touches a device.
+
 ## Repository map
 
 - `ttexalens/tt_exalens_lib.py`: public library functions, exported through `ttexalens/__init__.py`.
@@ -15,13 +17,13 @@ tt-exalens is a low-level debugger for Tenstorrent hardware: Wormhole, Blackhole
 - `ttexalens/gdb/`: the GDB server.
 - `riscv-src/`: RISC-V test kernels that the tests load onto cores.
 - `test/ttexalens/unit_tests/`, `test/app/`, `test/wheel/`: library tests, CLI tests and installed-wheel tests.
-- `docs/`: tutorials and generated references. The generators are in `docs/bin/`.
+- `docs/`: the design page (`design.md`), tutorials and generated references. The generators are in `docs/bin/`.
 
 ## Build and static checks
 
 - `make` (same as `make build`) configures `build_debug/` and links it as `build/`. It builds the native module and the RISC-V test kernels, downloading the SFPI toolchain on the first run, then runs mypy and basedpyright. Rerun it after changing `ttexalens/cpp/` or `riscv-src/`.
 - The build copies `_native_ttexalens*.so` into `ttexalens/` and generates its type stub `ttexalens/_native_ttexalens/__init__.pyi`. Both are gitignored. Importing `ttexalens` and type-checking both need them, so build first.
-- `./scripts/install-deps.sh` installs the Python dependencies into the current environment. `./scripts/create-venv.sh` creates `.venv` instead.
+- `./scripts/install-deps.sh` installs the Python dependencies into the current environment. `./scripts/create-venv.sh` creates `.venv` instead. `make`'s type checks import these dependencies, including the tt-umd version pinned in `ttexalens/requirements.txt`, so run `make` in an environment where `install-deps.sh` has run.
 - `pre-commit run --all-files` runs the same checks as CI: black (line length 120), ruff (unused imports), clang-format, the SPDX copyright check and whitespace fixers. New source files need the SPDX header; copy it from a neighboring file.
 - `make mypy` and `make pyright` run the type checkers on their own. CI runs both.
 - Code must run on Python 3.10 and newer.
@@ -65,14 +67,15 @@ tt-exalens is a low-level debugger for Tenstorrent hardware: Wormhole, Blackhole
 - The lib-docs generator parses every docstring in the modules that `ttexalens/__init__.py` imports, including docstrings of private methods, not only the exported items:
   - The first paragraph is the description.
   - Every later paragraph must start with a section header line: `Args:`, `Returns:` or `Notes:`. A paragraph without one is skipped with a warning and doesn't reach the docs.
-  - Write arguments as `name (type): description`, and return values as `type: description`. A malformed `Args:`, `Returns:` or `Notes:` section can make generation fail.
+  - Write arguments as `name (type): description`, return values as `type: description`, and notes as a list of `- ` items. A malformed `Args:`, `Returns:` or `Notes:` section can make generation fail.
 - The other files in `docs/` (tutorials, `coordinates.md`, `exceptions.md`, `gdb.md` and the rest) are hand-written. Update them when the behavior they describe changes.
 
 ## Hardware safety
 
-- A bad device access can hang or crash the device, not just fail. Safe mode checks every NOC access against the memory map of the block it targets. It is on by default. Turn it off with `--unsafe-mode` for the whole app, `--unsafe` for one command, or `safe_mode=False` in the library. If the check rejects a legitimate region, add the region to the architecture's memory map rather than turning safe mode off.
-- NOC accesses outside L1 and DRAM use UMD's register API, 4 bytes at a time. The memory map decides this through `register_access`. Don't force bulk access on register space.
+- A bad device access can hang or crash the device, not just fail. Safe mode is on by default. Turn it off with `--unsafe-mode` for the whole app, `--unsafe` for one command, or `safe_mode=False` in the library. If it rejects a legitimate region, add the region to the architecture's memory map rather than turning safe mode off.
+- Register space is read 4 bytes at a time; don't force bulk access on it.
 - Halting a RISC core, resetting it or putting it in debug mode changes its state. Leave cores in a known state, and prefer non-intrusive reads. Ethernet cores run base firmware, and halting them can wedge it.
+- What safe mode checks, which path each read takes and what each read does to the device are in docs/design.md: "Memory maps", "How reads reach the hardware" and "RISC debug".
 
 ## Design and review
 
