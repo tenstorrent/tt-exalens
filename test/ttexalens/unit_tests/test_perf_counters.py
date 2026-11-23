@@ -82,7 +82,10 @@ class TestPerfCounters(unittest.TestCase):
         if perf_counters is None:
             raise unittest.SkipTest("No perf counters on this core.")
         cls.perf_counters = perf_counters
-        cls.tensix_debug = TensixDebug(cls.location)
+        tensix_debug = cls.location.noc_block.get_tensix_debug()
+        if tensix_debug is None:
+            raise unittest.SkipTest("No tensix debug on this core.")
+        cls.tensix_debug = tensix_debug
 
     def setUp(self):
         self.give_back_src_banks()
