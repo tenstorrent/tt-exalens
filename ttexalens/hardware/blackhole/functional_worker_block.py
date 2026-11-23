@@ -7,6 +7,7 @@ from typing import Callable
 from ttexalens.context import NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
+from ttexalens.debug_tensix import TensixDebug
 from ttexalens.hardware.baby_risc_info import BabyRiscInfo
 from ttexalens.hardware.blackhole.baby_risc_debug import BlackholeBabyRiscDebug
 from ttexalens.hardware.blackhole.perf_counters import initialization as perf_counters_initialization
@@ -214,6 +215,15 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
             self.get_risc_debug(self.trisc2.risc_name, self.trisc2.neo_id),
             self.get_risc_debug(self.ncrisc.risc_name, self.ncrisc.neo_id),
         ]
+
+    @property
+    def tensix_thread_count(self) -> int:
+        return 3
+
+    @cache
+    def get_tensix_debug(self, neo_id: int | None = None) -> TensixDebug | None:
+        assert neo_id == self.trisc0.neo_id, "NEO ID must match the trisc0 NEO ID."
+        return TensixDebug(self.get_risc_debug(self.trisc0.risc_name, self.trisc0.neo_id))
 
     @cache
     def get_default_risc_debug(self, neo_id: int | None = None) -> RiscDebug:

@@ -18,6 +18,7 @@ from ttexalens.hardware.wormhole.functional_worker_debug_bus_signals import debu
 from ttexalens.hardware.wormhole.functional_worker_registers import register_map
 from ttexalens.hardware.wormhole.niu_registers import get_niu_register_base_address_callable, niu_register_map
 from ttexalens.hardware.wormhole.noc_block import WormholeNocBlock
+from ttexalens.hardware.wormhole.tensix_debug import WormholeTensixDebug
 from ttexalens.hardware.wormhole.perf_counters import initialization as perf_counters_initialization
 from ttexalens.register_store import (
     ConfigurationRegisterDescription,
@@ -214,6 +215,15 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
             self.get_risc_debug(self.trisc2.risc_name, self.trisc2.neo_id),
             self.get_risc_debug(self.ncrisc.risc_name, self.ncrisc.neo_id),
         ]
+
+    @property
+    def tensix_thread_count(self) -> int:
+        return 3
+
+    @cache
+    def get_tensix_debug(self, neo_id: int | None = None) -> WormholeTensixDebug | None:
+        assert neo_id == self.trisc0.neo_id, "NEO ID must match the trisc0 NEO ID."
+        return WormholeTensixDebug(self.get_risc_debug(self.trisc0.risc_name, self.trisc0.neo_id))
 
     @cache
     def get_default_risc_debug(self, neo_id: int | None = None) -> RiscDebug:

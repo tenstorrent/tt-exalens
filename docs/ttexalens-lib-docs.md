@@ -727,9 +727,10 @@ Returns a tuple with the coordinates in the specified coordinate system.
 
 
 ```
-to_user_str(self) -> str
+to_user_str(self, neo_id: int | None = None) -> str
 ```
 Returns a string representation of the coordinate that is suitable for the user.
+- `neo_id` *(int | None)*: NEO to add to the string, if the block at this coordinate has NEOs.
 ### change_device
 
 

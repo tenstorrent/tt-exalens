@@ -27,6 +27,8 @@ class TensixDataFormat(Enum):
     RawUInt8 = 240  # 0xf0 in decimal
     RawUInt16 = 241  # 0xf1 in decimal
     RawUInt32 = 242  # 0xf2 in decimal
+    CompactInt8 = 243  # 0xf3 in decimal, 8-bit integers read and written one byte per datum (Quasar's dest view)
+    CompactUInt8 = 244  # 0xf4 in decimal
     Invalid = 255
 
 
@@ -190,6 +192,10 @@ def unpack_value_direct_access(value: int, df: TensixDataFormat, signed: bool) -
         return (value & 0x000000FF) - 0x80 if value & 0x80000000 else value
     elif df == TensixDataFormat.Int8 and not signed:
         return value
+    elif df == TensixDataFormat.CompactInt8:
+        return value - 0x100 if signed and value & 0x80 else value
+    elif df == TensixDataFormat.CompactUInt8:
+        return value
     else:
         raise ValueError(f"Unsupported data format {df} for unpacking.")
 
@@ -212,11 +218,14 @@ def pack_value_direct_access(value: int | float, df: TensixDataFormat) -> int:
         if value < 0 or value > 2**32 - 1:
             raise ValueError(f"Value {value} is out of range for UInt32.")
         return int(value)
-    elif df == TensixDataFormat.Int8:
+    elif df in (TensixDataFormat.Int8, TensixDataFormat.CompactInt8):
         if value < -(2**7) or value > 2**7 - 1:
             raise ValueError(f"Value {value} is out of range for Int8.")
+        if df == TensixDataFormat.CompactInt8:
+            # The dest view takes the value's low byte and converts it to dest's storage format.
+            return int(value) & 0xFF
         return int(value) if value >= 0 else 0x80000000 | (int(value) + 0x80)
-    elif df == TensixDataFormat.UInt8:
+    elif df in (TensixDataFormat.UInt8, TensixDataFormat.CompactUInt8):
         if value < 0 or value > 2**8 - 1:
             raise ValueError(f"Value {value} is out of range for UInt8.")
         return int(value)
