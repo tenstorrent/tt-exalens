@@ -287,42 +287,52 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo(
                     "t0_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "t1_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE50000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "t2_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE60000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf0",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE80000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf1",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE90000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf2",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEA0000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "mailboxes0",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000)),
+                    safe_to_read=False,
                 ),  # brisc
                 MemoryMapBlockInfo(
                     "mailboxes1",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000)),
+                    safe_to_read=False,
                 ),  # trisc0
                 MemoryMapBlockInfo(
                     "mailboxes2",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000)),
+                    safe_to_read=False,
                 ),  # trisc1
                 MemoryMapBlockInfo(
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
+                    safe_to_read=False,
                 ),  # trisc2
                 MemoryMapBlockInfo(
                     "config_regs",
@@ -354,34 +364,42 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo(
                     "t0_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf",
                     MemoryBlock(size=0x4, address=DeviceAddress(private_address=0xFFE80000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "ttsync",
                     MemoryBlock(size=0x1C, address=DeviceAddress(private_address=0xFFE80004)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "semaphores",
                     MemoryBlock(size=0xFFD0, address=DeviceAddress(private_address=0xFFE80020)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "mailboxes0",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000)),
+                    safe_to_read=False,
                 ),  # brisc
                 MemoryMapBlockInfo(
                     "mailboxes1",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000)),
+                    safe_to_read=False,
                 ),  # trisc0
                 MemoryMapBlockInfo(
                     "mailboxes2",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000)),
+                    safe_to_read=False,
                 ),  # trisc1
                 MemoryMapBlockInfo(
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
+                    safe_to_read=False,
                 ),  # trisc2
                 MemoryMapBlockInfo(
                     "config_regs",
@@ -413,34 +431,42 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo(
                     "t1_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf",
                     MemoryBlock(size=0x4, address=DeviceAddress(private_address=0xFFE80000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "ttsync",
                     MemoryBlock(size=0x1C, address=DeviceAddress(private_address=0xFFE80004)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "semaphores",
                     MemoryBlock(size=0xFFD0, address=DeviceAddress(private_address=0xFFE80020)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "mailboxes0",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000)),
+                    safe_to_read=False,
                 ),  # brisc
                 MemoryMapBlockInfo(
                     "mailboxes1",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000)),
+                    safe_to_read=False,
                 ),  # trisc0
                 MemoryMapBlockInfo(
                     "mailboxes2",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000)),
+                    safe_to_read=False,
                 ),  # trisc1
                 MemoryMapBlockInfo(
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
+                    safe_to_read=False,
                 ),  # trisc2
                 MemoryMapBlockInfo(
                     "config_regs",
@@ -472,34 +498,42 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo(
                     "t2_instruction_buffer",
                     MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFE40000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "pcbuf",
                     MemoryBlock(size=0x4, address=DeviceAddress(private_address=0xFFE80000)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "ttsync",
                     MemoryBlock(size=0x1C, address=DeviceAddress(private_address=0xFFE80004)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "semaphores",
                     MemoryBlock(size=0xFFD0, address=DeviceAddress(private_address=0xFFE80020)),
+                    safe_to_read=False,
                 ),
                 MemoryMapBlockInfo(
                     "mailboxes0",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC0000)),
+                    safe_to_read=False,
                 ),  # brisc
                 MemoryMapBlockInfo(
                     "mailboxes1",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC1000)),
+                    safe_to_read=False,
                 ),  # trisc0
                 MemoryMapBlockInfo(
                     "mailboxes2",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC2000)),
+                    safe_to_read=False,
                 ),  # trisc1
                 MemoryMapBlockInfo(
                     "mailboxes3",
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
+                    safe_to_read=False,
                 ),  # trisc2
                 MemoryMapBlockInfo(
                     "config_regs",
