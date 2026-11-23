@@ -47,7 +47,6 @@ class UmdApi:
 
     def __init__(
         self,
-        init_jtag=False,
         noc_id: NocId = NocId.NOC1,
         simulation_directory: str | None = None,
         serve_over_sockets: bool = False,
@@ -85,10 +84,10 @@ class UmdApi:
             self.discovery_options.eth_fw_heartbeat_failure = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
             self.discovery_options.device_init_failure_action = tt_umd.TopologyDiscoveryOptions.Action.IGNORE
             self.discovery_options.wait_on_ethernet_link_training = True  # TODO: Set to False.
-            self.discovery_options.use_safe_api = not init_jtag  # Safe API doesn't work with JTAG
+            self.discovery_options.use_safe_api = True
 
             self.cluster_descriptor, devices = tt_umd.TopologyDiscovery.discover(
-                self.discovery_options, tt_umd.IODeviceType.PCIe if not init_jtag else tt_umd.IODeviceType.JTAG
+                self.discovery_options, tt_umd.IODeviceType.PCIe
             )
 
             all_chips = self.cluster_descriptor.get_all_chips()
@@ -305,13 +304,11 @@ class UmdApi:
 
 
 def local_init(
-    init_jtag=False,
     noc_id: NocId = NocId.NOC1,
     simulation_directory: str | None = None,
     serve_over_sockets: bool = False,
 ):
     communicator = UmdApi(
-        init_jtag=init_jtag,
         noc_id=noc_id,
         simulation_directory=simulation_directory,
         serve_over_sockets=serve_over_sockets,

@@ -37,10 +37,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
         device = context.devices[device_id]
         if device.is_local:
             unique_id_str = f"0x{device.unique_id:x}"
-            if device._has_jtag:
-                print(f"JTAG Device {device_id}: {unique_id_str}")
-            else:
-                print(f"PCI Device {device_id}: {unique_id_str}")
+            print(f"PCI Device {device_id}: {unique_id_str}")
 
     navigation_suggestions: list[int] = []
     return navigation_suggestions
