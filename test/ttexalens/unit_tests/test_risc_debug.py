@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2024 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+import time
 import unittest
 from parameterized import parameterized_class, parameterized
 
@@ -514,6 +515,36 @@ class TestDebugging(unittest.TestCase):
         for _ in range(10):
             self.core_sim.step()
             self.assertPcEquals(pc)
+
+    def test_read_memory_right_after_fence(self):
+        """Step over a fence, read memory once through the debug hardware, and check that the core is still halted.
+
+        On Blackhole this read wedges a core whose last executed instruction is a fence (pause is one too): the halted
+        bit drops, the PC stops moving and the core can't be halted again.
+        """
+
+        # C++:
+        #   asm volatile ("ebreak");
+        #   asm volatile ("fence");
+        #   while (true);
+        self.program_writer.append_ebreak()
+        self.program_writer.append(0x0FF0000F)  # fence
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+
+        self.core_sim.set_reset(False)
+        self.assertPcEquals(4)
+
+        # Step through the ebreak's NOPs, then over the fence
+        pc = 4
+        for _ in range(self.program_writer.ebreak_nop_padding + 1):
+            self.core_sim.step()
+            pc += 4
+        self.assertPcEquals(pc)
+
+        self.core_sim.risc_debug.read_memory(self.core_sim.program_base_address)
+        time.sleep(0.02)
+        self.assertTrue(self.core_sim.is_halted(), "Core lost its halt after a memory read right after a fence.")
 
     def test_continue(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
