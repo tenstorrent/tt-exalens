@@ -142,6 +142,10 @@ class MemoryMap:
     def find_next_by_bar0_address(self, bar0_address: int) -> MemoryMapBlockInfo | None:
         return self._bar0_addresses.find_next(bar0_address)
 
+    @property
+    def blocks(self) -> list[MemoryMapBlockInfo]:
+        return list(self._blocks_info.values())
+
     def find_by_name(self, name: str) -> MemoryMapBlockInfo | None:
         return self._blocks_info.get(name, None)
 

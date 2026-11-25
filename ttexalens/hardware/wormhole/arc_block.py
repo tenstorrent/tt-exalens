@@ -104,7 +104,7 @@ class WormholeArcBlock(ArcBlock):
             blocks = [
                 MemoryMapBlockInfo("arc_reset_regs", self.arc_reset_regs, safe_to_write=True),
                 MemoryMapBlockInfo("arc_csm", self.arc_csm, safe_to_write=True),
-                MemoryMapBlockInfo("arc_rom", self.arc_rom, safe_to_write=True),
+                MemoryMapBlockInfo("arc_rom", self.arc_rom, safe_to_read=False, safe_to_write=True),
                 MemoryMapBlockInfo("noc_regs", self.noc_regs),
             ]
             if self.device.is_local:

@@ -11,6 +11,10 @@ class QuasarBabyRiscDebug(BabyRiscDebug):
         self.neo_block = neo_block
         super().__init__(risc_info, enable_asserts=enable_asserts)
 
+    def _validate_safe_access(self, address: int, size_bytes: int, is_write: bool = False) -> None:
+        # The NEO private memory map doesn't list every accessible region yet, e.g. the Tensix GPRs at +0xD000.
+        pass
+
     def invalidate_instruction_cache(self):
         pc = self.get_pc()
 
