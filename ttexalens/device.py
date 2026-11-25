@@ -203,7 +203,6 @@ class Device:
         self._context = context
         self._umd_device = umd_device
         self._soc_descriptor = umd_device.soc_descriptor
-        self._has_jtag = umd_device.is_jtag_capable
         self.is_local = umd_device.is_mmio_capable
         self._init_coordinate_systems()
 

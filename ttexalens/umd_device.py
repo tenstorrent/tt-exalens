@@ -30,7 +30,6 @@ class UmdDevice:
         self.__device = device
         self._arch = device.get_arch()
         self._is_mmio_capable = not device.is_remote()
-        self._is_jtag_capable = device.get_communication_device_type() == tt_umd.IODeviceType.JTAG
         self._soc_descriptor = soc_descriptor if soc_descriptor is not None else tt_umd.SocDescriptor(device)
         self._ip_variant = self._soc_descriptor.get_arch_descriptor().ip_variant
         self._device_id = device_id
@@ -107,10 +106,6 @@ class UmdDevice:
     @property
     def is_mmio_capable(self) -> bool:
         return self._is_mmio_capable
-
-    @property
-    def is_jtag_capable(self) -> bool:
-        return self._is_jtag_capable
 
     @property
     def is_simulation(self) -> bool:
