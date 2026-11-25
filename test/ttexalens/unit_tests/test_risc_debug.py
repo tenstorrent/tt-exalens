@@ -517,7 +517,7 @@ class TestDebugging(unittest.TestCase):
             self.assertPcEquals(pc)
 
     def test_read_memory_right_after_fence(self):
-        """Step over a fence, read memory once through the debug hardware, and check that the core is still halted.
+        """Step over a fence, read one word of data private memory, and check that the core is still halted.
 
         On Blackhole this read wedges a core whose last executed instruction is a fence (pause is one too): the halted
         bit drops, the PC stops moving and the core can't be halted again.
@@ -542,9 +542,13 @@ class TestDebugging(unittest.TestCase):
             pc += 4
         self.assertPcEquals(pc)
 
-        self.core_sim.risc_debug.read_memory(self.core_sim.program_base_address)
+        data_private_memory = self.core_sim.risc_debug.get_data_private_memory()
+        assert data_private_memory is not None and data_private_memory.address.private_address is not None
+        self.core_sim.risc_debug.read_memory(data_private_memory.address.private_address)
         time.sleep(0.02)
-        self.assertTrue(self.core_sim.is_halted(), "Core lost its halt after a memory read right after a fence.")
+        self.assertTrue(
+            self.core_sim.is_halted(), "Core lost its halt after a private memory read right after a fence."
+        )
 
     def test_continue(self):
         """Test running 20 bytes of generated code that just write data on memory and does infinite loop. All that is done on brisc."""
