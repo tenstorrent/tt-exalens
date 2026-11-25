@@ -78,7 +78,6 @@ class TestNocFailoverDisabled(unittest.TestCase):
         cls.mock_umd_device = Mock()
         cls.mock_umd_device.arch = Mock()
         cls.mock_umd_device.unique_id = 0
-        cls.mock_umd_device.is_jtag_capable = False
         cls.mock_umd_device.is_mmio_capable = True
         cls.mock_umd_device.soc_descriptor = Mock()
         cls.mock_umd_device.soc_descriptor.get_cores.return_value = []
@@ -293,7 +292,6 @@ class TestNocFailoverEnabled(unittest.TestCase):
         cls.mock_umd_device = Mock()
         cls.mock_umd_device.arch = Mock()
         cls.mock_umd_device.unique_id = 0
-        cls.mock_umd_device.is_jtag_capable = False
         cls.mock_umd_device.is_mmio_capable = True
         cls.mock_umd_device.soc_descriptor = Mock()
         cls.mock_umd_device.soc_descriptor.get_cores.return_value = []

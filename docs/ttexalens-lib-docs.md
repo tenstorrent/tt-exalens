@@ -3,7 +3,7 @@
 ## init_ttexalens
 
 ```
-init_ttexalens(init_jtag: bool = False, noc_id: NocId = NocId.NOC1, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True, serve_over_sockets: bool = False) -> Context
+init_ttexalens(noc_id: NocId = NocId.NOC1, simulation_directory: str | None = None, noc_failover: bool = True, safe_mode: bool = True, serve_over_sockets: bool = False) -> Context
 ```
 
 
@@ -15,7 +15,6 @@ Interfacing device is local, through pybind.
 
 ### Args
 
-- `init_jtag` *(bool)*: Whether to initialize JTAG interface. Default is False.
 - `noc_id` *(NocId)*: NOC used for all communication with the device, including topology discovery
 (NocId.NOC0, NocId.NOC1, or NocId.SYSTEM_NOC). Default is NocId.NOC1 except for Quasar which uses NocId.NOC0 as default.
 - `simulation_directory` *(str, optional)*: If specified, describes the simulator. Either a path to

@@ -4,8 +4,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [(-s=<simulation_directory> [--sim-serve])] [--verbosity=<verbosity>] [--test] [--jtag] [--noc-id=<id>] [--unsafe-mode] [--disable-noc-failover]
-  tt-exalens --server [--port=<port>] [--test] [--jtag] [(-s=<simulation_directory> [--sim-serve])] [--background] [--noc-id=<id>] [--verbosity=<verbosity>]
+  tt-exalens [--commands=<cmds>] [--start-server=<server_port>] [--start-gdb=<gdb_port>] [(-s=<simulation_directory> [--sim-serve])] [--verbosity=<verbosity>] [--test] [--noc-id=<id>] [--unsafe-mode] [--disable-noc-failover]
+  tt-exalens --server [--port=<port>] [--test] [(-s=<simulation_directory> [--sim-serve])] [--background] [--noc-id=<id>] [--verbosity=<verbosity>]
   tt-exalens --remote [--remote-address=<ip:port>] [--commands=<cmds>] [--start-gdb=<gdb_port>] [--verbosity=<verbosity>] [--test]
   tt-exalens --gdb [gdb_args...]
   tt-exalens --sim-list
@@ -27,7 +27,6 @@ Options:
   --sim-serve                     Serve the simulator started with -s over sockets, so other processes can attach to it (it then shows up in --sim-list). Has no effect when -s attaches to an already-running simulation server.
   --verbosity=<verbosity>         Choose output verbosity. 1: ERROR, 2: WARN, 3: INFO, 4: VERBOSE, 5: DEBUG. [default: 3]
   --test                          Exits with non-zero exit code on any exception.
-  --jtag                          Initialize JTAG interface.
   --noc-id=<id>                   NOC to use for device communication. Accepts a number or name (case-insensitive): 0/NOC0, 1/NOC1, 2/SYSTEM_NOC. [default: 1]
   --gdb                           Start RISC-V gdb client with the specified arguments.
   --sim-list                      List the simulation servers currently running on this machine and exit.
@@ -250,9 +249,8 @@ def main_loop(args, context: Context):
                             my_prompt += f"gdb:{gdb_status} "
                         noc_prompt = f"{(ui_state.current_device.active_noc.name)}"
                         my_prompt += f"{util.CLR_PROMPT}{noc_prompt}{util.CLR_PROMPT_END} "
-                        jtag_prompt = "JTAG" if ui_state.current_device._has_jtag else ""
                         device_id = f"{ui_state.current_device_id}"
-                        my_prompt += f"device:{util.CLR_PROMPT}{jtag_prompt}{device_id}{util.CLR_PROMPT_END} "
+                        my_prompt += f"device:{util.CLR_PROMPT}{device_id}{util.CLR_PROMPT_END} "
                         my_prompt += f"loc:{util.CLR_PROMPT}{current_loc.to_user_str()}{util.CLR_PROMPT_END} "
                         if ui_state.current_device.is_quasar():
                             neo_prompt = neo_id_to_str(ui_state.current_neo_id)
@@ -414,14 +412,12 @@ def main():
     noc_id = to_noc_id(args["--noc-id"])
     simulation_directory = args["-s"]
     serve_over_sockets: bool = args["--sim-serve"]
-    init_jtag = args["--jtag"]
     noc_failover: bool = False if args["--disable-noc-failover"] else True
 
     # Try to start the server. If already running, exit with error.
     if args["--server"]:
         if args["--background"]:
             context = init_ttexalens(
-                init_jtag=init_jtag,
                 noc_id=noc_id,
                 safe_mode=safe_mode,
                 simulation_directory=simulation_directory,
@@ -457,7 +453,6 @@ def main():
         context = init_ttexalens_remote(server_ip, int(server_port), safe_mode=safe_mode, noc_failover=noc_failover)
     else:
         context = init_ttexalens(
-            init_jtag=init_jtag,
             noc_id=noc_id,
             safe_mode=safe_mode,
             simulation_directory=simulation_directory,
