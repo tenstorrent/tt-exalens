@@ -101,7 +101,7 @@ class BlackholeArcBlock(ArcBlock):
             block_list_lambda=lambda: [
                 MemoryMapBlockInfo("arc_reset_regs", self.arc_reset_regs, safe_to_write=True),
                 MemoryMapBlockInfo("arc_csm", self.arc_csm, safe_to_write=True),
-                MemoryMapBlockInfo("arc_rom", self.arc_rom, safe_to_write=True),
+                MemoryMapBlockInfo("arc_rom", self.arc_rom, safe_to_read=False, safe_to_write=True),
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
             ],

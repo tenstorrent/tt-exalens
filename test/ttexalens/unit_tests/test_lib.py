@@ -19,13 +19,13 @@ from test.ttexalens.unit_tests.test_base import (
 )
 import ttexalens as lib
 from ttexalens import util
-from ttexalens.exceptions import TTException
+from ttexalens.exceptions import TTException, UnsafeAccessException
 from ttexalens.elf import ElfFile
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.device import Device, UnsafeAccessException
+from ttexalens.device import Device
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.memory_access import create_l1_memory_access, create_memory_access
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
@@ -971,6 +971,77 @@ class TestReadWrite(unittest.TestCase):
         with risc_debug.ensure_private_memory_access():
             risc_debug.write_memory_bytes(private_address, data)
             self.assertEqual(lib.read_from_device(location, noc_address, num_bytes=len(data)), data)
+
+    @parameterized.expand(
+        [
+            ("0,0", "brisc"),
+            ("0,0", "trisc0"),
+            ("0,0", "trisc1"),
+            ("0,0", "trisc2"),
+        ]
+    )
+    def test_unsafe_private_memory_access(self, loc_str: str, risc_name: str):
+        """Test that private memory reads and writes of blocks marked unsafe raise UnsafeAccessException."""
+        device = self.context.devices[0]
+        if device.is_quasar():
+            self.skipTest("Quasar private memory maps are not complete yet.")
+        location = OnChipCoordinate.create(loc_str, device)
+        risc_debug = location.device.get_block(location).get_risc_debug(risc_name)
+        with risc_debug.ensure_private_memory_access():
+            for block_info in risc_debug.risc_info.memory_map.blocks:
+                address = block_info.memory_block.address.private_address
+                if address is None:
+                    continue
+                size = block_info.memory_block.size
+                if not block_info.is_accessible or not block_info.is_safe_to_read(address, size):
+                    with self.assertRaises(
+                        UnsafeAccessException,
+                        msg=f"Read from unsafe block {block_info.name} of {risc_name} should raise UnsafeAccessException",
+                    ):
+                        _read_bytes(risc_debug, address, size, safe_mode=True)
+                if not block_info.is_accessible or not block_info.is_safe_to_write(address, size):
+                    with self.assertRaises(
+                        UnsafeAccessException,
+                        msg=f"Write to read-only block {block_info.name} of {risc_name} should raise UnsafeAccessException",
+                    ):
+                        risc_debug.write_memory_bytes(address, bytes(size), safe_mode=True)
+
+    @parameterized.expand(
+        [
+            ("0,0", "brisc"),
+            ("0,0", "trisc0"),
+            ("0,0", "trisc1"),
+            ("0,0", "trisc2"),
+        ]
+    )
+    def test_private_memory_read_spanning_into_unsafe_region(self, loc_str: str, risc_name: str):
+        """Test that a private memory read from the end of a block into an unmapped or unsafe region raises UnsafeAccessException."""
+        device = self.context.devices[0]
+        if device.is_quasar():
+            self.skipTest("Quasar private memory maps are not complete yet.")
+        location = OnChipCoordinate.create(loc_str, device)
+        risc_debug = location.device.get_block(location).get_risc_debug(risc_name)
+        memory_map = risc_debug.risc_info.memory_map
+        with risc_debug.ensure_private_memory_access():
+            for block_info in memory_map.blocks:
+                address = block_info.memory_block.address.private_address
+                if address is None:
+                    continue
+                block_end = address + block_info.memory_block.size
+                next_block_info = memory_map.find_by_private_address(block_end)
+                if (
+                    next_block_info is not None
+                    and next_block_info.is_accessible
+                    and next_block_info.is_safe_to_read(block_end, 4)
+                ):
+                    continue
+                # 16-byte aligned start: Blackhole trisc2 rejects other start addresses (tt-exalens#528)
+                start_address = (block_end - 4) & ~0xF
+                with self.assertRaises(
+                    UnsafeAccessException,
+                    msg=f"Read spanning {block_info.name} of {risc_name} into an unmapped or unsafe region should raise UnsafeAccessException",
+                ):
+                    _read_bytes(risc_debug, start_address, block_end + 4 - start_address, safe_mode=True)
 
 
 class TestSafeAccess(unittest.TestCase):

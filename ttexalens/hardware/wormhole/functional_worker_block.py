@@ -89,6 +89,11 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
         self.noc_overlay = MemoryBlock(
             size=0x40000, address=DeviceAddress(private_address=0xFFB40000, noc_address=0xFFB40000)
         )
+        # Config[2][47 * 4] words, then ThreadConfig[3][57] 16-byte entries (ISA layout)
+        self.config_regs = MemoryBlock(
+            size=2 * 47 * 4 * 4 + 3 * 57 * 16,
+            address=DeviceAddress(private_address=0xFFEF0000),
+        )
 
         self.brisc = BabyRiscInfo(
             risc_name="brisc",
@@ -275,14 +280,17 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo(
                     "t0_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
+                    safe_to_write=True,
                 ),
                 MemoryMapBlockInfo(
                     "t1_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00100)),
+                    safe_to_write=True,
                 ),
                 MemoryMapBlockInfo(
                     "t2_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00200)),
+                    safe_to_write=True,
                 ),
                 MemoryMapBlockInfo(
                     "t0_instruction_buffer",
@@ -334,10 +342,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                     safe_to_read=False,
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs, safe_to_write=True),
             ],
         )
 
@@ -360,6 +365,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo(
                     "t0_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
+                    safe_to_write=True,
                 ),
                 MemoryMapBlockInfo(
                     "t0_instruction_buffer",
@@ -401,10 +407,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                     safe_to_read=False,
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs, safe_to_write=True),
             ],
         )
 
@@ -427,6 +430,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo(
                     "t1_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
+                    safe_to_write=True,
                 ),
                 MemoryMapBlockInfo(
                     "t1_instruction_buffer",
@@ -468,10 +472,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                     safe_to_read=False,
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs, safe_to_write=True),
             ],
         )
 
@@ -494,6 +495,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo(
                     "t2_gprs",
                     MemoryBlock(size=0x100, address=DeviceAddress(private_address=0xFFE00000)),
+                    safe_to_write=True,
                 ),
                 MemoryMapBlockInfo(
                     "t2_instruction_buffer",
@@ -535,10 +537,7 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                     MemoryBlock(size=0x1000, address=DeviceAddress(private_address=0xFFEC3000)),
                     safe_to_read=False,
                 ),  # trisc2
-                MemoryMapBlockInfo(
-                    "config_regs",
-                    MemoryBlock(size=0x10000, address=DeviceAddress(private_address=0xFFEF0000)),
-                ),
+                MemoryMapBlockInfo("config_regs", self.config_regs, safe_to_write=True),
             ],
         )
 
@@ -554,6 +553,6 @@ class WormholeFunctionalWorkerBlock(WormholeNocBlock):
                 MemoryMapBlockInfo("noc0_regs", self.noc0_regs),
                 MemoryMapBlockInfo("noc1_regs", self.noc1_regs),
                 MemoryMapBlockInfo("noc_overlay", self.noc_overlay),
-                MemoryMapBlockInfo("code_private_memory", self.ncrisc.code_private_memory),  # type: ignore[arg-type]
+                MemoryMapBlockInfo("code_private_memory", self.ncrisc.code_private_memory, safe_to_write=True),  # type: ignore[arg-type]
             ],
         )

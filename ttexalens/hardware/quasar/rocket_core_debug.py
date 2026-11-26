@@ -62,6 +62,10 @@ class QuasarRocketCoreDebug(RocketCoreDebug):
         super().__init__(risc_info, enable_asserts=enable_asserts)
         self.register_store = register_store
 
+    def _validate_safe_access(self, address: int, size_bytes: int, is_write: bool = False) -> None:
+        # Rocket cores have no private memory map yet.
+        pass
+
     def is_in_reset(self) -> bool:
         reset_bit = 1 << self.baby_risc_info.reset_flag_shift
         value = self.register_store.read_register("SMN_RISC_RESET_REG")
