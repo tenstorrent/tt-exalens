@@ -14,13 +14,14 @@ if TYPE_CHECKING:
     from ttexalens.coordinate import OnChipCoordinate
 
 
-@dataclass
+@dataclass(frozen=True)
 class MemoryMapBlockInfo:
     name: str
     memory_block: MemoryBlock
     safe_to_read: Callable[[int, int], bool] | bool | None = None
     safe_to_write: Callable[[int, int], bool] | bool | None = None
     access_check: Callable[[], bool] | None = None
+    unsafe_reason: str | None = None
 
     def is_safe_to_read(self, address: int, num_bytes: int) -> bool:
         if callable(self.safe_to_read):
@@ -172,7 +173,14 @@ class MemoryMap:
             else:
                 safe_to_access = interval.block.is_safe_to_read(current_address, access_size)
             if not safe_to_access:
-                raise UnsafeAccessException(location, address, num_bytes, current_address, is_write=is_write)
+                raise UnsafeAccessException(
+                    location,
+                    address,
+                    num_bytes,
+                    current_address,
+                    is_write=is_write,
+                    reason=interval.block.unsafe_reason,
+                )
             bytes_checked += access_size
 
     @property
