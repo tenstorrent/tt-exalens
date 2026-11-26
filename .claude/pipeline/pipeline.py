@@ -118,6 +118,8 @@ PLAN_SECTIONS = (
     "Open questions and assumptions",
 )
 REPORT_SECTIONS = ("Outcome", "Changes", "Verification", "Review")
+DECISION = re.compile(r"^\s*- \*\*Decision:\*\*\s*(.+?)\s*$", re.MULTILINE)
+DECISION_FILES = ("plan.md", "tests.md", "impl-report.md")
 STOP_WORDS = frozenset("a an and are as at be by for from in is it of on or that the through to when with".split())
 NEXT = {
     "shaping": "write issue.md, then validate-issue, leak-scan, cold read (spawn reviewer --mode issue), Gate 0",
@@ -720,7 +722,21 @@ def report_problems(case_id: str, status: Status | None = None) -> list[str]:
     hardware = status.get("hardware") or {}
     if hardware.get("iteration") == status["iteration"] and "**Hardware:**" not in text:
         problems.append(f"report.md: add this line under '## Verification': {hardware['line']}")
-    return problems + size_problems("report.md", text, LIMITS["report_words"])
+    if auto(status):
+        listed = found.get("Decisions", "")
+        missing = [decision for decision in case_decisions(case_id) if decision[:60] not in listed]
+        if not listed:
+            problems.append("report.md: in auto mode, list every decision under '## Decisions', or write 'None.'")
+        elif missing:
+            problems.append("report.md: '## Decisions' misses: " + "; ".join(decision[:80] for decision in missing))
+    counted = re.sub(r"^## Decisions\n.*?(?=^## |\Z)", "", text, flags=re.MULTILINE | re.DOTALL)
+    return problems + size_problems("report.md", counted, LIMITS["report_words"])
+
+
+def case_decisions(case_id: str) -> list[str]:
+    case = case_dir(case_id)
+    texts = [(case / name).read_text() for name in DECISION_FILES if (case / name).is_file()]
+    return [match.group(1) for text in texts for match in DECISION.finditer(text)]
 
 
 def leak_hits(label: str, text: str) -> list[str]:
@@ -2745,6 +2761,9 @@ def finish_texts(status: Status, reason: str, changed: list[str]) -> tuple[str, 
         "",
         "## Outcome",
         f"The change is on the branch. Auto mode ended the case with finish: {reason}.",
+        "",
+        "## Decisions",
+        *([f"- **Decision:** {decision}" for decision in case_decisions(status["id"])] or ["None recorded."]),
         "",
         "## Changes",
         *[f"- `{name}`" for name in changed[:30]],

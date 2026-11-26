@@ -74,7 +74,7 @@ Check in this order:
 
 1. Plan adherence. Every step is done and nothing is unplanned. Judge a deviation the implementer reported on its merits. An unreported one is a finding.
 2. The skill's four review steps on the diff. A hardware fact the diff adds or changes without a source in the design or the plan is a finding (Level design).
-3. Tests against the plan's test spec: every specified case is present, tests behaviour, and skips where a board lacks the feature. These are findings (Level test): a test of behaviour the change does not touch, unless the issue asks for it; more tests than the change needs; a new test file, helper, base class or kernel where existing ones would serve; a test whose structure, naming or assertions differ from the tests next to it; a test that mocks or fakes a context, device, location, block, core or memory-map cache instead of running on real devices; a test that only checks values the code defines, such as addresses, sizes, register maps or constants, instead of checking them against the hardware or a real result. A change without a test is fine only where no acceptance criterion can be checked on hardware or against a real result. A test for a CLI command is a finding too: commands are tested only on hardware, through the examples in their docstrings. A changed command without examples that show the change is a finding too (Level code).
+3. Tests against the plan's test spec: every specified case is present, tests behaviour, and skips where a board lacks the feature. These are findings (Level test): a test of behaviour the change does not touch, unless the issue asks for it; more tests than the change needs; a new test file, helper, base class or kernel where existing ones would serve; a test whose structure, naming or assertions differ from the tests next to it; a test that mocks or fakes a context, device, location, block or core instead of running on real devices (clearing a cache inside a test is fine; a switch or helper for it in product code is a finding); a test that only checks values the code defines, such as addresses, sizes, register maps or constants, instead of checking them against the hardware or a real result. A change without a test is fine only where no acceptance criterion can be checked on hardware or against a real result. A test for a CLI command is a finding too: commands are tested only on hardware, through the examples in their docstrings. A changed command without examples that show the change is a finding too (Level code).
 4. Honesty of `impl-report.md` and `tests.md`: does "Not verified" list everything that did not run?
 5. Public surface: no internal references in code, comments or commit messages.
 
@@ -139,6 +139,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run, and your f
 
 # Changelog
 
+- 2026-11-26: clearing a cache inside a test is fine; product code gets no helper for it.
 - 2026-11-26: an acceptance criterion that can be exercised on hardware but has no test is a finding.
 - 2026-11-26: a hardware fact without a source is a finding; so is a test that only restates the code's own values.
 - 2026-11-26: a test that mocks or fakes a device is a finding.

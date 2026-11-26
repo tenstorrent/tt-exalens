@@ -75,13 +75,14 @@ When an issue is resolved (Gate B is approved, or `finish` closes it), the scrip
 
 ## Guided mode and auto mode
 
-The pipeline runs in guided mode by default: Gates 0, A and B wait for you, and a stop asks you what to do.
+The pipeline runs in guided mode by default: Gates 0, A and B wait for you, and a stop asks you what to do. A stop comes only for a crucial question, after everything that does not depend on the answer is done: it names the options, what each costs and a recommendation, and the work continues with your answer.
 
 Auto mode runs until the case is closed with the code on its branch, next to the approved `issue.md` and `design.md`. Nobody is asked and nothing waits:
 
 - **The verdict is always `full`.** Auto mode builds every issue, also one that only hardware can verify. The report says what was not verified.
 - **Gates.** The script takes a gate when its checks pass, and records the approval as made by `auto`.
-- **No stops.** Every refusal of the script names what auto mode does instead. A role that cannot decide is told to decide and record its assumption. Checks that still fail after three fixes (`caps.fixes`), a checkout that cannot be built, and an agent budget that is used up are listed in the report as accepted failures, and the run goes on. Once code is on the branch, `run finish <case>` closes the case with what exists.
+- **Decisions instead of questions.** Every crucial question that guided mode would ask you is answered with the recommendation and recorded as a `**Decision:**` bullet. `report.md` lists them all under "Decisions", which the script checks, so you can review the decisions instead of the whole change.
+- **No stops.** Every refusal of the script names what auto mode does instead. A role that cannot decide is told to decide and record its decision. Checks that still fail after three fixes (`caps.fixes`), a checkout that cannot be built, and an agent budget that is used up are listed in the report as accepted failures, and the run goes on. Once code is on the branch, `run finish <case>` closes the case with what exists.
 - **Enforced by hooks.** While the case is open and no pipeline agent or command runs, a Stop hook in `/new-issue`, `/resolve-issue` and `/fix-ci` sends the session back to work with the next step, up to `auto_stop_limit` reminders without progress. Questions to you are refused.
 
 Start it with `/new-issue --auto <issue link or description>`, which shapes the issue and goes straight on, or with `/resolve-issue <case> --auto`. For every new case, set `"mode": "auto"` in `config.json`. Gate C (changes to the agent files) always waits for you, and so does a gate you set to `"user"` under `gates`.

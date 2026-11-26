@@ -162,7 +162,7 @@ The case keeps the latest result of each target with the commit it tested, so af
 
 ### Gate B: the result is approved
 
-**Guided.** Show a link to `report.md`, its hash from `.claude/pipeline/run hash <case> result`, the outcome in three lines, the `**Hardware:**` line, the review findings that are still open, the "Not verified" list, and where the work is:
+**Guided.** Show a link to `report.md`, its hash from `.claude/pipeline/run hash <case> result`, the outcome in three lines, the decisions, the `**Hardware:**` line, the review findings that are still open, the "Not verified" list, and where the work is:
 
 - the branch, from `status`. It is a local branch in the developer's repository, and it holds the code, the issue, the design and the PR description. If `status` says the copy was not updated, give the `git fetch` line it prints.
 - `pr-description.md` in the case directory: its first line is the pull request title and the rest is the body.
@@ -189,15 +189,15 @@ A stop condition is one of:
 - the leak scan hits something you cannot fix in `pr-text.md`,
 - a reserved machine cannot be used (busy, unreachable, the build failed there, the board hung), and the developer has to free or fix it, or decide to go on without it. A target without a reservation is not a stop.
 
-Stop, say what happened, quote the script message or the role's `BLOCKER`, and list the developer's choices. If the case has to wait, run `.claude/pipeline/run advance <case> blocked --reason "<why>"`. A design without an implementation, or a partial result, is a valid result in guided mode. Say so plainly instead of pushing on.
+First do everything that does not depend on the answer. Then stop with one crucial question: what happened (quote the script message or the role's `BLOCKER`), the developer's options with what each costs, and the one you recommend. When the developer answers, note it for the report's "Decisions" and continue without asking again. If the case has to wait, run `.claude/pipeline/run advance <case> blocked --reason "<why>"`. A design without an implementation, or a partial result, is a valid result in guided mode. Say so plainly instead of pushing on.
 
 ## Auto mode: no stops
 
-Nobody answers, so nothing stops for an answer. The run ends when `approve result ... --by auto` or `finish` closes the case. Never run `advance <case> blocked`, never ask the developer, and never end your turn while the case is open and nothing runs in the background: the Stop hook sends you back.
+Nobody answers, so nothing stops for an answer. Every crucial question that guided mode would ask becomes a decision: the role, or you, takes the recommended answer and records it as a `**Decision:**` bullet, and the report lists them all for the developer to review. The run ends when `approve result ... --by auto` or `finish` closes the case. Never run `advance <case> blocked`, never ask the developer, and never end your turn while the case is open and nothing runs in the background: the Stop hook sends you back.
 
 | Situation | What you do |
 |---|---|
-| A role returns `blocked` | Write "Auto mode: nobody can answer. Decide as the issue and the design read most plainly, record the assumption, and finish." into a feedback file (`path <case> feedback auto`) and start the role again once through `spawn`. If it is blocked again, take its output file as it is and go on. |
+| A role returns `blocked` | Write "Auto mode: nobody can answer. Decide as the issue and the design read most plainly, record your decision as a `**Decision:**` bullet, and finish." into a feedback file (`path <case> feedback auto`) and start the role again once through `spawn`. If it is blocked again, take its output file as it is and go on. |
 | The implementer disputes a test | The test stands. Start the implementer again with the feedback above. What still fails is handled as failing checks. |
 | A role writes nothing, twice | Go on without it. An unanswered question stays an unknown, and the script writes a stub for a missing test or implementation report. |
 | A cap is reached | The script's message names the fallback. Follow it. |
@@ -209,7 +209,7 @@ Nobody answers, so nothing stops for an answer. The run ends when `approve resul
 | The session is over 500k tokens | Go on. In auto mode the script only warns. |
 | Anything else keeps failing, once code is on the branch | `.claude/pipeline/run finish <case> --reason "<what failed>"`. It records what is missing, writes the report and the PR description if needed, and closes the case. |
 
-When the case is closed, tell the developer: the branch, `pr-description.md`, the accepted failures and the open findings from the report, the time and cost the close printed, and that the gates were taken by the script, not by a person.
+When the case is closed, tell the developer: the branch, `pr-description.md`, the decisions from the report (to review instead of the whole change), the accepted failures and the open findings from the report, the time and cost the close printed, and that the gates were taken by the script, not by a person.
 
 ## Formats
 
@@ -224,6 +224,9 @@ Both documents are for people, so they are short. `advance report_ready` and `pr
 
     ## Outcome
     Three lines: what changed, why, and how far it was verified.
+
+    ## Decisions
+    Every crucial question of the run, one `- **Decision:**` bullet each: the question, the options, the answer and why, and who decided. Copy the bullets from plan.md, tests.md and impl-report.md word for word, and add yours and the developer's answers. In auto mode the script requires this section ("None." if there were none) and checks that it holds every bullet. It does not count toward the 400 words.
 
     ## Changes
     Each changed file with one line of purpose.
