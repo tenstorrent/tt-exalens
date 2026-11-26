@@ -8,6 +8,7 @@ import struct
 import itertools
 from functools import wraps
 from datetime import timedelta
+from unittest.mock import patch
 
 from parameterized import parameterized, parameterized_class
 
@@ -29,6 +30,7 @@ from ttexalens.device import Device, UnsafeAccessException
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.memory_access import create_l1_memory_access, create_memory_access
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug
+from ttexalens.hardware.blackhole.arc_block import BlackholeArcBlock
 from ttexalens.elf import CallstackEntry, CallstackEntryVariable
 from ttexalens.hardware.risc_debug import RiscDebug
 
@@ -1628,7 +1630,9 @@ class TestARC(unittest.TestCase):
             self.skipTest("There are no remote Blackhole devices to test")
 
         for device in remote_devices:
-            self.assertIsNotNone(device.arc_block.noc_memory_map.find_by_name("noc1_regs"))
+            with patch.dict(getattr(MemoryMap, "_MemoryMap__cache_of_memory_maps"), clear=True):
+                arc_block = BlackholeArcBlock(device.get_block_locations(block_type="arc")[0])
+            self.assertIsNotNone(arc_block.noc_memory_map.find_by_name("noc1_regs"))
 
 
 @parameterized_class(
