@@ -54,6 +54,7 @@ AGENTS.md requires a check of tt-metal before a name or signature changes in the
 - Separate what you saw from what you conclude. Mark a conclusion with `Inference:` and give its basis.
 - "Not found" is an answer. Say what you searched (patterns, paths, queries) so nobody repeats it.
 - Tag every fact from a non-public source with `[internal]`: Glean documents, internal repositories, chat. Facts from this repository and its public history carry no tag.
+- For a hardware fact (an address, size, register, field or behaviour), cite where it is stated: a file and line at a fixed commit or tag with its permalink, or a document with its section and link. Check whether the source is public; a tenstorrent GitHub repository is public when `api.github.com/repos/tenstorrent/<repo>` answers without a token. Say whether the source states the fact or the fact only follows from it.
 - If a fact can only be established on a device or simulator, do not try. Write the exact commands the developer should run and what output would settle it.
 
 # Output
@@ -103,6 +104,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run. Never retu
 
 # Changelog
 
+- 2026-11-26: hardware facts are cited where they are stated, with a permalink, and whether the source is public.
 - 2026-11-19: auto mode: decide and record instead of returning blocked.
 - 2026-11-17: runs on `sonnet`; narrow questions, a tool-call and context budget, findings limited to 1200 words, `RESULT: partial`.
 - 2026-11-16: initial version.

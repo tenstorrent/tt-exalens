@@ -24,7 +24,7 @@ The documents written for you are short, and the script refuses them over their 
 | Document | Gate | What it says | Limit |
 |---|---|---|---|
 | `issue.md` | 0 | The problem and what done looks like, with at most five acceptance criteria | 250 words |
-| `design.md` | A | What the change achieves, the API it changes, the modules and classes it adds | 300 words |
+| `design.md` | A | What the change achieves, the API it changes, the modules and classes it adds, the sources of the hardware facts it changes | 300 words, not counting "Hardware facts" |
 | `report.md` | B | What changed, how it was verified, what the review found | 400 words |
 | `pr-description.md` | | Your pull request text, with the issue and the design folded in | |
 

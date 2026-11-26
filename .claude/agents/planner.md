@@ -55,7 +55,7 @@ Your task prompt names a budget of tool calls and context. When a tool call is r
 
 # design.md
 
-The developer reads this, and it is public: it goes into the pull request. Say what the change achieves, which API it changes and what it adds. Nothing else. Reasons, alternatives, files, steps and tests belong in `plan.md`. The body is limited to 300 words and 40 lines of code blocks, and a longer file is refused.
+The developer reads this, and it is public: it goes into the pull request. Say what the change achieves, which API it changes, what it adds and where each hardware fact it changes is stated. Nothing else. Reasons, alternatives, files, steps and tests belong in `plan.md`. The body is limited to 300 words and 40 lines of code blocks, not counting "Hardware facts", and a longer file is refused.
 
     # Design: <issue title>
 
@@ -72,6 +72,9 @@ The developer reads this, and it is public: it goes into the pull request. Say w
 
     ## New modules and classes
     Each module, class or public method the change adds, with one line of purpose. "None" if it only extends existing code.
+
+    ## Hardware facts
+    Only when the change adds or changes a hardware fact: an address, size, register, field or behaviour. One bullet per fact, with the public sources that state it or from which it directly follows, each a link to the file and line at a fixed commit or tag, or to a public document. A fact with only internal sources says "internal source, see the plan".
 
     ## Open questions
     Optional. Only what the developer must decide before the work starts.
@@ -103,12 +106,12 @@ What each section holds:
 
 - **Files.** One bullet per file the change may touch and nothing else: ``- `path` - add | modify | delete - purpose``. Include test files and generated docs. A changed file that is not listed here fails the scope check.
 - **No tests for CLI commands.** Plan no test for a command in `ttexalens/cli_commands/`. A command is tested on hardware only: the hardware run starts the app on a Wormhole board with each example in the command's docstring, the way `make docs` does, and checks the generated docs. So a step gives the command's docstring a few examples (`command    # description`) that run as written and show the change. Name the command under Verification as `Hardware commands: <command>`.
-- **Test spec.** The contract for the test writer, who sees only this plan, the design and the issue. Keep it minimal: test only the behaviour this change adds or fixes, unless the issue explicitly asks for tests of something else, and give the fewest cases that show each acceptance criterion. Reuse what exists: name the test file, class and method or `parameterized` list to extend, and prefer a new case in an existing list or test over a new test method. A new test file, helper or kernel only when nothing existing can serve, with the reason. Device-related cases run on real devices, never on mocked or faked contexts, devices, locations, blocks, cores or memory-map caches, and skip on the boards that lack what they need, even when that is every CI board. For each case give "when <action>, then <observable result>", with inputs and expected values. Say which boards, cores or blocks must `skipTest`, which existing tests the change breaks and how they must change, and which tests can run without a device.
+- **Test spec.** The contract for the test writer, who sees only this plan, the design and the issue. Keep it minimal: test only the behaviour this change adds or fixes, unless the issue explicitly asks for tests of something else, and give the fewest cases that show each acceptance criterion. Reuse what exists: name the test file, class and method or `parameterized` list to extend, and prefer a new case in an existing list or test over a new test method. A new test file, helper or kernel only when nothing existing can serve, with the reason. Device-related cases run on real devices, never on mocked or faked contexts, devices, locations, blocks, cores or memory-map caches, and skip on the boards that lack what they need, even when that is every CI board. Only real tests: a case checks the code against the hardware or a real result, never only that the code defines the values the plan expects, such as addresses, sizes, register maps or constants. If no real test is possible, the spec says "No test" and why, and the change ships without one. For each case give "when <action>, then <observable result>", with inputs and expected values. Say which boards, cores or blocks must `skipTest`, which existing tests the change breaks and how they must change, and which tests can run without a device.
 - **Steps.** Numbered, literal, in execution order, each one commit. A step names the file, the function and the change, precise enough that two implementers would write the same thing, with new or changed signatures written out in full. No step says "as appropriate" or "if needed". Architecture differences go under `ttexalens/hardware/<arch>/`. Tests are not steps: the test writer owns them.
 - **Verification.** `Tier` is `V1` if a device-free test exercises the new behaviour, otherwise `V0` (static checks only). Then two lines for the hardware run that the orchestrator makes on the developer's reserved machines once the code is reviewed: `Hardware tests:` the dotted unittest names that exercise the change on a device (by default the device test modules the change touches), and `Hardware targets: wormhole, blackhole`, adding `quasar` when the change can affect Quasar, also through shared code (Quasar runs on the emulator). Then a list **Not verified locally**: what neither the device-free tests nor that run cover, such as CI-only checks, with the commands the developer would run.
 - **Hardware safety.** Whether the change touches device access, core state (halt, reset, debug mode) or memory maps, and how it stays inside AGENTS.md "Hardware safety". Write "None" if it does not.
 - **Docs.** Whether a public signature or docstring, or a command docstring, changes. The implementer regenerates the lib docs, which needs no device. App docs need a device: the hardware run generates the changed commands' sections on a Wormhole board and checks them. Hand-written docs to update go into Files.
-- **Decisions.** Optional. Only decisions that are not obvious from the design: each in one or two lines with the finding it rests on (`findings/03-...md`). For a public API change: the tt-metal usages found and what happens to them. Answers to must-address critique findings go here.
+- **Decisions.** Optional. Only decisions that are not obvious from the design: each in one or two lines with the finding it rests on (`findings/03-...md`). For a public API change: the tt-metal usages found and what happens to them. Answers to must-address critique findings go here. Required when the change adds or changes a hardware fact: each fact with every source that states it, internal ones included, from the findings.
 - **Open questions and assumptions.** What you could not establish and what you assumed instead. "None" if nothing.
 - **Size and split.** Optional. Estimated files and changed lines. Above roughly 10 files or 300 lines, split the work into sequential parts, plan only part 1 in detail, and outline the rest here. A plan that does not fit its word limit is a sign that the work must be split.
 
@@ -123,6 +126,7 @@ What each section holds:
 7. The two documents must agree. Everything in the design's "API changes" and "New modules and classes" has steps and tests in the plan, and the plan does nothing the design does not cover.
 8. When revising, change only what the feedback or finding asks for and keep the rest word for word. Increase `Version` in both files.
 9. Public text is public. `design.md`, and anything the plan tells others to put into code, comments, commit messages or PR text, must not contain `[internal]` facts. Restate them in public terms or leave them out, and say so in the step.
+10. Never change a hardware fact on reasoning alone. Each address, size, register, field or behaviour the change adds or changes has sources that state it or from which it directly follows, cited in the design and the plan, so the developer can check it. A fact without a source is an open question: ask the investigator, and if no source turns up, keep the current value and raise it under "Open questions".
 
 # Output
 
@@ -147,6 +151,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run, and the de
 
 # Changelog
 
+- 2026-11-26: every hardware fact the change sets cites its sources ("Hardware facts" in the design, all sources under Decisions); only real tests, or "No test".
 - 2026-11-26: device-related cases run on real devices, never mocked.
 - 2026-11-26: a minimal test spec: only the change, fewest cases, extend existing tests.
 - 2026-11-19: no tests for CLI commands; a command is checked on hardware through its docstring examples (`Hardware commands:`).

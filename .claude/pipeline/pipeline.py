@@ -107,7 +107,7 @@ MARKERS = ("(inferred, confirm)", "(unconfirmed)")
 TRIAGE_VERDICTS = ("feature", "bug-confirmed", "bug-fixed", "bug-unconfirmed")
 TRIAGE_PROCEED = ("feature", "bug-confirmed")
 DESIGN_SECTIONS = ("Scope", "API changes", "New modules and classes")
-DESIGN_OPTIONAL = ("Open questions",)
+DESIGN_OPTIONAL = ("Hardware facts", "Open questions")
 PLAN_SECTIONS = (
     "Files",
     "Test spec",
@@ -660,7 +660,8 @@ def design_problems(case_id: str) -> list[str]:
     for name in found:
         if name not in DESIGN_SECTIONS and name not in DESIGN_OPTIONAL:
             problems.append(f"design.md: section '## {name}' does not belong here. Working detail goes to plan.md")
-    return problems + size_problems("design.md", body, LIMITS["design_words"], LIMITS["design_code_lines"])
+    counted = re.sub(r"^## Hardware facts\n.*?(?=^## |\Z)", "", body, flags=re.MULTILINE | re.DOTALL)
+    return problems + size_problems("design.md", counted, LIMITS["design_words"], LIMITS["design_code_lines"])
 
 
 def plan_files(text: str) -> list[str]:
