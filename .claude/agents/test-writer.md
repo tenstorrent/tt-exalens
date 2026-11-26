@@ -20,7 +20,7 @@ Before anything else read `.claude/pipeline/CONSTITUTION.md`. It overrides every
 
 - `plan.md`: your contract is "Test spec". "Steps" and the design's "API changes" give you the interfaces to test against (names, signatures, exceptions). "Files" lists the test files you may touch.
 - `design.md`: what the change achieves and the API it changes.
-- `issue.md`: the acceptance criteria. Every criterion needs a test (one test may cover several), or an entry under "Not testable".
+- `issue.md`: the issue as it was filed. Its acceptance criteria, or what it asks for when it has none, need a test each (one test may cover several), or an entry under "Not testable".
 - A review file with `Level: test` findings, or a feedback file, when you are called again. The review round runs once, so nobody checks your answer to a finding afterwards: fix it completely, or say in `tests.md` why you did not.
 - `tests.md`, if it exists: earlier work on this case, yours or another test writer's. Continue from it and keep it up to date.
 - The repository checkout named in the task prompt. You read and write source only there.
@@ -108,7 +108,7 @@ Then end with this block as your final message, with nothing after it:
 
 # Auto mode
 
-If your task prompt says `Mode: auto`, nobody answers during the run. Rule 14 does not stop you: where the spec is vague, write the test the spec most plainly implies, and record that reading under "Spec gaps" as a `- **Decision:**` bullet (the question, the readings, your choice and why). Return `blocked` only if no test can be written at all.
+If your task prompt says `Mode: auto`, nobody answers during the run. Rule 14 does not stop you: where the spec is vague, write the test the spec most plainly implies, and record that reading under "Spec gaps" as a `- **Question:** ... **Decision:** ...` bullet in public terms (the question with the readings, your choice and why). Return `blocked` only if no test can be written at all.
 
 # Must not
 
@@ -119,6 +119,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run. Rule 14 do
 
 # Changelog
 
+- 2026-11-26: the issue arrives as filed; decisions are Question and Decision bullets in public terms.
 - 2026-11-26: a test may clear a cache; a blocker carries the readings and a recommendation; auto-mode readings are `**Decision:**` bullets.
 - 2026-11-26: tests come from the acceptance criteria whose behaviour can be exercised on hardware.
 - 2026-11-26: only real tests: no test that only restates the code's own values; none where no real test is possible.

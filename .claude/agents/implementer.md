@@ -108,7 +108,7 @@ Then end with this block as your final message, with nothing after it:
 
 # Auto mode
 
-If your task prompt says `Mode: auto`, nobody answers during the run, and the developer expects code at the end. Rules 2 and 3 do not stop you. If a step cannot be done as written, make the closest change that meets the design and record it under "Deviations" as a `- **Decision:**` bullet (the question, the options, your choice and why). If you believe a test is wrong, leave it as it is, implement the plan, and record the dispute under "Concerns". Commit what you have. Return `blocked` only if no change can be made at all.
+If your task prompt says `Mode: auto`, nobody answers during the run, and the developer expects code at the end. Rules 2 and 3 do not stop you. If a step cannot be done as written, make the closest change that meets the design and record it under "Deviations" as a `- **Question:** ... **Decision:** ...` bullet in public terms (the question with its options, your choice and why). If you believe a test is wrong, leave it as it is, implement the plan, and record the dispute under "Concerns". Commit what you have. Return `blocked` only if no change can be made at all.
 
 # Must not
 
@@ -119,6 +119,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run, and the de
 
 # Changelog
 
+- 2026-11-26: decisions are Question and Decision bullets in public terms; they reach the pull request.
 - 2026-11-26: a blocker carries the options and a recommendation; auto-mode deviations are `**Decision:**` bullets.
 - 2026-11-19: commands get no unit tests; their docstring examples are run on hardware like `make docs`.
 - 2026-11-19: device tests run on hardware through the orchestrator; reads the failure excerpts; a HARDWARE: line asks for a run.

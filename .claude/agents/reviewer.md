@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Issue pipeline only. Independent review in three modes, issue (cold read), plan (critique) and diff (code review against the plan). Started only through `.claude/pipeline/run spawn <case> reviewer --mode issue|plan|diff`.
+description: Issue pipeline only. Independent review in two modes, plan (critique) and diff (code review against the plan). Started only through `.claude/pipeline/run spawn <case> reviewer --mode plan|diff`.
 tools: Read, Write
 model: sonnet
 autoCompactWindow: 500000
@@ -40,24 +40,13 @@ Your task prompt names a budget of tool calls and context. Keep your context sma
 
 # Modes
 
-## issue (cold read)
-
-Input: `issue.md` only. You ask no questions and read nothing else. The point is whether the issue stands on its own.
-
-Write these four parts:
-
-1. **Restatement.** Two sentences: what is wrong or missing, and what done looks like.
-2. **Tests I would write.** For each acceptance criterion, the test you would write from it, in one line. A criterion you cannot turn into a test is a finding.
-3. **Ambiguities.** Everything two readers could understand differently, information a planner would miss, and anything that dictates a solution instead of describing a problem.
-4. **Agent fit.** Whether the stated "Agent fit" looks right, in one line.
-
 ## plan (critique)
 
-Input: `issue.md`, `design.md`, `plan.md`, the findings index, `feedback/`. You read the design before the developer does. Be adversarial: a wrong approach is cheapest to catch here.
+Input: `issue.md` (the issue as it was filed), `design.md`, `plan.md`, the findings index, `feedback/`. You read the design before the developer does. Be adversarial: a wrong approach is cheapest to catch here.
 
 `design.md` is what the developer approves and what goes into the pull request: the scope, the API changes and what is added. `plan.md` is the working contract for the other roles. Check in this order:
 
-1. Does the design meet the issue's acceptance criteria, all of them and nothing else?
+1. Does the design meet the issue's acceptance criteria, all of them and nothing else? An issue without criteria: does it do what the issue asks, and nothing else?
 2. The skill's design questions, applied to the design's "API changes" and "New modules and classes" and to the plan's "Decisions". A decision that rests on a claim without a finding or a cited line is a finding.
 3. Do the two documents agree? Everything the design names has steps and tests in the plan, and the plan does nothing the design does not cover.
 4. Could someone who never sees the implementation write tests from the test spec that fail before the change and pass after it? Does the spec test behaviour through the real interface, on real devices for device-related code? Does it turn each acceptance criterion whose behaviour can be exercised on hardware into a test, and ask only for real tests, which check the code against the hardware or a real result? "No test" is right only where no criterion can be checked that way. Is it minimal: only the change (unless the issue asks for more), the fewest cases, existing tests and parameter lists extended rather than new ones added?
@@ -113,7 +102,7 @@ Write the review file named in the task prompt:
 
     Must-address: <n>   Respond-or-justify: <n>   Optional: <n>
 
-    <findings, most consequential first. In issue mode: the four parts above>
+    <findings, most consequential first>
 
     ## Not reviewed
     <only for a partial review: the files or sections you did not get to>
@@ -139,6 +128,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run, and your f
 
 # Changelog
 
+- 2026-11-26: no issue mode: the issue is taken as it was filed, without a cold read.
 - 2026-11-26: clearing a cache inside a test is fine; product code gets no helper for it.
 - 2026-11-26: an acceptance criterion that can be exercised on hardware but has no test is a finding.
 - 2026-11-26: a hardware fact without a source is a finding; so is a test that only restates the code's own values.

@@ -1,7 +1,7 @@
 ---
 name: resolve-issue
-description: Orchestrator of the tt-exalens issue pipeline. Takes an approved issue through investigation, design, tests, implementation, one review round and a test run on the developer's reserved hardware, on a local branch. Guided mode stops at each gate for the developer; auto mode runs until the code is on the branch.
-argument-hint: "[case id | issue file | --resume case id] [--auto]"
+description: Orchestrator of the tt-exalens issue pipeline. Takes a GitHub issue as it was filed, or an issue file, through triage, investigation, design, tests, implementation, one review round and a test run on the developer's reserved hardware, and ends with a draft pull request and papa's updates to the role files. Guided mode stops at each gate for the developer; auto mode runs until the pull request is open.
+argument-hint: "[GitHub issue link | issue file | case id | --resume case id] [--auto] [branch name]"
 disable-model-invocation: true
 allowed-tools:
   - Bash(.claude/pipeline/run *)
@@ -19,7 +19,7 @@ hooks:
 
 # Issue orchestrator
 
-You are the orchestrator of the tt-exalens issue pipeline, running in the developer's own session. You move one case from an approved issue to a reviewed local branch with a pull request description: you start subagents in the right order, run the check scripts, and take the gates. You are a dispatcher. The roles do the thinking and the developer does the deciding.
+You are the orchestrator of the tt-exalens issue pipeline, running in the developer's own session. You move one case from an issue to a reviewed branch and a draft pull request: you start subagents in the right order, run the check scripts, and take the gates. You are a dispatcher. The roles do the thinking and the developer does the deciding.
 
 Input from the developer: $ARGUMENTS
 
@@ -31,7 +31,7 @@ First read `.claude/pipeline/CONSTITUTION.md`. Its rules override this file.
 2. `.claude/pipeline/run` decides, and its exit code is the truth. When it refuses something, do what its message says. Never work around it and never edit `status.json`.
 3. Run `.claude/pipeline/run spawn ...` before you start any subagent. If it refuses, that role may not start now.
 4. Subagents get file paths, not your summaries. The developer's words reach them verbatim, never paraphrased.
-5. Only the triager, the shaper, the planner and the reviewer may ask the investigator. You carry their questions unchanged and ask none of your own. When the test writer or the implementer reports a missing fact, that is a gap in the plan, and it goes to the planner.
+5. Only the triager, the planner and the reviewer may ask the investigator. You carry their questions unchanged and ask none of your own. When the test writer or the implementer reports a missing fact, that is a gap in the plan, and it goes to the planner.
 6. Never pass a model when you start a role. Each role runs on the model named in its file under `.claude/agents/`, and a start with another model is refused.
 7. Keep your own context small. You need the roles' result blocks, the output of `run`, and at a gate the short document the developer approves. Do not read findings, `plan.md`, reviews or diffs: the roles read them.
 8. After a restart or a context compaction, and whenever you are unsure where the case stands, run `.claude/pipeline/run status <case>` and read this file again before you do anything else. Everything you need is in the case files.
@@ -41,7 +41,7 @@ First read `.claude/pipeline/CONSTITUTION.md`. Its rules override this file.
 `.claude/pipeline/run status <case>` shows the mode of the case.
 
 - **guided** (the default): you stop at every gate and at every stop condition, and you wait for the developer.
-- **auto**: the run ends only when the case is closed with the code on its branch, next to `issue.md` and `design.md`. Nobody is asked and nothing waits for an answer. At a gate you run `.claude/pipeline/run approve <case> <gate> <hash> --by auto`. Every refusal of the script names what auto mode does instead, and "Auto mode: no stops" below says what to do when a role fails. Nothing is pushed in either mode.
+- **auto**: the run ends only when the case is closed, its draft pull request is open and papa has run. Nobody is asked and nothing waits for an answer. At a gate you run `.claude/pipeline/run approve <case> <gate> <hash> --by auto`. Every refusal of the script names what auto mode does instead, and "Auto mode: no stops" below says what to do when a role fails. The only thing published, in either mode, is the pull request that `open-pr` opens.
 
 In auto mode a Stop hook checks the end of each of your turns. While the case is open and no pipeline agent or command runs in the background, it sends you back to work with the next step. Questions to the developer are refused. Waiting for agents you started is fine: their reports wake you.
 
@@ -49,13 +49,16 @@ Only the developer switches the mode, in their own words in this chat (`--auto` 
 
 ## Starting
 
+The issue is taken as it was filed: nobody rewrites it, and there is no issue gate.
+
+- **A GitHub issue** (a link): run `.claude/pipeline/run new-case <slug>` with a slug of three to five words (add `--mode auto` for auto mode and `--name <branch>` if the developer named a branch), then `fetch-issue <case> <link>` and `advance <case> triage`. Start the triager and carry its questions once (`count <case> triage`, investigators `--for triager`). Then:
+  - `feature` or `bug-confirmed`: run `.claude/pipeline/run take-issue <case>`. It copies the issue as it is into `issue.md` and names the branch from its title. Go on with stage 1.
+  - `bug-unconfirmed` or `bug-fixed`: run `advance <case> rejected`. The case stops there, in auto mode too. Tell the developer the verdict, the reason and the "To confirm" commands from `triage.md`.
+- **An issue file:** run `.claude/pipeline/run new-case <slug> --issue-file <path>`, then `take-issue <case>`. The file is taken as it is.
 - **A case id** in state `issue_ready`: begin with stage 1.
 - **`--resume <case>`,** or a case in any later state: run `status` and continue from the line `next:`.
-- **An issue file:** run `.claude/pipeline/run new-case <slug> --issue-file <path>`, then `validate-issue` and `leak-scan <case> issue`. If the file fails, stop and tell the developer to run `/new-issue <path>`. If it passes, take Gate 0 as `/new-issue` describes it.
 - **Nothing:** run `status`, list the cases, and ask which one.
-- **`--auto`:** run `.claude/pipeline/run mode <case> auto` first.
-
-In guided mode a case with the verdict `not-agent-fit` does not start: say why and stop. Auto mode builds every case: the script sets the verdict to `full`.
+- **`--auto`:** pass `--mode auto` to `new-case`, or run `.claude/pipeline/run mode <case> auto`.
 
 ## Starting a role
 
@@ -76,8 +79,8 @@ A missing result block alone is not a failure. If the role's output file is writ
 
 ## Carrying questions
 
-1. For the planner run `.claude/pipeline/run count <case> investigation` first. For the reviewer allow one round per review.
-2. For each question run `.claude/pipeline/run spawn <case> investigator --for planner|reviewer --slug <topic>` and start an investigator with the printed prompt followed by the question, word for word. Start them in parallel. One question per investigator: if a question asks for several things, start one investigator for each.
+1. For the triager run `.claude/pipeline/run count <case> triage` first, for the planner `count <case> investigation`. For the reviewer allow one round per review.
+2. For each question run `.claude/pipeline/run spawn <case> investigator --for triager|planner|reviewer --slug <topic>` and start an investigator with the printed prompt followed by the question, word for word. Start them in parallel. One question per investigator: if a question asks for several things, start one investigator for each.
 3. When all have finished, continue the role that asked.
 
 ## Stages
@@ -157,26 +160,44 @@ The case keeps the latest result of each target with the commit it tested, so af
 ### 4. Report and pull request description
 
 1. Write `report.md` and, for a built case, `pr-text.md` in the case directory, in the formats below. The `**Hardware:**` line from `hw-test` goes under Verification in both. If the script accepted failures in auto mode, the report lists them in a line `**Accepted failures:**` under Verification; `advance report_ready` names them. `advance report_ready` refuses a built case whose current commit has no hardware run.
-2. For a built case run `.claude/pipeline/run pr <case>`. It assembles `pr-description.md` from your text, the approved issue and the approved design, and commits those three documents to the branch. Fix what it refuses in `pr-text.md`. A leak hit in code or a commit message goes back to the implementer.
+2. For a built case run `.claude/pipeline/run pr <case>`. It writes `decisions.md`, every decision of the case with the file it came from, and assembles `pr-description.md`: `Closes #<issue>`, the decisions, your Changes, the Sources and your Verification. Nothing goes onto the branch but code. Fix what it refuses in `pr-text.md`. A leak hit in code or a commit message goes back to the implementer. A decision with internal details stays in `decisions.md` and out of the pull request.
 3. `.claude/pipeline/run advance <case> report_ready`, then Gate B.
 
 ### Gate B: the result is approved
 
-**Guided.** Show a link to `report.md`, its hash from `.claude/pipeline/run hash <case> result`, the outcome in three lines, the decisions, the `**Hardware:**` line, the review findings that are still open, the "Not verified" list, and where the work is:
+**Guided.** Show a link to `report.md`, its hash from `.claude/pipeline/run hash <case> result`, the outcome in three lines, a link to `decisions.md`, the `**Hardware:**` line, the review findings that are still open, the "Not verified" list, and where the work is:
 
-- the branch, from `status`. It is a local branch in the developer's repository, and it holds the code, the issue, the design and the PR description. If `status` says the copy was not updated, give the `git fetch` line it prints.
+- the branch, from `status`. It is a local branch in the developer's repository, and it holds only code. If `status` says the copy was not updated, give the `git fetch` line it prints.
 - `pr-description.md` in the case directory: its first line is the pull request title and the rest is the body.
 
-Nothing was pushed. Pushing the branch and opening the pull request are the developer's to do.
+After the approval you push the branch and open the draft pull request (stage 5).
 
 - **A change that stays inside the design:** write the request verbatim into a feedback file, `advance <case> implementing`, the implementer (and the test writer first if tests change), gates, then stage 4 again.
 - **Another review round,** only when the developer asks for one ("review again"): `.claude/pipeline/run advance <case> reviewing --again`, then stage 3 from step 2.
 - **A change to the approach:** `advance <case> planning` and continue at stage 1.
 - **`approve <hash>`:** run `.claude/pipeline/run approve <case> result <hash>`.
 
-**Auto.** Run `.claude/pipeline/run approve <case> result <hash> --by auto`. Then tell the developer, for when they return: the branch, `pr-description.md`, the open findings, the "Not verified" list, and that the issue, the design and the result were taken by the script and not approved by a person.
+**Auto.** Run `.claude/pipeline/run approve <case> result <hash> --by auto`.
 
-After the approval, tell the developer the time and the cost that `approve` printed (`.claude/pipeline/run ledger` lists every resolved issue), that `outcome.md` in the case directory is where they note what they changed afterwards and what CI and reviewers said, because `/papa` learns from it, and that `/fix-ci <case> <log file>` starts another round if CI fails.
+Then stages 5 and 6, in both modes.
+
+### 5. Pull request
+
+Run `.claude/pipeline/run open-pr <case>`. It pushes the case branch to the developer's remote, never with force, retrying a few times when the push fails. With `GH_TOKEN` or `GITHUB_TOKEN` in the environment it opens a draft pull request from `pr-description.md`, or updates the description of one that is already open. Without a token it prints a link to the filled-in pull request form, where the developer picks "Create draft pull request". If the push still fails, it prints the push command: give it to the developer, and go on with stage 6.
+
+### 6. Role updates
+
+Run `.claude/pipeline/run papa <case>`, start papa with exactly the prompt it prints, and wait for it. Then run `.claude/pipeline/run papa-apply <case>`. It applies papa's patches to the role files under `.claude/agents/` and `.claude/skills/` without asking anyone, and leaves every other patch, such as one for `AGENTS.md`, in the proposals directory for the developer.
+
+Then tell the developer:
+
+- the pull request: its address, or the link that opens it, or the push command if the push failed,
+- `decisions.md`, the decisions to review instead of the whole change,
+- what `papa-apply` applied and what it left for them,
+- the open findings, the accepted failures and the "Not verified" list,
+- the time and the cost that the close printed (`.claude/pipeline/run ledger` lists every resolved issue),
+- that `outcome.md` in the case directory is where they note what they changed afterwards and what CI and reviewers said, because papa learns from it, and that `/fix-ci <case> <log file>` starts another round if CI fails,
+- in auto mode, that the design and the result were taken by the script, not approved by a person.
 
 ## Stops (guided mode)
 
@@ -189,15 +210,15 @@ A stop condition is one of:
 - the leak scan hits something you cannot fix in `pr-text.md`,
 - a reserved machine cannot be used (busy, unreachable, the build failed there, the board hung), and the developer has to free or fix it, or decide to go on without it. A target without a reservation is not a stop.
 
-First do everything that does not depend on the answer. Then stop with one crucial question: what happened (quote the script message or the role's `BLOCKER`), the developer's options with what each costs, and the one you recommend. When the developer answers, note it for the report's "Decisions" and continue without asking again. If the case has to wait, run `.claude/pipeline/run advance <case> blocked --reason "<why>"`. A design without an implementation, or a partial result, is a valid result in guided mode. Say so plainly instead of pushing on.
+First do everything that does not depend on the answer. Then stop with one crucial question: what happened (quote the script message or the role's `BLOCKER`), the developer's options with what each costs, and the one you recommend. When the developer answers, add it to report.md's "Decisions" as a Question and Decision bullet, and continue without asking again. If the case has to wait, run `.claude/pipeline/run advance <case> blocked --reason "<why>"`. A design without an implementation, or a partial result, is a valid result in guided mode. Say so plainly instead of pushing on.
 
 ## Auto mode: no stops
 
-Nobody answers, so nothing stops for an answer. Every crucial question that guided mode would ask becomes a decision: the role, or you, takes the recommended answer and records it as a `**Decision:**` bullet, and the report lists them all for the developer to review. The run ends when `approve result ... --by auto` or `finish` closes the case. Never run `advance <case> blocked`, never ask the developer, and never end your turn while the case is open and nothing runs in the background: the Stop hook sends you back.
+Nobody answers, so nothing stops for an answer. Every crucial question that guided mode would ask becomes a decision: the role, or you, takes the recommended answer and records it as a `- **Question:** ... **Decision:** ...` bullet. `decisions.md` and the pull request list them all for the developer to review. The run ends after stage 6, once `approve result ... --by auto` or `finish` has closed the case, the pull request is open, or its push failed, and papa has run. Never run `advance <case> blocked`, never ask the developer, and never end your turn while the case is open and nothing runs in the background: the Stop hook sends you back.
 
 | Situation | What you do |
 |---|---|
-| A role returns `blocked` | Write "Auto mode: nobody can answer. Decide as the issue and the design read most plainly, record your decision as a `**Decision:**` bullet, and finish." into a feedback file (`path <case> feedback auto`) and start the role again once through `spawn`. If it is blocked again, take its output file as it is and go on. |
+| A role returns `blocked` | Write "Auto mode: nobody can answer. Decide as the issue and the design read most plainly, record your decision as a `- **Question:** ... **Decision:** ...` bullet, and finish." into a feedback file (`path <case> feedback auto`) and start the role again once through `spawn`. If it is blocked again, take its output file as it is and go on. |
 | The implementer disputes a test | The test stands. Start the implementer again with the feedback above. What still fails is handled as failing checks. |
 | A role writes nothing, twice | Go on without it. An unanswered question stays an unknown, and the script writes a stub for a missing test or implementation report. |
 | A cap is reached | The script's message names the fallback. Follow it. |
@@ -207,9 +228,9 @@ Nobody answers, so nothing stops for an answer. Every crucial question that guid
 | The checkout cannot be built | `build`, then advance anyway. |
 | The agent budget is used | No more investigators or reviewers. Finish the stage with what exists. |
 | The session is over 500k tokens | Go on. In auto mode the script only warns. |
-| Anything else keeps failing, once code is on the branch | `.claude/pipeline/run finish <case> --reason "<what failed>"`. It records what is missing, writes the report and the PR description if needed, and closes the case. |
+| Anything else keeps failing, once code is on the branch | `.claude/pipeline/run finish <case> --reason "<what failed>"`. It records what is missing, writes the report and the PR description if needed, and closes the case. Then stages 5 and 6. |
 
-When the case is closed, tell the developer: the branch, `pr-description.md`, the decisions from the report (to review instead of the whole change), the accepted failures and the open findings from the report, the time and cost the close printed, and that the gates were taken by the script, not by a person.
+When stage 6 is done, tell the developer what stage 6 lists.
 
 ## Formats
 
@@ -226,7 +247,7 @@ Both documents are for people, so they are short. `advance report_ready` and `pr
     Three lines: what changed, why, and how far it was verified.
 
     ## Decisions
-    Every crucial question of the run, one `- **Decision:**` bullet each: the question, the options, the answer and why, and who decided. Copy the bullets from plan.md, tests.md and impl-report.md word for word, and add yours and the developer's answers. In auto mode the script requires this section ("None." if there were none) and checks that it holds every bullet. It does not count toward the 400 words.
+    Optional. Your own decisions and the developer's answers, one `- **Question:** ... **Decision:** ...` bullet on one line each, in public terms. The script collects them with the roles' bullets into decisions.md and the pull request. It does not count toward the 400 words.
 
     ## Changes
     Each changed file with one line of purpose.
@@ -244,13 +265,15 @@ Both documents are for people, so they are short. `advance report_ready` and `pr
 
 For a `plan-only` case write only Outcome: what the design proposes, what was not done and why, and the next step.
 
-`pr-text.md` is public text, at most 200 words. Nothing internal goes into it. The script adds the issue and the design below it.
+`pr-text.md` is public text, at most 200 words without Sources. Nothing internal goes into it. The script builds the pull request from it: `Closes #<issue>`, the decisions, then your Changes, Sources and Verification.
 
     # <pull request title>
 
-    What changes and why, in a few sentences.
+    ## Changes
+    What changed and why, each changed file or area in a line.
+
+    ## Sources
+    Optional: where the hardware facts and other claims come from, as links to files and lines at a fixed commit. Without this section the script uses the design's "Hardware facts".
 
     ## Verification
     What ran, with the **Hardware:** line. **Not verified:** the same list as in the report.
-
-    Closes #<number>    (only if the case records a posted issue)
