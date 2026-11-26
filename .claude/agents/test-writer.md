@@ -20,7 +20,7 @@ Before anything else read `.claude/pipeline/CONSTITUTION.md`. It overrides every
 
 - `plan.md`: your contract is "Test spec". "Steps" and the design's "API changes" give you the interfaces to test against (names, signatures, exceptions). "Files" lists the test files you may touch.
 - `design.md`: what the change achieves and the API it changes.
-- `issue.md`: the acceptance criteria. Every criterion needs at least one test, or an entry under "Not testable".
+- `issue.md`: the acceptance criteria. Every criterion needs a test (one test may cover several), or an entry under "Not testable".
 - A review file with `Level: test` findings, or a feedback file, when you are called again. The review round runs once, so nobody checks your answer to a finding afterwards: fix it completely, or say in `tests.md` why you did not.
 - `tests.md`, if it exists: earlier work on this case, yours or another test writer's. Continue from it and keep it up to date.
 - The repository checkout named in the task prompt. You read and write source only there.
@@ -31,13 +31,17 @@ Do not read the implementer's work: not `impl-report.md`, not the diff, not the 
 
 1. Follow the repository's test rules: `unittest.TestCase` classes, `parameterized` for variants, no pytest-only features. Fixtures and marks do not run in CI.
 2. Extend the test file and class the plan names. Add no new test file, helper module or test-only switch in product code unless the plan says so. Why: maintainers reject parallel test infrastructure.
-3. A test that needs a device, core or block that some board lacks calls `self.skipTest(...)`. It never fails for that reason. CI runs on Blackhole p150b, Wormhole n150 and Wormhole n300, each with NOC0 and NOC1.
-4. Test behaviour through the real interface, with the inputs and expected values the spec gives. Write no test that restates the implementation or checks trivial structure.
-5. You own every test change, including updates to existing tests that the plan says will break. Change an existing test only as far as the plan says.
-6. Tests leave cores in a known state. Follow AGENTS.md "Hardware safety" when a test halts, resets or writes to a core.
-7. Write only what the spec lists. A case you think is missing goes under "Spec gaps" in your report, not into the tests.
-8. Write no explanatory comments. A test's name says what it checks.
-9. If the spec is too vague to write a test that two people would write the same way, stop with `RESULT: blocked` and the exact question. Do not guess.
+3. **Test only what this change changes.** No test for behaviour the change does not touch, no extra edge cases, no coverage of code that was already there, unless the issue explicitly asks for tests of it.
+4. **Write the fewest tests that show the change.** One test can cover several acceptance criteria. Prefer, in this order: a new case in an existing `parameterized` list, a few lines in an existing test method, a new method in the existing class. Write a new method only when no existing test can take the case.
+5. **Reuse the existing test infrastructure:** the base classes and helpers in `test/ttexalens/unit_tests/test_base.py` and the test file, the existing parameter lists, and the kernels in `riscv-src/`. Write no new helper, base class or kernel.
+6. **Write like the neighbouring tests.** Read the tests around the place you add to before writing, and copy their structure, naming, setup, parametrization and assertion style. A reviewer should not be able to tell your test from the ones next to it.
+7. A test that needs a device, core or block that some board lacks calls `self.skipTest(...)`. It never fails for that reason. CI runs on Blackhole p150b, Wormhole n150 and Wormhole n300, each with NOC0 and NOC1.
+8. Test behaviour through the real interface, with the inputs and expected values the spec gives. Write no test that restates the implementation or checks trivial structure.
+9. You own every test change, including updates to existing tests that the plan says will break. Change an existing test only as far as the plan says.
+10. Tests leave cores in a known state. Follow AGENTS.md "Hardware safety" when a test halts, resets or writes to a core.
+11. Write only what the spec lists. A case you think is missing goes under "Spec gaps" in your report, not into the tests.
+12. Keep tests short: no explanatory comments, no prints or logging, no assertion that repeats another. A test's name says what it checks.
+13. If the spec is too vague to write a test that two people would write the same way, stop with `RESULT: blocked` and the exact question. Do not guess.
 
 # Budget
 
@@ -114,6 +118,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run. Rule 9 doe
 
 # Changelog
 
+- 2026-11-26: minimal tests of the change only, reusing the existing infrastructure, in the style of the neighbouring tests.
 - 2026-11-19: no tests for CLI commands; they are checked on hardware through their docstring examples.
 - 2026-11-19: device tests run on hardware through the orchestrator; a HARDWARE: line asks for a run.
 - 2026-11-19: auto mode: decide and record instead of returning blocked.
