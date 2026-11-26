@@ -14,7 +14,7 @@ from typing import Callable, Iterable, Sequence, TypeVar
 from tabulate import tabulate
 from ttexalens.context import Context, NocId
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.exceptions import CoordinateTranslationError, UnsafeAccessException
+from ttexalens.exceptions import CoordinateTranslationError
 from ttexalens.firmware_telemetry import FirmwareTelemetry
 from ttexalens.hardware.arc_block import ArcBlock
 from ttexalens.hardware.noc_block import NocBlock
@@ -234,60 +234,6 @@ class Device:
             device for device in self._context.devices.values() if not device.is_local and device.local_device == self
         ]
 
-    def _validate_noc_access_is_safe(
-        self, location: OnChipCoordinate, addr: int, num_bytes: int, is_write: bool = False
-    ) -> None:
-        """
-        Validates that a NOC read or write operation is safe by checking if the address range is within known and accessible memory blocks.
-
-        Args:
-            location (OnChipCoordinate): OnChipCoordinate object representing the location on chip.
-            addr (int): Memory address to read from.
-            num_bytes (int): Number of bytes to read.
-            is_write (bool, optional): Whether the access is a write operation. Defaults to False which means a read operation.
-        """
-
-        noc_block = location.noc_block
-        noc_memory_map = noc_block.noc_memory_map
-
-        bytes_checked = 0
-        while bytes_checked < num_bytes:
-            curr_addr = addr + bytes_checked
-            memory_block_info = noc_memory_map.find_by_noc_address(curr_addr)
-            if not memory_block_info:
-                raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write=is_write)
-            assert (
-                memory_block_info.memory_block.address.noc_address is not None
-            ), "Memory block found by NoC address must have a NoC address."
-
-            if not memory_block_info.is_accessible:
-                raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write=is_write)
-
-            memory_block_end = memory_block_info.memory_block.address.noc_address + memory_block_info.memory_block.size
-            assert memory_block_end > curr_addr, "Memory block end must be greater than current address."
-
-            access_size = min(num_bytes - bytes_checked, memory_block_end - curr_addr)
-
-            if is_write:
-                safe_to_access = memory_block_info.is_safe_to_write(curr_addr, access_size)
-            else:
-                safe_to_access = memory_block_info.is_safe_to_read(curr_addr, access_size)
-
-            if not safe_to_access:
-                if self.is_blackhole() and "data_private_memory" in memory_block_info.name:
-                    raise UnsafeAccessException(
-                        location,
-                        addr,
-                        num_bytes,
-                        curr_addr,
-                        is_write=is_write,
-                        reason="Risc data private memory is marked unsafe due to potential blackhole hardware bug, see tt-exalens:#907/#908.",
-                    )
-                else:
-                    raise UnsafeAccessException(location, addr, num_bytes, curr_addr, is_write=is_write)
-
-            bytes_checked += access_size
-
     def _is_register_access(self, location: OnChipCoordinate, address: int, num_bytes: int) -> bool:
         """
         Returns True unless the whole access lies in L1 or DRAM.
@@ -322,7 +268,7 @@ class Device:
             safe_mode = self._context.safe_mode
 
         if safe_mode:
-            self._validate_noc_access_is_safe(location, address, len(buffer), is_write=False)
+            location.noc_block.noc_memory_map.validate_noc_access(location, address, len(buffer), is_write=False)
         if register_access is None:
             register_access = self._is_register_access(location, address, len(buffer))
 
@@ -363,7 +309,7 @@ class Device:
             safe_mode = self._context.safe_mode
 
         if safe_mode:
-            self._validate_noc_access_is_safe(location, address, len(data), is_write=True)
+            location.noc_block.noc_memory_map.validate_noc_access(location, address, len(data), is_write=True)
         if register_access is None:
             register_access = self._is_register_access(location, address, len(data))
 

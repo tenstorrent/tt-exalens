@@ -19,13 +19,13 @@ from test.ttexalens.unit_tests.test_base import (
 )
 import ttexalens as lib
 from ttexalens import util
-from ttexalens.exceptions import TTException
+from ttexalens.exceptions import TTException, UnsafeAccessException
 from ttexalens.elf import ElfFile
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.device import Device, UnsafeAccessException
+from ttexalens.device import Device
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription
 from ttexalens.memory_access import create_l1_memory_access, create_memory_access
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebug

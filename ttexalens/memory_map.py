@@ -6,8 +6,12 @@ from __future__ import annotations
 from bisect import bisect_right
 from dataclasses import dataclass
 import threading
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
+from ttexalens.exceptions import UnsafeAccessException
 from ttexalens.hardware.memory_block import MemoryBlock
+
+if TYPE_CHECKING:
+    from ttexalens.coordinate import OnChipCoordinate
 
 
 @dataclass
@@ -66,10 +70,14 @@ class IntervalMap:
         return bisect_right(self._starts, address) - 1
 
     def find(self, address: int) -> MemoryMapBlockInfo | None:
+        interval = self.find_interval(address)
+        return interval.block if interval is not None else None
+
+    def find_interval(self, address: int) -> Interval | None:
         # Fast path: the previous lookup's interval often contains this address too.
         cached = self._last_found
         if cached is not None and cached.start <= address < cached.end:
-            return cached.block
+            return cached
 
         # Only the rightmost interval starting at or before the address can contain it.
         index = self._find_index(address)
@@ -78,7 +86,7 @@ class IntervalMap:
         interval = self._intervals[index]
         if address < interval.end:
             self._last_found = interval
-            return interval.block
+            return interval
         return None
 
     def find_next(self, address: int) -> MemoryMapBlockInfo | None:
@@ -141,6 +149,31 @@ class MemoryMap:
 
     def find_next_by_bar0_address(self, bar0_address: int) -> MemoryMapBlockInfo | None:
         return self._bar0_addresses.find_next(bar0_address)
+
+    def validate_noc_access(self, location: OnChipCoordinate, address: int, num_bytes: int, is_write: bool) -> None:
+        self._validate_access(self._noc_addresses, location, address, num_bytes, is_write)
+
+    def validate_private_access(self, location: OnChipCoordinate, address: int, num_bytes: int, is_write: bool) -> None:
+        self._validate_access(self._private_addresses, location, address, num_bytes, is_write)
+
+    @staticmethod
+    def _validate_access(
+        intervals: IntervalMap, location: OnChipCoordinate, address: int, num_bytes: int, is_write: bool
+    ) -> None:
+        bytes_checked = 0
+        while bytes_checked < num_bytes:
+            current_address = address + bytes_checked
+            interval = intervals.find_interval(current_address)
+            if interval is None or not interval.block.is_accessible:
+                raise UnsafeAccessException(location, address, num_bytes, current_address, is_write=is_write)
+            access_size = min(num_bytes - bytes_checked, interval.end - current_address)
+            if is_write:
+                safe_to_access = interval.block.is_safe_to_write(current_address, access_size)
+            else:
+                safe_to_access = interval.block.is_safe_to_read(current_address, access_size)
+            if not safe_to_access:
+                raise UnsafeAccessException(location, address, num_bytes, current_address, is_write=is_write)
+            bytes_checked += access_size
 
     @property
     def blocks(self) -> list[MemoryMapBlockInfo]:

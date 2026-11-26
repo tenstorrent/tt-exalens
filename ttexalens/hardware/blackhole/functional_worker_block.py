@@ -257,6 +257,7 @@ class BlackholeFunctionalWorkerBlock(BlackholeNocBlock):
                 MemoryMapBlockInfo("debug_regs", self.debug_regs, safe_to_write=True),
                 MemoryMapBlockInfo("pic_regs", self.pic_regs),
                 MemoryMapBlockInfo("riscv_pcs", self.riscv_pcs),
+                # Unsafe over the NoC on Blackhole (tt-exalens#907/#908)
                 MemoryMapBlockInfo("brisc.data_private_memory", self.brisc.data_private_memory.just_noc_address(), safe_to_read=False, access_check=lambda: not self.get_risc_debug("brisc").is_in_reset()),  # type: ignore
                 MemoryMapBlockInfo("ncrisc.data_private_memory", self.ncrisc.data_private_memory.just_noc_address(), safe_to_read=False, access_check=lambda: not self.get_risc_debug("ncrisc").is_in_reset()),  # type: ignore
                 MemoryMapBlockInfo("trisc0.data_private_memory", self.trisc0.data_private_memory.just_noc_address(), safe_to_read=False, access_check=lambda: not self.get_risc_debug("trisc0").is_in_reset()),  # type: ignore

@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Generator
 from ttexalens import util
 from ttexalens.coordinate import OnChipCoordinate
-from ttexalens.exceptions import UnsafeAccessException
 from ttexalens.hardware.memory_block import MemoryBlock
 from ttexalens.hardware.risc_info import RiscInfo
 
@@ -164,23 +163,7 @@ class RiscDebug:
             raise ValueError(f"Value out of bounds: value=0x{value:08x}. Value must fit within 32 bits.")
 
     def _validate_safe_access(self, address: int, size_bytes: int, is_write: bool = False) -> None:
-        location = self.risc_location.location
-        bytes_checked = 0
-        while bytes_checked < size_bytes:
-            current_address = address + bytes_checked
-            block_info = self.risc_info.memory_map.find_by_private_address(current_address)
-            if block_info is None or not block_info.is_accessible:
-                raise UnsafeAccessException(location, address, size_bytes, current_address, is_write=is_write)
-            assert block_info.memory_block.address.private_address is not None
-            block_end = block_info.memory_block.address.private_address + block_info.memory_block.size
-            access_size = min(size_bytes - bytes_checked, block_end - current_address)
-            if is_write:
-                safe_to_access = block_info.is_safe_to_write(current_address, access_size)
-            else:
-                safe_to_access = block_info.is_safe_to_read(current_address, access_size)
-            if not safe_to_access:
-                raise UnsafeAccessException(location, address, size_bytes, current_address, is_write=is_write)
-            bytes_checked += access_size
+        self.risc_info.memory_map.validate_private_access(self.risc_location.location, address, size_bytes, is_write)
 
     def _read_word_debug(self, read_word: Callable[[int], int]) -> Callable[[int], int]:
         def read_word_debug(address: int) -> int:
