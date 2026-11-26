@@ -1619,6 +1619,17 @@ class TestARC(unittest.TestCase):
             scratch2 = arc.get_register_store().read_register("ARC_RESET_SCRATCH2")
             assert scratch2 == 0xBEBACECA
 
+    def test_remote_arc_noc_memory_map(self):
+        """Test that the NOC memory map of a remote Blackhole ARC block builds"""
+        remote_devices = [
+            device for device in self.context.devices.values() if device.is_blackhole() and not device.is_local
+        ]
+        if not remote_devices:
+            self.skipTest("There are no remote Blackhole devices to test")
+
+        for device in remote_devices:
+            self.assertIsNotNone(device.arc_block.noc_memory_map.find_by_name("noc1_regs"))
+
 
 @parameterized_class(
     [
