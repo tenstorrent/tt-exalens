@@ -36,12 +36,13 @@ Do not read the implementer's work: not `impl-report.md`, not the diff, not the 
 5. **Reuse the existing test infrastructure:** the base classes and helpers in `test/ttexalens/unit_tests/test_base.py` and the test file, the existing parameter lists, and the kernels in `riscv-src/`. Write no new helper, base class or kernel.
 6. **Write like the neighbouring tests.** Read the tests around the place you add to before writing, and copy their structure, naming, setup, parametrization and assertion style. A reviewer should not be able to tell your test from the ones next to it.
 7. A test that needs a device, core or block that some board lacks calls `self.skipTest(...)`. It never fails for that reason. CI runs on Blackhole p150b, Wormhole n150 and Wormhole n300, each with NOC0 and NOC1.
-8. Test behaviour through the real interface, with the inputs and expected values the spec gives. Write no test that restates the implementation or checks trivial structure.
-9. You own every test change, including updates to existing tests that the plan says will break. Change an existing test only as far as the plan says.
-10. Tests leave cores in a known state. Follow AGENTS.md "Hardware safety" when a test halts, resets or writes to a core.
-11. Write only what the spec lists. A case you think is missing goes under "Spec gaps" in your report, not into the tests.
-12. Keep tests short: no explanatory comments, no prints or logging, no assertion that repeats another. A test's name says what it checks.
-13. If the spec is too vague to write a test that two people would write the same way, stop with `RESULT: blocked` and the exact question. Do not guess.
+8. **Do not mock the device.** Test device-related code on real devices, through the test context from `test_base.py`. Never let `Mock`, `MagicMock`, `patch` or a fake class stand in for a context, device, location, block, core, RISC debug or memory map, and never replace a memory-map cache. Where some boards lack what the test needs, such as a remote chip, the test skips there (rule 7), even when that is every CI board. Only code with no device behind it, such as ELF and DWARF parsing, is tested without a device.
+9. Test behaviour through the real interface, with the inputs and expected values the spec gives. Write no test that restates the implementation or checks trivial structure.
+10. You own every test change, including updates to existing tests that the plan says will break. Change an existing test only as far as the plan says.
+11. Tests leave cores in a known state. Follow AGENTS.md "Hardware safety" when a test halts, resets or writes to a core.
+12. Write only what the spec lists. A case you think is missing goes under "Spec gaps" in your report, not into the tests.
+13. Keep tests short: no explanatory comments, no prints or logging, no assertion that repeats another. A test's name says what it checks.
+14. If the spec is too vague to write a test that two people would write the same way, stop with `RESULT: blocked` and the exact question. Do not guess.
 
 # Budget
 
@@ -107,7 +108,7 @@ Then end with this block as your final message, with nothing after it:
 
 # Auto mode
 
-If your task prompt says `Mode: auto`, nobody answers during the run. Rule 9 does not stop you: where the spec is vague, write the test the spec most plainly implies, and record that reading under "Spec gaps". Return `blocked` only if no test can be written at all.
+If your task prompt says `Mode: auto`, nobody answers during the run. Rule 14 does not stop you: where the spec is vague, write the test the spec most plainly implies, and record that reading under "Spec gaps". Return `blocked` only if no test can be written at all.
 
 # Must not
 
@@ -118,6 +119,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run. Rule 9 doe
 
 # Changelog
 
+- 2026-11-26: device-related code is tested on real devices, never with mocks or fakes. Auto mode now names the right rule (14).
 - 2026-11-26: minimal tests of the change only, reusing the existing infrastructure, in the style of the neighbouring tests.
 - 2026-11-19: no tests for CLI commands; they are checked on hardware through their docstring examples.
 - 2026-11-19: device tests run on hardware through the orchestrator; a HARDWARE: line asks for a run.

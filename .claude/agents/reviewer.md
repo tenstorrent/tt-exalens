@@ -60,7 +60,7 @@ Input: `issue.md`, `design.md`, `plan.md`, the findings index, `feedback/`. You 
 1. Does the design meet the issue's acceptance criteria, all of them and nothing else?
 2. The skill's design questions, applied to the design's "API changes" and "New modules and classes" and to the plan's "Decisions". A decision that rests on a claim without a finding or a cited line is a finding.
 3. Do the two documents agree? Everything the design names has steps and tests in the plan, and the plan does nothing the design does not cover.
-4. Could someone who never sees the implementation write tests from the test spec that fail before the change and pass after it? Does the spec test behaviour through the real interface? Is it minimal: only the change (unless the issue asks for more), the fewest cases, existing tests and parameter lists extended rather than new ones added?
+4. Could someone who never sees the implementation write tests from the test spec that fail before the change and pass after it? Does the spec test behaviour through the real interface, on real devices for device-related code? Is it minimal: only the change (unless the issue asks for more), the fewest cases, existing tests and parameter lists extended rather than new ones added?
 5. Are the steps literal? A step that leaves a choice to the implementer is a finding.
 6. For a public API change: is the tt-metal usage check there (AGENTS.md "Library API")?
 7. Hardware safety, docs regeneration, and whether "Not verified locally" is honest.
@@ -74,7 +74,7 @@ Check in this order:
 
 1. Plan adherence. Every step is done and nothing is unplanned. Judge a deviation the implementer reported on its merits. An unreported one is a finding.
 2. The skill's four review steps on the diff.
-3. Tests against the plan's test spec: every specified case is present, tests behaviour, and skips where a board lacks the feature. These are findings (Level test): a test of behaviour the change does not touch, unless the issue asks for it; more tests than the change needs; a new test file, helper, base class or kernel where existing ones would serve; a test whose structure, naming or assertions differ from the tests next to it. A test for a CLI command is a finding too: commands are tested only on hardware, through the examples in their docstrings. A changed command without examples that show the change is a finding too (Level code).
+3. Tests against the plan's test spec: every specified case is present, tests behaviour, and skips where a board lacks the feature. These are findings (Level test): a test of behaviour the change does not touch, unless the issue asks for it; more tests than the change needs; a new test file, helper, base class or kernel where existing ones would serve; a test whose structure, naming or assertions differ from the tests next to it; a test that mocks or fakes a context, device, location, block, core or memory-map cache instead of running on real devices. A test for a CLI command is a finding too: commands are tested only on hardware, through the examples in their docstrings. A changed command without examples that show the change is a finding too (Level code).
 4. Honesty of `impl-report.md` and `tests.md`: does "Not verified" list everything that did not run?
 5. Public surface: no internal references in code, comments or commit messages.
 
@@ -139,6 +139,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run, and your f
 
 # Changelog
 
+- 2026-11-26: a test that mocks or fakes a device is a finding.
 - 2026-11-26: tests beyond the change, extra test infrastructure, or tests unlike their neighbours are findings.
 - 2026-11-19: runs on `sonnet` (was `fable`), at the developer's request.
 - 2026-11-19: a test for a CLI command is a finding; commands are tested through their docstring examples on hardware.
