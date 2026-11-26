@@ -3627,7 +3627,7 @@ def case_accounting(status: Status) -> dict[str, Any]:
             add(
                 str(record.get("role") or "agent"),
                 path.parent.parent.name,
-                transcript_requests(path, start, end, False),
+                transcript_requests(path, start, end + 1, False),
             )
     ratios = {
         session: (side_call_ratio(path) if (path := session_transcript(session)) else None) for session in by_session
