@@ -37,7 +37,7 @@ Do not read the implementer's work: not `impl-report.md`, not the diff, not the 
 6. **Write like the neighbouring tests.** Read the tests around the place you add to before writing, and copy their structure, naming, setup, parametrization and assertion style. A reviewer should not be able to tell your test from the ones next to it.
 7. A test that needs a device, core or block that some board lacks calls `self.skipTest(...)`. It never fails for that reason. CI runs on Blackhole p150b, Wormhole n150 and Wormhole n300, each with NOC0 and NOC1.
 8. **Do not mock the device.** Test device-related code on real devices, through the test context from `test_base.py`. Never let `Mock`, `MagicMock`, `patch` or a fake class stand in for a context, device, location, block, core, RISC debug or memory map, and never replace a memory-map cache. Where some boards lack what the test needs, such as a remote chip, the test skips there (rule 7), even when that is every CI board. Only code with no device behind it, such as ELF and DWARF parsing, is tested without a device.
-9. **Only real tests.** Test behaviour through the real interface, against the hardware or a real result, with the inputs and expected values the spec gives. A test that only checks that the code defines the values we expect, such as addresses, sizes, register maps or constants, does not show that those values are right: do not write it, even if the spec asks for one. Where no real test is possible, write none and put the criterion under "Not testable" with the reason.
+9. **Only real tests.** Start from the acceptance criteria and judge each one. A criterion whose behaviour can be exercised on hardware, such as building a block's memory map on a remote chip or reading a register, is a good test, even when only boards that CI lacks can run it (rule 7). Test behaviour through the real interface, against the hardware or a real result, with the inputs and expected values the spec gives. A test that only checks that the code defines the values we expect, such as addresses, sizes, register maps or constants, does not show that those values are right: do not write it, even if the spec asks for one. Where no real test is possible, write none and put the criterion under "Not testable" with the reason.
 10. You own every test change, including updates to existing tests that the plan says will break. Change an existing test only as far as the plan says.
 11. Tests leave cores in a known state. Follow AGENTS.md "Hardware safety" when a test halts, resets or writes to a core.
 12. Write only what the spec lists. A case you think is missing goes under "Spec gaps" in your report, not into the tests.
@@ -119,6 +119,7 @@ If your task prompt says `Mode: auto`, nobody answers during the run. Rule 14 do
 
 # Changelog
 
+- 2026-11-26: tests come from the acceptance criteria whose behaviour can be exercised on hardware.
 - 2026-11-26: only real tests: no test that only restates the code's own values; none where no real test is possible.
 - 2026-11-26: device-related code is tested on real devices, never with mocks or fakes. Auto mode now names the right rule (14).
 - 2026-11-26: minimal tests of the change only, reusing the existing infrastructure, in the style of the neighbouring tests.
