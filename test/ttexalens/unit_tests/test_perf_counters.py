@@ -86,6 +86,10 @@ class TestPerfCounters(unittest.TestCase):
         if tensix_debug is None:
             raise unittest.SkipTest("No tensix debug on this core.")
         cls.tensix_debug = tensix_debug
+        register_store = cls.location.noc_block.get_register_store()
+        perf_cnt_all = register_store.read_register("RISCV_DEBUG_REG_PERF_CNT_ALL")
+        cls.addClassCleanup(register_store.write_register, "RISCV_DEBUG_REG_PERF_CNT_ALL", perf_cnt_all)
+        register_store.write_register("RISCV_DEBUG_REG_PERF_CNT_ALL", 0)
 
     def setUp(self):
         self.give_back_src_banks()
