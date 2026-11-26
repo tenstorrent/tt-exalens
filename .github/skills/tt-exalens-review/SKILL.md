@@ -5,14 +5,23 @@ description: Review tenstorrent/tt-exalens pull requests and diffs the way the p
 
 # tt-exalens code review
 
-Review the change as a maintainer who owns the codebase long term. Prefer a few well-argued findings over many shallow ones. Every finding must point to a specific line and say what to do instead. If the change is sound and fits the codebase, say so in one sentence; do not invent problems.
+Review the change as a maintainer who owns the codebase long term. Prefer a few well-argued findings over many shallow ones. Every finding must point to a specific line and state the problem. If the change is sound and fits the codebase, say so in one sentence; do not invent problems.
+
+## Scope and depth
+
+- Review what was asked: the diff, or the named file. Report problems in other files in one line each.
+- Read and reason. Don't reproduce findings or run code.
+- State only the problem. Don't suggest, write or apply fixes.
+- Read git history or search tt-metal only when the change touches an API that tt-metal imports (see AGENTS.md).
+- Use library behaviour documented in AGENTS.md. For other third-party behaviour you rely on, state it as an assumption rather than reading the library source.
+- Work in a single pass. Don't start subagents or multi-agent review workflows unless asked.
 
 ## How to review
 
 Work in this order. The first two steps matter most: a reviewer who only reads the diff line by line misses the findings that matter most.
 
 1. **Understand the intent.** Read the PR description and the whole diff before commenting. State to yourself in one sentence what the change is for.
-2. **Compare with existing code.** When the repository is available, find the code this change resembles or extends: a sibling command, another architecture's version of the same component, an existing helper, or the callers of what changed. Note where the change departs from how the codebase already solves the same problem, and whether it duplicates something that already exists. Without the repository, say which comparisons you could not make.
+2. **Compare with existing code.** When the repository is available, find the code this change resembles or extends: a sibling command, another architecture's version of the same component, an existing helper, or the callers of what changed. Note where the change departs from how the codebase already solves the same problem, and whether it duplicates something that already exists. Without the repository, say which comparisons you could not make. Read the docs that AGENTS.md lists for the areas the change touches.
 3. **Design pass.** Answer the design questions below before looking for line-level problems.
 4. **Detail pass.** Go through the principles for correctness, safety, API, tests, and maintainability.
 
@@ -24,6 +33,7 @@ Work in this order. The first two steps matter most: a reviewer who only reads t
 - **Has a function's meaning drifted?** When a function gains another special case or another kind of result, ask whether it still has one clear purpose, or whether it should be split or have its scope limited.
 - **What would a caller do next?** Walk through using the new API or command for the obvious next task: reading a subset of what was listed, handling a failure, or running it on a different target. Awkward next steps reveal a shape problem.
 - **Which assumptions are hidden?** Look for fixed sizes, counts, widths, orderings, or platform properties that hold today but are not guaranteed.
+- **What crosses a boundary?** When code crosses a process, thread or network boundary, check each of these: errors (does every exception type arrive intact?), values (does every type round-trip, including inside containers?), threads (which thread runs it?), lifetime (who releases what it creates?), addressing (what host and port does the other side see?), access (who can connect?), limits (per-client resources against pool sizes), and versions (can the two ends differ?).
 
 ## Principles
 
@@ -43,11 +53,11 @@ Work in this order. The first two steps matter most: a reviewer who only reads t
 
 **Treat the public API as a product.** New public functions and the exceptions users may need to handle must be exported through the package's public entry point and documented, and the generated docs regenerated. Keep signatures minimal and typed. Names must describe what the function actually does. Avoid surprising defaults, such as operating on everything when the caller didn't ask for it.
 
-**Reuse before adding.** Flag logic that duplicates an existing helper or another component, and say where the shared version should live. Prefer extending an existing mechanism over introducing a parallel one.
+**Reuse before adding.** Flag logic that duplicates an existing helper or another component. Prefer extending an existing mechanism over introducing a parallel one.
 
 **Respect hot paths.** In code called at high frequency, avoid unnecessary allocations, copies, and lookups. Prefer buffer-based APIs to building new byte objects, and batch device operations instead of issuing them one by one.
 
-**Test behavior, not implementation.** Behavior changes need tests that exercise the real interface and cover the cases that differ: per architecture or component, at boundaries, and with invalid and edge-case inputs. When a fix lands, re-enable tests that were skipped because of the bug. Don't add tests that only restate the implementation or check trivial structure. Keep test-only switches confined to the test harness.
+**Test behavior, not implementation.** Behavior changes need tests that exercise the real interface and cover the cases that differ: per architecture or component, at boundaries, and with invalid and edge-case inputs. When a fix lands, re-enable tests that were skipped because of the bug. Don't add tests that only restate the implementation or check trivial structure. Keep test-only switches confined to the test harness. Waits on the device must poll for a value with a bounded read count, not sleep for a fixed time.
 
 **Follow the existing conventions of the surface you touch.** New CLI commands should look and behave like existing ones (output formatting, option names, help generated from the command's own documentation). When a command or feature is unsupported for the current selection, the user should still see full help plus a clear explanation, not a silently missing feature. Capability checks should ask what the selected target can do, not compare against a fixed list. They should take only the inputs they need.
 
@@ -60,26 +70,24 @@ Be concise. A maintainer should be able to read each comment in a few seconds. T
 Every finding is a suggestion: reviews here are advisory and never block a merge. Use this format for every finding:
 
 ````
-**[🟢] Category: Short title**
+**[🔴|🟡|🟢] Category: Short title**
 
 What the issue is and where (file:line).
 
 **Why it matters:** one sentence on impact.
-
-**Suggested fix:**
-```python
-# minimal diff
-```
 ````
 
+- **Severity** is required on every finding. Judge it by what happens on real hardware, not by how the code looks:
+  - 🔴 Critical: can hang, crash or wedge the device or host, corrupt device state or data, or give others unchecked access to the device or files.
+  - 🟡 Important: a wrong result, a lost or misleading error, or a feature that breaks in normal use.
+  - 🟢 Minor: edge cases, maintainability and nits.
 - **Category** is one of Design, Correctness, Hardware safety, Concurrency, API, Tests, Maintainability.
 - **The issue is one or two sentences.** Don't restate the code or explain how it works; point to the line and name the problem. No parenthetical asides, and no lists inside a finding.
 - **Why it matters is one sentence** naming the consequence ("can start the core at an undefined PC").
-- **Suggested fix is a minimal code block** in the file's language when the fix is code, otherwise one sentence written as a direct instruction.
 - **No hedging or filler:** no "it might be worth", "I think", or "please".
 - **One finding per root cause.** If it occurs in several places, list the locations in that same finding.
 - **Prefer a question** in the issue when the right answer depends on intent you cannot see ("Is X needed? If not, remove it."). When the code contradicts a requirement stated in the code or the PR, or can corrupt state, crash or misdirect hardware, or access out of bounds, state it as a finding, not a question.
-- **Order findings by consequence,** design findings first, most important first.
+- **Order findings by severity,** then by consequence within the same severity.
 - **Nits go in one final finding** with category Maintainability and comma-separated fragments in place of the issue.
 - **Open the review summary with one sentence** saying what the change does. No praise, no closing summary.
 - **Don't report what a formatter or linter would catch.**
