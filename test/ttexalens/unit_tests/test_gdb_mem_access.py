@@ -340,3 +340,57 @@ class TestGdbMemAccessFromClient(unittest.TestCase):
             self._assert_packet_result(output, "M", addr_hex, length_hex, expect_e04=expect_e04)
             self._assert_packet_result(output, "x", addr_hex, length_hex, expect_e04=expect_e04)
             self._assert_packet_result(output, "X", addr_hex, length_hex, expect_e04=expect_e04)
+
+    def _packet_reply(self, output: str, packet: str, start: int = 0) -> tuple[str, int]:
+        """Return the reply to the first '{packet}' sent at or after position start, and where the reply is."""
+        send_idx = output.find(f"Sending packet: ${packet}#", start)
+        self.assertNotEqual(send_idx, -1, f"Expected to see '{packet}' sent.\nOutput:\n{output}")
+        recv_idx = output.find("Packet received: ", send_idx)
+        self.assertNotEqual(recv_idx, -1, f"Expected a reply to '{packet}'.\nOutput:\n{output}")
+        return output[recv_idx + len("Packet received: ") :].splitlines()[0].strip(), recv_idx
+
+    def test_gdb_maintenance_register_and_memory_byte_order(self) -> None:
+        port = self.server_socket.port
+        assert port is not None
+        addr_hex = f"{self.inside_addr:x}"
+
+        with tempfile.TemporaryDirectory(prefix="gdb_byte_order_") as tmpdir:
+            script_path = os.path.join(tmpdir, "commands_byte_order.gdb")
+            gdb_commands = textwrap.dedent(
+                f"""
+                set pagination off
+                set confirm off
+                set verbose off
+                set debug remote 1
+
+                target extended-remote localhost:{port}
+                attach 1
+                add-symbol-file {self.elf_path}
+
+                maintenance packet M{addr_hex},4:01020304
+                maintenance packet m{addr_hex},4
+                maintenance packet g
+                maintenance packet p2
+                maintenance packet p21
+                set $saved_t6 = $t6
+                maintenance packet P1f=78563412
+                maintenance packet p1f
+                set $t6 = $saved_t6
+
+                quit
+                """
+            ).strip()
+
+            with open(script_path, "w", encoding="utf-8") as f:
+                f.write(gdb_commands + "\n")
+
+            rc, output = self._run_gdb_script(script_path)
+            self.assertEqual(rc, 0, f"GDB exited with non-zero code {rc}\nOutput:\n{output}")
+
+            self.assertEqual(self._packet_reply(output, f"m{addr_hex},4")[0], "01020304")
+            g_reply, g_idx = self._packet_reply(output, "g")
+            self.assertEqual(self._packet_reply(output, "p2", g_idx)[0], g_reply[16:24])
+            self.assertEqual(self._packet_reply(output, "p21")[0], "E01")
+            p_reply, p_idx = self._packet_reply(output, "P1f=78563412")
+            self.assertEqual(p_reply, "OK")
+            self.assertEqual(self._packet_reply(output, "p1f", p_idx)[0], "78563412")
