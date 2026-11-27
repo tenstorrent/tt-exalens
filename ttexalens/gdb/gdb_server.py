@@ -189,6 +189,8 @@ class GdbServer(threading.Thread):
             util.VERBOSE("GDB client connected")
         self.current_process = None
         self.debugging_threads.clear()
+        # Stop replies left over from an earlier client must not reach this one
+        self.vCont_pending_statuses.clear()
         input_stream = GdbInputStream(client, self.error_stream)
         writer = GdbMessageWriter(client)
         while not self.stop_event.is_set():
@@ -833,12 +835,12 @@ class GdbServer(threading.Thread):
 
                                         # If it is memory watchpoint, check type of watchpoint (read, write, access) and get address
                                         if watchpoints[i].is_memory:
-                                            if watchpoints[i].is_write:
-                                                detected_signal = "watch:"
-                                            elif watchpoints[i].is_read:
-                                                detected_signal = "rwatch:"
-                                            else:
+                                            if watchpoints[i].is_access:
                                                 detected_signal = "awatch:"
+                                            elif watchpoints[i].is_write:
+                                                detected_signal = "watch:"
+                                            else:
+                                                detected_signal = "rwatch:"
                                             detected_signal = (
                                                 f"{detected_signal}{process.risc_debug.read_watchpoint_address(i):x};"
                                             )
@@ -1040,7 +1042,7 @@ class GdbServer(threading.Thread):
             assert self.current_process is not None, "Current process should not be None when removing watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, len(watchpoints)):
-                if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_write:
+                if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_write_only:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
                         self.current_process.risc_debug.disable_watchpoint(i)
@@ -1054,7 +1056,7 @@ class GdbServer(threading.Thread):
             assert self.current_process is not None, "Current process should not be None when removing watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, len(watchpoints)):
-                if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_read:
+                if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_read_only:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
                         self.current_process.risc_debug.disable_watchpoint(i)
@@ -1130,7 +1132,7 @@ class GdbServer(threading.Thread):
             assert self.current_process is not None, "Current process should not be None when setting watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, len(watchpoints)):
-                if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_write:
+                if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_write_only:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
                         writer.append(b"OK")
@@ -1164,7 +1166,7 @@ class GdbServer(threading.Thread):
             assert self.current_process is not None, "Current process should not be None when setting watchpoints"
             watchpoints = self.current_process.risc_debug.read_watchpoints_state()
             for i in range(0, len(watchpoints)):
-                if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_read:
+                if watchpoints[i].is_enabled and watchpoints[i].is_memory and watchpoints[i].is_read_only:
                     watchpoint_address = self.current_process.risc_debug.read_watchpoint_address(i)
                     if watchpoint_address == addr:
                         writer.append(b"OK")

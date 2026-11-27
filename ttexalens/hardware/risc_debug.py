@@ -52,6 +52,14 @@ class RiscDebugWatchpointState:
         return self.is_memory and self.is_read and self.is_write
 
     @property
+    def is_read_only(self):
+        return self.is_memory and self.is_read and not self.is_write
+
+    @property
+    def is_write_only(self):
+        return self.is_memory and self.is_write and not self.is_read
+
+    @property
     def is_breakpoint(self):
         return not self.is_memory
 
