@@ -45,26 +45,42 @@ class ElfSectionIterator {
     size_t index = 0;
 };
 
+int elf_section_getbuffer(PyObject* exporter, Py_buffer* view, int flags) {
+    static const char empty = 0;
+    try {
+        const ElfSection* s = nb::inst_ptr<ElfSection>(nb::handle(exporter));
+        std::span<const std::byte> sp = s->data();
+        const void* p = sp.empty() ? static_cast<const void*>(&empty) : sp.data();
+        return PyBuffer_FillInfo(view, exporter, const_cast<void*>(p), static_cast<Py_ssize_t>(sp.size()),
+                                 /*readonly=*/1, flags);
+    } catch (...) {  // no C++ exception may cross a CPython slot
+        view->obj = nullptr;
+        PyErr_SetString(PyExc_BufferError, "cannot read ELF section data");
+        return -1;
+    }
+}
+
+PyType_Slot elf_section_slots[] = {{Py_bf_getbuffer, reinterpret_cast<void*>(elf_section_getbuffer)}, {0, nullptr}};
+
 }  // namespace
 
 void bind_elf_file(nb::module_& m) {
-    nb::class_<ElfSection>(m, "ElfSection")
+    nb::class_<ElfSection>(m, "ElfSection", nb::type_slots(elf_section_slots))
         .def_prop_ro("name", &ElfSection::name)
         .def_prop_ro("index", &ElfSection::index)
         .def_prop_ro("address", &ElfSection::address)
         .def_prop_ro("size", &ElfSection::size)
+        // The memoryview and its slices hold the section, which holds the ElfFile.
         .def_prop_ro(
             "data",
-            [](const ElfSection& s) {
-                std::span<const std::byte> sp = s.data();
-                PyObject* mv = PyMemoryView_FromMemory(const_cast<char*>(reinterpret_cast<const char*>(sp.data())),
-                                                       static_cast<Py_ssize_t>(sp.size()), PyBUF_READ);
+            [](nb::handle self) {
+                PyObject* mv = PyMemoryView_FromObject(self.ptr());
                 if (mv == nullptr) {
                     throw nb::python_error();
                 }
                 return nb::steal<nb::object>(mv);
             },
-            nb::rv_policy::reference_internal, nb::sig("def data(self) -> memoryview"));
+            nb::sig("def data(self) -> memoryview"));
 
     nb::enum_<ElfSymbolType>(m, "ElfSymbolType")
         .value("STT_NOTYPE", ElfSymbolType::STT_NOTYPE)
@@ -147,18 +163,21 @@ void bind_elf_file(nb::module_& m) {
                     nb::type<ElfSection>(), "ElfSectionIterator", ElfSectionIterator(&self, 0),
                     ElfSectionIterator(&self, self.get_sections_count()));
             },
-            nb::rv_policy::reference_internal)
+            nb::rv_policy::reference_internal, nb::keep_alive<0, 1>())
         .def("get_frame_description", &ElfFile::get_frame_description, nb::arg("pc"), nb::arg("memory_access"),
-             nb::call_guard<nb::gil_scoped_release>(), nb::rv_policy::reference_internal)
+             nb::call_guard<nb::gil_scoped_release>())
         .def("find_symbol_by_name", &ElfFile::find_symbol_by_name, nb::arg("name"), nb::rv_policy::reference_internal,
              nb::sig("def find_symbol_by_name(self, name: str) -> ElfSymbol | None"))
-        .def("find_die_by_name", &ElfFile::find_die_by_name, nb::arg("name"), nb::rv_policy::reference_internal)
+        .def(
+            "find_die_by_name",
+            [](const ElfFile& self, std::string_view name) {
+                return DwarfDie::keep_elf_alive(self.find_die_by_name(name));
+            },
+            nb::arg("name"))
         .def("get_enum_value", &ElfFile::get_enum_value, nb::arg("name"))
         .def("get_constant", &ElfFile::get_constant, nb::arg("name"))
-        .def("get_global", &ElfFile::get_global, nb::arg("name"), nb::arg("memory_access"),
-             nb::rv_policy::reference_internal)
-        .def("read_global", &ElfFile::read_global, nb::arg("name"), nb::arg("memory_access"),
-             nb::rv_policy::reference_internal)
+        .def("get_global", &ElfFile::get_global, nb::arg("name"), nb::arg("memory_access"))
+        .def("read_global", &ElfFile::read_global, nb::arg("name"), nb::arg("memory_access"))
         .def("get_pointer_size", &ElfFile::get_pointer_size);
 }
 

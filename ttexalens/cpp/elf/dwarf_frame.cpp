@@ -13,7 +13,11 @@ namespace ttexalens::native_elf {
 
 FrameDescription::FrameDescription(std::weak_ptr<details::DwarfInfoImpl> info, Dwarf_Fde fde, uint64_t pc,
                                    std::shared_ptr<MemoryAccess> memory_access)
-    : info(std::move(info)), fde(fde), pc(pc), memory_access(std::move(memory_access)) {}
+    : info(std::move(info)), fde(fde), pc(pc), memory_access(std::move(memory_access)) {
+    if (auto info_ptr = this->info.lock()) {
+        elf = info_ptr->get_elf_impl();
+    }
+}
 
 namespace {
 

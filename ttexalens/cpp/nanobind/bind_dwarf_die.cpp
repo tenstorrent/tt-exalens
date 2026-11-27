@@ -31,12 +31,12 @@ namespace {
 class DieChildIterator {
    public:
     DieChildIterator() = default;
-    explicit DieChildIterator(DwarfDiePtr c) : current(std::move(c)) {}
+    explicit DieChildIterator(DwarfDiePtr c) : current(DwarfDie::keep_elf_alive(c)) {}
 
     const DwarfDiePtr& operator*() const { return current; }
     DieChildIterator& operator++() {
         if (current) {
-            current = current->get_next_sibling();
+            current = DwarfDie::keep_elf_alive(current->get_next_sibling());
         }
         return *this;
     }
@@ -206,8 +206,7 @@ void bind_dwarf_die(nb::module_& m) {
                      })
         .def_prop_ro("offset", &DwarfDie::get_offset)
         .def_prop_ro("tag", &DwarfDie::get_tag)
-        .def_prop_ro("cu", &DwarfDie::get_cu, nb::rv_policy::reference_internal,
-                     nb::sig("def cu(self) -> DwarfCompileUnit | None"))
+        .def_prop_ro("cu", &DwarfDie::get_cu, nb::sig("def cu(self) -> DwarfCompileUnit | None"))
         .def_prop_ro("attributes", &DwarfDie::get_attributes, nb::rv_policy::reference_internal)
         .def_prop_ro("is_type", &DwarfDie::is_type)
         .def_prop_ro("is_signed_type", &DwarfDie::is_signed_type)
@@ -238,44 +237,64 @@ void bind_dwarf_die(nb::module_& m) {
                     d.get_constant_value());
             },
             nb::sig("def get_constant_value(self) -> bool | int | float | None"))
-        .def("get_resolved_type", &DwarfDie::get_resolved_type, nb::rv_policy::reference_internal,
-             nb::sig("def get_resolved_type(self) -> DwarfDie | None"))
-        .def("get_dereference_type", &DwarfDie::get_dereference_type, nb::rv_policy::reference_internal,
-             nb::sig("def get_dereference_type(self) -> DwarfDie | None"))
-        .def("get_array_element_type", &DwarfDie::get_array_element_type, nb::rv_policy::reference_internal,
-             nb::sig("def get_array_element_type(self) -> DwarfDie | None"))
+        .def(
+            "get_resolved_type",
+            [](const DwarfDie& self) { return DwarfDie::keep_elf_alive(self.get_resolved_type()); },
+            nb::sig("def get_resolved_type(self) -> DwarfDie | None"))
+        .def(
+            "get_dereference_type",
+            [](const DwarfDie& self) { return DwarfDie::keep_elf_alive(self.get_dereference_type()); },
+            nb::sig("def get_dereference_type(self) -> DwarfDie | None"))
+        .def(
+            "get_array_element_type",
+            [](const DwarfDie& self) { return DwarfDie::keep_elf_alive(self.get_array_element_type()); },
+            nb::sig("def get_array_element_type(self) -> DwarfDie | None"))
         .def(
             "find_child_by_name",
             [](const DwarfDie& self, std::string_view name,
                std::optional<std::function<bool(const DwarfDiePtr&)>> filter) {
-                return self.find_child_by_name(name, filter ? *filter : std::function<bool(const DwarfDiePtr&)>{});
+                std::function<bool(const DwarfDiePtr&)> wrapped_filter;
+                if (filter) {
+                    wrapped_filter = [f = *filter](const DwarfDiePtr& d) { return f(DwarfDie::keep_elf_alive(d)); };
+                }
+                return DwarfDie::keep_elf_alive(self.find_child_by_name(name, wrapped_filter));
             },
-            nb::arg("name"), nb::arg("filter") = nb::none(), nb::rv_policy::reference_internal,
+            nb::arg("name"), nb::arg("filter") = nb::none(),
             nb::sig(
                 "def find_child_by_name(self, name: str, filter: collections.abc.Callable[[DwarfDie], bool] | None = "
                 "None) -> DwarfDie | None"))
-        .def("get_die_from_attribute", &DwarfDie::get_die_from_attribute, nb::arg("attribute_tag"),
-             nb::rv_policy::reference_internal,
-             nb::sig("def get_die_from_attribute(self, attribute_tag: DwarfAttributeTag) -> DwarfDie | None"))
+        .def(
+            "get_die_from_attribute",
+            [](const DwarfDie& self, DwarfAttributeTag attribute_tag) {
+                return DwarfDie::keep_elf_alive(self.get_die_from_attribute(attribute_tag));
+            },
+            nb::arg("attribute_tag"),
+            nb::sig("def get_die_from_attribute(self, attribute_tag: DwarfAttributeTag) -> DwarfDie | None"))
         .def("get_address_ranges", &DwarfDie::get_address_ranges)
         .def("get_decl_file_info", &DwarfDie::get_decl_file_info)
         .def("get_call_file_info", &DwarfDie::get_call_file_info)
         .def("read_value", &DwarfDie::read_value, nb::arg("frame").none())
-        .def("get_first_child", &DwarfDie::get_first_child, nb::rv_policy::reference_internal,
-             nb::sig("def get_first_child(self) -> DwarfDie | None"))
-        .def("get_next_sibling", &DwarfDie::get_next_sibling, nb::rv_policy::reference_internal,
-             nb::sig("def get_next_sibling(self) -> DwarfDie | None"))
-        .def("get_parent", &DwarfDie::get_parent, nb::rv_policy::reference_internal,
-             nb::sig("def get_parent(self) -> DwarfDie | None"))
-        .def("get_template_value_parameters", &DwarfDie::get_template_value_parameters)
         .def(
-            "iter_children",
-            [](DwarfDie& self) {
-                return nb::make_iterator<nb::rv_policy::reference_internal>(nb::type<DwarfDie>(), "DieChildIterator",
-                                                                            DieChildIterator(self.get_first_child()),
-                                                                            DieChildIterator());
-            },
-            nb::rv_policy::reference_internal);
+            "get_first_child", [](const DwarfDie& self) { return DwarfDie::keep_elf_alive(self.get_first_child()); },
+            nb::sig("def get_first_child(self) -> DwarfDie | None"))
+        .def(
+            "get_next_sibling", [](const DwarfDie& self) { return DwarfDie::keep_elf_alive(self.get_next_sibling()); },
+            nb::sig("def get_next_sibling(self) -> DwarfDie | None"))
+        .def(
+            "get_parent", [](const DwarfDie& self) { return DwarfDie::keep_elf_alive(self.get_parent()); },
+            nb::sig("def get_parent(self) -> DwarfDie | None"))
+        .def("get_template_value_parameters",
+             [](const DwarfDie& self) {
+                 std::vector<DwarfDiePtr> result;
+                 for (const DwarfDiePtr& parameter : self.get_template_value_parameters()) {
+                     result.push_back(DwarfDie::keep_elf_alive(parameter));
+                 }
+                 return result;
+             })
+        .def("iter_children", [](DwarfDie& self) {
+            return nb::make_iterator<nb::rv_policy::reference_internal>(
+                nb::type<DwarfDie>(), "DieChildIterator", DieChildIterator(self.get_first_child()), DieChildIterator());
+        });
 }
 
 }  // namespace ttexalens::native_elf::bindings

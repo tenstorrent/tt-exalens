@@ -43,8 +43,10 @@ void bind_callstack(nb::module_& m) {
             nb::sig("def name(self) -> str | None"))
         .def_prop_ro(
             "type",
-            [](const CallstackEntryVariable& self) { return self.die ? self.die->get_resolved_type() : nullptr; },
-            nb::rv_policy::reference_internal, nb::sig("def type(self) -> DwarfDie | None"))
+            [](const CallstackEntryVariable& self) {
+                return self.die ? DwarfDie::keep_elf_alive(self.die->get_resolved_type()) : nullptr;
+            },
+            nb::sig("def type(self) -> DwarfDie | None"))
         .def_prop_ro("declared_at", [](const CallstackEntryVariable& self) -> std::optional<DwarfFileLine> {
             return self.die ? self.die->get_decl_file_info() : std::nullopt;
         });

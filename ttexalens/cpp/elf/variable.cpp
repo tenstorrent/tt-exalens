@@ -139,7 +139,7 @@ constexpr size_t kMaxCStringLength = 64 * 1024;
 }  // namespace
 
 ElfVariable::ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access)
-    : type_die(std::move(type_die)), address(address), memory_access(std::move(memory_access)) {}
+    : type_die(DwarfDie::keep_elf_alive(type_die)), address(address), memory_access(std::move(memory_access)) {}
 
 ElfVariable::~ElfVariable() = default;
 ElfVariable::ElfVariable(const ElfVariable&) = default;

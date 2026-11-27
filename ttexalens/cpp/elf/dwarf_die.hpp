@@ -167,7 +167,7 @@ struct DwarfFileLine {
     uint32_t column;
 };
 
-class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
+class DwarfDie {
    public:
     DwarfDie(DwarfDieHandle die, std::weak_ptr<details::DwarfInfoImpl> info);
     ~DwarfDie();
@@ -176,10 +176,17 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     explicit operator bool() const { return static_cast<bool>(die); }
     Dwarf_Debug get_state() const { return die.get_state(); }
 
+    // Returns a handle to the same DIE that also keeps the parsed ELF alive.
+    // Handles that leave the library (Python wrappers, ElfVariable, callstack
+    // entries) go through it. Never store the result, or an ElfVariable or
+    // FrameDescription (they own the ELF too), in DwarfDie, DwarfCompileUnit
+    // or DwarfInfoImpl: the ELF owns those, so it would never be freed.
+    static DwarfDiePtr keep_elf_alive(const DwarfDiePtr& die);
+
     // Returns the compile unit that owns this DIE, or nullptr if the
     // owning DwarfInfo has been destroyed. The result is an aliasing
-    // shared_ptr: it points at the CU but shares ownership of the
-    // DwarfInfoImpl that owns it, so the CU stays valid while it is held.
+    // shared_ptr: it points at the CU but shares ownership of the parsed
+    // ELF that owns it, so the CU stays valid while it is held.
     std::shared_ptr<const DwarfCompileUnit> get_cu() const;
 
     // Lazily reads DW_AT_name off this DIE. First call invokes dwarf_diename
@@ -373,6 +380,10 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
 
     DwarfDieHandle die;
     std::weak_ptr<details::DwarfInfoImpl> info;
+    // The handle the DIE cache holds, set by DwarfInfoImpl::make_die. Not
+    // enable_shared_from_this, because a Python wrapper must hold the
+    // ELF-owning handle from keep_elf_alive, not this one.
+    std::weak_ptr<DwarfDie> self;
 
     mutable std::optional<DwarfString> name;
     mutable std::optional<std::vector<DwarfAttribute>> attributes;
