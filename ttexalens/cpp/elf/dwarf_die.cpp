@@ -23,6 +23,10 @@ bool is_type_wrapper(DwarfDieTag tag) {
     return tag == DwarfDieTag::typedef_ || tag == DwarfDieTag::const_type || tag == DwarfDieTag::volatile_type;
 }
 
+bool is_plain_char_type(const DwarfDie& die) {
+    return die.get_tag() == DwarfDieTag::base_type && die.is_char_type() && die.get_name() == "char";
+}
+
 // Pulls an integer attribute value out of the variant for the case where
 // we accept both signed and unsigned representations.
 std::optional<uint64_t> attr_as_uint(const DwarfAttribute* attr) {
@@ -767,11 +771,11 @@ bool DwarfDie::is_string_type() const {
     const auto t = get_tag();
     if (t == DwarfDieTag::array_type) {
         auto elem = get_array_element_type();
-        return elem && elem->is_char_type();
+        return elem && is_plain_char_type(*elem);
     }
     if (t == DwarfDieTag::pointer_type) {
         auto pointee = get_dereference_type();
-        return pointee && pointee->is_char_type();
+        return pointee && is_plain_char_type(*pointee);
     }
     return false;
 }

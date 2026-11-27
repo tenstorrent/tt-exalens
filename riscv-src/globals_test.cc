@@ -178,6 +178,34 @@ struct RefStruct {
     g_global_struct.string_buffer,
 };
 
+// Fixtures for ElfVariable value handling (signed enums, shadowed members, byte buffers, ranges).
+enum class SignedEnum32 : int32_t { NEG = -1, ZERO = 0, POS = 1 };
+
+// The nested types are declared before the data members that share their names.
+struct ShadowedBase {
+    enum kind : uint8_t { KIND_A = 0, KIND_B = 1 };
+    enum kind kind;
+};
+
+struct ShadowedMemberStruct : public ShadowedBase {
+    enum mode : uint8_t { MODE_A = 0, MODE_B = 1 };
+    uint32_t before;
+    enum mode mode;
+};
+
+struct ValueTestStruct {
+    SignedEnum32 signed_enum32;
+    uint8_t* byte_pointer;
+    char text[8];
+    int32_t i32;
+    int64_t i64;
+    uint32_t u32;
+    uint64_t u64;
+};
+
+[[gnu::used]] ShadowedMemberStruct g_shadowed_member_struct;
+[[gnu::used]] ValueTestStruct g_value_test_struct;
+
 void halt() {
     // Halt core with ebrake instruction
     asm volatile("ebreak");

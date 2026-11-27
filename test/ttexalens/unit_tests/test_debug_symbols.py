@@ -428,6 +428,11 @@ class TestDebugSymbols(unittest.TestCase):
         # Enumerator lookup by qualified name keeps working
         self.assertEqual(1, self.parsed_elf.get_enum_value("shadowed_const::SHADOWED_B"))
 
+        # Data members that share their names with nested enums
+        g_shadowed_member_struct = self.parsed_elf.get_global("g_shadowed_member_struct", TestDebugSymbols.mem_access)
+        self.assertEqual(g_shadowed_member_struct.get_address(), g_shadowed_member_struct.kind.get_address())
+        self.assertEqual(g_shadowed_member_struct.before.get_address() + 4, g_shadowed_member_struct.mode.get_address())
+
     def test_elf_variable_array_iteration(self):
         variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
         assert variable_die is not None
@@ -614,6 +619,7 @@ class TestDebugSymbols(unittest.TestCase):
 
     def test_elf_variable_write_value(self):
         g_global_struct = self.parsed_elf.get_global("g_global_struct", TestDebugSymbols.mem_access)
+        g_value_test_struct = self.parsed_elf.get_global("g_value_test_struct", TestDebugSymbols.mem_access)
         g_global_struct.a.write_value(0xDEADBEEF)
         self.assertEqual(0xDEADBEEF, g_global_struct.a)
         g_global_struct.a.write_value(0x11223344)  # Restore original value
@@ -621,6 +627,16 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertRaises(Exception, g_global_struct.f.write_value, 0xFFFFFFFF)  # Overflow uint32 on float32
         self.assertRaises(Exception, g_global_struct.f.write_value, 3.4028235e38 * 2)  # Overflow float32
         self.assertRaises(Exception, g_global_struct.g.write_value, 0xFFFFFFFFFFFFFFFF)  # Overflow uint64 on float64
+        self.assertRaises(DataLossError, g_value_test_struct.u64.write_value, -1)
+        self.assertRaises(DataLossError, g_value_test_struct.i32.write_value, 2**64 - 1)
+        self.assertRaises(DataLossError, g_value_test_struct.i64.write_value, 2**64 - 1)
+        self.assertRaises(DataLossError, g_value_test_struct.i64.write_value, 2**63)
+        self.assertRaises(DataLossError, g_value_test_struct.i64.write_value, -(2**63) - 1)
+        self.assertRaises(DataLossError, g_value_test_struct.i32.write_value, float("nan"))
+        self.assertRaises(DataLossError, g_value_test_struct.i32.write_value, float("inf"))
+        self.assertRaises(DataLossError, g_value_test_struct.u64.write_value, -1.0)
+        g_value_test_struct.u32.write_value(2**64 + 5, check_data_loss=False)
+        self.assertEqual(5, g_value_test_struct.u32)
         enum_value = self.parsed_elf.get_enum_value("EnumClass::VALUE_D")
         assert enum_value is not None
         self.assertEqual(enum_value, 3)
@@ -640,6 +656,11 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(2, g_global_struct.typedef_enum_field)
         self.assertEqual("TypedefEnum::TD_E", str(g_global_struct.typedef_enum_field))
         g_global_struct.typedef_enum_field.write_value(1)  # Restore original value
+
+        # Check signed enum
+        g_value_test_struct.signed_enum32.write_value(-1)
+        self.assertEqual(-1, g_value_test_struct.signed_enum32)
+        self.assertEqual("SignedEnum32::NEG", str(g_value_test_struct.signed_enum32))
 
         # C-style string: write into the char[32] buffer and read it back.
         g_global_struct.string_buffer.write_value("rewritten string")
@@ -673,6 +694,21 @@ class TestDebugSymbols(unittest.TestCase):
 
         # A non-char array (uint8_t[16]) is not a string - it is still read as numbers.
         self.assertEqual(list(range(16)), g_global_struct.c.as_value_list())
+        self.assertRaises(TypeMismatchError, g_global_struct.c.read_value)
+        self.assertRaises(TypeMismatchError, g_global_struct.c.write_value, "abc")
+
+        # A non-char pointer (uint8_t*) is not a string either - it is read as the address it holds.
+        g_value_test_struct = self.parsed_elf.get_global("g_value_test_struct", TestDebugSymbols.mem_access)
+        byte_pointer = g_value_test_struct.byte_pointer
+        string_address = g_global_struct.string_buffer.get_address()
+        self.mem_access.write(byte_pointer.get_address(), string_address.to_bytes(byte_pointer.get_size(), "little"))
+        self.assertEqual(string_address, byte_pointer.read_value())
+
+        # Invalid UTF-8 in a char array is replaced.
+        self.mem_access.write(g_value_test_struct.text.get_address(), b"\xffok\x00")
+        self.assertEqual("\ufffdok", g_value_test_struct.text.read_value())
+        self.assertEqual("\ufffdok", g_value_test_struct.text)
+        self.assertEqual("\ufffdok", str(g_value_test_struct.text))
 
     def test_elf_variable_exception_translation(self):
         # Without nanobind's std::string/std::optional casters the native layer's

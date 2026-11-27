@@ -3,6 +3,9 @@
 
 #include "variable.hpp"
 
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
 #include <cstring>
 
 #include "dwarf_attribute.hpp"
@@ -13,6 +16,8 @@ using namespace std::literals;
 namespace ttexalens::native_elf {
 
 namespace {
+
+bool is_data_member(const DwarfDiePtr& die) { return die->get_tag() == DwarfDieTag::member; }
 
 // Walks the unnamed struct/union members of `type_die` looking for a child
 // named `member_name`. Returns {offset_into_type_die, member_die} on hit or
@@ -27,7 +32,7 @@ std::pair<std::optional<uint64_t>, DwarfDiePtr> resolve_unnamed_struct_union_mem
         if (!struct_union_type) {
             continue;
         }
-        if (auto member = struct_union_type->find_child_by_name(name)) {
+        if (auto member = struct_union_type->find_child_by_name(name, is_data_member)) {
             return {child->get_data_member_location(), member};
         }
         auto [nested_offset, nested_member] = resolve_unnamed_struct_union_member(*struct_union_type, name);
@@ -59,7 +64,7 @@ std::pair<std::optional<uint64_t>, DwarfDiePtr> resolve_inheritance_member(const
         if (!child_type) {
             continue;
         }
-        if (auto member = child_type->find_child_by_name(name)) {
+        if (auto member = child_type->find_child_by_name(name, is_data_member)) {
             return {data_member_location, member};
         }
         auto [inherited_offset, inherited_member] = resolve_inheritance_member(*child_type, name, data_member_location);
@@ -74,17 +79,18 @@ std::pair<std::optional<uint64_t>, DwarfDiePtr> resolve_inheritance_member(const
     return {std::nullopt, nullptr};
 }
 
-// Peels typedef/const/volatile wrappers off an enum so we can ask the
-// underlying base type for size/signedness during read/write_value.
+// Follows an enum's DW_AT_type to the underlying base type (typedef/const/volatile peeled). An enum without
+// DW_AT_type is returned as is.
 DwarfDiePtr resolve_enum_base(DwarfDiePtr type_die) {
-    while (type_die && type_die->get_tag() == DwarfDieTag::enumeration_type) {
-        auto resolved = type_die->get_resolved_type();
-        if (!resolved || resolved.get() == type_die.get()) {
-            break;
-        }
-        type_die = resolved;
+    if (!type_die || type_die->get_tag() != DwarfDieTag::enumeration_type) {
+        return type_die;
     }
-    return type_die;
+    auto underlying = type_die->get_die_from_attribute(DwarfAttributeTag::type);
+    if (!underlying) {
+        return type_die;
+    }
+    auto resolved = underlying->get_resolved_type();
+    return resolved ? resolved : underlying;
 }
 
 // Little-endian load of `size` bytes (1..8) as an unsigned 64-bit integer.
@@ -109,11 +115,11 @@ int64_t sign_extend(uint64_t raw, size_t size) {
     return static_cast<int64_t>(raw);
 }
 
-// Stores the low `size` bytes of `value` in LE order into `out`.
+// Stores `value` in LE order into `size` bytes of `out`, zero-filled past 8 bytes.
 void store_uint_le(std::vector<std::byte>& out, uint64_t value, size_t size) {
     out.resize(size);
     for (size_t i = 0; i < size; ++i) {
-        out[i] = static_cast<std::byte>((value >> (8 * i)) & 0xFF);
+        out[i] = i < 8 ? static_cast<std::byte>((value >> (8 * i)) & 0xFF) : std::byte{0};
     }
 }
 
@@ -162,7 +168,7 @@ ElfVariable ElfVariable::get_member(std::string_view member_name) const {
     }
 
     uint64_t offset = 0;
-    DwarfDiePtr child_die = type_die->find_child_by_name(member_name);
+    DwarfDiePtr child_die = type_die->find_child_by_name(member_name, is_data_member);
     if (!child_die) {
         auto [resolved_offset, resolved_child] = resolve_unnamed_struct_union_member(*type_die, member_name);
         if (resolved_child && resolved_offset.has_value()) {
@@ -461,53 +467,44 @@ void ElfVariable::write_value(Value value, bool check_data_loss) {
             value);
         store_uint_le(bytes, truthy ? 1u : 0u, type_size);
     } else {
-        // Integer base type. Take the value as int64_t when signed, uint64_t
-        // when unsigned. For floats we round-trip and verify on data loss.
+        // Integer base type. The value must be representable in the
+        // destination; otherwise it is data loss. Without the check, integers
+        // wrap and an unconvertible float is stored as 0. A type wider than
+        // 8 bytes is range-checked as 64 bits and zero-extended.
         const bool signed_dest = type->is_signed_type();
-        int64_t signed_val = 0;
-        uint64_t unsigned_val = 0;
-        bool came_from_float = false;
-        double float_input = 0.0;
-
+        const int bits = 8 * static_cast<int>(std::clamp<size_t>(type_size, 1, 8));
+        const int64_t smax = static_cast<int64_t>((uint64_t{1} << (bits - 1)) - 1);
+        const int64_t smin = -smax - 1;
+        const uint64_t umax = bits == 64 ? UINT64_MAX : (uint64_t{1} << bits) - 1;
+        uint64_t raw = 0;
+        bool fits = true;
         std::visit(
             [&](auto&& x) {
                 using T = std::decay_t<decltype(x)>;
                 if constexpr (std::is_same_v<T, bool>) {
-                    signed_val = x ? 1 : 0;
-                    unsigned_val = x ? 1 : 0;
+                    raw = x ? 1 : 0;
                 } else if constexpr (std::is_same_v<T, int64_t>) {
-                    signed_val = x;
-                    unsigned_val = static_cast<uint64_t>(x);
+                    raw = static_cast<uint64_t>(x);
+                    fits = signed_dest ? (x >= smin && x <= smax) : (x >= 0 && static_cast<uint64_t>(x) <= umax);
                 } else if constexpr (std::is_same_v<T, uint64_t>) {
-                    signed_val = static_cast<int64_t>(x);
-                    unsigned_val = x;
+                    raw = x;
+                    fits = x <= (signed_dest ? static_cast<uint64_t>(smax) : umax);
                 } else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
-                    came_from_float = true;
-                    float_input = static_cast<double>(x);
-                    signed_val = static_cast<int64_t>(x);
-                    unsigned_val = static_cast<uint64_t>(static_cast<int64_t>(x));
+                    const double d = static_cast<double>(x);
+                    const bool convertible = std::isfinite(d) && d >= -0x1p63 && d < 0x1p64;
+                    if (convertible) {
+                        raw = d < 0 ? static_cast<uint64_t>(static_cast<int64_t>(d)) : static_cast<uint64_t>(d);
+                    }
+                    const double lo = signed_dest ? -std::ldexp(1.0, bits - 1) : 0.0;
+                    const double hi = std::ldexp(1.0, signed_dest ? bits - 1 : bits);
+                    fits = convertible && d == std::trunc(d) && d >= lo && d < hi;
                 }
             },
             value);
-
-        const uint64_t raw = signed_dest ? static_cast<uint64_t>(signed_val) : unsigned_val;
-        store_uint_le(bytes, raw, type_size);
-
-        if (check_data_loss) {
-            const uint64_t loaded = load_uint_le(bytes, type_size);
-            const int64_t loaded_signed = sign_extend(loaded, type_size);
-            bool ok;
-            if (came_from_float) {
-                ok = static_cast<double>(signed_dest ? loaded_signed : static_cast<int64_t>(loaded)) == float_input;
-            } else if (signed_dest) {
-                ok = loaded_signed == signed_val;
-            } else {
-                ok = loaded == unsigned_val;
-            }
-            if (!ok) {
-                throw DataLossException(value_to_string(value), std::string(name));
-            }
+        if (check_data_loss && !fits) {
+            throw DataLossException(value_to_string(value), std::string(name));
         }
+        store_uint_le(bytes, raw, type_size);
     }
 
     memory_access->write(address,

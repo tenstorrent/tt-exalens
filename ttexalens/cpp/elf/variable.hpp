@@ -118,7 +118,8 @@ class ElfVariable {
     Value read_value() const;
 
     // Writes a scalar value. `check_data_loss` triggers DataLossException
-    // when the round-trip changes the value (e.g. assigning 1.5 to int).
+    // when the destination cannot represent the value (e.g. 1.5 or -1 to an
+    // unsigned int).
     void write_value(Value value, bool check_data_loss = true);
 
     // Snapshots the variable's bytes and returns a new ElfVariable
