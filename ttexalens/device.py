@@ -123,6 +123,10 @@ class TensixInstructions:
         raise NotImplementedError
 
     @staticmethod
+    def TT_OP_SFPENCC(imm12_math, lreg_c, lreg_dest, instr_mod1) -> int:
+        raise NotImplementedError
+
+    @staticmethod
     def TT_OP_UNPACR_NOP(*args) -> int:
         # Blackhole and Wormhole encode UNPACR_NOP with different operands.
         raise NotImplementedError
