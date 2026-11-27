@@ -69,27 +69,12 @@ def unpack_bfp16(data):
 
 
 def bfp8_to_float_block(exponent, bfp8_mantissas):
+    # value = +-mantissa/64 * 2^(exponent byte - 127); bit 7 of the mantissa byte is the sign.
+    scale = 2.0 ** (exponent - 127 - 6)
     bfloat16_values = []
-    exponent = exponent - 127
     for mantissa in bfp8_mantissas:
-        sign_mantissa = str(format(mantissa, "08b"))
-        sign = int(sign_mantissa[0], 2)
-        mantissa_value = sign_mantissa[1:]
-        int_part = mantissa_value[: exponent + 1]
-        fract_part = mantissa_value[exponent + 1 :]
-
-        if len(int_part) != 0:
-            int_value = int(int_part, 2)
-        else:
-            int_value = 0
-
-        fract_value = 0
-        for i in range(len(fract_part)):
-            if fract_part[i] == "1":
-                fract_value += 1 / (2 ** (i + 1))
-
-        bfloat16_values.append(((-1) ** sign) * (int_value + fract_value))
-
+        magnitude = (mantissa & 0x7F) * scale
+        bfloat16_values.append(-magnitude if mantissa & 0x80 else magnitude)
     return bfloat16_values
 
 
@@ -186,10 +171,10 @@ def unpack_value_direct_access(value: int, df: TensixDataFormat, signed: bool) -
         return value - 0x100000000 if value & 0x80000000 else value
     elif df == TensixDataFormat.Int32 and not signed:
         return value
-    # Same as for INT32/UINT32
+    # Unlike Int32 (two's complement above), Int8 in 32-bit Dst is sign/magnitude.
     elif df == TensixDataFormat.Int8 and signed:
-        # Since 1-byte integers are stored in 32-bit mode sign bit is in MSB, bytes look like this: 0x80 0x00 0x00 value
-        return (value & 0x000000FF) - 0x80 if value & 0x80000000 else value
+        # Sign in bit 31, magnitude in the low bits.
+        return -(value & 0x7FFFFFFF) if value & 0x80000000 else value
     elif df == TensixDataFormat.Int8 and not signed:
         return value
     elif df == TensixDataFormat.CompactInt8:
@@ -207,24 +192,38 @@ def unpack_data_direct_access(data: list[int], df: int | TensixDataFormat, signe
     return [unpack_value_direct_access(value, df, signed=signed) for value in data]
 
 
+def _to_integer(value: int | float, df: TensixDataFormat) -> int:
+    message = f"Value {value} is not an integer and cannot be written as {df.name}."
+    try:
+        integer = int(value)
+    except (ValueError, OverflowError):  # NaN and infinity
+        raise ValueError(message) from None
+    if integer != value:
+        raise ValueError(message)
+    return integer
+
+
 def pack_value_direct_access(value: int | float, df: TensixDataFormat) -> int:
     if df == TensixDataFormat.Float32:
         return int.from_bytes(struct.pack(">f", float(value)), "big")
     elif df == TensixDataFormat.Int32:
-        if value < -(2**31) or value > 2**31 - 1:
+        integer = _to_integer(value, df)
+        if integer < -(2**31) or integer > 2**31 - 1:
             raise ValueError(f"Value {value} is out of range for Int32.")
-        return int(value) if value >= 0 else int(value) + 0x100000000
+        return integer if integer >= 0 else integer + 0x100000000
     elif df == TensixDataFormat.UInt32:
         if value < 0 or value > 2**32 - 1:
             raise ValueError(f"Value {value} is out of range for UInt32.")
         return int(value)
     elif df in (TensixDataFormat.Int8, TensixDataFormat.CompactInt8):
-        if value < -(2**7) or value > 2**7 - 1:
-            raise ValueError(f"Value {value} is out of range for Int8.")
+        integer = _to_integer(value, df)
+        # Dst keeps Int8 as sign/magnitude with a 7-bit magnitude, so -128 cannot be stored.
+        if integer < -(2**7 - 1) or integer > 2**7 - 1:
+            raise ValueError(f"Value {value} is out of range for Int8 (-127..127).")
         if df == TensixDataFormat.CompactInt8:
             # The dest view takes the value's low byte and converts it to dest's storage format.
-            return int(value) & 0xFF
-        return int(value) if value >= 0 else 0x80000000 | (int(value) + 0x80)
+            return integer & 0xFF
+        return integer if integer >= 0 else 0x80000000 | -integer
     elif df in (TensixDataFormat.UInt8, TensixDataFormat.CompactUInt8):
         if value < 0 or value > 2**8 - 1:
             raise ValueError(f"Value {value} is out of range for UInt8.")
