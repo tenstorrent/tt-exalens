@@ -16,7 +16,9 @@ from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens.context import Context
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.debug_tensix import TensixDebug
+from ttexalens import perf_counters as perf_counters_lib
 from ttexalens.device import Device, TensixInstructions
+from ttexalens.exceptions import TTException
 from ttexalens.hardware.perf_counters import TensixPerfCounters
 
 N = 20  # Instructions injected per experiment
@@ -378,6 +380,22 @@ class TestPerfCounters(unittest.TestCase):
             {"thread_stalls_0": -1, f"waiting_for_{src}_{condition}": -1, "any_thread_stall": -1},
             ("thread_stalls_", "waiting_for_"),
         )
+
+    def test_read_perf_counter_by_id_or_name(self):
+        counter_id, counter_name = perf_counters_lib.list_perf_counters(self.location)["FPU"][0]
+        for counter in (2, counter_id, counter_name):
+            self.assertLessEqual(perf_counters_lib.read_perf_counter(self.location, "FPU", counter), 0xFFFFFFFF)
+
+    @parameterized.expand([-1, 512])
+    def test_read_perf_counter_id_out_of_range(self, counter_id: int):
+        with self.assertRaises(TTException):
+            perf_counters_lib.read_perf_counter(self.location, "FPU", counter_id)
+
+    @parameterized.expand(["read_perf_counters", "reset_perf_counters", "start_perf_counters", "stop_perf_counters"])
+    def test_perf_counter_function_refuses_neo_id(self, function_name: str):
+        for neo_id in (0, 1):
+            with self.assertRaises(TTException):
+                getattr(perf_counters_lib, function_name)(self.location, neo_id=neo_id)
 
 
 if __name__ == "__main__":

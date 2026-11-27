@@ -629,6 +629,11 @@ reset_perf_counters(location: OnChipCoordinate, block_name: str | None = None)
 Reset Tensix perf counters on this core. Raises if perf counters are not wired here.
 
 
+### Notes
+
+- neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+
+
 
 
 ## start_perf_counters
@@ -643,6 +648,11 @@ start_perf_counters(location: OnChipCoordinate, block_name: str | None = None)
 Start Tensix perf counters on this core. Raises if perf counters are not wired here.
 
 
+### Notes
+
+- neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+
+
 
 
 ## stop_perf_counters
@@ -655,6 +665,11 @@ stop_perf_counters(location: OnChipCoordinate, block_name: str | None = None)
 ### Description
 
 Stop Tensix perf counters on this core. Raises if perf counters are not wired here.
+
+
+### Notes
+
+- neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
 
 
 
@@ -673,6 +688,45 @@ Returns a dict keyed by ``(block_name, counter_id, counter_name)`` with
 values ``(value, ref_cnt)``. Counter values are unsigned 32-bit; mask
 deltas with ``& 0xFFFFFFFF``. Raises ``TTException`` if perf counters
 are not wired here.
+
+
+### Notes
+
+- neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+
+
+
+
+## read_perf_counter
+
+```
+read_perf_counter(location: OnChipCoordinate, block_name: str, counter: int | str) -> int
+```
+
+
+### Description
+
+Read one Tensix perf counter on this core, by id or by name.
+The id does not have to be named in the block's counter map.
+
+
+### Args
+
+- `location` *(OnChipCoordinate)*: Core to read from.
+- `block_name` *(str)*: Counter block, such as "FPU".
+- `counter` *(int | str)*: Counter id (0..511) or a name from the block's counter map.
+- `noc_id` *(NocId | int, optional)*: NOC to use. If None, the context's NOC is used.
+- `neo_id` *(int, optional)*: NEO to read from. See Notes.
+- `safe_mode` *(bool, optional)*: Overrides the context's safe mode.
+
+
+### Returns
+
+ *(int)*: The counter value, unsigned 32-bit.
+
+### Notes
+
+- neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
 
 
 
