@@ -217,6 +217,16 @@ class GdbServer(threading.Thread):
         if util.VERBOSE_ENABLED:
             util.VERBOSE("GDB client closed")
 
+    # Reads register for 'g' and 'p' packets
+    def _read_register(self, risc_debug: RiscDebug, register: int) -> int:
+        value = risc_debug.read_gpr(register)
+        if register == GdbServer.PC_REGISTER_INDEX:
+            # If ebreak was hit, pc will point to the instruction after it
+            if risc_debug.read_status().is_ebreak_hit:
+                # Rewind pc to unwind callstack from the ebreak instruction
+                value -= 4
+        return value
+
     def process_message(self, parser: GdbMessageParser, writer: GdbMessageWriter):
         if parser.is_ack_ok:
             # Ignore this message
@@ -317,28 +327,31 @@ class GdbServer(threading.Thread):
             # TODO: Use arc to read registers faster
             for j in range(0, GdbServer.REGISTER_COUNT):
                 assert self.current_process is not None, "Current process should not be None when reading registers"
-                value = self.current_process.risc_debug.read_gpr(j)
-                if j == 32:
-                    # If ebreak was hit, pc will point to the instruction after it
-                    risc_debug_status = self.current_process.risc_debug.read_status()
-                    if risc_debug_status.is_ebreak_hit:
-                        # Rewind pc to unwind callstack from the ebreak instruction
-                        value -= 4
+                value = self._read_register(self.current_process.risc_debug, j)
                 writer.append_register_hex(value)
         elif parser.parse(b"G"):  # Write general registers.
             # ‘G XX...’
             # TODO: There are two optimizations: 1. Use arc to write registers faster 2. If read was done during halt, we know some registers and we can skip writing them if they didn't change
-            for j in range(0, GdbServer.REGISTER_COUNT):
+            values: list[int | None] = []
+            for _ in range(0, GdbServer.REGISTER_COUNT):
                 if parser.parse(b"xxxxxxxx") or parser.parse(b"XXXXXXXX"):
                     # Skip this register
-                    pass
+                    values.append(None)
                 else:
                     value = parser.read_register_hex()
                     if value is None:
                         writer.append(b"E01")
                         return True
-                    assert self.current_process is not None, "Current process should not be None when writing registers"
-                    self.current_process.risc_debug.write_gpr(j, value)
+                    values.append(value)
+            if parser.position != len(parser.data):
+                writer.append(b"E01")
+                return True
+            assert self.current_process is not None, "Current process should not be None when writing registers"
+            # Writing pc is not supported, so its value is parsed but not written
+            for j in range(0, GdbServer.PC_REGISTER_INDEX):
+                register_value = values[j]
+                if register_value is not None:
+                    self.current_process.risc_debug.write_gpr(j, register_value)
             writer.append(b"OK")
         elif parser.parse(b"H"):  # Set thread for subsequent operations (‘m’, ‘M’, ‘g’, ‘G’, et.al.).
             # ‘H op thread-id’
@@ -410,7 +423,7 @@ class GdbServer(threading.Thread):
                 try:
                     buffer = bytearray(length)
                     self.current_process.mem_access.read(address, buffer)
-                    writer.append_hex(int.from_bytes(buffer, byteorder="little"), 2 * length)
+                    writer.append_unescaped(buffer.hex().upper().encode())
                 except RestrictedMemoryAccessError as e:
                     util.ERROR(str(e), file=self.error_stream)
                     writer.append(b"E04")  # restricted memory access
@@ -452,22 +465,28 @@ class GdbServer(threading.Thread):
         elif parser.parse(b"p"):  # Read the value of register n; n is in hex.
             # ‘p n’
             register = parser.parse_hex()
-            if register is None or register < 0 or register > GdbServer.REGISTER_COUNT:
+            if register is None or register < 0 or register >= GdbServer.REGISTER_COUNT:
                 writer.append(b"E01")
             else:
                 assert self.current_process is not None, "Current process should not be None when reading registers"
-                value = self.current_process.risc_debug.read_gpr(register)
-                writer.append_hex(value, 8)
+                value = self._read_register(self.current_process.risc_debug, register)
+                writer.append_register_hex(value)
         elif parser.parse(b"P"):  # Write register n… with value r….
             # ‘P n…=r…’
             register = parser.parse_hex()
-            parser.parse(b"=")
-            value = parser.read_hex(8)
-            if register is None or value is None or register < 0 or register > GdbServer.REGISTER_COUNT:
+            register_value = parser.read_register_hex() if parser.parse(b"=") else None
+            # Writing pc is not supported yet, so only x0-x31 are accepted
+            if (
+                register is None
+                or register_value is None
+                or register < 0
+                or register >= GdbServer.PC_REGISTER_INDEX
+                or parser.position != len(parser.data)
+            ):
                 writer.append(b"E01")
             else:
                 assert self.current_process is not None, "Current process should not be None when writing registers"
-                self.current_process.risc_debug.write_gpr(register, value)
+                self.current_process.risc_debug.write_gpr(register, register_value)
                 writer.append(b"OK")
         elif parser.parse(
             b"qSupported"
@@ -1270,6 +1289,9 @@ class GdbServer(threading.Thread):
 
     # Number of registers is defined in create_features_target_response
     REGISTER_COUNT = 33
+
+    # Index of pc, the last register in create_features_target_response
+    PC_REGISTER_INDEX = REGISTER_COUNT - 1
 
     def create_features_target_response(self):
         return """<?xml version="1.0"?>
