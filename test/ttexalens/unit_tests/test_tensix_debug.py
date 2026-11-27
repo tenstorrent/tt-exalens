@@ -185,6 +185,38 @@ class TestTensixDebug(unittest.TestCase):
         with self.assertRaises((TTException, ValueError)):
             self.tensix_debug.write_regfile(regfile, [value], df)
 
+    def test_read_write_regfile_int32_sign_magnitude(self):
+        if not self.location.device.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        regfile = REGFILE.DSTACC  # Writing is only supported for dest
+
+        repeat = TILE_SIZE // 4
+        words = [0x80000001, 0x80000000, 0x00000007, 0xFFFFFFFF] * repeat
+        self.tensix_debug.write_regfile(regfile, words, TensixDataFormat.UInt32)
+        assert self.tensix_debug.read_regfile(regfile, 1, sign_magnitude=True) == [-1, 0, 7, -2147483647] * repeat
+        data = [-1, 7, -(2**31 - 1), 2**31 - 1] * repeat
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Int32, sign_magnitude=True)
+        assert self.tensix_debug.read_regfile(regfile, 1) == [-2147483647, 7, -1, 2147483647] * repeat
+
+    @parameterized.expand(
+        [
+            -(2**31),
+            2**31,
+        ]
+    )
+    def test_invalid_write_regfile_int32_sign_magnitude(self, value: int):
+        if not self.location.device.is_blackhole():
+            self.skipTest("Direct read/write is supported only on Blackhole.")
+
+        regfile = REGFILE.DSTACC  # Writing is only supported for dest
+
+        data = [3.0] * TILE_SIZE
+        self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Float32)
+        with self.assertRaises(TTException):
+            self.tensix_debug.write_regfile(regfile, [1, value], TensixDataFormat.Int32, sign_magnitude=True)
+        assert self.tensix_debug.read_regfile(regfile, 1) == data
+
     def _read_signal(self, signal_name: str) -> int:
         if signal_name in self.debug_bus.signal_names:
             return self.debug_bus.read_signal(signal_name)

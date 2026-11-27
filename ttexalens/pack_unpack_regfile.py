@@ -4,6 +4,7 @@
 
 import struct
 from enum import Enum
+from ttexalens.exceptions import TTException
 
 
 class TensixDataFormat(Enum):
@@ -177,9 +178,15 @@ def unpack_data(data, df: int | TensixDataFormat, signed: bool):
 
 
 # Unpacking data read with direct access require different approach
-def unpack_value_direct_access(value: int, df: TensixDataFormat, signed: bool) -> int | float:
+def unpack_value_direct_access(
+    value: int, df: TensixDataFormat, signed: bool, sign_magnitude: bool = False
+) -> int | float:
     if df == TensixDataFormat.Float32:
         return float(struct.unpack(">f", value.to_bytes(4, "big"))[0])
+    elif df == TensixDataFormat.Int32 and signed and sign_magnitude:
+        # Sign/magnitude: sign in bit 31, magnitude in bits 0-30. Negative zero reads as 0.
+        magnitude = value & 0x7FFFFFFF
+        return -magnitude if value & 0x80000000 else magnitude
     # Because in ALU register format for dest is INT32 for both INT32 and UINT32 we need to check sign bit
     elif df == TensixDataFormat.Int32 and signed:
         # If the sign bit is set, we need to convert it to a signed integer
@@ -200,16 +207,24 @@ def unpack_value_direct_access(value: int, df: TensixDataFormat, signed: bool) -
         raise ValueError(f"Unsupported data format {df} for unpacking.")
 
 
-def unpack_data_direct_access(data: list[int], df: int | TensixDataFormat, signed: bool) -> list[int | float]:
+def unpack_data_direct_access(
+    data: list[int], df: int | TensixDataFormat, signed: bool, sign_magnitude: bool = False
+) -> list[int | float]:
     if isinstance(df, int):
         df = TensixDataFormat(df)
 
-    return [unpack_value_direct_access(value, df, signed=signed) for value in data]
+    return [unpack_value_direct_access(value, df, signed=signed, sign_magnitude=sign_magnitude) for value in data]
 
 
-def pack_value_direct_access(value: int | float, df: TensixDataFormat) -> int:
+def pack_value_direct_access(value: int | float, df: TensixDataFormat, sign_magnitude: bool = False) -> int:
     if df == TensixDataFormat.Float32:
         return int.from_bytes(struct.pack(">f", float(value)), "big")
+    elif df == TensixDataFormat.Int32 and sign_magnitude:
+        # Sign/magnitude: sign in bit 31, magnitude in bits 0-30. -2**31 has no encoding.
+        if value < -(2**31 - 1) or value > 2**31 - 1:
+            raise TTException(f"Value {value} is out of range for sign/magnitude Int32.")
+        int_value = int(value)
+        return int_value if int_value >= 0 else 0x80000000 | -int_value
     elif df == TensixDataFormat.Int32:
         if value < -(2**31) or value > 2**31 - 1:
             raise ValueError(f"Value {value} is out of range for Int32.")
@@ -233,5 +248,7 @@ def pack_value_direct_access(value: int | float, df: TensixDataFormat) -> int:
         raise ValueError(f"Unsupported data format {df} for packing.")
 
 
-def pack_data_direct_access(data: list[int] | list[float], df: TensixDataFormat) -> list[int]:
-    return [pack_value_direct_access(value, df) for value in data]
+def pack_data_direct_access(
+    data: list[int] | list[float], df: TensixDataFormat, sign_magnitude: bool = False
+) -> list[int]:
+    return [pack_value_direct_access(value, df, sign_magnitude) for value in data]

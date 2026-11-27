@@ -3,13 +3,14 @@
 # SPDX-License-Identifier: Apache-2.0
 """
 Usage:
-  dump_regfile <regfile> [ -l <loc> ] [ -t <num-tiles> ] [ -d <device> ] [ --neo <neo-id> ]
+  dump_regfile <regfile> [ -l <loc> ] [ -t <num-tiles> ] [ --sign-magnitude ] [ -d <device> ] [ --neo <neo-id> ]
 
 Arguments:
   regfile      Register file to read from (0: SRCA, 1: SRCB, 2: DSTACC)
 
 Options:
   -t <num-tiles>            Number of tiles to read. Only effective for 32 bit formats on blackhole and for DSTACC on quasar.
+  --sign-magnitude          Decode Int32 DSTACC values as sign/magnitude (sign in bit 31, magnitude in bits 0-30) instead of two's complement. Only effective where DSTACC is read directly (blackhole, quasar).
 
 Description:
   Prints the specified regfile (SRCA/DSTACC).
@@ -25,6 +26,7 @@ Examples:
   dr 0 -l 0,0 -d 1
   dr 2 -l 0,0
   dr dstacc -l 0,0 -d 1
+  dr 2 -l 0,0 --sign-magnitude    # Decode Int32 DSTACC values as sign/magnitude
 """
 
 from collections.abc import Sequence
@@ -65,6 +67,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
     regfile: str = args["<regfile>"]
     num_tiles: int | None = int(args["-t"]) if args["-t"] else None
+    sign_magnitude: bool = bool(args["--sign-magnitude"])
 
     device: Device
     location: OnChipCoordinate
@@ -77,7 +80,7 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
             if tensix_debug is None:
                 ERROR("This location does not have a Tensix.")
                 continue
-            data = tensix_debug.read_regfile(regfile, num_tiles)
+            data = tensix_debug.read_regfile(regfile, num_tiles, sign_magnitude=sign_magnitude)
             print_regfile(data)
 
     return None
