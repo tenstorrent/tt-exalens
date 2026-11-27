@@ -40,13 +40,13 @@ std::optional<ElfFde> find_elf_and_frame_description(const std::vector<ElfFile>&
 }
 
 // Resolves the frame snapshot at `pc`, preferring `elf` (the previous frame's
-// ELF) and falling back to a scan over all `elfs`. Computes the CFA against
-// `inner_cfa` (nullopt for the top frame). Returns an empty frame when no FDE
-// covers the PC or the CFA can't be computed.
+// ELF) and falling back to a scan over all `elfs`. Computes the CFA through
+// `inner_frames`, the frames this one called into (empty for the top frame).
+// Returns an empty frame when no FDE covers the PC or the CFA can't be computed.
 std::optional<ElfFrame> get_elf_and_frame_snapshot(const ElfFile* elf, const std::vector<ElfFile>& elfs, uint64_t pc,
                                                    uint64_t reported_pc,
                                                    const std::shared_ptr<MemoryAccess>& memory_access,
-                                                   std::optional<uint64_t> inner_cfa = std::nullopt) {
+                                                   const std::vector<FrameSnapshot>& inner_frames) {
     std::optional<FrameDescription> fde;
     if (elf != nullptr) {
         fde = elf->get_frame_description(pc, memory_access);
@@ -63,7 +63,7 @@ std::optional<ElfFrame> get_elf_and_frame_snapshot(const ElfFile* elf, const std
         // logging facility, so the diagnostic is dropped.)
         return std::nullopt;
     }
-    std::optional<uint64_t> cfa = fde->compute_cfa(inner_cfa);
+    std::optional<uint64_t> cfa = fde->compute_cfa(inner_frames);
     if (!cfa.has_value()) {
         return std::nullopt;
     }
@@ -444,7 +444,7 @@ std::vector<CallstackEntry> get_callstack(const std::vector<ElfFile>& elfs, uint
     std::vector<FrameSnapshot> inner_frames;
 
     // Find top frame.
-    std::optional<ElfFrame> located = get_elf_and_frame_snapshot(nullptr, elfs, pc, pc, memory_access);
+    std::optional<ElfFrame> located = get_elf_and_frame_snapshot(nullptr, elfs, pc, pc, memory_access, inner_frames);
 
     while (located.has_value() && (limit == 0 || callstack.size() < limit)) {
         const ElfFile* elf = located->elf;
@@ -479,9 +479,8 @@ std::vector<CallstackEntry> get_callstack(const std::vector<ElfFile>& elfs, uint
         // lookups resolve to the call site instead of spilling into whatever
         // follows. The true return address is preserved as reported_pc for display.
         pc = *return_address - 1;
-        const uint64_t inner_cfa = current_frame.cfa;
         inner_frames.push_back(std::move(current_frame));
-        located = get_elf_and_frame_snapshot(elf, elfs, pc, *return_address, memory_access, inner_cfa);
+        located = get_elf_and_frame_snapshot(elf, elfs, pc, *return_address, memory_access, inner_frames);
 
         // If the caller reached `function_die` through one or more tail calls,
         // those frames left no return address of their own; reconstruct them

@@ -27,16 +27,16 @@ void bind_dwarf_frame(nb::module_& m) {
         .def_ro("kind", &RegisterRule::kind)
         .def_ro("saved_address", &RegisterRule::saved_address);
 
-    nb::class_<FrameDescription>(m, "FrameDescription")
-        .def_prop_ro("pc", &FrameDescription::get_pc)
-        .def_prop_ro("pointer_size", &FrameDescription::get_pointer_size)
-        .def("get_return_address_register", &FrameDescription::get_return_address_register)
-        .def("classify_register_rule", &FrameDescription::classify_register_rule, nb::arg("register_index"),
-             nb::arg("cfa"))
-        .def("read_register", &FrameDescription::read_register, nb::arg("register_index"), nb::arg("cfa"))
-        .def("try_read_register", &FrameDescription::try_read_register, nb::arg("register_index"),
-             nb::arg("cfa").none())
-        .def("compute_cfa", &FrameDescription::compute_cfa, nb::arg("inner_cfa").none() = nb::none());
+    auto frame_description =
+        nb::class_<FrameDescription>(m, "FrameDescription")
+            .def_prop_ro("pc", &FrameDescription::get_pc)
+            .def_prop_ro("pointer_size", &FrameDescription::get_pointer_size)
+            .def("get_return_address_register", &FrameDescription::get_return_address_register)
+            .def("classify_register_rule", &FrameDescription::classify_register_rule, nb::arg("register_index"),
+                 nb::arg("cfa"))
+            .def("read_register", &FrameDescription::read_register, nb::arg("register_index"), nb::arg("cfa"))
+            .def("try_read_register", &FrameDescription::try_read_register, nb::arg("register_index"),
+                 nb::arg("cfa").none());
 
     // Snapshot of one frame on the callstack at a particular PC. Used as
     // the building block for FrameInspection — both for the
@@ -48,6 +48,9 @@ void bind_dwarf_frame(nb::module_& m) {
         .def_rw("cfa", &FrameSnapshot::cfa)
         .def_rw("compute_pc", &FrameSnapshot::compute_pc)
         .def_rw("reported_pc", &FrameSnapshot::reported_pc);
+
+    frame_description.def("compute_cfa", &FrameDescription::compute_cfa,
+                          nb::arg("inner_frames") = std::vector<FrameSnapshot>{});
 
     // Per-frame context for DwarfDie::read_value. Construct with the
     // active MemoryAccess, the inspected frame's snapshot, and the chain

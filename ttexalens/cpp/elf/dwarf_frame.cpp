@@ -63,6 +63,44 @@ bool is_callee_saved_register(uint16_t reg) {
     return false;
 }
 
+constexpr uint16_t kStackPointerRegister = 2;
+
+// Value of `register_index` in the frame that called inner_frames.back()
+// (or the live value when inner_frames is empty).
+std::optional<uint64_t> recover_register(const std::shared_ptr<MemoryAccess>& memory_access,
+                                         const std::vector<FrameSnapshot>& inner_frames, uint16_t register_index) {
+    if (register_index == kStackPointerRegister && !inner_frames.empty()) {
+        return inner_frames.back().cfa;
+    }
+
+    // The inspected frame's own CFI rule for X describes where its CALLER
+    // will find X after this frame returns — i.e. the caller's view of X,
+    // not this frame's. To recover the inspected frame's view we walk the
+    // chain of frames it called into, starting from the immediate child:
+    // the first callee that saved X preserved exactly the value the
+    // inspected frame had at its call instruction. If none of them saved
+    // it (or inner_frames is empty because this IS the live frame), no
+    // one between here and live touched X, so the live register still
+    // holds the inspected-frame value.
+    //
+    // inner_frames is stored in natural callstack order (live first,
+    // immediate-child-of-inspected last) to match the Python convention,
+    // so we iterate it in reverse to start at the immediate child and
+    // walk toward live.
+    for (auto it = inner_frames.rbegin(); it != inner_frames.rend(); ++it) {
+        const RegisterRule rule = it->fde.classify_register_rule(register_index, it->cfa);
+        if (rule.kind == RegisterRuleKind::Saved) {
+            return memory_access->try_read_word(rule.saved_address, it->fde.get_pointer_size());
+        }
+        if (rule.kind == RegisterRuleKind::SameValue) {
+            continue;
+        }
+        // Undefined or unhandled rule kind — no recoverable value.
+        return std::nullopt;
+    }
+    return memory_access->read_register(register_index);
+}
+
 }  // namespace
 
 std::optional<uint64_t> FrameDescription::read_register(uint16_t register_index, uint64_t cfa) const {
@@ -153,7 +191,7 @@ std::optional<uint16_t> FrameDescription::get_return_address_register() const {
     return static_cast<uint16_t>(return_address_register);
 }
 
-std::optional<uint64_t> FrameDescription::compute_cfa(std::optional<uint64_t> inner_cfa) const {
+std::optional<uint64_t> FrameDescription::compute_cfa(const std::vector<FrameSnapshot>& inner_frames) const {
     auto info_ptr = info.lock();
     if (!info_ptr) {
         return std::nullopt;
@@ -170,26 +208,11 @@ std::optional<uint64_t> FrameDescription::compute_cfa(std::optional<uint64_t> in
     const uint16_t cfa_register = static_cast<uint16_t>(cfa_rule.reg);
     const int64_t cfa_offset = cfa_rule.offset;
 
-    // Top frame: register holds its live value.
-    if (!inner_cfa.has_value()) {
-        return memory_access->read_register(cfa_register) + cfa_offset;
-    }
-
-    // Non-top frame: does the current frame save the CFA-source register?
-    auto reg_rule = query_rule(info_ptr->dbg, fde, static_cast<Dwarf_Half>(cfa_register), pc);
-    const bool has_saved_rule =
-        reg_rule.status == DW_DLV_OK && reg_rule.value_type == DW_EXPR_OFFSET && reg_rule.offset_relevant != 0;
-    if (!has_saved_rule) {
-        return *inner_cfa + static_cast<uint64_t>(cfa_offset);
-    }
-
-    uint64_t address = *inner_cfa + static_cast<uint64_t>(reg_rule.offset);
-    auto saved = memory_access->try_read_word(address, info_ptr->pointer_size);
-
-    if (!saved.has_value()) {
+    auto base = recover_register(memory_access, inner_frames, cfa_register);
+    if (!base.has_value()) {
         return std::nullopt;
     }
-    return *saved + static_cast<uint64_t>(cfa_offset);
+    return *base + static_cast<uint64_t>(cfa_offset);
 }
 
 FrameInspection::FrameInspection(std::shared_ptr<MemoryAccess> memory_access, std::optional<FrameSnapshot> inspected,
@@ -197,34 +220,7 @@ FrameInspection::FrameInspection(std::shared_ptr<MemoryAccess> memory_access, st
     : memory_access(std::move(memory_access)), inspected(std::move(inspected)), inner_frames(std::move(inner_frames)) {}
 
 std::optional<uint64_t> FrameInspection::read_register(int register_index) const {
-    const uint16_t reg = static_cast<uint16_t>(register_index);
-
-    // The inspected frame's own CFI rule for X describes where its CALLER
-    // will find X after this frame returns — i.e. the caller's view of X,
-    // not this frame's. To recover the inspected frame's view we walk the
-    // chain of frames it called into, starting from the immediate child:
-    // the first callee that saved X preserved exactly the value the
-    // inspected frame had at its call instruction. If none of them saved
-    // it (or inner_frames is empty because this IS the live frame), no
-    // one between here and live touched X, so the live register still
-    // holds the inspected-frame value.
-    //
-    // inner_frames is stored in natural callstack order (live first,
-    // immediate-child-of-inspected last) to match the Python convention,
-    // so we iterate it in reverse to start at the immediate child and
-    // walk toward live.
-    for (auto it = inner_frames.rbegin(); it != inner_frames.rend(); ++it) {
-        const RegisterRule rule = it->fde.classify_register_rule(reg, it->cfa);
-        if (rule.kind == RegisterRuleKind::Saved) {
-            return memory_access->try_read_word(rule.saved_address, it->fde.get_pointer_size());
-        }
-        if (rule.kind == RegisterRuleKind::SameValue) {
-            continue;
-        }
-        // Undefined or unhandled rule kind — no recoverable value.
-        return std::nullopt;
-    }
-    return memory_access->read_register(static_cast<uint64_t>(register_index));
+    return recover_register(memory_access, inner_frames, static_cast<uint16_t>(register_index));
 }
 
 std::optional<uint64_t> FrameInspection::read_memory(uint64_t address, uint8_t register_size) const {

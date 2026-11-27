@@ -34,6 +34,8 @@ struct RegisterRule {
     uint64_t saved_address = 0;
 };
 
+struct FrameSnapshot;
+
 // Resolved Call Frame Information for a single PC inside an FDE. Combines the
 // FDE we found with a MemoryAccess the caller wires up so we can read live
 // machine state (GPRs + target memory) without implementing them in this
@@ -56,12 +58,11 @@ class FrameDescription {
     std::optional<uint64_t> read_register(uint16_t register_index, uint64_t cfa) const;
     std::optional<uint64_t> try_read_register(uint16_t register_index, std::optional<uint64_t> cfa) const;
 
-    // Computes this FDE's CFA at its PC. For the top frame (`inner_cfa`
-    // nullopt) reads the CFA-source register live; for any outer frame
-    // passes the inner frame's CFA so the CFI rule chain can be followed
-    // through any save/restore of the CFA-source register. Returns this
-    // FDE's frame CFA, not the inner frame's.
-    std::optional<uint64_t> compute_cfa(std::optional<uint64_t> inner_cfa = std::nullopt) const;
+    // Computes this FDE's CFA at its PC. `inner_frames` is the chain of
+    // frames this one called into (live first, immediate child last; empty
+    // for the top frame). The CFA-source register is recovered through that
+    // chain: each callee's own rule with that callee's CFA, else live.
+    std::optional<uint64_t> compute_cfa(const std::vector<FrameSnapshot>& inner_frames) const;
 
     // Resolves the CFI rule for `register_index` at this frame's PC into one
     // of the four `RegisterRule` shapes. `cfa` must be the inspected frame's
@@ -112,6 +113,9 @@ struct FrameSnapshot {
 // intentionally NOT consulted — it describes the caller's view, not this
 // frame's — so the inspected snapshot's `fde` is carried only to keep the
 // (cfa, pc) plumbing uniform with inner_frames.
+//
+// Register 2 (sp) of an outer frame is the CFA of its immediate child
+// (inner_frames.back()), not a value recovered through the CFI chain.
 //
 // Memory loads always route through MemoryAccess regardless of frame depth.
 class FrameInspection {

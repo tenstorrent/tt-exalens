@@ -536,9 +536,34 @@ __attribute__((noinline)) int run(int a) {
 }
 }  // namespace tail_multi_test
 
+namespace frame_pointer_test {
+// The variable-length array makes vla_function address its frame through
+// s0. leaf has no frame of its own in the optimized build and leaves s0
+// untouched. The labels give tests a pc inside each frame.
+__attribute__((noinline, noclone)) void leaf(volatile uint8_t* buffer) {
+    buffer[0] = 1;
+    asm volatile(".globl ttexalens_fp_leaf_break\nttexalens_fp_leaf_break:\nebreak");
+    asm volatile("" ::: "memory");
+}
+__attribute__((noinline, noclone)) void vla_function(uint32_t size) {
+    uint32_t marker = 0x00C0FFEE;
+    TTEXALENS_KEEP_ON_STACK(size, marker);
+    volatile uint8_t buffer[size];
+    buffer[size - 1] = 2;
+    leaf(buffer);
+    asm volatile(".globl ttexalens_fp_vla_return\nttexalens_fp_vla_return:" ::: "memory");
+}
+__attribute__((noinline, noclone)) void caller(uint32_t size) {
+    uint32_t marker = 0x00CA11E4;
+    TTEXALENS_KEEP_ON_STACK(size, marker);
+    vla_function(size);
+    asm volatile(".globl ttexalens_fp_caller_return\nttexalens_fp_caller_return:" ::: "memory");
+}
+}  // namespace frame_pointer_test
+
 // Scenario selectors occupy the top of the range plus the 0xFFFFFE00 block; any
 // other value is a recursion count. Lower the bound when adding a scenario.
-constexpr uint32_t kLowestScenarioSelector = 0xFFFFFFF6;
+constexpr uint32_t kLowestScenarioSelector = 0xFFFFFFF5;
 
 static bool is_scenario_selector(uint32_t mailbox) {
     return mailbox >= kLowestScenarioSelector || (mailbox & 0xFFFFFF00) == 0xFFFFFE00;
@@ -573,6 +598,9 @@ int main() {
         tail_multi_test::run(host_value<int>(0));
     } else if (*g_MAILBOX == 0xFFFFFFF6) {
         reference_test::run();
+    } else if (*g_MAILBOX == 0xFFFFFFF5) {
+        frame_pointer_test::caller((*g_MAILBOX & 0xF) + 16);
+        asm volatile(".globl ttexalens_fp_main_return\nttexalens_fp_main_return:" ::: "memory");
     } else {
         int sum = recurse(*g_MAILBOX);
         *g_MAILBOX = sum;
