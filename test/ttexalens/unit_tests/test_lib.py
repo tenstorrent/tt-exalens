@@ -1811,7 +1811,8 @@ class TestCallStack(unittest.TestCase):
                 gdb_callstack = get_gdb_callstack(
                     self.location, self.risc_name, self.neo_id, [elf_path], [None], default_server
                 )
-                self.compare_callstacks(callstack, gdb_callstack)
+                # Without an ELF loaded through ttexalens, GDB has no main executable and unwinds past main.
+                self.compare_callstacks(callstack, gdb_callstack[: len(callstack)])
             finally:
                 default_server.stop()
 
