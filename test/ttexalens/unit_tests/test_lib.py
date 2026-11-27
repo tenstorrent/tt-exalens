@@ -2351,6 +2351,42 @@ class TestCallStack(unittest.TestCase):
         # The reference is materialised in the register, so following it reads live memory.
         self.assertEqual(0x5A5A1234, reg_value.value.dereference().read_value())
 
+    @parameterized.expand(CALLSTACK_ELFS)
+    def test_callstack_frame_pointer(self, elf_name: str):
+        if self.device.is_blackhole() and self.risc_name == "trisc2":
+            self.skipTest("This test doesn't work as expected due to blackhole trisc2 hardware bug, tt-exalens:#528")
+
+        elf_path = self.get_elf_path(elf_name)
+        parsed_elf = get_parsed_elf_file(elf_path)
+        self.set_recursion_count(parsed_elf, 0xFFFFFFF5)
+        self.loader.run_elf(parsed_elf)
+        callstack: list[CallstackEntry] = lib.callstack(
+            self.location, parsed_elf, None, self.risc_name, self.neo_id, 100, stop_on_main=True
+        )
+
+        expected = [
+            "frame_pointer_test::leaf",
+            "frame_pointer_test::vla_function",
+            "frame_pointer_test::caller",
+            "main",
+        ]
+        self.assertEqual(len(callstack), len(expected))
+        for entry, name in zip(callstack, expected):
+            self.assertIn(entry.function_name, (name, name.split("::")[-1]))
+
+        for entry, expected_marker in ((callstack[1], 0x00C0FFEE), (callstack[2], 0x00CA11E4)):
+            markers = [variable for variable in entry.locals if variable.name == "marker"]
+            self.assertEqual(len(markers), 1, f"Unexpected locals for {entry.function_name}")
+            self.assert_variable(
+                markers[0], "marker", expected_marker, require_value=True, message=f"marker of {entry.function_name}"
+            )
+
+        if self.gdb_server is not None:
+            gdb_callstack: list[CallstackEntry] = get_gdb_callstack(
+                self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
+            )
+            self.compare_callstacks(callstack, gdb_callstack)
+
     @parameterized.expand(
         [
             ("abcd", "build/riscv-src/blackhole/callstack.debug.brisc.elf"),  # Invalid location string
