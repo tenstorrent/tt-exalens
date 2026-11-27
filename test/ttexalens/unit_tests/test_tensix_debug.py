@@ -3,6 +3,7 @@
 # SPDX-License-Identifier: Apache-2.0
 import math
 import unittest
+from unittest import mock
 from parameterized import parameterized_class, parameterized
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 
@@ -184,6 +185,81 @@ class TestTensixDebug(unittest.TestCase):
 
         with self.assertRaises((TTException, ValueError)):
             self.tensix_debug.write_regfile(regfile, [value], df)
+
+    def _prepare_regfile_read(self):
+        if not self.location.device.is_wormhole() and not self.location.device.is_blackhole():
+            self.skipTest("read_regfile is supported only on Wormhole and Blackhole.")
+        self.tensix_debug.inject_instruction(self.location.device.instructions.TT_OP_SETRWC(0, 0, 0, 0, 0, 0x7), 2)
+
+    def _write_register_restored(self, name: str, value: int):
+        register_store = self.tensix_debug.register_store
+        self.addCleanup(register_store.write_register, name, register_store.read_register(name))
+        register_store.write_register(name, value)
+
+    @parameterized.expand(
+        [
+            (TensixDataFormat.Float16.value, REGFILE.SRCA),
+            (TensixDataFormat.Float16.value, REGFILE.DSTACC),
+            (TensixDataFormat.Float16_b.value, REGFILE.SRCA),
+            (TensixDataFormat.Float16_b.value, REGFILE.DSTACC),
+            (TensixDataFormat.Bfp8_b.value, REGFILE.SRCA),
+            (TensixDataFormat.Bfp8_b.value, REGFILE.DSTACC),
+            (TensixDataFormat.Float32.value, REGFILE.SRCA, False),
+            (12, REGFILE.SRCA, False),
+            (12, REGFILE.DSTACC, False),
+            (13, REGFILE.SRCA, False),
+            (13, REGFILE.DSTACC, False),
+        ]
+    )
+    def test_read_regfile_dst_format(self, df_value: int, regfile: REGFILE, decoded: bool = True):
+        self._prepare_regfile_read()
+        self._write_register_restored("ALU_FORMAT_SPEC_REG2_Dstacc", df_value)
+
+        with mock.patch("ttexalens.debug_tensix.WARN") as warn:
+            ret = self.tensix_debug.read_regfile(regfile)
+
+        if decoded:
+            warn.assert_not_called()
+            self.assertEqual(len(ret), 1024)
+            self.assertFalse(any(isinstance(value, str) for value in ret))
+        else:
+            self.assertIn("Unsupported data format", str(warn.call_args))
+            self.assertEqual(len(ret), 2048)
+            self.assertTrue(all(isinstance(value, str) and value.startswith("0x") for value in ret))
+
+    @parameterized.expand([0, 1])
+    def test_srca_read_keeps_dst_tile_written_directly(self, fp32: int):
+        if not self.tensix_debug.has_direct_dest_access:
+            self.skipTest("Direct read/write of dest is not supported on this device.")
+        self._prepare_regfile_read()
+        self._write_register_restored("ALU_ACC_CTRL_Fp32_enabled", fp32)
+        self._write_register_restored("ALU_ACC_CTRL_SFPU_Fp32_enabled", fp32)
+        data = [i + 1 for i in range(TILE_SIZE)]
+        self.tensix_debug.write_regfile(REGFILE.DSTACC, data, TensixDataFormat.Int32)
+
+        self.tensix_debug.read_regfile(REGFILE.SRCA)
+
+        self.assertEqual(self.tensix_debug.read_regfile(REGFILE.DSTACC, 1), data)
+
+    def test_srca_read_keeps_dst_rows_seeded_by_sfpu(self):
+        self._prepare_regfile_read()
+        self._write_register_restored("ALU_FORMAT_SPEC_REG2_Dstacc", TensixDataFormat.UInt16.value)
+        self._write_register_restored("ALU_ACC_CTRL_Fp32_enabled", 0)
+        self._write_register_restored("ALU_ACC_CTRL_SFPU_Fp32_enabled", 0)
+        ops = self.location.device.instructions
+        for instruction in (
+            ops.TT_OP_SFPLOADI(0, 2, 0x1234),
+            ops.TT_OP_SFPSTORE(0, 6, 0, 0),
+            ops.TT_OP_SFPLOADI(0, 2, 0x5678),
+            ops.TT_OP_SFPSTORE(0, 6, 0, 2),
+        ):
+            self.tensix_debug.inject_instruction(instruction, 2)
+        before = self.tensix_debug.read_regfile(REGFILE.DSTACC)
+        self.assertGreaterEqual(len(set(before[0:16])), 2, before[0:16])
+
+        self.tensix_debug.read_regfile(REGFILE.SRCA)
+
+        self.assertEqual(self.tensix_debug.read_regfile(REGFILE.DSTACC), before)
 
     def _read_signal(self, signal_name: str) -> int:
         if signal_name in self.debug_bus.signal_names:

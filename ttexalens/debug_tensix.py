@@ -29,6 +29,10 @@ class REGFILE(Enum):
 
 TILE_SIZE = 32 * 32
 
+# SFPLOAD/SFPSTORE instr_mod0 values that move Dst data without value conversion.
+SFP_MOD0_FMT_INT32 = 4
+SFP_MOD0_FMT_UINT16 = 6
+
 
 def convert_regfile(regfile: int | str | REGFILE) -> REGFILE:
     if isinstance(regfile, REGFILE):
@@ -205,6 +209,7 @@ class TensixDebug:
         """Dumps SRCA/DSTACC register file from the specified core.
             Due to the architecture of SRCA, you can see only see last two faces written.
             SRCB is currently not supported.
+            Dumping SRCA borrows DSTACC rows and SFPU LReg 3 and LReg 4; read_regfile lists what it changes.
 
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
@@ -224,6 +229,11 @@ class TensixDebug:
             return self.direct_dest_read(df, num_tiles)
 
         ops = self.device.instructions
+        # SFPLOAD/SFPSTORE instr_mod0 = 0 converts the data and flushes denormals,
+        # so save and restore Dst in a mode that copies the bits.
+        sfp_mod0 = SFP_MOD0_FMT_UINT16
+        if regfile == REGFILE.SRCA and self.register_store.read_register("ALU_ACC_CTRL_SFPU_Fp32_enabled"):
+            sfp_mod0 = SFP_MOD0_FMT_INT32
 
         data: list[int] = []
         self.register_store.write_register("RISCV_DEBUG_REG_DBG_ARRAY_RD_EN", 1)
@@ -232,8 +242,9 @@ class TensixDebug:
             regfile_id = 2 if regfile == REGFILE.SRCA else regfile.value
 
             if regfile == REGFILE.SRCA:
-                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SFPLOAD(3, 0, 0, 2), thread_id)
+                # Dst rows 0-3 are saved in two LRegs: even columns in LReg 3, odd columns in LReg 4.
+                self.inject_instruction(ops.TT_OP_SFPLOAD(3, sfp_mod0, 0, 0), thread_id)
+                self.inject_instruction(ops.TT_OP_SFPLOAD(4, sfp_mod0, 0, 2), thread_id)
                 self.inject_instruction(ops.TT_OP_STALLWAIT(0x40, 0x4000), thread_id)
                 self.inject_instruction(ops.TT_OP_MOVDBGA2D(0, row & 0xF, 0, 0, 0), thread_id)
             # elif regfile == REGFILE.SRCB:
@@ -252,8 +263,8 @@ class TensixDebug:
                 data += list(int.to_bytes(rd_data, 4, byteorder="big"))
 
             if regfile == REGFILE.SRCA:
-                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 0), thread_id)
-                self.inject_instruction(ops.TT_OP_SFPSTORE(3, 0, 0, 2), thread_id)
+                self.inject_instruction(ops.TT_OP_SFPSTORE(3, sfp_mod0, 0, 0), thread_id)
+                self.inject_instruction(ops.TT_OP_SFPSTORE(4, sfp_mod0, 0, 2), thread_id)
                 if row % 16 == 15:
                     self.inject_instruction(ops.TT_OP_SETRWC(3, 0, 0, 0, 0, 0xF), thread_id)
 
@@ -295,6 +306,12 @@ class TensixDebug:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
         Dumping DSTACC on Wormhole as FP32 clobbers the register.
         On Quasar only DSTACC can be read, through TRISC3 of the NEO, which is halted during the read.
+        Dumping SRCA uses SFPU LReg 3 and LReg 4 as scratch, resets the register window counters of Tensix thread 2
+        and clears the SrcA and SrcB valid flags.
+        It restores the DSTACC rows it borrows only when the Dst counters, base and address modes of that thread
+        are at their defaults, all SFPU lanes are enabled, and the FPU and SFPU Dst widths are equal.
+        If the data cannot be decoded in the Dst data format, a warning is printed and the raw data is returned
+        as hex strings.
 
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
@@ -303,23 +320,34 @@ class TensixDebug:
                 list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data) or num_tiles * TILE_SIZE for direct read.
         """
         regfile = convert_regfile(regfile)
-        df = self._read_dest_data_format()
+        unsupported: str | None = None
+        try:
+            df = self._read_dest_data_format()
+        except TTException:
+            # The Dst format field holds a value that is not a data format. Read the data anyway.
+            df = TensixDataFormat.Invalid
+            df_value = self.register_store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+            unsupported = f"Unsupported data format {df_value} for unpacking."
+        if regfile == REGFILE.SRCA and df == TensixDataFormat.Float32:
+            unsupported = f"Unsupported data format {df.name} for unpacking {regfile.name}."
 
         if not self._direct_dest_access_enabled(df, regfile) and num_tiles is not None:
             WARN("num_tiles argument only has effect for 32 bit formats on blackhole and for dest on quasar.")
 
         data = self._read_regfile_raw(regfile, df, num_tiles)
-        try:
-            return (
-                unpack_data_direct_access(data, self._direct_dest_format(df), signed=signed)
-                if self._direct_dest_access_enabled(df, regfile)
-                else unpack_data(data, df, signed=signed)
-            )
-        except ValueError as e:
-            # If the data format is unsupported, return the raw data.
-            WARN(e)
-            raw_data: list[str] = [hex(datum) for datum in data]
-            return raw_data
+        if unsupported is None:
+            try:
+                return (
+                    unpack_data_direct_access(data, self._direct_dest_format(df), signed=signed)
+                    if self._direct_dest_access_enabled(df, regfile)
+                    else unpack_data(data, df, signed=signed)
+                )
+            except ValueError as e:
+                unsupported = str(e)
+        # If the data format is unsupported, return the raw data.
+        WARN(unsupported)
+        raw_data: list[str] = [hex(datum) for datum in data]
+        return raw_data
 
     def write_regfile_data(self, regfile: REGFILE, data: list[int], df: TensixDataFormat) -> None:
 
