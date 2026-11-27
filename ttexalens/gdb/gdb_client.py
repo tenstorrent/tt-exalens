@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: © 2025 Tenstorrent AI ULC
 
 # SPDX-License-Identifier: Apache-2.0
+import contextlib
 import os
 import re
 import shutil
@@ -11,6 +12,7 @@ from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.gdb.gdb_communication import ServerSocket
 from ttexalens.gdb.gdb_server import GdbServer
 from ttexalens.elf import CallstackEntry, DwarfFileLine
+from ttexalens.exceptions import GdbProcessNotFoundError
 from ttexalens.hardware.risc_debug import RiscLocation
 from ttexalens.tt_exalens_lib import check_context
 from ttexalens.util import DEBUG, TRACE
@@ -98,30 +100,63 @@ def get_process_ids(gdb_server: GdbServer) -> dict[RiscLocation, int]:
     return {process.risc_debug.risc_location: pid for pid, process in gdb_server.available_processes.items()}
 
 
+def _mask_quoted_text(text: str) -> str:
+    masked = list(text)
+    quote: str | None = None
+    escaped = False
+    for index, char in enumerate(text):
+        if quote is None:
+            if char in "\"'":
+                quote = char
+            continue
+        if escaped:
+            escaped = False
+        elif char == "\\":
+            escaped = True
+        elif char == quote:
+            quote = None
+            continue
+        masked[index] = "_"
+    return "".join(masked)
+
+
+def _strip_frame_arguments(body: str) -> str:
+    body = body.strip()
+    if not body.endswith(")"):
+        return body
+    masked = _mask_quoted_text(body)
+    depth = 0
+    for index in range(len(masked) - 1, -1, -1):
+        if masked[index] == ")":
+            depth += 1
+        elif masked[index] == "(":
+            depth -= 1
+            if depth == 0:
+                return body[:index].rstrip()
+    return body
+
+
 def get_callstack_entry(line: str) -> CallstackEntry:
-    pattern = re.compile(
-        r"#\d+\s+"  # Skip the frame number
-        r"(?:(?P<pc>0x[0-9a-fA-F]+)\s+in\s+)?"  # Capture pc if available
-        r"(?P<function_name>\w+(::\w+)*)"  # Capture function name
-        r"(?:\s*\(.*?\))?"  # Ignore parentheses
-        r"\s+at\s+"  # Skip at
-        r"(?P<file_path>.*?):(?P<line>\d+)"  # Capture file path and line
-    )
-
     entry = CallstackEntry()
-    match = pattern.match(line)
-    if match:
-        pc = match.groupdict()["pc"]
-        if pc is not None:
-            entry.pc = int(pc, 16)
-        entry.function_name = match.groupdict()["function_name"]
-        file_path = match.groupdict()["file_path"]
-        line_no = int(match.groupdict()["line"]) if match.groupdict()["line"] is not None else None
-        if file_path is not None and line_no is not None:
-            entry.file_info = DwarfFileLine(file_path, line_no, 0)
-    elif "Backtrace stopped: frame did not save the PC" in line:
-        return get_callstack_entry(line.replace("Backtrace stopped: frame did not save the PC", "").strip())
+    line = line.split("Backtrace stopped:")[0].strip()
+    header = re.match(r"#\d+\s+(?:(?P<pc>0x[0-9a-fA-F]+)\s+in\s+)?", line)
+    if header is None:
+        return entry
+    if header["pc"] is not None:
+        entry.pc = int(header["pc"], 16)
+    rest = line[header.end() :]
 
+    location = re.match(r"(?P<body>.*)\s+at\s+(?P<file_path>.*?):(?P<line>\d+)", _mask_quoted_text(rest))
+    if location is not None:
+        file_path = rest[location.start("file_path") : location.end("file_path")]
+        entry.file_info = DwarfFileLine(file_path, int(location["line"]), 0)
+        body = rest[: location.end("body")]
+    else:
+        body = rest
+
+    name = _strip_frame_arguments(body)
+    if name not in ("", "??"):
+        entry.function_name = name
     return entry
 
 
@@ -167,17 +202,21 @@ def get_gdb_callstack(
     gdb_server: GdbServer | None = None,
     context: Context | None = None,
 ) -> list[CallstackEntry]:
-    gdb_server_created = False
-    if gdb_server is None:
-        server = ServerSocket()
-        server.start()
-        context = check_context(context)
-        gdb_server = GdbServer(context, server)
-        gdb_server.start()
-        gdb_server_created = True
-    process_ids = get_process_ids(gdb_server)
-
+    created_server: GdbServer | None = None
+    gdb_client: subprocess.Popen[str] | None = None
     try:
+        if gdb_server is None:
+            context = check_context(context)
+            server = ServerSocket()
+            server.start()
+            created_server = GdbServer(context, server)
+            created_server.start()
+            gdb_server = created_server
+        risc_location = RiscLocation(location, neo_id, risc_name)
+        pid = get_process_ids(gdb_server).get(risc_location)
+        if pid is None:
+            raise GdbProcessNotFoundError(risc_location)
+
         # Start GDB client
         gdb_client = subprocess.Popen(
             [get_gdb_client_path()],
@@ -193,7 +232,7 @@ def get_gdb_callstack(
 
         assert gdb_server.server.port is not None
         gdb_script = make_gdb_script_for_callstack(
-            process_ids[RiscLocation(location, neo_id, risc_name)],
+            pid,
             elf_paths,
             offsets,
             gdb_server.server.port,
@@ -211,5 +250,12 @@ def get_gdb_callstack(
         )
         return callstack
     finally:
-        if gdb_server_created:
-            gdb_server.stop()
+        if gdb_client is not None and gdb_client.poll() is None:
+            gdb_client.kill()
+            gdb_client.wait()
+            for pipe in (gdb_client.stdout, gdb_client.stderr, gdb_client.stdin):
+                if pipe is not None:
+                    with contextlib.suppress(OSError):
+                        pipe.close()
+        if created_server is not None:
+            created_server.stop()

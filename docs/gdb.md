@@ -33,13 +33,15 @@ The GDB client is **not** bundled in the wheel, since the binary is not portable
 - To debug client/server communication, run `set debug remote 1` in the GDB client.
 - Connect the GDB client to the debugger using: `target extended-remote localhost:<gdb_port>`.
 
-After connection has been established, you can use `info os processes` to list all available processes that you can debug with GDB. Use `attach <pid>` to start debugging selected riscv core.
+After connection has been established, you can use `info os processes` to list all available processes that you can debug with GDB. The list holds every debuggable RISC core that is not in reset, with or without an ELF loaded through ttexalens. Use `attach <pid>` to start debugging selected riscv core. Attaching halts the RISC core. Halting an Ethernet RISC core can wedge its base firmware, so attach to Ethernet cores with care.
 
 ## Loading elf and getting call stack
 
 Once attached to the process, you can load the ELF file using the `add-symbol-file <path-to-elf> [<offset>]` command. The `<path-to-elf>` is a required argument specifying the path to the ELF file of the program you want to debug. The `<offset>` is an optional argument indicating the address where the program is loaded in memory.
 
 After the symbols are loaded, you can display the call stack using the `bt` (backtrace) command.
+
+The function `get_gdb_callstack()` in `ttexalens.gdb.gdb_client` runs these steps for one RISC core, and raises `GdbProcessNotFoundError` for a RISC core the server does not list.
 
 ## Sample app debugging script:
 

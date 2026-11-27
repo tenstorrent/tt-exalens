@@ -23,7 +23,8 @@ BaseException
     │   ├── CoordinateError
     │   │   ├── CoordinateTranslationError
     │   │   └── UnknownCoordinateSystemError
-    │   └── RiscHaltError
+    │   ├── RiscHaltError
+    │   └── GdbProcessNotFoundError
     └── TTFatalException
 ```
 
@@ -183,6 +184,16 @@ Raised when tt-exalens fails to halt a RISC-V core at the specified location.
 
 ```python
 from ttexalens.exceptions import RiscHaltError
+```
+
+### `GdbProcessNotFoundError(TTException)`
+
+Raised by `get_gdb_callstack()` when the GDB server does not list the requested RISC core as a process: the core is in reset, is not debuggable, or the server does not expose it.
+
+**Attributes:** `risc_location`
+
+```python
+from ttexalens.exceptions import GdbProcessNotFoundError
 ```
 
 ---
