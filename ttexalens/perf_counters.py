@@ -12,6 +12,7 @@ from ttexalens import _lib_helpers
 from ttexalens.context import NocId
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.hardware.perf_counters import (
+    COUNTER_ID_LIMIT,
     PerfCounterBlockDescription,
     TensixPerfCounters,
 )
@@ -21,6 +22,7 @@ __all__ = [
     "PerfCounterBlockDescription",
     "TensixPerfCounters",
     "list_perf_counters",
+    "read_perf_counter",
     "read_perf_counters",
     "reset_perf_counters",
     "start_perf_counters",
@@ -34,10 +36,10 @@ def _check_and_get_perf_counters(
 ) -> TensixPerfCounters:
     perf = location.noc_block.get_perf_counters(neo_id=neo_id)
     if perf is None:
-        raise TTException(
-            f"Performance counters are not available on {location.to_user_str()} "
-            f"(block_type={location.noc_block.block_type})."
-        )
+        where = f"block_type={location.noc_block.block_type}"
+        if neo_id is not None:
+            where += f", neo={neo_id}"
+        raise TTException(f"Performance counters are not available on {location.to_user_str()} ({where}).")
     return perf
 
 
@@ -50,7 +52,11 @@ def reset_perf_counters(
     neo_id: int | None = None,
     safe_mode: bool | None = None,
 ) -> None:
-    """Reset Tensix perf counters on this core. Raises if perf counters are not wired here."""
+    """Reset Tensix perf counters on this core. Raises if perf counters are not wired here.
+
+    Notes:
+        - neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+    """
     perf = _check_and_get_perf_counters(location, neo_id)
     noc_id = _lib_helpers.check_noc_id(noc_id, location.context)
     if block_name is None:
@@ -69,7 +75,11 @@ def start_perf_counters(
     neo_id: int | None = None,
     safe_mode: bool | None = None,
 ) -> None:
-    """Start Tensix perf counters on this core. Raises if perf counters are not wired here."""
+    """Start Tensix perf counters on this core. Raises if perf counters are not wired here.
+
+    Notes:
+        - neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+    """
     perf = _check_and_get_perf_counters(location, neo_id)
     noc_id = _lib_helpers.check_noc_id(noc_id, location.context)
     if block_name is None:
@@ -88,7 +98,11 @@ def stop_perf_counters(
     neo_id: int | None = None,
     safe_mode: bool | None = None,
 ) -> None:
-    """Stop Tensix perf counters on this core. Raises if perf counters are not wired here."""
+    """Stop Tensix perf counters on this core. Raises if perf counters are not wired here.
+
+    Notes:
+        - neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+    """
     perf = _check_and_get_perf_counters(location, neo_id)
     noc_id = _lib_helpers.check_noc_id(noc_id, location.context)
     if block_name is None:
@@ -112,13 +126,11 @@ def read_perf_counters(
     values ``(value, ref_cnt)``. Counter values are unsigned 32-bit; mask
     deltas with ``& 0xFFFFFFFF``. Raises ``TTException`` if perf counters
     are not wired here.
+
+    Notes:
+        - neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
     """
-    perf = location.noc_block.get_perf_counters(neo_id=neo_id)
-    if perf is None:
-        raise TTException(
-            f"Performance counters are not available on {location.to_user_str()} "
-            f"(block_type={location.noc_block.block_type})."
-        )
+    perf = _check_and_get_perf_counters(location, neo_id)
     resolved_noc = _lib_helpers.check_noc_id(noc_id, location.context)
     out: dict[tuple[str, int, str], tuple[int, int]] = {}
     block_names = [block_name] if block_name is not None else perf.block_names
@@ -129,6 +141,46 @@ def read_perf_counters(
             ref = perf.read_ref_cnt(bname, noc_id=resolved_noc, safe_mode=safe_mode)
             out[(bname, cid, cname)] = (value, ref)
     return out
+
+
+@_lib_helpers.trace_api
+def read_perf_counter(
+    location: OnChipCoordinate,
+    block_name: str,
+    counter: int | str,
+    *,
+    noc_id: NocId | int | None = None,
+    neo_id: int | None = None,
+    safe_mode: bool | None = None,
+) -> int:
+    """
+    Read one Tensix perf counter on this core, by id or by name.
+    The id does not have to be named in the block's counter map.
+
+    Args:
+        location (OnChipCoordinate): Core to read from.
+        block_name (str): Counter block, such as "FPU".
+        counter (int | str): Counter id (0..511) or a name from the block's counter map.
+        noc_id (NocId | int, optional): NOC to use. If None, the context's NOC is used.
+        neo_id (int, optional): NEO to read from. See Notes.
+        safe_mode (bool, optional): Overrides the context's safe mode.
+
+    Returns:
+        int: The counter value, unsigned 32-bit.
+
+    Notes:
+        - neo_id is valid only on architectures with NEOs. Elsewhere any value other than None raises TTException.
+    """
+    perf = _check_and_get_perf_counters(location, neo_id)
+    if isinstance(counter, int) and not 0 <= counter < COUNTER_ID_LIMIT:
+        raise TTException(f"Counter id {counter} out of range (0..{COUNTER_ID_LIMIT - 1}).")
+    if block_name not in perf.block_names:
+        raise TTException(f"Unknown perf-counter block {block_name!r}. Available: {sorted(perf.block_names)}.")
+    block = perf.get_block(block_name)
+    if isinstance(counter, str) and counter not in block.counters.values():
+        raise TTException(f"Unknown counter {counter!r} in block {block_name}.")
+    resolved_noc = _lib_helpers.check_noc_id(noc_id, location.context)
+    return perf.read_counter(block_name, counter, noc_id=resolved_noc, safe_mode=safe_mode)
 
 
 @_lib_helpers.trace_api
