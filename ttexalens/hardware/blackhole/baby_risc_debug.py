@@ -35,14 +35,31 @@ class BlackholeBabyRiscDebug(BabyRiscDebug):
             return int(self.noc_block.debug_bus.read_signal(self.risc_info.risc_name + "_pc"))
 
     def read_memory_bytes(self, address: int, buffer: bytearray | memoryview, safe_mode: bool | None = None) -> None:
-        self.assert_trisc2_address(address)
+        self.assert_trisc2_address(address, len(buffer))
         super().read_memory_bytes(address, buffer, safe_mode=safe_mode)
 
-    def write_memory_bytes(self, address: int, data: bytes | bytearray | memoryview, safe_mode: bool | None = None):
+    def write_memory_bytes(
+        self, address: int, data: bytes | bytearray | memoryview, safe_mode: bool | None = None
+    ) -> None:
+        self._assert_trisc2_write(address, len(data))
         super().write_memory_bytes(address, data, safe_mode=safe_mode)
 
-    def assert_trisc2_address(self, address: int):
-        if self.risc_info.risc_name == "trisc2" and address % 16 > 4:
+    def assert_trisc2_address(self, address: int, size: int = 1) -> None:
+        if self.risc_info.risc_name != "trisc2" or size <= 0:
+            return
+        offset = address % 16
+        if offset >= 8 or offset + size > 8:
             raise TTException(
-                f"Accessing trisc2 private memory address 0x{address:08x} does not work due to blackhole bug. For more information see issue #528 in tt-exalens repo."
+                f"Reading trisc2 memory range 0x{address:08x}-0x{address + size - 1:08x} does not work due to blackhole bug: words at offsets 8 and 12 of a 16-byte line are unreliable. For more information see issue #528 in tt-exalens repo."
+            )
+
+    def _assert_trisc2_write(self, address: int, size: int) -> None:
+        if self.risc_info.risc_name != "trisc2" or size <= 0:
+            return
+        end = address + size
+        first_partial = address % 4 != 0 and (address - address % 4) % 16 >= 8
+        last_partial = end % 4 != 0 and (end - end % 4) % 16 >= 8
+        if first_partial or last_partial:
+            raise TTException(
+                f"Writing trisc2 memory range 0x{address:08x}-0x{end - 1:08x} does not work due to blackhole bug: it partly covers a word at offset 8 or 12 of a 16-byte line, which cannot be read back. Write whole words instead. For more information see issue #528 in tt-exalens repo."
             )
