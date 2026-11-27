@@ -8,7 +8,7 @@ import unittest
 import tt_umd
 
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
-from test.ttexalens.unit_tests.test_base import init_cached_test_context
+from test.ttexalens.unit_tests.test_base import get_parsed_elf_file, init_cached_test_context
 from ttexalens import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.elf import ElfFile, ElfVariable, FrameInspection
@@ -169,6 +169,7 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(0xAA, g_global_struct.msg.signal.read_value())
         self.assertEqual(0x87654321, g_global_struct.msg.test2.read_value())
         self.assertEqual(4, len(g_global_struct.uint_array))
+        self.assertEqual(16, g_global_struct.uint_array.get_size())
         self.assertEqual(0x11111111, g_global_struct.uint_array[0].read_value())
         self.assertEqual(0x22222222, g_global_struct.uint_array[1].read_value())
         self.assertEqual(0x33333333, g_global_struct.uint_array[2].read_value())
@@ -478,6 +479,11 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual([i * 2 + 1 for i in range(4)], d_y_values)
         h_values = g_global_struct.h.as_value_list()
         self.assertEqual([i % 2 == 0 for i in range(8)], h_values)
+
+    def test_elf_variable_multi_dimensional_array(self):
+        g_array_2d = self.parsed_elf.get_global("g_array_2d", TestDebugSymbols.mem_access)
+        self.assertEqual([[0, 1, 2, 3], [4, 5, 6, 7], [8, 9, 10, 11]], [row.as_value_list() for row in g_array_2d])
+        self.assertEqual(6, g_array_2d[1].read()[2])
 
     def test_elf_variable_operators(self):
         """Test arithmetic, bitwise, and comparison operators"""
@@ -879,3 +885,37 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertTrue(dereferenced.x < 0x2000)
         self.assertEqual(dereferenced.x + 0x1000, 0x2111)
         self.assertEqual(dereferenced.y & 0xFF00, 0x1100)
+
+
+ARRAY_DIMENSION_ELFS = [
+    "build/riscv-src/wormhole/globals_test.debug.brisc.elf",
+    "build/riscv-src/quasar/globals_test.debug.rocket0.elf",
+]
+
+
+class TestElfArrayDimensions(unittest.TestCase):
+    @parameterized.expand(
+        [
+            (owner_name, elf_path)
+            for owner_name in ["g_array_dims_struct", "g_c_array_struct"]
+            for elf_path in ARRAY_DIMENSION_ELFS
+        ]
+    )
+    def test_zero_length_array_is_empty(self, owner_name: str, elf_path: str):
+        payload = get_parsed_elf_file(elf_path).get_global(owner_name, TimeoutMemoryAccess()).payload
+        self.assertEqual(0, len(payload))
+        self.assertEqual(0, payload.get_size())
+        self.assertTrue(payload.get_type_die().get_readable_name().endswith("[0]"))
+        self.assertEqual(b"", payload.read_bytes())
+
+    @parameterized.expand(ARRAY_DIMENSION_ELFS)
+    def test_two_dimensional_array_index_returns_row(self, elf_path: str):
+        g_array_2d = get_parsed_elf_file(elf_path).get_global("g_array_2d", TimeoutMemoryAccess())
+        self.assertEqual(3, len(g_array_2d))
+        self.assertEqual(48, g_array_2d.get_size())
+        self.assertEqual(g_array_2d.get_address() + 16, g_array_2d[1].get_address())
+        self.assertEqual(4, len(g_array_2d[1]))
+        self.assertEqual(16, g_array_2d[1].get_size())
+        self.assertEqual(g_array_2d.get_address() + 24, g_array_2d[1][2].get_address())
+        self.assertEqual(4, g_array_2d[1][2].get_size())
+        self.assertRaises(TypeMismatchError, lambda: len(g_array_2d[1][2]))

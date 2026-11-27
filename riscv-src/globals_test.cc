@@ -237,3 +237,11 @@ int main() {
     halt();
     return 0;
 }
+
+// Arrays for the ELF array dimension tests.
+struct ArrayDimsStruct {
+    uint32_t count;
+    uint32_t payload[0];
+};
+[[gnu::used]] int32_t g_array_2d[3][4] = {{0, 1, 2, 3}, {4, 5, 6, 7}, {8, 9, 10, 11}};
+[[gnu::used]] ArrayDimsStruct g_array_dims_struct;

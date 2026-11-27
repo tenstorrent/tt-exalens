@@ -26,6 +26,9 @@ set(OPTIONS_ALL_rv32 -O0 -mtune=rvtt-b1 -mabi=ilp32 -std=c++17 -g -flto -ffast-m
 set(OPTIONS_ALL_rv64 -O0 -mcpu=tt-qsr64 -mabi=lp64 -std=c++17 -g -flto -ffast-math)
 set(OPTIONS_COMPILE -fno-use-cxa-atexit -fno-exceptions -Wall -Werror -Wno-unknown-pragmas -Wno-error=multistatement-macros -Wno-error=parentheses -Wno-error=unused-but-set-variable -Wno-unused-variable)
 set(OPTIONS_LINK -fno-exceptions -Wl,-z,max-page-size=16 -Wl,-z,common-page-size=16 -nostartfiles -Lttexalens/riscv-src)
+# Options for the C source of globals_test (g++ compiles .c files as C++ unless told -x c)
+set(C_OPTIONS_rv32 -O0 -mtune=rvtt-b1 -mabi=ilp32 -g)
+set(C_OPTIONS_rv64 -O0 -mcpu=tt-qsr64 -mabi=lp64 -g)
 
 # Note that -fprofile-info-section must be specified so as to not rely on unavailable runtime support (libc, complete crt, etc),
 # but instead have GCC provide us with a pointer to the raw coverage data and let us extract it ourselves.
@@ -88,6 +91,12 @@ foreach(ISA ${RISCV_ISAS})
         DEPENDS ${RISCV_SOURCE}/coverage.c
     )
 
+    add_custom_command(
+        OUTPUT ${OBJECT_DIR}/globals_test_c.o
+        COMMAND ${GXX} -x c ${C_OPTIONS_${ISA}} -c -o ${OBJECT_DIR}/globals_test_c.o ${RISCV_SOURCE}/globals_test_c.c
+        DEPENDS ${RISCV_SOURCE}/globals_test_c.c
+    )
+
     # Add the CRT object (assembly file)
     # The "coverage" build just adds a call to gcov_dump into the CRT.
     add_riscv_object("${OBJECT_DIR}/tmu-crt0.debug.o" "${RISCV_SOURCE}/tmu-crt0.S" "debug" ${ISA})
@@ -133,6 +142,9 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE ISA NEO_ID)
         ${RISCV_OBJECT_${ISA}}/tmu-crt0.${BUILD_TYPE}.o
         ${RISCV_OBJECT_${ISA}}/${APP}.${BUILD_TYPE}.o
     )
+    if(APP STREQUAL "globals_test")
+        list(APPEND LINK_OBJECTS ${RISCV_OBJECT_${ISA}}/globals_test_c.o)
+    endif()
 
     # Handle memory.${ARCH}.debug.ld and memory.${ARCH}.release.ld
     set(LDSCRIPT_EXTENSION ${BUILD_TYPE})

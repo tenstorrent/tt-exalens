@@ -266,7 +266,19 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
 
     // If this DIE is DW_TAG_array_type, follows DW_AT_type to the element
     // DIE and runs get_resolved_type on it. nullptr for any other tag.
+    // For a multi-dimensional array this is the scalar element, not a row.
     DwarfDiePtr get_array_element_type() const;
+
+    // Element count of each DW_TAG_subrange_type child of an array type, in
+    // order. nullopt for a dimension with neither a count nor a constant
+    // upper bound. Empty for any other tag. DW_AT_lower_bound is not read:
+    // the lower bound is taken as 0, as in C and C++.
+    std::vector<std::optional<uint64_t>> get_array_dimensions() const;
+
+    // Size in bytes of this array type with its first `first_dimension`
+    // dimensions dropped. A dimension of unknown length counts as 1.
+    // nullopt for a non-array or when the element size is unknown.
+    std::optional<uint64_t> get_array_size(size_t first_dimension) const;
 
     // True iff this DIE is one of the DWARF type-describing tags (typedef_,
     // base_type, pointer_type, structure_type, ...). Used to distinguish

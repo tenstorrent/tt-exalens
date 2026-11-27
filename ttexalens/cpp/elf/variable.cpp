@@ -139,7 +139,14 @@ constexpr size_t kMaxCStringLength = 64 * 1024;
 }  // namespace
 
 ElfVariable::ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access)
-    : type_die(std::move(type_die)), address(address), memory_access(std::move(memory_access)) {}
+    : ElfVariable(std::move(type_die), address, std::move(memory_access), 0) {}
+
+ElfVariable::ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access,
+                         size_t array_dimension)
+    : type_die(std::move(type_die)),
+      address(address),
+      memory_access(std::move(memory_access)),
+      array_dimension(array_dimension) {}
 
 ElfVariable::~ElfVariable() = default;
 ElfVariable::ElfVariable(const ElfVariable&) = default;
@@ -148,7 +155,7 @@ ElfVariable& ElfVariable::operator=(const ElfVariable&) = default;
 ElfVariable& ElfVariable::operator=(ElfVariable&&) noexcept = default;
 
 uint64_t ElfVariable::get_size() const {
-    auto size = type_die->get_size();
+    auto size = array_dimension > 0 ? type_die->get_array_size(array_dimension) : type_die->get_size();
     if (!size.has_value()) {
         throw TypeMismatchException("get_size", type_die->get_path());
     }
@@ -228,6 +235,15 @@ ElfVariable ElfVariable::get_index(int64_t i) const {
         element_type = type_die->get_dereference_type();
         base_address = dereference().get_address();
     } else {
+        const auto dimensions = type_die->get_array_dimensions();
+        if (array_dimension + 1 < dimensions.size()) {
+            auto row_size = type_die->get_array_size(array_dimension + 1);
+            if (!row_size.has_value()) {
+                throw TypeMismatchException("index", type_die->get_path());
+            }
+            return ElfVariable(type_die, address + static_cast<uint64_t>(i) * *row_size, memory_access,
+                               array_dimension + 1);
+        }
         element_type = type_die->get_array_element_type();
     }
     if (!element_type) {
@@ -249,24 +265,19 @@ uint64_t ElfVariable::get_length() const {
     if (tag != DwarfDieTag::array_type) {
         throw TypeMismatchException("len", type_die->get_path());
     }
-    for (auto child = type_die->get_first_child(); child; child = child->get_next_sibling()) {
-        auto upper_bound = child->get_attribute(DwarfAttributeTag::upper_bound);
-        if (upper_bound == nullptr) {
-            continue;
-        }
-        const auto& value = upper_bound->get_value();
-        if (auto* signed_val = std::get_if<int64_t>(&value)) {
-            return static_cast<uint64_t>(*signed_val) + 1;
-        }
-        if (auto* unsigned_val = std::get_if<uint64_t>(&value)) {
-            return *unsigned_val + 1;
-        }
+    const auto dimensions = type_die->get_array_dimensions();
+    if (array_dimension < dimensions.size() && dimensions[array_dimension].has_value()) {
+        return *dimensions[array_dimension];
     }
     throw InvalidArrayAccessException(0, std::nullopt);
 }
 
 void ElfVariable::read_bytes(std::span<std::byte> buffer) const {
     auto size = get_size();
+    // A zero-length array has nothing to read; do not touch the device.
+    if (size == 0) {
+        return;
+    }
     if (buffer.size() < size) {
         throw std::invalid_argument("Buffer too small for variable size");
     }
@@ -291,10 +302,16 @@ ElfVariable::Value ElfVariable::read_value() const {
     }
 
     // C strings: char[] and char* are returned as Python str.
+    // The string path assumes a single remaining array dimension: a row of
+    // `char s[N][M]` reads as a string, `s` itself is still read as one string
+    // of length N.
     if (type->is_string_type()) {
         if (tag == DwarfDieTag::array_type) {
             const uint64_t array_len = get_length();
             const size_t cap = static_cast<size_t>(std::min<uint64_t>(array_len, kMaxCStringLength));
+            if (cap == 0) {
+                return std::string();
+            }
             std::vector<std::byte> bytes(cap);
             memory_access->read(address, bytes);
             size_t end = 0;
@@ -521,7 +538,7 @@ ElfVariable ElfVariable::read() const {
     }
     auto data = read_bytes();
     auto cached = std::make_shared<CachedReadMemoryAccess>(address, std::move(data), memory_access);
-    return ElfVariable(type_die, address, std::move(cached));
+    return ElfVariable(type_die, address, std::move(cached), array_dimension);
 }
 
 std::string ElfVariable::value_to_string(const Value& v) {

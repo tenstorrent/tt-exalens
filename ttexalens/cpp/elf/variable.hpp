@@ -102,10 +102,11 @@ class ElfVariable {
     // memory and returns a ElfVariable for the pointee.
     ElfVariable dereference() const;
 
-    // Indexes into an array or pointer variable.
+    // Indexes into an array or pointer variable. Indexing a multi-dimensional
+    // array returns a row: for `T a[N][M]`, a[i] has length M.
     ElfVariable get_index(int64_t i) const;
 
-    // Number of elements in the first array dimension.
+    // Number of elements in the first remaining array dimension.
     uint64_t get_length() const;
 
     // Reads `get_size()` bytes from the live address.
@@ -131,9 +132,16 @@ class ElfVariable {
     static std::string value_to_string(const Value& v);
 
    private:
+    ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access,
+                size_t array_dimension);
+
     DwarfDiePtr type_die;
     uint64_t address;
     std::shared_ptr<MemoryAccess> memory_access;
+    // Number of leading dimensions of the array type `type_die` that indexing
+    // has already consumed. A row of `T a[N][M]` shares the DIE of `a` and has
+    // 1 here.
+    size_t array_dimension = 0;
 };
 
 }  // namespace ttexalens::native_elf
