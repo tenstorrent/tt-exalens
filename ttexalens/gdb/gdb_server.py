@@ -102,7 +102,9 @@ class GdbServer(threading.Thread):
         self.skip_detach = (
             skip_detach  # If True, we will not detach from the process when gdb client disconnects. Used by tests.
         )
-        self.debug_only_with_elfs = debug_only_with_elfs  # If True, we will only allow debugging processes that have an ELF file loaded. Used by tests.
+        # If True, only RISCs with an ELF loaded through ttexalens are exposed.
+        # Otherwise every debuggable RISC that is not in reset is exposed. Used by tests.
+        self.debug_only_with_elfs = debug_only_with_elfs
 
     @property
     def available_processes(self):
@@ -149,7 +151,15 @@ class GdbServer(threading.Thread):
                                 f"Could not get ELF path for {risc_debug.risc_location}, running without it:\n{traceback.format_exc()}"
                             )
                         elf_path = None
-                    if elf_path is not None and not risc_debug.is_in_reset():
+                    try:
+                        in_reset = risc_debug.is_in_reset()
+                    except Exception:
+                        if util.DEBUG_ENABLED:
+                            util.DEBUG(
+                                f"Could not read reset state of {risc_debug.risc_location}, skipping it:\n{traceback.format_exc()}"
+                            )
+                        continue
+                    if not in_reset:
                         add_process(risc_debug, elf_path)
         self._last_available_processes = last_available_processes
         return available_processes

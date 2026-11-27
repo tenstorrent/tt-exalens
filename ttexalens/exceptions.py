@@ -67,6 +67,19 @@ class RiscHaltError(TTException):
         super().__init__(f"Failed to halt {risc_name} core at {location.to_user_str()} on device {location.device_id}")
 
 
+class GdbProcessNotFoundError(TTException):
+    """Raised when the GDB server does not list the requested RISC core as a process."""
+
+    def __init__(self, risc_location: RiscLocation):
+        self.risc_location = risc_location
+        neo = f" (Neo ID {risc_location.neo_id})" if risc_location.neo_id is not None else ""
+        super().__init__(
+            f"GDB server does not list RISC '{risc_location.risc_name}' at {risc_location.location.to_user_str()} "
+            f"on device {risc_location.location.device_id}{neo}. "
+            "The core is in reset, is not debuggable, or the server does not expose it."
+        )
+
+
 # ---------------------------------------------------------------------------
 # Hardware errors
 # ---------------------------------------------------------------------------

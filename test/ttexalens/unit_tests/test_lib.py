@@ -19,7 +19,7 @@ from test.ttexalens.unit_tests.test_base import (
 )
 import ttexalens as lib
 from ttexalens import util
-from ttexalens.exceptions import TTException
+from ttexalens.exceptions import GdbProcessNotFoundError, TTException
 from ttexalens.elf import ElfFile
 from ttexalens.memory_map import MemoryMap, MemoryMapBlockInfo
 
@@ -1799,6 +1799,22 @@ class TestCallStack(unittest.TestCase):
                 self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server
             )
             self.compare_callstacks(callstack, gdb_callstack)
+            self.context.loaded_elfs.pop(self.risc_debug.risc_location)
+            with self.assertRaises(GdbProcessNotFoundError):
+                get_gdb_callstack(self.location, self.risc_name, self.neo_id, [elf_path], [None], self.gdb_server)
+
+            server = ServerSocket()
+            server.start()
+            default_server = GdbServer(self.context, server, skip_detach=True)
+            default_server.start()
+            try:
+                gdb_callstack = get_gdb_callstack(
+                    self.location, self.risc_name, self.neo_id, [elf_path], [None], default_server
+                )
+                # Without an ELF loaded through ttexalens, GDB has no main executable and unwinds past main.
+                self.compare_callstacks(callstack, gdb_callstack[: len(callstack)])
+            finally:
+                default_server.stop()
 
     @parameterized.expand(CALLSTACK_ELFS)
     def test_callstack_namespace(self, elf_name):
