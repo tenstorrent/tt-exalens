@@ -237,7 +237,7 @@ def load_elf(
         device_id (int, default 0):	ID number of device to run ELF on.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
         return_start_address (bool, default False): If True, returns the start address of the loaded ELF.
-        verify_write (bool, default True): If True, verifies that the ELF was written correctly to the device.
+        verify_write (bool, default True): If True, reads every loaded section back and raises TTException if it differs from the ELF. Locations loaded before the failure stay loaded.
     """
 
     from ttexalens.elf_loader import ElfLoader
@@ -306,7 +306,7 @@ def run_elf(
         neo_id (int | None, optional): NEO ID of the RISC-V core.
         device_id (int, default 0):	ID number of device to run ELF on.
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentially initialized.
-        verify_write (bool, default True): If True, verifies that the ELF was written correctly to the device.
+        verify_write (bool, default True): If True, reads every loaded section back and raises TTException if it differs from the ELF. Locations loaded before the failure stay loaded and running.
     """
     from ttexalens.elf_loader import ElfLoader
 

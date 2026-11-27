@@ -82,10 +82,21 @@ class ElfLoader:
             memory_block.address.private_address <= address < memory_block.address.private_address + memory_block.size
         )
 
+    def __private_memory_noc_address(self, private_address: int) -> int | None:
+        for block in (self.risc_debug.get_data_private_memory(), self.risc_debug.get_code_private_memory()):
+            if (
+                block is not None
+                and ElfLoader.__inside_private_memory(block, private_address)
+                and block.address.noc_address is not None
+            ):
+                return block.translate_to_noc_address(private_address)
+        return None
+
     def write_block(self, private_address: int, data: memoryview | bytes | bytearray):
         """
         Writes a block of bytes to a given address. Knows about the sections not accessible through NOC (0xFFB00000 or 0xFFC00000), and uses
         the debug interface to write them.
+        Private memory that has a NOC mapping is accessed at its NOC address.
         """
         private_data_memory = self.risc_debug.get_data_private_memory()
         private_code_memory = self.risc_debug.get_code_private_memory()
@@ -100,6 +111,8 @@ class ElfLoader:
         ):
             # Use debug interface
             self.write_block_through_debug(private_address, data)
+        elif (noc_address := self.__private_memory_noc_address(private_address)) is not None:
+            self.location.noc_write(noc_address, data)
         elif self.l1_block is not None and self.l1_block.memory_block.contains_private_address(private_address):
             self.l1_mem_access.write(private_address, data)
         else:
@@ -109,6 +122,7 @@ class ElfLoader:
         """
         Reads a block of bytes from a given address into the provided buffer. Knows about the sections not accessible
         through NOC (0xFFB00000 or 0xFFC00000), and uses the debug interface to read them.
+        Private memory that has a NOC mapping is accessed at its NOC address.
         """
         private_data_memory = self.risc_debug.get_data_private_memory()
         private_code_memory = self.risc_debug.get_code_private_memory()
@@ -123,6 +137,8 @@ class ElfLoader:
         ):
             # Use debug interface
             self.read_block_through_debug(private_address, buffer)
+        elif (noc_address := self.__private_memory_noc_address(private_address)) is not None:
+            self.location.noc_read(noc_address, buffer)
         elif self.l1_block is not None and self.l1_block.memory_block.contains_private_address(private_address):
             self.l1_mem_access.read(private_address, buffer)
         else:
@@ -198,16 +214,15 @@ class ElfLoader:
                         read_data = bytearray(len(section.data))
                         self.read_block(address, read_data)
                         if memoryview(read_data) != section.data:
-                            util.ERROR(f"Error writing section {section.name} to address 0x{address:08x}.")
-                            continue
-                        else:
-                            if util.VERBOSE_ENABLED:
-                                util.VERBOSE(
-                                    f"Section {section.name} loaded successfully to address 0x{address:08x}. Size: {len(section.data)} bytes"
-                                )
+                            raise TTException(
+                                f"Verification failed for section {section.name} at address 0x{address:08x} on RISC {self.risc_debug.risc_location}: data read back differs from the ELF."
+                            )
+                        if util.VERBOSE_ENABLED:
+                            util.VERBOSE(
+                                f"Section {section.name} loaded successfully to address 0x{address:08x}. Size: {len(section.data)} bytes"
+                            )
         except Exception as e:
-            util.ERROR(e)
-            raise TTException(f"Error loading elf file {elf_path}")
+            raise TTException(f"Error loading elf file {elf_path}: {e}") from e
 
         self.context.elf_loaded(self.risc_debug.risc_location, elf_path)
         return init_section_address
