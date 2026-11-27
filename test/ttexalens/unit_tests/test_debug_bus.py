@@ -288,6 +288,23 @@ class TestDebugBus(unittest.TestCase):
 
     @parameterized.expand(
         [
+            # group_name, signal_name
+            ("brisc_group_c", "brisc_icache_req_fifo_empty"),
+            ("brisc_group_c", "brisc_icache_req_fifo_full"),
+            ("tensix_icache_ctrl", "brisc_icache_ctrl_req_fifo_empty"),
+            ("tensix_icache_ctrl", "brisc_icache_ctrl_req_fifo_full"),
+            ("tensix_frontend_t1", "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space"),
+        ]
+    )
+    def test_blackhole_signal_in_group(self, group_name, signal_name):
+        if not self.device.is_blackhole() or not self.core_desc.startswith("FW"):
+            self.skipTest("Blackhole Tensix debug bus signal.")
+
+        group_values = self.debug_bus.read_signal_group(group_name, l1_address=0x1000)
+        self.assertEqual(group_values[signal_name], self.debug_bus.read_signal(signal_name))
+
+    @parameterized.expand(
+        [
             (1, 2),  # samples, sampling_interval
             (11, 50),
             (25, 100),
