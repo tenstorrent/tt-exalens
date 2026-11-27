@@ -814,6 +814,9 @@ def get_tensix_state(
         context (Context, optional): TTExaLens context object used for interaction with device. If None, global context is used and potentailly initialized.
     Returns:
         TensixState: Tensix state for the given device and location, as the architecture's subclass (WormholeTensixState, BlackholeTensixState or QuasarTensixState).
+
+    Notes:
+        - On Blackhole, rwc0_dst lies in two debug bus groups. Its two parts are read one after the other and joined, also when l1_address is given, so the value may be torn while the counter changes.
     """
     coordinate = convert_coordinate(location, device_id, context)
     device = coordinate.device
@@ -862,5 +865,7 @@ def get_tensix_state(
         if util.DEBUG_ENABLED:
             util.DEBUG("No L1 address provided. Disabling atomic group reading ADC and RWC groups.")
     rwc = _read_signal_groups(tensix_debug_bus_desc.register_window_counter_groups, group_reader)
+    for signal_name in tensix_debug_bus_desc.register_window_counter_split_signals:
+        rwc[signal_name] = debug_bus.read_split_signal(signal_name)
     adc = _read_signal_groups(tensix_debug_bus_desc.address_counter_groups, group_reader)
     return tensix_state_type(**register_groups, register_window_counters=rwc, address_counters=adc)

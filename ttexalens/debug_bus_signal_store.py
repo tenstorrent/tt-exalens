@@ -265,6 +265,10 @@ class DebugBusSignalStore:
         # Read the data
         return self.location.noc_read32(self._data_register_address)
 
+    @staticmethod
+    def _mask_shift(mask: int) -> int:
+        return (mask & -mask).bit_length() - 1
+
     def read_signal(
         self,
         signal: DebugBusSignalDescription | str,
@@ -299,7 +303,28 @@ class DebugBusSignalStore:
         value = data & signal_desc.mask
 
         # remove trailing zeros from mask
-        return value >> ((signal_desc.mask & -signal_desc.mask).bit_length() - 1)
+        return value >> self._mask_shift(signal_desc.mask)
+
+    def read_split_signal(self, signal_name: str) -> int:
+        """Reads the parts `<signal_name>/0`, `/1`, ... one after another and joins them, part /0 in the lowest bits."""
+        part_names = sorted(
+            (
+                name
+                for name in self.signals
+                if self.is_signal_part(name) and self.get_base_signal_name(name) == signal_name
+            ),
+            key=lambda name: int(name.split("/")[1]),
+        )
+        if not part_names:
+            raise ValueError(f"Signal '{signal_name}' has no parts.")
+
+        value = 0
+        shift = 0
+        for part_name in part_names:
+            desc = self.signals[part_name]
+            value |= self.read_signal(desc) << shift
+            shift += (desc.mask >> self._mask_shift(desc.mask)).bit_length()
+        return value
 
     def _read_signal_group_samples(
         self,

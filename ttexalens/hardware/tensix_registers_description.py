@@ -33,3 +33,7 @@ class TensixDebugBusDescription:
 
     # ADDRESS COUNTERS
     address_counter_groups: list[str] = field(default_factory=list)
+
+    # Register window counter signals whose parts lie in two groups. Key: signal name without the part suffix.
+    # Value: the group under which the joined value is shown.
+    register_window_counter_split_signals: dict[str, str] = field(default_factory=dict)
