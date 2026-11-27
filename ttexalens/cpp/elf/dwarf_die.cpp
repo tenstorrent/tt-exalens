@@ -188,16 +188,10 @@ std::string DwarfDie::get_readable_name() const {
         std::string dimensions;
         DwarfDiePtr element;
         for (const DwarfDie* array = this;; array = element.get()) {
-            for (auto child = array->get_first_child(); child; child = child->get_next_sibling()) {
-                if (child->get_tag() != DwarfDieTag::subrange_type) {
-                    continue;
-                }
+            for (const auto& dim : array->get_array_dimensions()) {
                 dimensions += '[';
-                if (const auto* count = child->get_attribute_value<uint64_t>(DwarfAttributeTag::count)) {
-                    dimensions += std::to_string(*count);
-                } else if (const auto* upper_bound =
-                               child->get_attribute_value<uint64_t>(DwarfAttributeTag::upper_bound)) {
-                    dimensions += std::to_string(*upper_bound + 1);
+                if (dim.has_value()) {
+                    dimensions += std::to_string(*dim);
                 }
                 dimensions += ']';
             }
@@ -473,6 +467,60 @@ DwarfDiePtr DwarfDie::get_array_element_type() const {
     }
     auto resolved = element->get_resolved_type();
     return resolved ? resolved : element;
+}
+
+std::vector<std::optional<uint64_t>> DwarfDie::get_array_dimensions() const {
+    std::vector<std::optional<uint64_t>> dimensions;
+    if (get_tag() != DwarfDieTag::array_type) {
+        return dimensions;
+    }
+
+    // GCC describes `T x[0]` in C++ with an upper bound of -1 stored as an
+    // unsigned value of the target's address width, so the length is computed
+    // modulo that width.
+    uint64_t mask = ~uint64_t{0};
+    Dwarf_Debug dbg = die.get_state();
+    DwarfErrorHandle error(dbg);
+    Dwarf_Half addr_size = 0;
+    if (dwarf_get_die_address_size(die, &addr_size, &error) == DW_DLV_OK && addr_size > 0 && addr_size < 8) {
+        mask = (uint64_t{1} << (8 * addr_size)) - 1;
+    }
+
+    for (auto child = get_first_child(); child; child = child->get_next_sibling()) {
+        if (child->get_tag() != DwarfDieTag::subrange_type) {
+            continue;
+        }
+        std::optional<uint64_t> length = attr_as_uint(child->get_attribute(DwarfAttributeTag::count));
+        if (!length.has_value()) {
+            if (auto upper_bound = attr_as_uint(child->get_attribute(DwarfAttributeTag::upper_bound))) {
+                length = (*upper_bound + 1) & mask;
+            }
+        }
+        dimensions.push_back(length);
+    }
+    return dimensions;
+}
+
+std::optional<uint64_t> DwarfDie::get_array_size(size_t first_dimension) const {
+    if (get_tag() != DwarfDieTag::array_type) {
+        return std::nullopt;
+    }
+    const auto dimensions = get_array_dimensions();
+    uint64_t element_count = 1;
+    for (size_t i = first_dimension; i < dimensions.size(); i++) {
+        if (dimensions[i].has_value()) {
+            element_count *= *dimensions[i];
+        }
+    }
+    auto elem = get_die_from_attribute(DwarfAttributeTag::type);
+    if (!elem) {
+        return std::nullopt;
+    }
+    auto elem_size = elem->get_size();
+    if (!elem_size.has_value()) {
+        return std::nullopt;
+    }
+    return element_count * *elem_size;
 }
 
 bool DwarfDie::is_declaration() const {
@@ -797,16 +845,8 @@ std::optional<uint64_t> DwarfDie::get_size() const {
 
     // Check for array
     if (tag == DwarfDieTag::array_type) {
-        uint64_t array_size = 1;
-        for (auto child = get_first_child(); child; child = child->get_next_sibling()) {
-            if (const auto* u = child->get_attribute_value<uint64_t>(DwarfAttributeTag::upper_bound)) {
-                array_size *= (*u + 1);
-            }
-        }
-        if (auto elem = get_die_from_attribute(DwarfAttributeTag::type)) {
-            if (auto elem_size = elem->get_size()) {
-                return array_size * *elem_size;
-            }
+        if (auto size = get_array_size(0)) {
+            return size;
         }
     }
 
