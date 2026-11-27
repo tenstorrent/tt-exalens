@@ -92,7 +92,6 @@ _DEBUG_VERBOSE_EXTRA = [
 
 _PLIC_FIELDS = {
     "THRESHOLD": "THRESHOLD",
-    "CLAIM_COMP": "CLAIM_COMPLETE",
     "IE_0": "IE_0_",
     "IE_1": "IE_1_",
     "IE_2": "IE_2_",
