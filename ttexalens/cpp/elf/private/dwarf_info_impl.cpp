@@ -438,4 +438,13 @@ uint64_t DwarfInfoImpl::get_section_address(uint16_t section_index) {
     return section == nullptr ? 0 : section->address();
 }
 
+uint64_t DwarfInfoImpl::get_tls_symbol_address(const ElfSymbol& symbol) {
+    if (auto elf_impl_locked = elf_impl.lock()) {
+        if (auto tls_address = elf_impl_locked->get_tls_segment_address()) {
+            return *tls_address + symbol.value;
+        }
+    }
+    return get_section_address(symbol.section_index) + symbol.value;
+}
+
 }  // namespace ttexalens::native_elf::details

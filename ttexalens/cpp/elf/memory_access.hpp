@@ -79,6 +79,35 @@ class CachedReadMemoryAccess : public MemoryAccess {
     std::shared_ptr<MemoryAccess> base_;
 };
 
+// Bytes of a value that has no memory address (register, DW_OP_stack_value,
+// composite). Pointers stored in it lead to live memory, never back into it.
+class DetachedValueMemoryAccess final : public MemoryAccess {
+   public:
+    DetachedValueMemoryAccess(std::vector<std::byte> value, std::shared_ptr<MemoryAccess> live)
+        : value_(std::move(value)), live_(std::move(live)) {}
+
+    void read(uint64_t address, std::span<std::byte> buffer) const override {
+        if (address <= value_.size() && buffer.size() <= value_.size() - address) {
+            std::memcpy(buffer.data(), value_.data() + address, buffer.size());
+            return;
+        }
+        live_->read(address, buffer);
+    }
+    void write(uint64_t /*address*/, std::span<const std::byte> /*buffer*/) override {
+        throw std::runtime_error("write called on a value that has no memory address");
+    }
+    uint64_t read_register(uint16_t register_index) const override { return live_->read_register(register_index); }
+    void write_register(uint16_t /*register_index*/, uint64_t /*value*/) override {
+        throw std::runtime_error("write_register called on a value that has no memory address");
+    }
+
+    const std::shared_ptr<MemoryAccess>& pointee_access() const { return live_; }
+
+   private:
+    std::vector<std::byte> value_;
+    std::shared_ptr<MemoryAccess> live_;
+};
+
 // Singleton MemoryAccess that raises on every operation. Used as the base of
 // CachedReadMemoryAccess for synthesized (non-addressable) ElfVariable values
 // where all reads should hit the cache; any out-of-range read or any

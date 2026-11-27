@@ -126,7 +126,7 @@ const ElfSymbol* DwarfDie::find_symbol() const {
             return sym;
         }
     }
-    if (std::string_view die_name = get_name(); !die_name.empty()) {
+    if (std::string_view die_name = get_name(); !die_name.empty() && !is_function_local_automatic()) {
         if (const ElfSymbol* sym = info_ptr->find_symbol_by_name(die_name)) {
             return sym;
         }
@@ -138,6 +138,33 @@ const ElfSymbol* DwarfDie::find_symbol() const {
         }
     }
     return nullptr;
+}
+
+bool DwarfDie::is_function_local_automatic() const {
+    const DwarfDieTag tag = get_tag();
+    if (tag == DwarfDieTag::formal_parameter) {
+        return true;
+    }
+    if (tag != DwarfDieTag::variable) {
+        return false;
+    }
+    auto is_external = [](const DwarfDie& d) {
+        const auto* external = d.get_attribute_value<bool>(DwarfAttributeTag::external);
+        return external != nullptr && *external;
+    };
+    if (is_external(*this)) {
+        return false;
+    }
+    if (auto origin = get_die_from_attribute(DwarfAttributeTag::abstract_origin); origin && is_external(*origin)) {
+        return false;
+    }
+    for (auto parent = get_parent(); parent; parent = parent->get_parent()) {
+        const DwarfDieTag parent_tag = parent->get_tag();
+        if (parent_tag == DwarfDieTag::subprogram || parent_tag == DwarfDieTag::inlined_subroutine) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Tries to create human-friendly names for this DIE.
@@ -829,9 +856,9 @@ static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool al
     if (const auto* a = die.get_attribute(DwarfAttributeTag::low_pc)) {
         addr = attr_as_uint(a);
     } else {
-        // Try a simple DW_OP_addr location: the byte stream is just
+        // Try a DW_OP_addr-only location: the byte stream is exactly
         // `[0x03, addr_bytes...]`. Anything more elaborate (multi-op
-        // expressions, location lists) goes through Phase 5's evaluator.
+        // expressions, location lists) goes through the evaluator.
         if (const DwarfAttribute* loc_attr = die.get_attribute(DwarfAttributeTag::location)) {
             const auto* bytes = std::get_if<std::vector<uint8_t>>(&loc_attr->get_value());
             if (bytes != nullptr && !bytes->empty() && (*bytes)[0] == DW_OP_addr) {
@@ -839,7 +866,7 @@ static std::optional<uint64_t> get_address_recursed(const DwarfDie& die, bool al
                 DwarfErrorHandle error(dbg);
                 Dwarf_Half addr_size = 0;
                 if (dwarf_get_die_address_size(die, &addr_size, &error) == DW_DLV_OK &&
-                    bytes->size() >= static_cast<size_t>(1 + addr_size)) {
+                    bytes->size() == static_cast<size_t>(1 + addr_size)) {
                     uint64_t a = 0;
                     std::memcpy(&a, bytes->data() + 1, addr_size);
                     addr = a;
@@ -908,12 +935,12 @@ std::optional<uint64_t> DwarfDie::get_address() const {
     // assembly; DWARF has the name + type but no DwarfAttributeTag::location, so the
     // linker-produced .symtab is the only place the address lives.
     if (const ElfSymbol* sym = find_symbol()) {
-        // A STT_TLS symbol's value is its offset within the TLS block, not an
-        // absolute address. The runtime address is the containing section's VMA
-        // plus that offset.
+        // A STT_TLS symbol's value is an offset from the start of the TLS
+        // segment, not an absolute address. The runtime address is the TLS
+        // segment's address plus that offset.
         if (sym->type == ElfSymbolType::STT_TLS) {
             if (auto info_ptr = info.lock()) {
-                return info_ptr->get_section_address(sym->section_index) + sym->value;
+                return info_ptr->get_tls_symbol_address(*sym);
             }
         }
         return sym->value;
@@ -1009,9 +1036,10 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
         }
     }
 
-    // Static-storage variable (globals, file/function statics):
-    // address is fixed at link time. memory_access alone is enough.
-    if (auto addr = get_address(); addr.has_value()) {
+    // Fixed address: a DW_OP_addr-only location, or, for a DIE without a
+    // location, the address get_address() finds. memory_access alone is enough.
+    const bool has_location = has_attribute(DwarfAttributeTag::location);
+    if (auto addr = has_location ? get_address_recursed(*this, true) : get_address(); addr.has_value()) {
         return ElfVariable(resolved, *addr, frame.get_memory_access());
     }
 
@@ -1019,6 +1047,11 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
     // (registers, CFA, inner-frame chain) carried by `frame`.
     auto location = evaluate_die_location(*this, &frame);
     if (!location.has_value() || !location->value.has_value()) {
+        if (has_location) {
+            if (auto addr = get_address(); addr.has_value()) {
+                return ElfVariable(resolved, *addr, frame.get_memory_access());
+            }
+        }
         return std::nullopt;
     }
     if (location->is_address) {
@@ -1027,8 +1060,8 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
     // Literal value (DW_OP_stack_value / register-direct / composite via
     // DW_OP_piece): synthesise a backing buffer holding the materialised
     // bytes and hand back a ElfVariable that reads from it. The frame's
-    // memory access stays the cache's base so that a materialised pointer or
-    // reference can still be dereferenced into live memory.
+    // memory access stays the value's live access so that a materialised
+    // pointer or reference can still be dereferenced into live memory.
     auto size_opt = resolved->get_size();
     if (!size_opt) {
         return std::nullopt;
@@ -1044,8 +1077,8 @@ std::optional<ElfVariable> DwarfDie::read_value(const FrameInspection& frame) co
         uint64_t raw = *location->value;
         std::memcpy(bytes.data(), &raw, std::min(size, static_cast<uint64_t>(sizeof(raw))));
     }
-    auto cache = std::make_shared<CachedReadMemoryAccess>(0, std::move(bytes), frame.get_memory_access());
-    return ElfVariable(resolved, 0, std::move(cache));
+    auto detached = std::make_shared<DetachedValueMemoryAccess>(std::move(bytes), frame.get_memory_access());
+    return ElfVariable(resolved, 0, std::move(detached));
 }
 
 }  // namespace ttexalens::native_elf

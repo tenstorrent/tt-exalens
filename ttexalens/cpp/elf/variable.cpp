@@ -136,6 +136,13 @@ double value_as_double(const ElfVariable::Value& v) {
 // Upper bound on bytes scanned when materialising a C string.
 constexpr size_t kMaxCStringLength = 64 * 1024;
 
+std::shared_ptr<MemoryAccess> pointee_memory_access(const std::shared_ptr<MemoryAccess>& access) {
+    if (const auto* detached = dynamic_cast<const DetachedValueMemoryAccess*>(access.get())) {
+        return detached->pointee_access();
+    }
+    return access;
+}
+
 }  // namespace
 
 ElfVariable::ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access)
@@ -210,7 +217,7 @@ ElfVariable ElfVariable::dereference() const {
     std::vector<std::byte> bytes(*ptr_size);
     memory_access->read(address, bytes);
     uint64_t pointee = load_uint_le(bytes, *ptr_size);
-    return ElfVariable(std::move(deref_type), pointee, memory_access);
+    return ElfVariable(std::move(deref_type), pointee, pointee_memory_access(memory_access));
 }
 
 ElfVariable ElfVariable::get_index(int64_t i) const {
@@ -224,9 +231,12 @@ ElfVariable ElfVariable::get_index(int64_t i) const {
 
     DwarfDiePtr element_type;
     uint64_t base_address = address;
+    std::shared_ptr<MemoryAccess> element_access = memory_access;
     if (tag == DwarfDieTag::pointer_type) {
         element_type = type_die->get_dereference_type();
-        base_address = dereference().get_address();
+        ElfVariable target = dereference();
+        base_address = target.get_address();
+        element_access = target.get_memory_access();
     } else {
         element_type = type_die->get_array_element_type();
     }
@@ -238,7 +248,7 @@ ElfVariable ElfVariable::get_index(int64_t i) const {
         throw TypeMismatchException("index", type_die->get_path());
     }
     uint64_t new_address = base_address + static_cast<uint64_t>(i) * *elem_size;
-    return ElfVariable(std::move(element_type), new_address, memory_access);
+    return ElfVariable(std::move(element_type), new_address, std::move(element_access));
 }
 
 uint64_t ElfVariable::get_length() const {
@@ -304,12 +314,12 @@ ElfVariable::Value ElfVariable::read_value() const {
             return std::string(reinterpret_cast<const char*>(bytes.data()), end);
         }
         // char* — follow the pointer, then read NUL-terminated bytes from it.
-        uint64_t pointee = dereference().get_address();
+        ElfVariable target = dereference();
         std::string out;
         out.reserve(64);
         while (out.size() < kMaxCStringLength) {
             std::byte byte{0};
-            memory_access->read(pointee + out.size(), std::span<std::byte>(&byte, 1));
+            target.get_memory_access()->read(target.get_address() + out.size(), std::span<std::byte>(&byte, 1));
             if (byte == std::byte{0}) {
                 break;
             }
@@ -518,6 +528,9 @@ ElfVariable ElfVariable::read() const {
     const DwarfDieTag tag = type_die->get_tag();
     if (tag == DwarfDieTag::pointer_type || is_reference_tag(tag)) {
         return dereference().read();
+    }
+    if (dynamic_cast<const DetachedValueMemoryAccess*>(memory_access.get()) != nullptr) {
+        return *this;
     }
     auto data = read_bytes();
     auto cached = std::make_shared<CachedReadMemoryAccess>(address, std::move(data), memory_access);
