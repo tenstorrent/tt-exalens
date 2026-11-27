@@ -301,7 +301,7 @@ class TestDebugBus(unittest.TestCase):
             self.skipTest("Blackhole Tensix debug bus signal.")
 
         group_values = self.debug_bus.read_signal_group(group_name, l1_address=0x1000)
-        self.assertIn(signal_name, group_values)
+        self.assertIn(signal_name, group_values.keys())
         if not self.debug_bus.is_combined_signal(signal_name):
             self.assertEqual(group_values[signal_name], self.debug_bus.read_signal(signal_name))
 
