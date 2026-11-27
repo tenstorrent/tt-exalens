@@ -5,6 +5,8 @@ import tempfile
 import unittest
 import os
 
+from parameterized import parameterized
+
 from ttexalens import (
     init_ttexalens,
     init_ttexalens_remote,
@@ -13,7 +15,9 @@ from ttexalens import (
     read_word_from_device,
     write_to_device,
 )
+from ttexalens.context import NocId
 from ttexalens.server import TTExaLensServer, start_server
+from ttexalens.umd_api import UmdApi
 from test.ttexalens.unit_tests.test_base import init_default_test_context
 
 
@@ -23,6 +27,12 @@ class TestLocalTTExaLensInit(unittest.TestCase):
         context = init_ttexalens()
         self.assertIsNotNone(context)
         self.assertIsInstance(context, Context)
+
+    @parameterized.expand([(NocId.NOC0,), (NocId.NOC1,)])
+    def test_local_init_keeps_noc(self, noc_id: NocId):
+        self.addCleanup(init_default_test_context)
+        init_ttexalens(noc_id=noc_id)
+        self.assertEqual(UmdApi.get_selected_noc_id(), noc_id)
 
 
 class TestRemoteTTExaLens(unittest.TestCase):
