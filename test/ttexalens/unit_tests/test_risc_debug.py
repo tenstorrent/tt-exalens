@@ -258,19 +258,25 @@ class TestDebugging(unittest.TestCase):
             ("unsafe", execute_unsafe_write, execute_unsafe_read),
         ]
     )
-    def test_read_write_command_private_memory_in_reset(self, access, write, read):
+    def test_read_write_command_private_memory(self, access, write, read):
         if self.core_sim.location.noc_block.block_type == "dram":
             self.skipTest("This test is not applicable for DRAM blocks.")
         data_private = self.core_sim.risc_debug.get_data_private_memory()
         assert data_private is not None and data_private.address.private_address is not None
         if data_private.address.noc_address is not None:
             self.skipTest("Private data memory is reached over NOC on this core.")
-
         addr = data_private.address.private_address
+
+        read(self.core_sim.location, addr, 4, self.risc_name, self.neo_id)
+        self.assertTrue(self.core_sim.is_in_reset())
+
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+        self.core_sim.set_reset(False)
         write(self.core_sim.location, addr, (0x12345678).to_bytes(4, "little"), self.risc_name, self.neo_id)
         data, _ = read(self.core_sim.location, addr, 4, self.risc_name, self.neo_id)
         self.assertEqual(int.from_bytes(data, "little"), 0x12345678)
-        self.assertTrue(self.core_sim.is_in_reset())
+        self.assertFalse(self.core_sim.is_halted())
 
     def test_read_write_memory_bytes_aligned(self):
         """Test reading and writing aligned memory blocks using read_memory_bytes and write_memory_bytes."""
