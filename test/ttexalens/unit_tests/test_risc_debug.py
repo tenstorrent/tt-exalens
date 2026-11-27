@@ -1437,3 +1437,27 @@ class TestDebugging(unittest.TestCase):
         self.core_sim.halt()
         self.assertTrue(self.core_sim.is_halted(), "Core should be halted.")
         self.assertFalse(self.core_sim.is_ebreak_hit(), "ebreak should not be the cause.")
+
+    def test_internal_halt_disables_branch_prediction(self):
+        if not self.device.is_wormhole():
+            self.skipTest("Branch prediction workaround is applied only on wormhole.")
+        risc_debug = self.core_sim.risc_debug
+        info = risc_debug.baby_risc_info
+        if info.branch_prediction_register is None:
+            self.skipTest("Branch prediction cannot be controlled for this RISC.")
+        assert info.branch_prediction_mask is not None
+
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+        self.core_sim.set_reset(False)
+
+        for operation in [risc_debug.ensure_halted, risc_debug.ensure_private_memory_access]:
+            self.core_sim.set_branch_prediction(True)
+            with operation():
+                pass
+            self.assertFalse(self.core_sim.is_halted(), "Core should be running.")
+            self.assertEqual(
+                risc_debug.register_store.read_register(info.branch_prediction_register) & info.branch_prediction_mask,
+                info.branch_prediction_mask,
+                "Branch prediction should be disabled.",
+            )
