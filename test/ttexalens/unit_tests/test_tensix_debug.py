@@ -139,9 +139,11 @@ class TestTensixDebug(unittest.TestCase):
         regfile = REGFILE.DSTACC  # Writing is only supported for dest
 
         num_of_elements = num_tiles * TILE_SIZE
-        data = [(i % 2**8) - 2**7 for i in range(num_of_elements)]
+        data = [(i % 255) - 127 for i in range(num_of_elements)]
         self.tensix_debug.write_regfile(regfile, data, TensixDataFormat.Int8)
         assert self.tensix_debug.read_regfile(regfile, num_tiles) == data
+        if not self.location.device.is_quasar():
+            assert self.tensix_debug.direct_dest_read(TensixDataFormat.Int8, num_tiles)[data.index(-1)] == 0x80000001
 
     @parameterized.expand(
         [
@@ -172,6 +174,9 @@ class TestTensixDebug(unittest.TestCase):
             (TensixDataFormat.Int32, REGFILE.DSTACC, -(2**31 + 1)),  # Value out of range for Int32
             (TensixDataFormat.Int8, REGFILE.DSTACC, 2**7),  # Value out of range for Int8
             (TensixDataFormat.Int8, REGFILE.DSTACC, -(2**7 + 1)),  # Value out of range for Int8
+            (TensixDataFormat.Int8, REGFILE.DSTACC, -(2**7)),  # Value out of range for Int8
+            (TensixDataFormat.Int32, REGFILE.DSTACC, -0.5),  # Value not an integer
+            (TensixDataFormat.Int8, REGFILE.DSTACC, -0.5),  # Value not an integer
             (TensixDataFormat.Float32, REGFILE.SRCA),  # srcA not supported
             (TensixDataFormat.Float32, REGFILE.SRCB),  # srcB not supported
         ]
@@ -182,8 +187,11 @@ class TestTensixDebug(unittest.TestCase):
         if not self.tensix_debug.has_direct_dest_access:
             self.skipTest("Direct read/write of dest is not supported on this device.")
 
+        data = [float(i) for i in range(TILE_SIZE)]
+        self.tensix_debug.write_regfile(REGFILE.DSTACC, data, TensixDataFormat.Float32)
         with self.assertRaises((TTException, ValueError)):
             self.tensix_debug.write_regfile(regfile, [value], df)
+        assert self.tensix_debug.read_regfile(REGFILE.DSTACC, 1) == data
 
     def _read_signal(self, signal_name: str) -> int:
         if signal_name in self.debug_bus.signal_names:
