@@ -611,6 +611,11 @@ Returns:
 TensixState: Tensix state for the given device and location, as the architecture's subclass (WormholeTensixState, BlackholeTensixState or QuasarTensixState).
 
 
+### Notes
+
+- On Blackhole, rwc0_dst lies in two debug bus groups. Its two parts are read one after the other and joined, also when l1_address is given, so the value may be torn while the counter changes.
+
+
 
 
 

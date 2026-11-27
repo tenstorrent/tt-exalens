@@ -11,6 +11,7 @@ from ttexalens.context import Context
 from ttexalens.debug_bus_signal_store import DebugBusSignalStore
 from ttexalens.debug_tensix import TensixDebug, TILE_SIZE, TensixDataFormat, REGFILE
 from ttexalens.exceptions import TTException
+from ttexalens.tt_exalens_lib import get_tensix_state
 
 
 @parameterized_class(
@@ -188,16 +189,7 @@ class TestTensixDebug(unittest.TestCase):
     def _read_signal(self, signal_name: str) -> int:
         if signal_name in self.debug_bus.signal_names:
             return self.debug_bus.read_signal(signal_name)
-        elif signal_name in self.debug_bus.combined_signals:
-            signals = sorted(self.debug_bus.combined_signals[signal_name], reverse=True)
-            value = 0
-            for signal in signals:
-                signal_desc = self.debug_bus.get_signal_description(signal)
-                value = value << signal_desc.mask.bit_length()
-                value |= self.debug_bus.read_signal(signal_desc)
-            return value
-        else:
-            raise ValueError(f"Signal {signal_name} not found.")
+        return self.debug_bus.read_split_signal(signal_name)
 
     @parameterized.expand(
         [
@@ -218,6 +210,28 @@ class TestTensixDebug(unittest.TestCase):
             self.assertEqual(self._read_signal(f"rwc{thread_id}_srca"), rwc_a[thread_id])
             self.assertEqual(self._read_signal(f"rwc{thread_id}_srcb"), rwc_b[thread_id])
             self.assertEqual(self._read_signal(f"rwc{thread_id}_dst"), rwc_dst[thread_id])
+
+    @parameterized.expand([0x5, 0xFF, 0x100, 0x105, 0x3FF])
+    def test_rwc0_dst_full_value(self, value: int):
+        if self.location.device.is_quasar():
+            self.skipTest("This test does not run on Quasar.")
+
+        ops = self.location.device.instructions
+        max_dst_operand = 0xF
+
+        def set_dst(dst: int):
+            self.tensix_debug.inject_instruction(ops.TT_OP_SETRWC(0, 0, dst % max_dst_operand, 0, 0, 0x4), 0)
+            for _ in range(dst // max_dst_operand):
+                self.tensix_debug.inject_instruction(ops.TT_OP_INCRWC(0, max_dst_operand, 0, 0), 0)
+
+        self.addCleanup(set_dst, self._read_signal("rwc0_dst"))
+        set_dst(value)
+
+        state = get_tensix_state(self.location, context=self.context)
+        self.assertEqual(state.register_window_counters["rwc0_dst"], value)
+        if self.location.device.is_blackhole():
+            for group_name in ("rwc_coordinates_a", "rwc_coordinates_b"):
+                self.assertNotIn("rwc0_dst", self.debug_bus.read_signal_group_unsafe(group_name).keys(), group_name)
 
     @parameterized.expand(
         [

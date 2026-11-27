@@ -162,6 +162,11 @@ def read_signal_groups(
     return {signal_group: group_reader(signal_group) for signal_group in signal_groups}
 
 
+def strip_group_prefix(signal_group: str, prefix: str | None) -> str:
+    """Returns the table name of a signal group: the group name without the prefix."""
+    return signal_group[len(prefix) + 1 :] if prefix is not None else signal_group
+
+
 def parse_signal_groups(
     groups_dict: dict[str, SignalGroupSample], prefix: str | None = None
 ) -> dict[str, dict[str, str]]:
@@ -174,7 +179,7 @@ def parse_signal_groups(
             if signal_name.startswith(to_remove):
                 signal_name = signal_name[len(to_remove) :]
             signal_dict[signal_name] = hex(signal_value)
-        signal_group_name = signal_group[len(prefix) + 1 :] if prefix is not None else signal_group
+        signal_group_name = strip_group_prefix(signal_group, prefix)
         signal_dicts[signal_group_name] = signal_dict
     return signal_dicts
 
@@ -356,14 +361,11 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                 rwc_signal_dicts = read_signal_groups(
                     tensix_debug_bus_desc.register_window_counter_groups, debug_bus, l1_address
                 )
-                parsed_rwc_signal_dicts = parse_signal_groups(rwc_signal_dicts, "rwc")
-                # Dealing with signal that spans accros two groups - rwc0_dst
-                if device.is_blackhole():
-                    signal_desc_lo = debug_bus.get_signal_description("rwc0_dst/0")
-                    signal_desc_hi = debug_bus.get_signal_description("rwc0_dst/1")
-                    parsed_rwc_signal_dicts["coordinates_b"]["rwc0_dst"] = hex(
-                        debug_bus.read_signal(signal_desc_lo)
-                        + (debug_bus.read_signal(signal_desc_hi) << signal_desc_lo.mask.bit_length())
+                rwc_group_prefix = "rwc"
+                parsed_rwc_signal_dicts = parse_signal_groups(rwc_signal_dicts, rwc_group_prefix)
+                for signal_name, signal_group in tensix_debug_bus_desc.register_window_counter_split_signals.items():
+                    parsed_rwc_signal_dicts[strip_group_prefix(signal_group, rwc_group_prefix)][signal_name] = hex(
+                        debug_bus.read_split_signal(signal_name)
                     )
                 tables_rwc = debug_bus_to_tables(parsed_rwc_signal_dicts)
                 print_3_tables_side_by_side(tables_rwc)
