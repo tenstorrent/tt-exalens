@@ -898,6 +898,40 @@ std::optional<uint64_t> DwarfDie::get_data_member_location() const {
     return std::nullopt;
 }
 
+std::optional<DwarfBitField> DwarfDie::get_bit_field() const {
+    const auto bit_size = attr_as_uint(get_attribute(DwarfAttributeTag::bit_size));
+    if (!bit_size || *bit_size == 0) {
+        return std::nullopt;
+    }
+
+    uint64_t total = 0;
+    if (const auto data_bit_offset = attr_as_uint(get_attribute(DwarfAttributeTag::data_bit_offset))) {
+        total = *data_bit_offset;
+    } else if (const auto bit_offset = attr_as_uint(get_attribute(DwarfAttributeTag::bit_offset))) {
+        const auto loc = get_data_member_location();
+        auto storage = attr_as_uint(get_attribute(DwarfAttributeTag::byte_size));
+        if (!storage) {
+            if (auto type = get_resolved_type()) {
+                storage = type->get_size();
+            }
+        }
+        if (!loc || !storage) {
+            return std::nullopt;
+        }
+        // The formula assumes a little-endian target.
+        const int64_t legacy_total = 8 * static_cast<int64_t>(*loc) + 8 * static_cast<int64_t>(*storage) -
+                                     static_cast<int64_t>(*bit_offset) - static_cast<int64_t>(*bit_size);
+        if (legacy_total < 0) {
+            return std::nullopt;
+        }
+        total = static_cast<uint64_t>(legacy_total);
+    } else {
+        return std::nullopt;
+    }
+
+    return DwarfBitField{total / 8, static_cast<uint32_t>(total % 8), static_cast<uint32_t>(*bit_size)};
+}
+
 std::optional<uint64_t> DwarfDie::get_address() const {
     if (auto addr = get_address_recursed(*this, true)) {
         return addr;

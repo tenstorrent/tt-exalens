@@ -90,6 +90,12 @@ union UnionTest {
     uint16_t words[2];
 };
 
+struct BitfieldSimple {
+    unsigned a : 3;
+    unsigned b : 5;
+    int c : 4;
+};
+
 struct go_msg_t {
     uint32_t test;
     union {
@@ -178,6 +184,8 @@ struct RefStruct {
     g_global_struct.string_buffer,
 };
 
+[[gnu::used]] BitfieldSimple g_bitfield_simple;
+
 void halt() {
     // Halt core with ebrake instruction
     asm volatile("ebreak");
@@ -230,10 +238,17 @@ void update_struct(GlobalStruct* gs) {
     gs->string_pointer = "pointer to string";
 }
 
+void update_bitfields() {
+    g_bitfield_simple.a = 5;
+    g_bitfield_simple.b = 19;
+    g_bitfield_simple.c = -3;
+}
+
 int main() {
     update_struct(&g_global_struct);
     update_struct(g_global_const_struct_ptr);
     update_struct(&g_global_tls_struct);
+    update_bitfields();
     halt();
     return 0;
 }

@@ -96,17 +96,32 @@ uint64_t load_uint_le(const std::vector<std::byte>& bytes, size_t size) {
     return value;
 }
 
+// Mask of the low `bits` bits. All ones for `bits >= 64`.
+uint64_t low_bits_mask(unsigned bits) {
+    if (bits >= 64) {
+        return ~uint64_t{0};
+    }
+    return (uint64_t{1} << bits) - 1;
+}
+
+// Sign-extends a value at the given bit width.
+int64_t sign_extend_bits(uint64_t raw, unsigned bits) {
+    if (bits == 0 || bits >= 64) {
+        return static_cast<int64_t>(raw);
+    }
+    const uint64_t sign_bit = uint64_t{1} << (bits - 1);
+    if (raw & sign_bit) {
+        raw |= ~low_bits_mask(bits);
+    }
+    return static_cast<int64_t>(raw);
+}
+
 // Sign-extends an LE-loaded value at the given byte width.
 int64_t sign_extend(uint64_t raw, size_t size) {
     if (size == 0 || size >= 8) {
         return static_cast<int64_t>(raw);
     }
-    const uint64_t sign_bit = uint64_t{1} << (8 * size - 1);
-    if (raw & sign_bit) {
-        const uint64_t mask = ~((uint64_t{1} << (8 * size)) - 1);
-        raw |= mask;
-    }
-    return static_cast<int64_t>(raw);
+    return sign_extend_bits(raw, static_cast<unsigned>(8 * size));
 }
 
 // Stores the low `size` bytes of `value` in LE order into `out`.
@@ -138,8 +153,13 @@ constexpr size_t kMaxCStringLength = 64 * 1024;
 
 }  // namespace
 
-ElfVariable::ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access)
-    : type_die(std::move(type_die)), address(address), memory_access(std::move(memory_access)) {}
+ElfVariable::ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access,
+                         uint32_t bit_offset, uint32_t bit_size)
+    : type_die(std::move(type_die)),
+      address(address),
+      memory_access(std::move(memory_access)),
+      bit_offset(bit_offset),
+      bit_size(bit_size) {}
 
 ElfVariable::~ElfVariable() = default;
 ElfVariable::ElfVariable(const ElfVariable&) = default;
@@ -148,6 +168,9 @@ ElfVariable& ElfVariable::operator=(const ElfVariable&) = default;
 ElfVariable& ElfVariable::operator=(ElfVariable&&) noexcept = default;
 
 uint64_t ElfVariable::get_size() const {
+    if (bit_size != 0) {
+        return (bit_offset + bit_size + 7) / 8;
+    }
     auto size = type_die->get_size();
     if (!size.has_value()) {
         throw TypeMismatchException("get_size", type_die->get_path());
@@ -183,7 +206,13 @@ ElfVariable ElfVariable::get_member(std::string_view member_name) const {
         path += member_name;
         throw SymbolNotFoundException(std::move(path));
     }
-    auto child_offset = child_die->get_data_member_location();
+    auto bit_field = child_die->get_bit_field();
+    std::optional<uint64_t> child_offset;
+    if (bit_field) {
+        child_offset = bit_field->byte_offset;
+    } else if (!child_die->has_attribute(DwarfAttributeTag::bit_size)) {
+        child_offset = child_die->get_data_member_location();
+    }
     if (!child_offset.has_value()) {
         std::string path = type_die->get_path();
         path += "::";
@@ -191,7 +220,8 @@ ElfVariable ElfVariable::get_member(std::string_view member_name) const {
         throw SymbolNotFoundException(std::move(path));
     }
     auto resolved_type = child_die->get_resolved_type();
-    return ElfVariable(std::move(resolved_type), address + *child_offset + offset, memory_access);
+    return ElfVariable(std::move(resolved_type), address + *child_offset + offset, memory_access,
+                       bit_field ? bit_field->bit_offset : 0, bit_field ? bit_field->bit_size : 0);
 }
 
 ElfVariable ElfVariable::dereference() const {
@@ -331,6 +361,24 @@ ElfVariable::Value ElfVariable::read_value() const {
     }
     const size_t type_size = static_cast<size_t>(*type_size_opt);
 
+    if (bit_size != 0) {
+        const auto name = type->get_name();
+        const size_t n = static_cast<size_t>(get_size());
+        if (n > 8 || type->get_tag() == DwarfDieTag::pointer_type || name == "float"sv || name == "double"sv) {
+            throw TypeMismatchException("read_value", type->get_path());
+        }
+        std::vector<std::byte> bytes(n);
+        memory_access->read(address, bytes);
+        const uint64_t field = (load_uint_le(bytes, n) >> bit_offset) & low_bits_mask(bit_size);
+        if (name == "bool"sv) {
+            return field != 0;
+        }
+        if (type->is_signed_type()) {
+            return sign_extend_bits(field, bit_size);
+        }
+        return field;
+    }
+
     std::vector<std::byte> bytes(type_size);
     memory_access->read(address, bytes);
 
@@ -399,6 +447,9 @@ void ElfVariable::write_value(Value value, bool check_data_loss) {
     }
     const size_t type_size = static_cast<size_t>(*type_size_opt);
     const std::string_view name(type->get_name());
+    if (bit_size != 0 && (get_size() > 8 || name == "float"sv || name == "double"sv)) {
+        throw TypeMismatchException("write_value", type->get_path());
+    }
     std::vector<std::byte> bytes;
 
     if (name == "float"sv || name == "double"sv) {
@@ -491,11 +542,13 @@ void ElfVariable::write_value(Value value, bool check_data_loss) {
             value);
 
         const uint64_t raw = signed_dest ? static_cast<uint64_t>(signed_val) : unsigned_val;
-        store_uint_le(bytes, raw, type_size);
+        const unsigned value_bits = bit_size != 0 ? bit_size : static_cast<unsigned>(8 * type_size);
+        const uint64_t stored = raw & low_bits_mask(value_bits);
+        store_uint_le(bytes, stored, type_size);
 
         if (check_data_loss) {
-            const uint64_t loaded = load_uint_le(bytes, type_size);
-            const int64_t loaded_signed = sign_extend(loaded, type_size);
+            const uint64_t loaded = stored;
+            const int64_t loaded_signed = sign_extend_bits(stored, value_bits);
             bool ok;
             if (came_from_float) {
                 ok = static_cast<double>(signed_dest ? loaded_signed : static_cast<int64_t>(loaded)) == float_input;
@@ -505,9 +558,25 @@ void ElfVariable::write_value(Value value, bool check_data_loss) {
                 ok = loaded == unsigned_val;
             }
             if (!ok) {
-                throw DataLossException(value_to_string(value), std::string(name));
+                std::string type_name(name);
+                if (bit_size != 0) {
+                    type_name += ":" + std::to_string(bit_size);
+                }
+                throw DataLossException(value_to_string(value), std::move(type_name));
             }
         }
+    }
+
+    if (bit_size != 0) {
+        const size_t n = static_cast<size_t>(get_size());
+        std::vector<std::byte> current_bytes(n);
+        memory_access->read_live(address, current_bytes);
+        const uint64_t mask = low_bits_mask(bit_size) << bit_offset;
+        const uint64_t current = load_uint_le(current_bytes, n);
+        const uint64_t next = (current & ~mask) | ((load_uint_le(bytes, type_size) << bit_offset) & mask);
+        store_uint_le(current_bytes, next, n);
+        memory_access->write(address, current_bytes);
+        return;
     }
 
     memory_access->write(address,
@@ -521,7 +590,7 @@ ElfVariable ElfVariable::read() const {
     }
     auto data = read_bytes();
     auto cached = std::make_shared<CachedReadMemoryAccess>(address, std::move(data), memory_access);
-    return ElfVariable(type_die, address, std::move(cached));
+    return ElfVariable(type_die, address, std::move(cached), bit_offset, bit_size);
 }
 
 std::string ElfVariable::value_to_string(const Value& v) {

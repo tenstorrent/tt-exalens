@@ -27,6 +27,9 @@ class MemoryAccess {
     virtual void read(uint64_t address, std::span<std::byte> buffer) const = 0;
     virtual void write(uint64_t address, std::span<const std::byte> buffer) = 0;
 
+    // Reads current memory, bypassing any snapshot cache. Used for read-modify-write.
+    virtual void read_live(uint64_t address, std::span<std::byte> buffer) const { read(address, buffer); }
+
     // Access to registers
     virtual uint64_t read_register(uint16_t register_index) const = 0;
     virtual void write_register(uint16_t register_index, uint64_t value) = 0;
@@ -67,6 +70,7 @@ class CachedReadMemoryAccess : public MemoryAccess {
         }
         base_->read(address, buffer);
     }
+    void read_live(uint64_t address, std::span<std::byte> buffer) const override { base_->read_live(address, buffer); }
     void write(uint64_t address, std::span<const std::byte> buffer) override { base_->write(address, buffer); }
     uint64_t read_register(uint16_t register_index) const override { return base_->read_register(register_index); }
     void write_register(uint16_t register_index, uint64_t value) override {
