@@ -207,7 +207,8 @@ def dump_plic(
     )
     if verbose:
         prows: list[tuple[Any, ...]] = [
-            (source, format_hex(register_store.read_register(rn))) for source, rn in enumerate(desc.plic_priorities)
+            (source, format_hex(register_store.read_register(rn)))
+            for source, rn in enumerate(desc.plic_priorities, start=1)
         ]
         formatter.print_styled_table("PLIC — source priorities", ["Source", "PRIORITY"], prows)
 
