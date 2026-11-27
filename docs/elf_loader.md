@@ -53,3 +53,15 @@ This is how flow looks like:
     - It triggers tensix DMA xmov on mover 0
     - It waits until mover completes
     - CRT does address manipulation and jumps to IRAM on the same instruction to continue execution
+
+## Memory access and verification
+The loader writes each section through one of these routes:
+- the debug interface, for private memory that has no NOC mapping
+- the NOC, at the mapped NOC address, for private memory that has one (TRISC local data memory on Quasar, worker RISC local data memory on Blackhole)
+- the L1 access, for L1
+- the NOC, at the section's own address, for any other address
+
+On Blackhole, safe mode refuses NOC access to RISC local data memory.
+
+With `verify_write` (the default) every section is read back over the same route, and a difference raises `TTException`.
+The ELF is then not recorded as loaded, and `run_elf` leaves the core in reset.
