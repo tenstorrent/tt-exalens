@@ -73,6 +73,7 @@ def summarize_gcda(data: bytes) -> tuple[int, int, int]:
         {"core_desc": "FW0", "risc_name": "TRISC1"},
         {"core_desc": "FW0", "risc_name": "TRISC2"},
         {"core_desc": "FW0", "risc_name": "NCRISC"},
+        {"core_desc": "DRAM0", "risc_name": "DRISC"},
     ]
 )
 class TestCoverage(unittest.TestCase):
@@ -124,6 +125,13 @@ class TestCoverage(unittest.TestCase):
             else:
                 # If not found, we should skip the test
                 self.skipTest("FW core is not available on this platform")
+        elif self.core_desc.startswith("DRAM"):
+            dram_cores = self.device.get_block_locations(block_type="dram")
+            core_index = int(self.core_desc[4:])
+            if len(dram_cores) > core_index:
+                self.core_loc = dram_cores[core_index].to_str()
+            else:
+                self.skipTest("DRAM core is not available on this platform")
         else:
             self.fail(f"Unknown core description {self.core_desc}")
 
@@ -131,7 +139,7 @@ class TestCoverage(unittest.TestCase):
         noc_block = self.location.device.get_block(self.location)
         try:
             self.risc_debug = noc_block.get_risc_debug(self.risc_name)
-        except ValueError:
+        except (ValueError, NotImplementedError):
             self.skipTest(f"{self.risc_name} core is not available in this block on this platform")
 
         self.loader = ElfLoader(self.risc_debug)

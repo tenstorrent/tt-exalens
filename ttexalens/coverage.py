@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import os
+
 from ttexalens.coordinate import OnChipCoordinate
 from ttexalens.tt_exalens_lib import TTException
 from ttexalens.elf import ElfFile
@@ -37,8 +39,10 @@ def dump_coverage(
         raise TTException("__coverage_end not found")
     coverage_end = end_sym.value
 
+    mem_access = create_l1_memory_access(location)
+
     # Find coverage header in device memory.
-    coverage_header = elf.get_global("coverage_header", create_l1_memory_access(location))
+    coverage_header = elf.get_global("coverage_header", mem_access)
     coverage_header = coverage_header.dereference()
     if coverage_header.get_address() != coverage_start:
         raise TTException("coverage_header address does not match __coverage_start")
@@ -59,12 +63,15 @@ def dump_coverage(
     if length < header_size:
         raise TTException("Kernel did not finish writing coverage data")
 
+    data = bytearray(length - header_size)
+    mem_access.read(coverage_start + header_size, data)
+
     if gcno_copy_path:
         filename_len = coverage_header.filename_length.read_value()
         assert isinstance(filename_len, int)
         filename_addr = coverage_header.filename.dereference().get_address()
         filename_buffer = bytearray(filename_len)
-        location.noc_read(filename_addr, filename_buffer)
+        mem_access.read(filename_addr, filename_buffer)
         filename: str = filename_buffer.decode("ascii")
 
         # This points to the expected gcda file, which is in the same directory where the compiler placed the gcno,
@@ -75,7 +82,20 @@ def dump_coverage(
             with open(gcno_copy_path, "wb") as f:
                 f.write(gcno_reader.read())
 
-    data = bytearray(length - header_size)
-    location.noc_read(coverage_start + header_size, data)
     with open(gcda_path, "wb") as f:
         f.write(data)
+
+
+def per_core_path(path: str, location: OnChipCoordinate) -> str:
+    """
+    Derive a per-core output path: the device id and the noc0 location are inserted before the extension.
+
+    Args:
+        path (str): Output path as given by the user.
+        location (OnChipCoordinate): Core whose device id and noc0 location are inserted.
+
+    Returns:
+        str: Path with .dev<device>_<x>-<y> inserted before the extension.
+    """
+    root, ext = os.path.splitext(path)
+    return f"{root}.dev{location.device.id}_{location.to_str('noc0')}{ext}"
