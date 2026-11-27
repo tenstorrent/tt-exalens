@@ -615,10 +615,10 @@ class BabyRiscDebug(RiscDebug):
                 # Ensure it is halted and yield
                 with self.debug_hardware.ensure_halted():
                     yield
-
+            finally:
                 # Take core back to reset
                 self.set_reset_signal(True)
-            finally:
+
                 # Write back the 4 bytes to the start address
                 self.__write(start_address, saved_bytes)
 

@@ -8,6 +8,8 @@ from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from ttexalens import Context, write_to_device
+from ttexalens.cli_commands.read import execute_safe_read, execute_unsafe_read
+from ttexalens.cli_commands.write import execute_safe_write, execute_unsafe_write
 from ttexalens.device import Device
 from ttexalens.hardware.baby_risc_debug import BabyRiscDebugWatchpointState, get_register_index
 from ttexalens.exceptions import RiscHaltError
@@ -241,6 +243,40 @@ class TestDebugging(unittest.TestCase):
             self.assertEqual(
                 self.core_sim.read_data(noc_addr), 0x87654321, "Memory value read over NOC should be 0x87654321."
             )
+
+    def test_private_memory_access_restores_reset_on_exception(self):
+        if self.core_sim.location.noc_block.block_type == "dram":
+            self.skipTest("This test is not applicable for DRAM blocks.")
+        with self.assertRaises(RuntimeError):
+            with self.core_sim.risc_debug.ensure_private_memory_access():
+                raise RuntimeError("test")
+        self.assertTrue(self.core_sim.is_in_reset())
+
+    @parameterized.expand(
+        [
+            ("safe", execute_safe_write, execute_safe_read),
+            ("unsafe", execute_unsafe_write, execute_unsafe_read),
+        ]
+    )
+    def test_read_write_command_private_memory(self, access, write, read):
+        if self.core_sim.location.noc_block.block_type == "dram":
+            self.skipTest("This test is not applicable for DRAM blocks.")
+        data_private = self.core_sim.risc_debug.get_data_private_memory()
+        assert data_private is not None and data_private.address.private_address is not None
+        if data_private.address.noc_address is not None:
+            self.skipTest("Private data memory is reached over NOC on this core.")
+        addr = data_private.address.private_address
+
+        read(self.core_sim.location, addr, 4, self.risc_name, self.neo_id)
+        self.assertTrue(self.core_sim.is_in_reset())
+
+        self.program_writer.append_while_true()
+        self.program_writer.write_program()
+        self.core_sim.set_reset(False)
+        write(self.core_sim.location, addr, (0x12345678).to_bytes(4, "little"), self.risc_name, self.neo_id)
+        data, _ = read(self.core_sim.location, addr, 4, self.risc_name, self.neo_id)
+        self.assertEqual(int.from_bytes(data, "little"), 0x12345678)
+        self.assertFalse(self.core_sim.is_halted())
 
     def test_read_write_memory_bytes_aligned(self):
         """Test reading and writing aligned memory blocks using read_memory_bytes and write_memory_bytes."""
