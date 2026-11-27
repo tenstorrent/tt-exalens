@@ -205,10 +205,10 @@ debug_bus_signal_map = {
     "tensix_frontend_t1_rq_head_rsrcs_rd_tdma": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x10),
     "tensix_frontend_t1_rq_head_rsrcs_wr_gpr": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x8),
     "tensix_frontend_t1_rq_head_rsrcs_rd_gpr": DebugBusSignalDescription(rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x4),
-    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space_0_0": DebugBusSignalDescription(
+    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space/0": DebugBusSignalDescription(
         rd_sel=2, daisy_sel=1, sig_sel=8, mask=0x80000000
     ),
-    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space_2_1": DebugBusSignalDescription(
+    "tensix_frontend_t1_rq_head_rsrcs_target_cfg_space/1": DebugBusSignalDescription(
         rd_sel=3, daisy_sel=1, sig_sel=8, mask=0x3
     ),
     "tensix_frontend_t1_rq_head_rsrcs_cfg_state": DebugBusSignalDescription(
@@ -1304,8 +1304,8 @@ debug_bus_signal_map = {
     "trisc0_icache_o_req_ready": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x80000),
     "trisc0_icache_o_instrn_vld": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x40000),
     "brisc_icache_o_busy": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x400),
-    "brisc_icache_req_fifo_empty": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x200),
-    "brisc_icache_req_fifo_full": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x100),
+    "brisc_icache_ctrl_req_fifo_empty": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x200),
+    "brisc_icache_ctrl_req_fifo_full": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x100),
     "brisc_icache_mshr_empty": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x80),
     "brisc_icache_mshr_full": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x40),
     "brisc_icache_way_hit": DebugBusSignalDescription(rd_sel=1, daisy_sel=7, sig_sel=26, mask=0x30),
