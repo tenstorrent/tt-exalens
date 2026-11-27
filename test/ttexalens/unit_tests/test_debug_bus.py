@@ -3,14 +3,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
+import io
 import unittest
+from contextlib import redirect_stdout
 from parameterized import parameterized_class, parameterized
 from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.program_writer import RiscvProgramWriter
 from test.ttexalens.unit_tests.test_base import get_core_location, init_cached_test_context
 from ttexalens.debug_bus_signal_store import DebugBusSignalDescription, DebugBusSignalStore
 from ttexalens.context import Context
-from ttexalens.cli_commands.debug_bus import parse_string
+from ttexalens.cli_commands.debug_bus import handle_group_reading_command, handle_signal_reading_command, parse_string
 from ttexalens.device import Device
 
 
@@ -147,6 +149,40 @@ class TestDebugBus(unittest.TestCase):
             )
         end_address = l1_address + (samples * self.debug_bus.L1_SAMPLE_SIZE_BYTES) - 1
         self.assertIn(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit", str(cm.exception))
+
+    @parameterized.expand(
+        [
+            (0, None, "samples count must be at least 1"),  # samples, sampling_interval, error
+            (4, 0, "sampling_interval must be between 2 and 256"),
+        ]
+    )
+    def test_debug_bus_group_command_rejects_explicit_zero(self, samples, sampling_interval, error):
+        if self.device.is_quasar():
+            self.skipTest("This test does not work on quasar.")
+
+        params = {
+            "group-name": next(iter(self.debug_bus.group_map.keys())),
+            "l1-address": 0x1000,
+            "samples": samples,
+            "sampling-interval": sampling_interval,
+            "neo_id": self.neo_id,
+        }
+        with self.assertRaises(ValueError) as cm:
+            handle_group_reading_command(self.device, self.location, params)
+        self.assertIn(error, str(cm.exception))
+
+    def test_debug_bus_command_reads_signals_after_combined_signal(self):
+        combined_signal = next(iter(self.debug_bus.combined_signals), None)
+        if combined_signal is None:
+            self.skipTest(f"No combined signal on core {self.core_desc}[neo={self.neo_id}]")
+        signal = next(name for name in self.debug_bus.signals if "/" not in name)
+
+        output = io.StringIO()
+        with redirect_stdout(output):
+            handle_signal_reading_command(
+                self.device, self.location, {"signals": [combined_signal, signal], "neo_id": self.neo_id}
+            )
+        self.assertIn(f" {signal}: 0x", output.getvalue())
 
     def test_read_signal_group_invalid_signal_name(self):
         if self.device.is_quasar():
