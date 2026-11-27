@@ -41,9 +41,16 @@ class UmdApi:
         global TLS_FOR_NOC_ID
         if getattr(TLS_FOR_NOC_ID, "noc_id", None) == noc_id:
             return
-        TLS_FOR_NOC_ID.noc_id = noc_id
         # NocId is tt-umd's own enum, so it can be handed to the UMD thread-NOC selector directly.
         tt_umd.set_thread_noc_id(noc_id)
+        TLS_FOR_NOC_ID.noc_id = noc_id
+
+    @staticmethod
+    def get_selected_noc_id() -> NocId | None:
+        """
+        Returns the NOC ID that the current thread selected with select_noc_id, or None if it selected none.
+        """
+        return getattr(TLS_FOR_NOC_ID, "noc_id", None)
 
     def __init__(
         self,
