@@ -10,6 +10,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <variant>
 
 #include "dwarf_cu.hpp"
 #include "dwarf_die.hpp"
@@ -72,10 +73,12 @@ class DwarfInfo {
     // `func(int)::counter` for a function-local static).
     const ElfSymbol* find_symbol_by_demangled_name(std::string_view demangled_name) const;
 
-    // Looks up `name` as an enumerator / constexpr int constant. Returns
+    // Looks up `name` as an enumerator / constexpr int constant. A type DIE
+    // never matches the last component of `name`. Negative constants are
+    // returned as negative int64_t values, all others as uint64_t. Returns
     // nullopt when the DIE doesn't exist or doesn't carry a numeric constant
     // value.
-    std::optional<uint64_t> get_enum_value(std::string_view name) const;
+    std::optional<std::variant<int64_t, uint64_t>> get_enum_value(std::string_view name) const;
 
     // Looks up the constant value of `name` (must be a DW_TAG_constant /
     // constexpr-style DIE backed by a base type).

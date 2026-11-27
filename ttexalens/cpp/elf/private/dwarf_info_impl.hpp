@@ -75,9 +75,10 @@ class DwarfInfoImpl : public std::enable_shared_from_this<DwarfInfoImpl> {
     Dwarf_Debug get_dbg() const { return dbg; }
 
     DwarfDiePtr register_die(DwarfDieHandle handle);
-    DwarfDiePtr get_or_create_die(Dwarf_Off offset);
-    DwarfDiePtr find_parent(Dwarf_Off target_offset);
-    DwarfCompileUnit* get_die_cu(Dwarf_Off target_offset);
+    DwarfDiePtr get_or_create_die(Dwarf_Off offset, bool is_info);
+    DwarfDiePtr find_parent(Dwarf_Off target_offset, bool is_info);
+    DwarfCompileUnit* get_die_cu(Dwarf_Off target_offset, bool is_info);
+    DwarfDiePtr find_die_by_signature(const Dwarf_Sig8& signature);
     const ElfSymbol* find_symbol_by_name(std::string_view name);
     const ElfSymbol* find_symbol_by_demangled_name(std::string_view demangled);
 
@@ -100,6 +101,9 @@ class DwarfInfoImpl : public std::enable_shared_from_this<DwarfInfoImpl> {
 
     std::vector<DwarfCompileUnit> cus;
     std::unordered_map<Dwarf_Off, DwarfDiePtr> die_cache;
+    std::vector<DwarfCompileUnit> type_units;
+    std::unordered_map<Dwarf_Off, DwarfDiePtr> types_die_cache;
+    std::unordered_map<uint64_t, std::pair<Dwarf_Off, bool>> type_signatures;
     bool loaded_cus = false;
 
     // Sorted (by low) address->line index; see get_line_ranges().

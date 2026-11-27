@@ -153,7 +153,8 @@ void bind_elf_file(nb::module_& m) {
         .def("find_symbol_by_name", &ElfFile::find_symbol_by_name, nb::arg("name"), nb::rv_policy::reference_internal,
              nb::sig("def find_symbol_by_name(self, name: str) -> ElfSymbol | None"))
         .def("find_die_by_name", &ElfFile::find_die_by_name, nb::arg("name"), nb::rv_policy::reference_internal)
-        .def("get_enum_value", &ElfFile::get_enum_value, nb::arg("name"))
+        .def("get_enum_value", &ElfFile::get_enum_value, nb::arg("name"),
+             nb::sig("def get_enum_value(self, name: str) -> int | None"))
         .def("get_constant", &ElfFile::get_constant, nb::arg("name"))
         .def("get_global", &ElfFile::get_global, nb::arg("name"), nb::arg("memory_access"),
              nb::rv_policy::reference_internal)

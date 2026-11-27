@@ -22,4 +22,9 @@ void bind_elf_file(nanobind::module_& m);
 void bind_memory_access(nanobind::module_& m);
 void bind_variable(nanobind::module_& m);
 
+// Names bound with a value that an earlier name already has become aliases of
+// that first-bound member, like aliases of a Python Enum. The first .value()
+// line of a shared number therefore decides .name.
+void alias_shared_enum_values(nanobind::handle enum_type);
+
 }  // namespace ttexalens::native_elf::bindings

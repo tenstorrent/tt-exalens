@@ -233,7 +233,7 @@ std::string DwarfDie::get_path() const {
 
     auto name = get_readable_name();
     auto parent = get_parent();
-    if (parent && parent->get_tag() != DwarfDieTag::compile_unit) {
+    if (parent && parent->get_tag() != DwarfDieTag::compile_unit && parent->get_tag() != DwarfDieTag::type_unit) {
         return parent->get_path() + "::" + name;
     }
     return name;
@@ -272,7 +272,7 @@ std::string DwarfDie::get_search_path() const {
         name += params;
     }
     auto parent = get_parent();
-    if (parent && parent->get_tag() != DwarfDieTag::compile_unit) {
+    if (parent && parent->get_tag() != DwarfDieTag::compile_unit && parent->get_tag() != DwarfDieTag::type_unit) {
         return parent->get_search_path() + "::" + name;
     }
     return name;
@@ -285,6 +285,8 @@ Dwarf_Off DwarfDie::get_offset() const {
     dwarf_dieoffset(die, &offset, &error);
     return offset;
 }
+
+bool DwarfDie::is_info() const { return dwarf_get_die_infotypes_flag(die) != 0; }
 
 DwarfDieTag DwarfDie::get_tag() const {
     Dwarf_Debug dbg = die.get_state();
@@ -385,7 +387,7 @@ std::shared_ptr<const DwarfCompileUnit> DwarfDie::get_cu() const {
     if (!info_ptr) {
         return nullptr;
     }
-    const DwarfCompileUnit* cu = info_ptr->get_die_cu(get_offset());
+    const DwarfCompileUnit* cu = info_ptr->get_die_cu(get_offset(), is_info());
     if (cu == nullptr) {
         return nullptr;
     }
@@ -491,11 +493,23 @@ DwarfDiePtr DwarfDie::get_die_from_attribute(DwarfAttributeTag attribute_tag) co
     if (dwarf_attr(die, static_cast<Dwarf_Half>(attribute_tag), &attr, &error) != DW_DLV_OK) {
         return nullptr;
     }
-    Dwarf_Off offset = 0;
-    if (dwarf_global_formref(attr, &offset, &error) != DW_DLV_OK) {
+    Dwarf_Half form = 0;
+    if (dwarf_whatform(attr, &form, &error) != DW_DLV_OK) {
         return nullptr;
     }
-    return info_ptr->get_or_create_die(offset);
+    if (form == DW_FORM_ref_sig8) {
+        Dwarf_Sig8 sig{};
+        if (dwarf_formsig8(attr, &sig, &error) != DW_DLV_OK) {
+            return nullptr;
+        }
+        return info_ptr->find_die_by_signature(sig);
+    }
+    Dwarf_Off offset = 0;
+    Dwarf_Bool target_is_info = 1;
+    if (dwarf_global_formref_b(attr, &offset, &target_is_info, &error) != DW_DLV_OK) {
+        return nullptr;
+    }
+    return info_ptr->get_or_create_die(offset, target_is_info != 0);
 }
 
 DwarfDiePtr DwarfDie::get_first_child() const {
@@ -527,7 +541,7 @@ DwarfDiePtr DwarfDie::get_next_sibling() const {
         Dwarf_Debug dbg = die.get_state();
         DwarfErrorHandle error(dbg);
         DwarfDieHandle handle(dbg);
-        if (dwarf_siblingof_b(dbg, die, /*is_info=*/true, &handle, &error) == DW_DLV_OK) {
+        if (dwarf_siblingof_b(dbg, die, is_info(), &handle, &error) == DW_DLV_OK) {
             result = info_ptr->register_die(std::move(handle));
             if (result && parent) {
                 result->parent = *parent;
@@ -544,7 +558,7 @@ DwarfDiePtr DwarfDie::get_parent() const {
     }
     DwarfDiePtr result;
     if (auto info_ptr = info.lock()) {
-        result = info_ptr->find_parent(get_offset());
+        result = info_ptr->find_parent(get_offset(), is_info());
     }
     // The descent in find_parent typically sets `parent` on us via the
     // get_first_child / get_next_sibling side effect — but if it didn't (e.g.
@@ -933,7 +947,7 @@ std::optional<DwarfFileLine> DwarfDie::resolve_file_info(DwarfAttributeTag file_
     if (!info_ptr) {
         return std::nullopt;
     }
-    DwarfCompileUnit* cu = info_ptr->get_die_cu(get_offset());
+    DwarfCompileUnit* cu = info_ptr->get_die_cu(get_offset(), is_info());
     if (cu == nullptr) {
         return std::nullopt;
     }

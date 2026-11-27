@@ -127,7 +127,7 @@ DwarfDiePtr ElfFile::find_die_by_name(std::string_view name) const {
     return dwarf == nullptr ? nullptr : dwarf->get_die_by_name(name);
 }
 
-std::optional<uint64_t> ElfFile::get_enum_value(std::string_view name) const {
+std::optional<std::variant<int64_t, uint64_t>> ElfFile::get_enum_value(std::string_view name) const {
     const DwarfInfo* dwarf = get_dwarf_info();
     return dwarf == nullptr ? std::nullopt : dwarf->get_enum_value(name);
 }

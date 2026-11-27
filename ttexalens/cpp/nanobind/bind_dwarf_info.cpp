@@ -7,6 +7,7 @@
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/shared_ptr.h>
 #include <nanobind/stl/string_view.h>
+#include <nanobind/stl/variant.h>
 
 #include <variant>
 
@@ -54,7 +55,8 @@ void bind_dwarf_info(nb::module_& m) {
         .def("find_symbol_by_demangled_name", &DwarfInfo::find_symbol_by_demangled_name, nb::arg("demangled_name"),
              nb::rv_policy::reference_internal,
              nb::sig("def find_symbol_by_demangled_name(self, demangled_name: str) -> ElfSymbol | None"))
-        .def("get_enum_value", &DwarfInfo::get_enum_value, nb::arg("name"))
+        .def("get_enum_value", &DwarfInfo::get_enum_value, nb::arg("name"),
+             nb::sig("def get_enum_value(self, name: str) -> int | None"))
         // Like DwarfDie::get_constant_value, the variant alternatives
         // map to bool / int / float; monostate is unreachable here because
         // get_constant() throws TypeMismatchException for non-constant DIEs.

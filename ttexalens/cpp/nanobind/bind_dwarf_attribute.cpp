@@ -20,8 +20,8 @@ void bind_dwarf_attribute(nb::module_& m) {
     // DW_AT_* attribute tags. Use with:
     //   from ttexalens._native_ttexalens import DwarfAttributeTag as at
     //   die.get_attribute(at.declaration)
-    nb::enum_<DwarfAttributeTag>(m, "DwarfAttributeTag")
-        .value("abstract_origin", DwarfAttributeTag::abstract_origin)
+    nb::enum_<DwarfAttributeTag> attribute_tag(m, "DwarfAttributeTag");
+    attribute_tag.value("abstract_origin", DwarfAttributeTag::abstract_origin)
         .value("accessibility", DwarfAttributeTag::accessibility)
         .value("addr_base", DwarfAttributeTag::addr_base)
         .value("address_class", DwarfAttributeTag::address_class)
@@ -355,6 +355,7 @@ void bind_dwarf_attribute(nb::module_& m) {
         .value("visibility", DwarfAttributeTag::visibility)
         .value("VMS_rtnbeg_pd_address", DwarfAttributeTag::VMS_rtnbeg_pd_address)
         .value("vtable_elem_location", DwarfAttributeTag::vtable_elem_location);
+    alias_shared_enum_values(attribute_tag);
 
     // DW_FORM_* — attribute form. Determines which std::variant alternative
     // DwarfAttribute.value will hold (see dwarf_attribute.hpp).
