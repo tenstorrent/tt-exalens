@@ -2,6 +2,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 import math
+import struct
 import unittest
 from parameterized import parameterized_class, parameterized
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
@@ -329,3 +330,45 @@ class TestTensixDebug(unittest.TestCase):
                 inject(instruction)
                 state = state_after(state, instruction)
                 check(state, f"{instruction}, round {round_id}")
+
+    @parameterized.expand(
+        [
+            ("dst_counter", 5, {}),
+            ("dst_offset", 0, {1: 0x40}),
+            ("addr_mod_dst_increment", 0, {23: 8, 27: 8}),
+        ]
+    )
+    def test_read_regfile_wormhole_fp32(self, _leftover: str, dst_counter: int, thread_config: dict[int, int]):
+        if not self.location.device.is_wormhole():
+            self.skipTest("Wormhole only.")
+
+        store = self.tensix_debug.register_store
+        dst_format = store.read_register("ALU_FORMAT_SPEC_REG2_Dstacc")
+        self.addCleanup(store.write_register, "ALU_FORMAT_SPEC_REG2_Dstacc", dst_format)
+        store.write_register("ALU_FORMAT_SPEC_REG2_Dstacc", TensixDataFormat.Float32.value)
+
+        values = {
+            (block, parity): ((0x4000 | (block << 4) | parity) << 16) | 0x0001 | (block << 8) | (parity << 4)
+            for block in range(8)
+            for parity in range(2)
+        }
+        values[7, 1] = 0xC1238001
+        ops = self.location.device.instructions
+        self.tensix_debug.inject_instruction(ops.TT_OP_SFPENCC(0, 0, 0, 2), 1)
+        self.tensix_debug.inject_instruction(ops.TT_OP_SETC16(1, 0), 1)
+        for (block, parity), bits in values.items():
+            self.tensix_debug.inject_instruction(ops.TT_OP_SFPLOADI(2, 8, bits >> 16), 1)
+            self.tensix_debug.inject_instruction(ops.TT_OP_SFPLOADI(2, 10, bits & 0xFFFF), 1)
+            self.tensix_debug.inject_instruction(ops.TT_OP_SETRWC(0, 0, 0, 0, 0, 0x4), 1)
+            self.tensix_debug.inject_instruction(ops.TT_OP_SFPSTORE(2, 4, 0, 4 * block + 2 * parity), 1)
+
+        for register, value in thread_config.items():
+            self.addCleanup(self.tensix_debug.inject_instruction, ops.TT_OP_SETC16(register, 0), 1)
+            self.tensix_debug.inject_instruction(ops.TT_OP_SETC16(register, value), 1)
+        self.tensix_debug.inject_instruction(ops.TT_OP_SETRWC(0, 0, dst_counter, 0, 0, 0x4), 1)
+
+        ret = self.tensix_debug.read_regfile(REGFILE.DSTACC)
+        actual = [hex(struct.unpack(">I", struct.pack(">f", datum))[0]) for datum in ret]
+        expected = [hex(values[row // 4, column % 2]) for row in range(32) for column in range(16)]
+        assert actual == expected
+        self.assertEqual(self._read_signal("rwc1_dst"), 0)

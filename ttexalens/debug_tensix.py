@@ -293,14 +293,14 @@ class TensixDebug:
         self, regfile: int | str | REGFILE, num_tiles: int | None = None, signed: bool = True
     ) -> Sequence[int | float | str]:
         """Dumps SRCA/DSTACC register file from the specified core, and parses the data into a list of values.
-        Dumping DSTACC on Wormhole as FP32 clobbers the register.
+        Dumping DSTACC on Wormhole as FP32 overwrites the register and resets the Dst counters (Dst and Dst_Cr) of Tensix thread 1. Lanes disabled by SFPU lane predication return wrong low 16 bits. A nonzero Dst write base or SFPU lane configuration also returns wrong values.
         On Quasar only DSTACC can be read, through TRISC3 of the NEO, which is halted during the read.
 
         Args:
                 regfile (int | str | REGFILE): Register file to dump (0: SRCA, 1: SRCB, 2: DSTACC).
                 num_tiles (int | None): Number of tiles to print. Only available for direct dest read on blackhole and for dest on quasar. Default: None
         Returns:
-                list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data) or num_tiles * TILE_SIZE for direct read.
+                list[int | float | str]: 64x(8/16) values in register file (64 rows, 8 or 16 values per row, depending on the format of the data) or num_tiles * TILE_SIZE for direct read. A Wormhole FP32 dump of DSTACC returns 512 values (32 rows of 16).
         """
         regfile = convert_regfile(regfile)
         df = self._read_dest_data_format()
