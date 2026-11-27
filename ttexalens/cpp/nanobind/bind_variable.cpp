@@ -25,11 +25,24 @@ namespace ttexalens::native_elf::bindings {
 
 namespace {
 
+// Converts a read value to Python. Text is decoded as UTF-8 with invalid
+// bytes replaced by U+FFFD, so firmware memory can never fail the conversion.
+nb::object value_to_object(const ElfVariable::Value& value) {
+    if (const auto* text = std::get_if<std::string>(&value)) {
+        PyObject* decoded = PyUnicode_DecodeUTF8(text->data(), static_cast<Py_ssize_t>(text->size()), "replace");
+        if (decoded == nullptr) {
+            throw nb::python_error();
+        }
+        return nb::steal<nb::object>(decoded);
+    }
+    return nb::cast(value);
+}
+
 // Helpers for ElfVariable dunders: reduce a C++ TypeMismatchException
 // (raised when read_value is called on a non-base/pointer/enum type) to
 // Python's NotImplemented so the arithmetic/comparison operators degrade
 // gracefully, matching the Python ElfVariable contract.
-nb::object var_value_obj(const ElfVariable& self) { return nb::cast(self.read_value()); }
+nb::object var_value_obj(const ElfVariable& self) { return value_to_object(self.read_value()); }
 
 template <typename Op>
 nb::object try_binop(const ElfVariable& self, nb::handle other, Op&& op) {
@@ -42,6 +55,43 @@ nb::object try_binop(const ElfVariable& self, nb::handle other, Op&& op) {
             return nb::borrow(Py_NotImplemented);
         }
         throw;
+    }
+}
+
+// Converts a write_value argument exactly: bool, then int as int64_t or
+// uint64_t, then float as double. An int beyond 64 bits is data loss when
+// checked and wraps otherwise. Other objects use the variant caster, and an
+// object it rejects raises TypeError.
+ElfVariable::Value object_to_value(const ElfVariable& self, nb::handle value, bool check_data_loss) {
+    PyObject* obj = value.ptr();
+    if (PyBool_Check(obj)) {
+        return obj == Py_True;
+    }
+    if (PyLong_Check(obj)) {
+        int overflow = 0;
+        const long long as_signed = PyLong_AsLongLongAndOverflow(obj, &overflow);
+        if (overflow == 0) {
+            return static_cast<int64_t>(as_signed);
+        }
+        if (overflow > 0) {
+            const unsigned long long as_unsigned = PyLong_AsUnsignedLongLong(obj);
+            if (!PyErr_Occurred()) {
+                return static_cast<uint64_t>(as_unsigned);
+            }
+            PyErr_Clear();
+        }
+        if (check_data_loss) {
+            throw DataLossException(nb::cast<std::string>(nb::str(value)), self.get_type_die()->get_path());
+        }
+        return static_cast<uint64_t>(PyLong_AsUnsignedLongLongMask(obj));
+    }
+    if (PyFloat_Check(obj)) {
+        return PyFloat_AS_DOUBLE(obj);
+    }
+    try {
+        return nb::cast<ElfVariable::Value>(value);
+    } catch (const nb::cast_error&) {
+        throw nb::type_error("write_value expects a bool, int, float or str");
     }
 }
 
@@ -66,8 +116,16 @@ void bind_variable(nb::module_& m) {
                  auto v = self.read_bytes();
                  return nb::bytes(reinterpret_cast<const char*>(v.data()), v.size());
              })
-        .def("read_value", &ElfVariable::read_value)
-        .def("write_value", &ElfVariable::write_value, nb::arg("value"), nb::arg("check_data_loss") = true)
+        .def(
+            "read_value", [](const ElfVariable& self) { return var_value_obj(self); },
+            nb::sig("def read_value(self) -> bool | int | float | str"))
+        .def(
+            "write_value",
+            [](ElfVariable& self, nb::handle value, bool check_data_loss) {
+                self.write_value(object_to_value(self, value, check_data_loss), check_data_loss);
+            },
+            nb::arg("value"), nb::arg("check_data_loss") = true,
+            nb::sig("def write_value(self, value: bool | int | float | str, check_data_loss: bool = True) -> None"))
         // Snapshots the variable's bytes; subsequent member/index walks read
         // from the cache instead of re-hitting live memory.
         .def("read", &ElfVariable::read)
@@ -86,7 +144,7 @@ void bind_variable(nb::module_& m) {
                  const uint64_t n = self.get_length();
                  nb::list out;
                  for (uint64_t i = 0; i < n; ++i) {
-                     out.append(nb::cast(self.get_index(static_cast<int64_t>(i)).read_value()));
+                     out.append(var_value_obj(self.get_index(static_cast<int64_t>(i))));
                  }
                  return out;
              })
@@ -380,11 +438,11 @@ void bind_variable(nb::module_& m) {
                               child = child->get_next_sibling()) {
                              auto cv = child->get_constant_value();
                              if (auto* iv = std::get_if<int64_t>(&cv)) {
-                                 if (nb::cast<int64_t>(val) == *iv) {
+                                 if (val.equal(nb::cast(*iv))) {
                                      return child->get_path();
                                  }
                              } else if (auto* uv = std::get_if<uint64_t>(&cv)) {
-                                 if (nb::cast<uint64_t>(val) == *uv) {
+                                 if (val.equal(nb::cast(*uv))) {
                                      return child->get_path();
                                  }
                              }

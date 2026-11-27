@@ -278,12 +278,13 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     bool is_signed_type() const;
 
     // True iff this DIE is a base type with a character encoding
-    // (DW_AT_encoding ∈ {DW_ATE_signed_char, DW_ATE_unsigned_char}). Used to
-    // distinguish C strings (char[] / char*) from byte arrays.
+    // (DW_AT_encoding ∈ {DW_ATE_signed_char, DW_ATE_unsigned_char}). Covers
+    // char, signed char and unsigned char.
     bool is_char_type() const;
 
-    // True iff this DIE represents a C string: either an array of a char-
-    // encoded base type, or a pointer to one. Used to decide whether
+    // True iff this DIE represents a C string: an array of, or a pointer to,
+    // the base type named `char`. `signed char` / `unsigned char` (int8_t /
+    // uint8_t) buffers are byte arrays, not strings. Used to decide whether
     // read_value() returns a Python str.
     bool is_string_type() const;
 
