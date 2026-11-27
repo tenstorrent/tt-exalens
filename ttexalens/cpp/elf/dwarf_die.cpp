@@ -328,9 +328,6 @@ bool DwarfDie::has_attribute(DwarfAttributeTag attribute_tag) const { return get
 DwarfDie::ConstantValue DwarfDie::get_constant_value() const {
     const DwarfAttribute* attr = get_attribute(DwarfAttributeTag::const_value);
     if (attr == nullptr) {
-        attr = get_attribute(DwarfAttributeTag::const_expr);
-    }
-    if (attr == nullptr) {
         if (auto origin = get_die_from_attribute(DwarfAttributeTag::abstract_origin)) {
             return origin->get_constant_value();
         }

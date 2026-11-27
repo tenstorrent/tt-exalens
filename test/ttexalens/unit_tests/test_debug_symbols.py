@@ -13,7 +13,7 @@ from ttexalens import OnChipCoordinate
 from ttexalens.context import Context
 from ttexalens.elf import ElfFile, ElfVariable, FrameInspection
 from ttexalens.exceptions import RiscHaltError
-from ttexalens.memory_access import MemoryAccess, create_memory_access
+from ttexalens.memory_access import NO_MEMORY_ACCESS, MemoryAccess, create_memory_access
 from ttexalens.exceptions import DataLossError, RestrictedMemoryAccessError, SymbolNotFoundError, TypeMismatchError
 from ttexalens.umd_device import TimeoutDeviceRegisterError
 
@@ -418,6 +418,25 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertEqual(-12345, self.parsed_elf.get_constant("c_int16_t"))
         self.assertEqual(-1234567, self.parsed_elf.get_constant("c_int32_t"))
         self.assertEqual(-1234567890123456789, self.parsed_elf.get_constant("c_int64_t"))
+        variable_die = self.parsed_elf.find_die_by_name("c_uint32_t")
+        assert variable_die is not None
+        variable = variable_die.read_value(FrameInspection(NO_MEMORY_ACCESS))
+        assert variable is not None
+        self.assertEqual(0x11223344, variable.read_value())
+
+    def test_elf_constexpr_without_const_value(self):
+        self.core_sim.load_elf("globals_test.debug")
+        try:
+            parsed_elf = self.core_sim.parse_elf("globals_test.debug")
+            self.assertRaises(TypeMismatchError, parsed_elf.get_constant, "c_uint32_t")
+            self.assertIsNone(parsed_elf.get_enum_value("c_uint32_t"))
+            variable_die = parsed_elf.find_die_by_name("c_uint32_t")
+            assert variable_die is not None
+            variable = variable_die.read_value(FrameInspection(TestDebugSymbols.mem_access))
+            assert variable is not None
+            self.assertEqual(0x11223344, variable.read_value())
+        finally:
+            self.core_sim.load_elf("globals_test.release")
 
     def test_elf_enum_variable_name_collision(self):
         # `enum shadowed_const` and `constexpr uint8_t shadowed_const` share a
