@@ -205,8 +205,12 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     // segment so the result matches the form `__cxa_demangle` emits.
     std::string get_search_path() const;
 
-    // .debug_info offset of this DIE — stable id, used as the cache key.
+    // Section offset of this DIE — unique only within its section
+    // (.debug_info or .debug_types), used as the cache key there.
     Dwarf_Off get_offset() const;
+
+    // True for a DIE in .debug_info, false for one in .debug_types.
+    bool is_info() const;
 
     // DWARF tag (DW_TAG_*). Always asks libdwarf — the call is just a
     // field read. Compare against DwarfDieTag enumerators directly

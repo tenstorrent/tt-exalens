@@ -55,8 +55,8 @@ void bind_dwarf_die(nb::module_& m) {
     //   if die.tag == tag.subprogram: ...
     // Python sees a regular enum.Enum; comparisons against DwarfDie.tag
     // (also a DwarfDieTag instance) work directly.
-    nb::enum_<DwarfDieTag>(m, "DwarfDieTag")
-        .value("access_declaration", DwarfDieTag::access_declaration)
+    nb::enum_<DwarfDieTag> die_tag(m, "DwarfDieTag");
+    die_tag.value("access_declaration", DwarfDieTag::access_declaration)
         .value("ALTIUM_circ_type", DwarfDieTag::ALTIUM_circ_type)
         .value("ALTIUM_mwa_circ_type", DwarfDieTag::ALTIUM_mwa_circ_type)
         .value("ALTIUM_rev_carry_type", DwarfDieTag::ALTIUM_rev_carry_type)
@@ -176,6 +176,7 @@ void bind_dwarf_die(nb::module_& m) {
         .value("variant_part", DwarfDieTag::variant_part)
         .value("volatile_type", DwarfDieTag::volatile_type)
         .value("with_stmt", DwarfDieTag::with_stmt);
+    alias_shared_enum_values(die_tag);
 
     nb::class_<DwarfFileLine>(m, "DwarfFileLine")
         .def(nb::init<std::string, uint32_t, uint32_t>(), nb::arg("file"), nb::arg("line"), nb::arg("column") = 0)

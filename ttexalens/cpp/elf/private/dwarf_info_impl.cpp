@@ -201,6 +201,9 @@ DwarfInfoImpl::DwarfInfoImpl(std::weak_ptr<ElfFileImpl> elf_impl)
 DwarfInfoImpl::~DwarfInfoImpl() {
     die_cache.clear();
     cus.clear();
+    types_die_cache.clear();
+    type_units.clear();
+    type_signatures.clear();
     if (fdes != nullptr || cies != nullptr) {
         dwarf_dealloc_fde_cie_list(dbg, cies, cie_count, fdes, fde_count);
     }
@@ -292,18 +295,28 @@ std::pair<Dwarf_Fde*, Dwarf_Signed> DwarfInfoImpl::get_fdes() {
 
 void DwarfInfoImpl::load_compile_units() {
     DwarfErrorHandle error(dbg);
-    while (true) {
-        DwarfDieHandle die_handle(dbg);
-        DwarfCompileUnit cu;
-        int res =
-            dwarf_next_cu_header_e(dbg, /*is_info=*/true, &die_handle, &cu.header_length, &cu.version,
-                                   &cu.abbrev_offset, &cu.address_size, &cu.length_size, &cu.extension_size,
-                                   &cu.signature, &cu.type_offset, &cu.next_cu_offset, &cu.header_cu_type, &error);
-        if (res != DW_DLV_OK) {
-            break;  // NO_ENTRY (cursor done) or ERROR (auto-cleaned by ~error)
+    for (const bool is_info : {true, false}) {
+        auto& units = is_info ? cus : type_units;
+        Dwarf_Off unit_offset = 0;
+        while (true) {
+            DwarfDieHandle die_handle(dbg);
+            DwarfCompileUnit cu;
+            int res =
+                dwarf_next_cu_header_e(dbg, is_info, &die_handle, &cu.header_length, &cu.version, &cu.abbrev_offset,
+                                       &cu.address_size, &cu.length_size, &cu.extension_size, &cu.signature,
+                                       &cu.type_offset, &cu.next_cu_offset, &cu.header_cu_type, &error);
+            if (res != DW_DLV_OK) {
+                break;  // NO_ENTRY (cursor done) or ERROR (auto-cleaned by ~error)
+            }
+            if (cu.type_offset != 0) {
+                uint64_t signature = 0;
+                std::memcpy(&signature, cu.signature.signature, sizeof(signature));
+                type_signatures[signature] = {unit_offset + cu.type_offset, is_info};
+            }
+            unit_offset = cu.next_cu_offset;
+            cu.die = register_die(std::move(die_handle));
+            units.push_back(std::move(cu));
         }
-        cu.die = register_die(std::move(die_handle));
-        cus.push_back(std::move(cu));
     }
 }
 
@@ -311,31 +324,45 @@ DwarfDiePtr DwarfInfoImpl::register_die(DwarfDieHandle handle) {
     DwarfErrorHandle error(dbg);
     Dwarf_Off offset = 0;
     dwarf_dieoffset(handle, &offset, &error);
-    auto it = die_cache.find(offset);
-    if (it != die_cache.end()) {
+    const bool is_info = dwarf_get_die_infotypes_flag(handle) != 0;
+    auto& cache = is_info ? die_cache : types_die_cache;
+    auto it = cache.find(offset);
+    if (it != cache.end()) {
         return it->second;  // libdwarf hands out a fresh Dwarf_Die per call — drop the dup
     }
     auto die = std::make_shared<DwarfDie>(std::move(handle), shared_from_this());
-    die_cache.emplace(offset, die);
+    cache.emplace(offset, die);
     return die;
 }
 
-DwarfDiePtr DwarfInfoImpl::get_or_create_die(Dwarf_Off offset) {
-    auto it = die_cache.find(offset);
-    if (it != die_cache.end()) {
+DwarfDiePtr DwarfInfoImpl::get_or_create_die(Dwarf_Off offset, bool is_info) {
+    auto& cache = is_info ? die_cache : types_die_cache;
+    auto it = cache.find(offset);
+    if (it != cache.end()) {
         return it->second;
     }
     DwarfErrorHandle error(dbg);
     DwarfDieHandle handle(dbg);
-    if (dwarf_offdie_b(dbg, offset, /*is_info=*/true, &handle, &error) != DW_DLV_OK) {
+    if (dwarf_offdie_b(dbg, offset, is_info, &handle, &error) != DW_DLV_OK) {
         return nullptr;
     }
     auto die = std::make_shared<DwarfDie>(std::move(handle), shared_from_this());
-    die_cache.emplace(offset, die);
+    cache.emplace(offset, die);
     return die;
 }
 
-DwarfCompileUnit* DwarfInfoImpl::get_die_cu(Dwarf_Off target_offset) {
+DwarfDiePtr DwarfInfoImpl::find_die_by_signature(const Dwarf_Sig8& signature) {
+    get_cus();
+    uint64_t key = 0;
+    std::memcpy(&key, signature.signature, sizeof(key));
+    auto it = type_signatures.find(key);
+    if (it == type_signatures.end()) {
+        return nullptr;
+    }
+    return get_or_create_die(it->second.first, it->second.second);
+}
+
+DwarfCompileUnit* DwarfInfoImpl::get_die_cu(Dwarf_Off target_offset, bool is_info) {
     if (get_cus().size() > 10) {
         // Implement a more efficient lookup than linear search through all CU headers. A sorted vector + binary
         // search would be a simple improvement, or we could build a more complex index if needed.
@@ -343,7 +370,7 @@ DwarfCompileUnit* DwarfInfoImpl::get_die_cu(Dwarf_Off target_offset) {
         printf("Warning: more than 10 CUs (%zu) — consider implementing a more efficient DIE-to-CU lookup\n",
                get_cus().size());
     }
-    for (auto& cu : get_cus()) {
+    for (auto& cu : is_info ? cus : type_units) {
         const auto& cu_root = cu.get_die();
         if (!cu_root) {
             continue;
@@ -356,8 +383,8 @@ DwarfCompileUnit* DwarfInfoImpl::get_die_cu(Dwarf_Off target_offset) {
     return nullptr;
 }
 
-DwarfDiePtr DwarfInfoImpl::find_parent(Dwarf_Off target_offset) {
-    DwarfCompileUnit* cu = get_die_cu(target_offset);
+DwarfDiePtr DwarfInfoImpl::find_parent(Dwarf_Off target_offset, bool is_info) {
+    DwarfCompileUnit* cu = get_die_cu(target_offset, is_info);
     if (cu == nullptr) {
         return nullptr;
     }

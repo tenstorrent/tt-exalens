@@ -413,10 +413,12 @@ enum class DwarfAttributeForm : Dwarf_Half {
 //
 //   bool                    DW_FORM_flag, DW_FORM_flag_present
 //   uint64_t                addresses (DW_FORM_addr), unsigned constants,
-//                           section offsets, DIE references (always given
-//                           as a global .debug_info offset so callers can
-//                           feed them straight to get_or_create_die)
-//   int64_t                 DW_FORM_sdata
+//                           section offsets, DIE references (an offset in
+//                           the section the target DIE lives in; ref_sig8
+//                           targets are resolved by
+//                           DwarfDie::get_die_from_attribute, not from this
+//                           value)
+//   int64_t                 DW_FORM_sdata, negative DW_FORM_implicit_const
 //   std::string             every string form (string, strp, strx, ...)
 //   std::vector<uint8_t>    DW_FORM_block*, DW_FORM_exprloc
 class DwarfAttribute {

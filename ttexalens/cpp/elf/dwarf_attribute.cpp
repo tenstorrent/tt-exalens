@@ -67,13 +67,32 @@ DwarfAttribute::Value decode_attribute_value(Dwarf_Debug dbg, Dwarf_Attribute at
         case DwarfAttributeForm::data8:
         case DwarfAttributeForm::data16:
         case DwarfAttributeForm::udata:
-        case DwarfAttributeForm::implicit_const:
-        case DwarfAttributeForm::sec_offset:
         case DwarfAttributeForm::loclistx:
         case DwarfAttributeForm::rnglistx: {
             Dwarf_Unsigned v = 0;
             if (dwarf_formudata(attr, &v, &error) == DW_DLV_OK) {
                 return static_cast<uint64_t>(v);
+            }
+            return std::monostate{};
+        }
+        case DwarfAttributeForm::implicit_const: {
+            Dwarf_Signed v = 0;
+            if (dwarf_formsdata(attr, &v, &error) == DW_DLV_OK) {
+                if (v < 0) {
+                    return static_cast<int64_t>(v);
+                }
+                return static_cast<uint64_t>(v);
+            }
+            Dwarf_Unsigned u = 0;
+            if (dwarf_formudata(attr, &u, &error) == DW_DLV_OK) {
+                return static_cast<uint64_t>(u);
+            }
+            return std::monostate{};
+        }
+        case DwarfAttributeForm::sec_offset: {
+            Dwarf_Off off = 0;
+            if (dwarf_global_formref(attr, &off, &error) == DW_DLV_OK) {
+                return static_cast<uint64_t>(off);
             }
             return std::monostate{};
         }
@@ -87,8 +106,9 @@ DwarfAttribute::Value decode_attribute_value(Dwarf_Debug dbg, Dwarf_Attribute at
         case DwarfAttributeForm::ref_sup4:
         case DwarfAttributeForm::ref_sup8:
         case DwarfAttributeForm::GNU_ref_alt: {
-            // Always hand back a global .debug_info offset so callers can
-            // feed it to get_or_create_die without knowing the encoding.
+            // The offset is in the section the target DIE lives in. ref_sig8
+            // targets are resolved by DwarfDie::get_die_from_attribute, not
+            // from this value.
             Dwarf_Off off = 0;
             if (dwarf_global_formref(attr, &off, &error) == DW_DLV_OK) {
                 return static_cast<uint64_t>(off);

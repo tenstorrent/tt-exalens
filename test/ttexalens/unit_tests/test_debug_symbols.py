@@ -11,7 +11,7 @@ from test.ttexalens.unit_tests.core_simulator import RiscvCoreSimulator
 from test.ttexalens.unit_tests.test_base import init_cached_test_context
 from ttexalens import OnChipCoordinate
 from ttexalens.context import Context
-from ttexalens.elf import ElfFile, ElfVariable, FrameInspection
+from ttexalens.elf import DwarfAttributeTag, DwarfDieTag, ElfFile, ElfVariable, FrameInspection
 from ttexalens.exceptions import RiscHaltError
 from ttexalens.memory_access import MemoryAccess, create_memory_access
 from ttexalens.exceptions import DataLossError, RestrictedMemoryAccessError, SymbolNotFoundError, TypeMismatchError
@@ -424,9 +424,30 @@ class TestDebugSymbols(unittest.TestCase):
         # name (mirrors dev_msgs.h's `enum noc_mode` shadowing `noc_mode`).
         self.assertEqual(42, self.parsed_elf.get_global("shadowed_const", TestDebugSymbols.mem_access).read_value())
         self.assertEqual(42, self.parsed_elf.get_constant("shadowed_const"))
+        self.assertEqual(42, self.parsed_elf.get_enum_value("shadowed_const"))
 
         # Enumerator lookup by qualified name keeps working
         self.assertEqual(1, self.parsed_elf.get_enum_value("shadowed_const::SHADOWED_B"))
+
+    def test_elf_negative_enumerators(self):
+        self.assertEqual(-1, self.parsed_elf.get_enum_value("NegativeEnumA::NEGATIVE_A_INVALID"))
+        self.assertEqual(-1, self.parsed_elf.get_enum_value("NegativeEnumB::NEGATIVE_B_INVALID"))
+        self.assertEqual(-1000, self.parsed_elf.get_enum_value("NegativeEnumC::NEGATIVE_C_NEG"))
+        for variable_name, enumerator in [
+            ("g_negative_enum_a", "NegativeEnumA::NEGATIVE_A_INVALID"),
+            ("g_negative_enum_c", "NegativeEnumC::NEGATIVE_C_NEG"),
+        ]:
+            self.assertEqual(enumerator, str(self.parsed_elf.get_global(variable_name, TestDebugSymbols.mem_access)))
+
+    def test_elf_stmt_list_is_debug_line_offset(self):
+        debug_line = self.parsed_elf.get_section_by_name(".debug_line")
+        assert debug_line is not None
+        for compile_unit in self.parsed_elf.dwarf_info.iter_compile_units():
+            assert compile_unit.die is not None
+            stmt_list = compile_unit.die.get_attribute(DwarfAttributeTag.stmt_list)
+            assert stmt_list is not None
+            assert isinstance(stmt_list.value, int)
+            self.assertLess(stmt_list.value, debug_line.size)
 
     def test_elf_variable_array_iteration(self):
         variable_die = self.parsed_elf.find_die_by_name("g_global_struct")
@@ -879,3 +900,10 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertTrue(dereferenced.x < 0x2000)
         self.assertEqual(dereferenced.x + 0x1000, 0x2111)
         self.assertEqual(dereferenced.y & 0xFF00, 0x1100)
+
+
+class TestDwarfTagAliases(unittest.TestCase):
+    @parameterized.expand([("DwarfAttributeTag", DwarfAttributeTag), ("DwarfDieTag", DwarfDieTag)])
+    def test_names_sharing_a_value_are_the_reported_member(self, _name, tag_type):
+        for name, member in tag_type.__members__.items():
+            self.assertEqual(tag_type(member.value), member, name)

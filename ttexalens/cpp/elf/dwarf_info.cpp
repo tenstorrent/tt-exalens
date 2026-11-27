@@ -229,18 +229,23 @@ const ElfSymbol* DwarfInfo::find_symbol_by_demangled_name(std::string_view deman
     return impl->find_symbol_by_demangled_name(demangled_name);
 }
 
-std::optional<uint64_t> DwarfInfo::get_enum_value(std::string_view name) const {
-    auto die = get_die_by_name(name);
+std::optional<std::variant<int64_t, uint64_t>> DwarfInfo::get_enum_value(std::string_view name) const {
+    auto die = get_die_by_name(name, [](const DwarfDiePtr& d) { return !d->is_type(); });
     if (!die) {
         return std::nullopt;
     }
     return std::visit(
-        [](const auto& v) -> std::optional<uint64_t> {
+        [](const auto& v) -> std::optional<std::variant<int64_t, uint64_t>> {
             using T = std::decay_t<decltype(v)>;
             if constexpr (std::is_same_v<T, std::monostate>) {
                 return std::nullopt;
+            } else if constexpr (std::is_same_v<T, int64_t>) {
+                if (v < 0) {
+                    return std::variant<int64_t, uint64_t>(std::in_place_type<int64_t>, v);
+                }
+                return std::variant<int64_t, uint64_t>(std::in_place_type<uint64_t>, static_cast<uint64_t>(v));
             } else {
-                return static_cast<uint64_t>(v);
+                return std::variant<int64_t, uint64_t>(std::in_place_type<uint64_t>, static_cast<uint64_t>(v));
             }
         },
         die->get_constant_value());

@@ -78,6 +78,14 @@ enum shadowed_const : uint8_t { SHADOWED_A = 0, SHADOWED_B = 1, SHADOWED_C = 2 }
 volatile enum shadowed_const g_shadowed_enum_user = SHADOWED_B;
 constexpr uint8_t shadowed_const = 42;
 
+// Negative enumerators; -1 is shared by two enums.
+enum NegativeEnumA { NEGATIVE_A_OK = 0, NEGATIVE_A_INVALID = -1 };
+enum NegativeEnumB { NEGATIVE_B_INVALID = -1 };
+enum NegativeEnumC { NEGATIVE_C_POS = 5, NEGATIVE_C_NEG = -1000 };
+[[gnu::used]] volatile NegativeEnumA g_negative_enum_a = NEGATIVE_A_INVALID;
+[[gnu::used]] volatile NegativeEnumB g_negative_enum_b = NEGATIVE_B_INVALID;
+[[gnu::used]] volatile NegativeEnumC g_negative_enum_c = NEGATIVE_C_NEG;
+
 struct InnerStruct {
     uint16_t x;
     uint16_t y;

@@ -52,6 +52,32 @@ void register_exception_translators() {
 
 }  // namespace
 
+void alias_shared_enum_values(nb::handle enum_type) {
+    try {
+        nb::object member_map = enum_type.attr("_member_map_");
+        nb::object value_map = enum_type.attr("_value2member_map_");
+        nb::object type_setattr = nb::handle(reinterpret_cast<PyObject*>(&PyType_Type)).attr("__setattr__");
+        nb::object items = nb::module_::import_("builtins").attr("list")(member_map.attr("items")());
+        for (nb::handle item : items) {
+            try {
+                nb::object name = item[0];
+                nb::object member = item[1];
+                nb::object value = member.attr("value");
+                nb::object canonical = value_map[value];
+                if (!canonical.is(member)) {
+                    member.inc_ref();
+                    type_setattr(enum_type, name, canonical);
+                    member_map[name] = canonical;
+                }
+            } catch (nb::python_error&) {
+                PyErr_Clear();
+            }
+        }
+    } catch (nb::python_error&) {
+        PyErr_Clear();
+    }
+}
+
 }  // namespace ttexalens::native_elf::bindings
 
 NB_MODULE(_native_ttexalens, m) {
