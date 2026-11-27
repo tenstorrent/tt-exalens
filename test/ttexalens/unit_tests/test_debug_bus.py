@@ -127,15 +127,23 @@ class TestDebugBus(unittest.TestCase):
 
     @parameterized.expand(
         [
-            (1, 0x100000),  # samples, l1_address
-            (4, 0x100000 - 16),
-            (25, 0x100000 - 32),
-            (40, 0x100000 - 160),
+            (1, 0),  # samples, bytes_below_limit
+            (4, 16),
+            (25, 32),
+            (40, 160),
         ]
     )
-    def test_signal_group_exceeds_memory(self, samples, l1_address):
+    def test_signal_group_exceeds_memory(self, samples, bytes_below_limit):
         if self.device.is_quasar():
             self.skipTest("This test does not work on quasar.")
+
+        if self.core_desc != "ETH0":
+            limit, limit_text = 0x100000, "1 MiB limit"
+        elif self.device.is_wormhole():
+            limit, limit_text = 256 * 1024, "256 KiB limit (L1 size of this block)"
+        else:
+            limit, limit_text = 512 * 1024, "512 KiB limit (L1 size of this block)"
+        l1_address = limit - bytes_below_limit
 
         # test sample_signal_group
         group_name = next(iter(self.debug_bus.group_map.keys()))
@@ -146,7 +154,7 @@ class TestDebugBus(unittest.TestCase):
                 samples=samples,
             )
         end_address = l1_address + (samples * self.debug_bus.L1_SAMPLE_SIZE_BYTES) - 1
-        self.assertIn(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds 1 MiB limit", str(cm.exception))
+        self.assertIn(f"L1 sampling range 0x{l1_address:x}-0x{end_address:x} exceeds {limit_text}", str(cm.exception))
 
     def test_read_signal_group_invalid_signal_name(self):
         if self.device.is_quasar():
