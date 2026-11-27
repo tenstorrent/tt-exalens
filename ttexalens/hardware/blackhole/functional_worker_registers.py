@@ -917,4 +917,5 @@ tensix_registers_descriptions = BlackholeTensixRegisterDescription(
     pack_counters=get_pack_counters(),
     pack_strides=get_pack_strides(),
     general_purpose_registers=get_general_purpose_registers(register_map),
+    split_registers={"blobs_y_start": 16, "tmp": 0, "perf_first_unp": 32},
 )

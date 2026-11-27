@@ -42,6 +42,7 @@ from ttexalens.debug_bus_signal_store import DebugBusSignalStore, SignalGroupSam
 from ttexalens.hardware.blackhole.tensix_register_description import BlackholeTensixRegisterDescription
 from ttexalens.hardware.quasar.functional_neo_registers import DEST_DVALID_CLIENTS
 from ttexalens.hardware.quasar.tensix_register_description import QuasarTensixRegisterDescription
+from ttexalens.hardware.tensix_registers_description import TensixRegisterDescription
 from ttexalens.hardware.wormhole.tensix_register_description import WormholeTensixRegisterDescription
 from ttexalens.register_store import RegisterStore, format_register_value
 from ttexalens.uistate import UIState
@@ -103,28 +104,28 @@ def config_regs_to_table(
     config_regs: list[dict[str, str]],
     table_name: str,
     register_store: RegisterStore,
+    tensix_reg_desc: TensixRegisterDescription,
     column_names: list[str] | None = None,
 ):
     config_reg_values: list[dict[str, int | str]] = []
     keys = list(config_regs[0].keys())
 
     for config in config_regs:
+        values = {key: register_store.read_register(config[key]) for key in keys if key in config}
+        merged = tensix_reg_desc.merge_split_registers(values)
+        lo_to_name = {tensix_reg_desc.split_register_halves(name)[0]: name for name in merged}
+        hidden = {tensix_reg_desc.split_register_halves(name)[1] for name in merged}
         config_reg_value: dict[str, int | str] = {}
-        for key in keys:
-            if key in config:
-                if key.endswith("_hi"):
-                    continue
-                elif key.endswith("_lo"):
-                    # Merging split registers into one
-                    value = (register_store.read_register(config[key]) << 16) + register_store.read_register(
-                        config[key[:-3] + "_hi"]
-                    )
-                    name = key[:-3]
-                else:
-                    value = register_store.read_register(config[key])
-                    name = key
-                reg_desc = register_store.get_register_description(config[key])
-                config_reg_value[name] = format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count())
+        for key, value in values.items():
+            if key in hidden:
+                # Shown in the merged row, at the position of the "_lo" half
+                continue
+            name = key
+            if key in lo_to_name:
+                name = lo_to_name[key]
+                value = merged[name]
+            reg_desc = register_store.get_register_description(config[key])
+            config_reg_value[name] = format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count())
         config_reg_values.append(config_reg_value)
 
     return dict_list_to_table(
@@ -236,34 +237,46 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
 
             if group == "alu" or group == "all":
                 print(f"{CLR_GREEN}ALU{CLR_END}")
-                alu_config_table = config_regs_to_table(tensix_reg_desc.alu_config, "ALU CONFIG", register_store)
+                alu_config_table = config_regs_to_table(
+                    tensix_reg_desc.alu_config, "ALU CONFIG", register_store, tensix_reg_desc
+                )
                 print(alu_config_table)
             if group == "unpack" or group == "all":
                 print(f"{CLR_GREEN}UNPACKER{CLR_END}")
                 if isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription):
                     tile_descriptor_table = config_regs_to_table(
-                        tensix_reg_desc.unpack_tile_descriptor, "TILE DESCRIPTOR", register_store
+                        tensix_reg_desc.unpack_tile_descriptor, "TILE DESCRIPTOR", register_store, tensix_reg_desc
                     )
                     unpack_config_table = config_regs_to_table(
-                        tensix_reg_desc.unpack_config, "UNPACK CONFIG", register_store
+                        tensix_reg_desc.unpack_config, "UNPACK CONFIG", register_store, tensix_reg_desc
                     )
                     print(put_table_list_side_by_side([unpack_config_table, tile_descriptor_table]))
                 else:
-                    print(config_regs_to_table(tensix_reg_desc.unpack_config, "UNPACK CONFIG", register_store))
+                    print(
+                        config_regs_to_table(
+                            tensix_reg_desc.unpack_config, "UNPACK CONFIG", register_store, tensix_reg_desc
+                        )
+                    )
             if group == "pack" or group == "all":
                 print(f"{CLR_GREEN}PACKER{CLR_END}")
-                pack_config_table = config_regs_to_table(tensix_reg_desc.pack_config, "PACK CONFIG", register_store)
-                edge_offset_table = config_regs_to_table(
-                    tensix_reg_desc.pack_edge_offset, "EDGE OFFSET", register_store
+                pack_config_table = config_regs_to_table(
+                    tensix_reg_desc.pack_config, "PACK CONFIG", register_store, tensix_reg_desc
                 )
-                pack_strides_table = config_regs_to_table(tensix_reg_desc.pack_strides, "STRIDES", register_store)
-                relu_config_table = config_regs_to_table(tensix_reg_desc.relu_config, "RELU CONFIG", register_store)
+                edge_offset_table = config_regs_to_table(
+                    tensix_reg_desc.pack_edge_offset, "EDGE OFFSET", register_store, tensix_reg_desc
+                )
+                pack_strides_table = config_regs_to_table(
+                    tensix_reg_desc.pack_strides, "STRIDES", register_store, tensix_reg_desc
+                )
+                relu_config_table = config_regs_to_table(
+                    tensix_reg_desc.relu_config, "RELU CONFIG", register_store, tensix_reg_desc
+                )
                 if isinstance(tensix_reg_desc, WormholeTensixRegisterDescription | BlackholeTensixRegisterDescription):
                     pack_counters_table = config_regs_to_table(
-                        tensix_reg_desc.pack_counters, "COUNTERS", register_store
+                        tensix_reg_desc.pack_counters, "COUNTERS", register_store, tensix_reg_desc
                     )
                     dest_rd_ctrl_table = config_regs_to_table(
-                        tensix_reg_desc.pack_dest_rd_ctrl, "DEST RD CTRL", register_store
+                        tensix_reg_desc.pack_dest_rd_ctrl, "DEST RD CTRL", register_store, tensix_reg_desc
                     )
                     print(pack_counters_table)
                     print(pack_config_table)
@@ -286,28 +299,42 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                     print(f"{CLR_GREEN}DEST{CLR_END}")
                     thread_columns = [f"THREAD {i}" for i in range(len(tensix_reg_desc.dest_config))]
                     print(
-                        config_regs_to_table(tensix_reg_desc.dest_config, "DEST CONFIG", register_store, thread_columns)
+                        config_regs_to_table(
+                            tensix_reg_desc.dest_config, "DEST CONFIG", register_store, tensix_reg_desc, thread_columns
+                        )
                     )
                     print(
                         config_regs_to_table(
-                            tensix_reg_desc.dest_dvalid_ctrl, "DEST DVALID CTRL", register_store, DEST_DVALID_CLIENTS
+                            tensix_reg_desc.dest_dvalid_ctrl,
+                            "DEST DVALID CTRL",
+                            register_store,
+                            tensix_reg_desc,
+                            DEST_DVALID_CLIENTS,
                         )
                     )
                 if group == "src" or group == "all":
                     print(f"{CLR_GREEN}SRC{CLR_END}")
                     thread_columns = [f"THREAD {i}" for i in range(len(tensix_reg_desc.src_config))]
                     print(
-                        config_regs_to_table(tensix_reg_desc.src_config, "SRC CONFIG", register_store, thread_columns)
+                        config_regs_to_table(
+                            tensix_reg_desc.src_config, "SRC CONFIG", register_store, tensix_reg_desc, thread_columns
+                        )
                     )
                 if group == "sfpu" or group == "all":
                     print(f"{CLR_GREEN}SFPU{CLR_END}")
                     thread_columns = [f"THREAD {i}" for i in range(len(tensix_reg_desc.sfpu_config))]
                     print(
-                        config_regs_to_table(tensix_reg_desc.sfpu_config, "SFPU CONFIG", register_store, thread_columns)
+                        config_regs_to_table(
+                            tensix_reg_desc.sfpu_config, "SFPU CONFIG", register_store, tensix_reg_desc, thread_columns
+                        )
                     )
                 if group == "global" or group == "all":
                     print(f"{CLR_GREEN}GLOBAL{CLR_END}")
-                    print(config_regs_to_table(tensix_reg_desc.global_config, "GLOBAL CONFIG", register_store))
+                    print(
+                        config_regs_to_table(
+                            tensix_reg_desc.global_config, "GLOBAL CONFIG", register_store, tensix_reg_desc
+                        )
+                    )
             if group == "gpr" or group == "all":
                 verbose = dopt.args["-v"]
                 thread_ids = (
@@ -319,29 +346,30 @@ def run(cmd_text: str, context: Context, ui_state: UIState):
                 tables: list[str] = []
                 for thread_id in thread_ids:
                     gpr_mapping = tensix_reg_desc.general_purpose_registers[thread_id]
+                    values = {
+                        register_name: register_store.read_register(gpr_mapping[register_name])
+                        for register_name in gpr_mapping
+                        if verbose or not register_name.startswith("ID")
+                    }
                     rows: list[list[str]] = []
-                    merged_registers: dict[str, int | str] = {}
-                    for register_name in gpr_mapping:
-                        if verbose or not register_name.startswith("ID"):
-                            reg_desc = register_store.registers[gpr_mapping[register_name]]
-                            if register_name.endswith("_lo"):
-                                # Merging split registers into one
-                                value = (
-                                    register_store.read_register(gpr_mapping[register_name[:-3] + "_hi"]) << 16
-                                ) + register_store.read_register(gpr_mapping[register_name])
-                                merged_registers[register_name[:-3]] = format_register_value(
-                                    value, reg_desc.data_type, reg_desc.mask.bit_count()
-                                )
-                            value = register_store.read_register(gpr_mapping[register_name])
-                            rows.append(
-                                [
-                                    register_name,
-                                    str(format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count())),
-                                ]
-                            )
+                    for register_name, value in values.items():
+                        reg_desc = register_store.registers[gpr_mapping[register_name]]
+                        rows.append(
+                            [
+                                register_name,
+                                str(format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count())),
+                            ]
+                        )
                     # Adding merged registers to the end of the table
-                    for register_name in merged_registers:
-                        rows.append([register_name, str(merged_registers[register_name])])
+                    for register_name, value in tensix_reg_desc.merge_split_registers(values).items():
+                        lo, _ = tensix_reg_desc.split_register_halves(register_name)
+                        reg_desc = register_store.registers[gpr_mapping[lo]]
+                        rows.append(
+                            [
+                                register_name,
+                                str(format_register_value(value, reg_desc.data_type, reg_desc.mask.bit_count())),
+                            ]
+                        )
                     tables.append(
                         tabulate.tabulate(
                             rows,
