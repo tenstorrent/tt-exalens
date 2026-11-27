@@ -380,6 +380,20 @@ DwarfDie::ConstantValue DwarfDie::get_constant_value() const {
     return std::monostate{};
 }
 
+DwarfDiePtr DwarfDie::keep_elf_alive(const DwarfDiePtr& die) {
+    if (!die) return nullptr;
+    DwarfDiePtr cached = die->self.lock();
+    auto info_ptr = die->info.lock();
+    auto elf = info_ptr ? info_ptr->get_elf_impl() : nullptr;
+    if (!cached || !elf) return die;
+    struct Owner {
+        std::shared_ptr<details::ElfFileImpl> elf;
+        DwarfDiePtr die;  // declared last: released before the ELF
+    };
+    auto owner = std::make_shared<Owner>(Owner{std::move(elf), std::move(cached)});
+    return DwarfDiePtr(owner, owner->die.get());
+}
+
 std::shared_ptr<const DwarfCompileUnit> DwarfDie::get_cu() const {
     auto info_ptr = info.lock();
     if (!info_ptr) {
@@ -389,12 +403,14 @@ std::shared_ptr<const DwarfCompileUnit> DwarfDie::get_cu() const {
     if (cu == nullptr) {
         return nullptr;
     }
-    // Aliasing constructor: points at the CU, shares ownership of info_ptr.
-    return std::shared_ptr<const DwarfCompileUnit>(std::move(info_ptr), cu);
+    // Aliasing constructor: points at the CU, shares ownership of the parsed ELF.
+    auto elf = info_ptr->get_elf_impl();
+    if (!elf) return nullptr;
+    return std::shared_ptr<const DwarfCompileUnit>(std::move(elf), cu);
 }
 
 DwarfDiePtr DwarfDie::get_resolved_type() const {
-    auto current = std::const_pointer_cast<DwarfDie>(shared_from_this());
+    auto current = self.lock();
     while (current) {
         const DwarfDieTag tag = current->get_tag();
 
@@ -510,7 +526,7 @@ DwarfDiePtr DwarfDie::get_first_child() const {
         if (dwarf_child(die, &handle, &error) == DW_DLV_OK) {
             result = info_ptr->register_die(std::move(handle));
             if (result) {
-                result->parent = std::const_pointer_cast<DwarfDie>(shared_from_this());
+                result->parent = self.lock();
             }
         }
     }

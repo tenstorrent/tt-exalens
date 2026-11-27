@@ -315,7 +315,7 @@ DwarfDiePtr DwarfInfoImpl::register_die(DwarfDieHandle handle) {
     if (it != die_cache.end()) {
         return it->second;  // libdwarf hands out a fresh Dwarf_Die per call — drop the dup
     }
-    auto die = std::make_shared<DwarfDie>(std::move(handle), shared_from_this());
+    auto die = make_die(std::move(handle));
     die_cache.emplace(offset, die);
     return die;
 }
@@ -330,8 +330,14 @@ DwarfDiePtr DwarfInfoImpl::get_or_create_die(Dwarf_Off offset) {
     if (dwarf_offdie_b(dbg, offset, /*is_info=*/true, &handle, &error) != DW_DLV_OK) {
         return nullptr;
     }
-    auto die = std::make_shared<DwarfDie>(std::move(handle), shared_from_this());
+    auto die = make_die(std::move(handle));
     die_cache.emplace(offset, die);
+    return die;
+}
+
+DwarfDiePtr DwarfInfoImpl::make_die(DwarfDieHandle handle) {
+    auto die = std::make_shared<DwarfDie>(std::move(handle), shared_from_this());
+    die->self = die;
     return die;
 }
 

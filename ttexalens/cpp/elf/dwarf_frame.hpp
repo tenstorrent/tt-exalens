@@ -16,6 +16,7 @@ namespace ttexalens::native_elf {
 
 namespace details {
 class DwarfInfoImpl;
+class ElfFileImpl;
 }  // namespace details
 
 class MemoryAccess;
@@ -71,6 +72,10 @@ class FrameDescription {
    private:
     // Guard for fde validity
     std::weak_ptr<details::DwarfInfoImpl> info;
+    // Keeps the parsed ELF, and so `info` and `fde`, alive. Never store a
+    // FrameDescription in DwarfDie, DwarfCompileUnit or DwarfInfoImpl: the ELF
+    // owns those, so it would never be freed.
+    std::shared_ptr<details::ElfFileImpl> elf;
     Dwarf_Fde fde;
     uint64_t pc;
     std::shared_ptr<MemoryAccess> memory_access;

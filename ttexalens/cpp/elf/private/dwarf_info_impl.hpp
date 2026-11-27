@@ -74,6 +74,9 @@ class DwarfInfoImpl : public std::enable_shared_from_this<DwarfInfoImpl> {
 
     Dwarf_Debug get_dbg() const { return dbg; }
 
+    // The ELF that owns this object, or nullptr while it is being destroyed.
+    std::shared_ptr<ElfFileImpl> get_elf_impl() const { return elf_impl.lock(); }
+
     DwarfDiePtr register_die(DwarfDieHandle handle);
     DwarfDiePtr get_or_create_die(Dwarf_Off offset);
     DwarfDiePtr find_parent(Dwarf_Off target_offset);
@@ -93,6 +96,7 @@ class DwarfInfoImpl : public std::enable_shared_from_this<DwarfInfoImpl> {
     void load_compile_units();
     void load_line_ranges();
     void load_symbols_table();
+    DwarfDiePtr make_die(DwarfDieHandle handle);
 
     ElfObjAccess obj_access;
     Dwarf_Debug dbg = nullptr;

@@ -116,9 +116,9 @@ DwarfDiePtr append_frame_callstack(const ElfFile& elf, const FrameSnapshot& fram
             }
             const DwarfDieTag tag = child->get_tag();
             if (tag == DwarfDieTag::formal_parameter) {
-                arguments.push_back(CallstackEntryVariable{child, std::move(value)});
+                arguments.push_back(CallstackEntryVariable{DwarfDie::keep_elf_alive(child), std::move(value)});
             } else if (tag == DwarfDieTag::variable) {
-                locals.push_back(CallstackEntryVariable{child, std::move(value)});
+                locals.push_back(CallstackEntryVariable{DwarfDie::keep_elf_alive(child), std::move(value)});
             }
         }
         for (const DwarfDiePtr& template_value_param : fn_die->get_template_value_parameters()) {
@@ -126,7 +126,8 @@ DwarfDiePtr append_frame_callstack(const ElfFile& elf, const FrameSnapshot& fram
             if (frame_inspection.has_value()) {
                 value = template_value_param->read_value(*frame_inspection);
             }
-            template_parameters.push_back(CallstackEntryVariable{template_value_param, std::move(value)});
+            template_parameters.push_back(
+                CallstackEntryVariable{DwarfDie::keep_elf_alive(template_value_param), std::move(value)});
         }
     };
 
