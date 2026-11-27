@@ -71,6 +71,8 @@ std::optional<std::vector<Op>> parse_die_attribute_location(const DwarfDie& die,
     }
     unsigned int lkind = DW_LKIND_unknown;
     dwarf_get_loclist_head_kind(head.get(), &lkind, &error);
+    std::optional<Dwarf_Addr> list_base;
+    bool base_failed = false;
     for (Dwarf_Unsigned i = 0; i < list_len; ++i) {
         Dwarf_Small lle = 0;
         Dwarf_Unsigned raw_lopc = 0, raw_hipc = 0;
@@ -85,11 +87,34 @@ std::optional<std::vector<Op>> parse_die_attribute_location(const DwarfDie& die,
                                       &error) != DW_DLV_OK) {
             continue;
         }
+        if (lkind == DW_LKIND_loclists) {
+            if (lle == DW_LLE_base_address) {
+                list_base = raw_lopc;
+                base_failed = false;
+                continue;
+            }
+            if (lle == DW_LLE_base_addressx) {
+                Dwarf_Addr addr = 0;
+                if (dwarf_debug_addr_index_to_addr(static_cast<Dwarf_Die>(die), raw_lopc, &addr, &error) == DW_DLV_OK) {
+                    list_base = addr;
+                    base_failed = false;
+                } else {
+                    list_base.reset();
+                    base_failed = true;
+                }
+                continue;
+            }
+            if (lle == DW_LLE_offset_pair && base_failed) {
+                continue;
+            }
+        }
         // For a plain expression (DW_LKIND_expression) the range covers
         // everything — accept it. For a location list, the cooked range
         // selects which entry applies at `pc`.
-        const bool in_range =
-            (lkind == DW_LKIND_expression) || (pc >= cooked_lopc && (cooked_hipc == 0 || pc < cooked_hipc));
+        bool in_range = (lkind == DW_LKIND_expression) || (pc >= cooked_lopc && (cooked_hipc == 0 || pc < cooked_hipc));
+        if (lkind == DW_LKIND_loclists && lle == DW_LLE_offset_pair && list_base.has_value()) {
+            in_range = pc >= *list_base + raw_lopc && pc < *list_base + raw_hipc;
+        }
         if (!in_range) {
             continue;
         }
@@ -232,27 +257,25 @@ class Evaluator {
         // Literal pushes -----------------------------------------------------
         if (code >= DW_OP_lit0 && code <= DW_OP_lit31) {
             stack.push_back(static_cast<uint64_t>(code - DW_OP_lit0));
-            result.is_address = false;
             return true;
         }
         // Register direct ----------------------------------------------------
         if (code >= DW_OP_reg0 && code <= DW_OP_reg31) {
-            return push_register(code - DW_OP_reg0, /*is_address=*/false, result);
+            return push_register(code - DW_OP_reg0, result);
         }
         if (code == DW_OP_regx) {
-            return push_register(static_cast<int>(op.a), /*is_address=*/false, result);
+            return push_register(static_cast<int>(op.a), result);
         }
         // Register + offset --------------------------------------------------
         if (code >= DW_OP_breg0 && code <= DW_OP_breg31) {
-            return push_register_offset(code - DW_OP_breg0, static_cast<int64_t>(op.a), result);
+            return push_register_offset(code - DW_OP_breg0, static_cast<int64_t>(op.a));
         }
         if (code == DW_OP_bregx) {
-            return push_register_offset(static_cast<int>(op.a), static_cast<int64_t>(op.b), result);
+            return push_register_offset(static_cast<int>(op.a), static_cast<int64_t>(op.b));
         }
         switch (code) {
             case DW_OP_addr:
                 stack.push_back(op.a);
-                result.is_address = true;
                 return true;
             case DW_OP_const1u:
             case DW_OP_const2u:
@@ -260,7 +283,6 @@ class Evaluator {
             case DW_OP_const8u:
             case DW_OP_constu:
                 stack.push_back(op.a);
-                result.is_address = false;
                 return true;
             case DW_OP_const1s:
             case DW_OP_const2s:
@@ -271,13 +293,11 @@ class Evaluator {
                 // slot; reinterpret as signed and let the stack store the
                 // two's-complement bits.
                 stack.push_back(static_cast<uint64_t>(static_cast<int64_t>(op.a)));
-                result.is_address = false;
                 return true;
             case DW_OP_fbreg: {
                 auto fb = evaluate_frame_base();
                 if (!fb.has_value()) return false;
                 stack.push_back(*fb + static_cast<int64_t>(op.a));
-                result.is_address = true;
                 return true;
             }
             case DW_OP_call_frame_cfa: {
@@ -285,13 +305,12 @@ class Evaluator {
                 auto cfa = frame->get_cfa();
                 if (!cfa.has_value()) return false;
                 stack.push_back(*cfa);
-                result.is_address = true;
                 return true;
             }
             case DW_OP_deref:
-                return op_deref(dims.address_size, result);
+                return op_deref(dims.address_size);
             case DW_OP_deref_size:
-                return op_deref(static_cast<uint8_t>(op.a), result);
+                return op_deref(static_cast<uint8_t>(op.a));
             case DW_OP_dup:
                 if (stack.empty()) return false;
                 stack.push_back(stack.back());
@@ -441,32 +460,30 @@ class Evaluator {
         }
     }
 
-    bool push_register(int reg_index, bool is_address, LocationResult& result) {
+    bool push_register(int reg_index, LocationResult& result) {
         if (frame == nullptr) return false;
         auto v = frame->read_register(reg_index);
         if (!v.has_value()) return false;
         stack.push_back(*v);
-        result.is_address = is_address;
+        result.is_address = false;
         return true;
     }
 
-    bool push_register_offset(int reg_index, int64_t offset, LocationResult& result) {
+    bool push_register_offset(int reg_index, int64_t offset) {
         if (frame == nullptr) return false;
         auto v = frame->read_register(reg_index);
         if (!v.has_value()) return false;
         stack.push_back(*v + static_cast<uint64_t>(offset));
-        result.is_address = true;
         return true;
     }
 
-    bool op_deref(uint8_t size, LocationResult& result) {
+    bool op_deref(uint8_t size) {
         if (stack.empty() || frame == nullptr) return false;
         uint64_t addr = stack.back();
         stack.pop_back();
         auto v = frame->read_memory(addr, size);
         if (!v.has_value()) return false;
         stack.push_back(*v);
-        result.is_address = false;
         return true;
     }
 

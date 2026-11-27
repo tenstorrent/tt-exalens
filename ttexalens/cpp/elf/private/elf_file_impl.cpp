@@ -80,6 +80,17 @@ const ElfSection* ElfFileImpl::get_section_by_index(uint16_t index) const {
     return it == section_by_index.end() ? nullptr : it->second;
 }
 
+std::optional<uint64_t> ElfFileImpl::get_tls_segment_address() const {
+    const size_t n = elf.segments.size();
+    for (size_t i = 0; i < n; ++i) {
+        const ELFIO::segment* segment = elf.segments[static_cast<unsigned int>(i)];
+        if (segment->get_type() == ELFIO::PT_TLS) {
+            return static_cast<uint64_t>(segment->get_virtual_address());
+        }
+    }
+    return std::nullopt;
+}
+
 // Identical for path- and bytes-backed sources: both just need elf and
 // file_size (which the derived ctor sets). Any failure (no DWARF info,
 // libdwarf init error) leaves dwarf_info null.

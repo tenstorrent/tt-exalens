@@ -34,6 +34,8 @@ class ElfFileImpl : public std::enable_shared_from_this<ElfFileImpl> {
     // index.
     const ElfSection* get_section_by_index(uint16_t index) const;
 
+    std::optional<uint64_t> get_tls_segment_address() const;
+
     // ELF header e_entry — the program's start-of-execution address.
     uint64_t get_entry() const { return static_cast<uint64_t>(elf.get_entry()); }
 

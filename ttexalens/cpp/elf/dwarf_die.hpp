@@ -365,6 +365,7 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
    private:
     // Resolves this DIE to its .symtab entry. Returns nullptr on miss.
     const ElfSymbol* find_symbol() const;
+    bool is_function_local_automatic() const;
 
     std::optional<DwarfFileLine> resolve_file_info(DwarfAttributeTag file_tag, DwarfAttributeTag line_tag,
                                                    DwarfAttributeTag column_tag) const;

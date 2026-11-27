@@ -14,14 +14,15 @@ class DwarfDie;
 using DwarfDiePtr = std::shared_ptr<DwarfDie>;
 class FrameInspection;
 
-// Result of evaluating a DWARF location expression. Either:
+// Result of evaluating a DWARF location expression. The result is a memory
+// address unless the expression is a register location (DW_OP_regN,
+// DW_OP_regx), ends in DW_OP_stack_value, or is a composite (DW_OP_piece):
 //   * is_address == true  — `value` is the memory address holding the
 //                           variable's bytes. The caller reads from there
 //                           through the active MemoryAccess.
 //   * is_address == false — `value` (or `raw_bytes`) IS the variable's
-//                           literal value (DW_OP_stack_value / DW_OP_regN /
-//                           const_type). `raw_bytes` is used for widths the
-//                           uint64 path can't represent losslessly (e.g.
+//                           literal value. `raw_bytes` is used for widths
+//                           the uint64 path can't represent losslessly (e.g.
 //                           DWARF5 const_type with a typed byte payload).
 struct LocationResult {
     bool is_address = false;
