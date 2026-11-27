@@ -167,6 +167,13 @@ struct DwarfFileLine {
     uint32_t column;
 };
 
+// Position of a bit-field member inside its enclosing struct (little-endian).
+struct DwarfBitField {
+    uint64_t byte_offset;  // from the struct start to the first byte holding the field
+    uint32_t bit_offset;   // 0..7, from the least significant bit of that byte
+    uint32_t bit_size;     // width of the field in bits, > 0
+};
+
 class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
    public:
     DwarfDie(DwarfDieHandle die, std::weak_ptr<details::DwarfInfoImpl> info);
@@ -303,6 +310,12 @@ class DwarfDie : public std::enable_shared_from_this<DwarfDie> {
     // Reads DW_AT_data_member_location, with a zero fallback for union
     // members (which have an implicit offset of 0).
     std::optional<uint64_t> get_data_member_location() const;
+
+    // Position of a bit-field member DIE. Reads DW_AT_data_bit_offset
+    // (DWARF 4/5), or DW_AT_bit_offset with DW_AT_byte_size and
+    // DW_AT_data_member_location (DWARF 2/3/4). std::nullopt when this DIE
+    // is not a bit-field (no DW_AT_bit_size) or its position can't be decoded.
+    std::optional<DwarfBitField> get_bit_field() const;
 
     // Walks the direct children of this DIE and returns the first whose
     // DW_AT_name matches `name`. nullptr on miss.

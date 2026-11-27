@@ -17,7 +17,7 @@ from ttexalens.memory_access import MemoryAccess, create_memory_access
 from ttexalens.exceptions import DataLossError, RestrictedMemoryAccessError, SymbolNotFoundError, TypeMismatchError
 from ttexalens.umd_device import TimeoutDeviceRegisterError
 
-from parameterized import parameterized
+from parameterized import parameterized, parameterized_class
 
 
 class MemoryAccessWrapper(MemoryAccess):
@@ -879,3 +879,50 @@ class TestDebugSymbols(unittest.TestCase):
         self.assertTrue(dereferenced.x < 0x2000)
         self.assertEqual(dereferenced.x + 0x1000, 0x2111)
         self.assertEqual(dereferenced.y & 0xFF00, 0x1100)
+
+
+@parameterized_class([{"elf_app": "globals_test"}, {"elf_app": "globals_test_dwarf4"}])
+class TestDebugSymbolsBitfields(unittest.TestCase):
+    elf_app: str
+    context: Context
+    core_sim: RiscvCoreSimulator
+    parsed_elf: ElfFile
+    mem_access: MemoryAccess
+
+    @classmethod
+    def setUpClass(cls):
+        cls.context = init_cached_test_context()
+        risc_debug = cls.context.devices[0].get_blocks()[0].all_riscs[0]
+        cls.core_sim = RiscvCoreSimulator(
+            cls.context,
+            risc_debug.risc_location.location.to_str(),
+            risc_debug.risc_location.risc_name,
+            risc_debug.risc_location.neo_id,
+        )
+        cls.core_sim.load_elf(f"{cls.elf_app}.release")
+        cls.parsed_elf = cls.core_sim.parse_elf(f"{cls.elf_app}.release")
+        cls.mem_access = create_memory_access(risc_debug)
+
+        assert not cls.core_sim.is_in_reset()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.core_sim.set_reset(True)
+
+    def test_elf_variable_bitfields(self):
+        g_bitfield_simple = self.parsed_elf.get_global("g_bitfield_simple", self.mem_access)
+        self.assertEqual(5, g_bitfield_simple.a.read_value())
+        self.assertEqual(19, g_bitfield_simple.b.read_value())
+        self.assertEqual(-3, g_bitfield_simple.c.read_value())
+
+    def test_elf_variable_bitfields_write_value(self):
+        g_bitfield_simple = self.parsed_elf.get_global("g_bitfield_simple", self.mem_access)
+        g_bitfield_simple.b.write_value(7)
+        self.assertEqual(5, g_bitfield_simple.a.read_value())
+        self.assertEqual(7, g_bitfield_simple.b.read_value())
+        self.assertEqual(-3, g_bitfield_simple.c.read_value())
+        data = g_bitfield_simple.read_bytes()
+        self.assertRaises(DataLossError, g_bitfield_simple.b.write_value, 32)
+        self.assertRaises(DataLossError, g_bitfield_simple.b.write_value, -1)
+        self.assertEqual(data, g_bitfield_simple.read_bytes())
+        g_bitfield_simple.b.write_value(19)  # Restore original value

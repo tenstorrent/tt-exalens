@@ -44,7 +44,11 @@ set(RISCV_CORES_wormhole_rv32 "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc
 set(RISCV_CORES_blackhole_rv32 "brisc" "trisc0" "trisc1" "trisc2" "ncrisc" "erisc0" "erisc1" "drisc")
 set(RISCV_CORES_quasar_rv32 "trisc0" "trisc1" "trisc2" "trisc3")
 set(RISCV_CORES_quasar_rv64 "rocket0" "rocket1" "rocket2" "rocket3" "rocket4" "rocket5" "rocket6" "rocket7")
-set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "edge_mem_test")
+set(RISCV_APPS "sample" "run_elf_test" "callstack" "cov_test" "globals_test" "edge_mem_test" "globals_test_dwarf4")
+# An app may reuse another app's source, add compiler options and limit its build types
+set(RISCV_APP_SOURCE_globals_test_dwarf4 "globals_test")
+set(RISCV_APP_OPTIONS_globals_test_dwarf4 -gdwarf-4)
+set(RISCV_APP_BUILD_TYPES_globals_test_dwarf4 release)
 
 # NEOs share L1, so Quasar TRISC ELFs are linked into a separate L1 slice for each NEO
 set(RISCV_NEO_IDS_quasar_rv32 0 1 2 3)
@@ -62,6 +66,7 @@ function(add_riscv_object OBJECT_NAME SOURCE_FILE BUILD_TYPE ISA)
             list(APPEND COMPILE_OPTIONS ${GCOV_FLAGS})
         endif()
     endif()
+    list(APPEND COMPILE_OPTIONS ${ARGN})
 
     add_custom_command(
         OUTPUT ${OBJECT_NAME}
@@ -96,9 +101,13 @@ foreach(ISA ${RISCV_ISAS})
 
     # Add C++ compile target
     foreach(app ${RISCV_APPS})
-        add_riscv_object("${OBJECT_DIR}/${app}.debug.o" "${RISCV_SOURCE}/${app}.cc" "debug" ${ISA})
-        add_riscv_object("${OBJECT_DIR}/${app}.release.o" "${RISCV_SOURCE}/${app}.cc" "release" ${ISA})
-        add_riscv_object("${OBJECT_DIR}/${app}.coverage.o" "${RISCV_SOURCE}/${app}.cc" "coverage" ${ISA})
+        set(APP_SOURCE ${app})
+        if(DEFINED RISCV_APP_SOURCE_${app})
+            set(APP_SOURCE ${RISCV_APP_SOURCE_${app}})
+        endif()
+        add_riscv_object("${OBJECT_DIR}/${app}.debug.o" "${RISCV_SOURCE}/${APP_SOURCE}.cc" "debug" ${ISA} ${RISCV_APP_OPTIONS_${app}})
+        add_riscv_object("${OBJECT_DIR}/${app}.release.o" "${RISCV_SOURCE}/${APP_SOURCE}.cc" "release" ${ISA} ${RISCV_APP_OPTIONS_${app}})
+        add_riscv_object("${OBJECT_DIR}/${app}.coverage.o" "${RISCV_SOURCE}/${APP_SOURCE}.cc" "coverage" ${ISA} ${RISCV_APP_OPTIONS_${app}})
     endforeach()
 endforeach()
 
@@ -109,6 +118,7 @@ function(create_riscv_target ARCH APP CORE BUILD_TYPE ISA NEO_ID)
     else()
         set(LINK_OPTIONS ${OPTIONS_ALL_${ISA}} ${OPTIONS_LINK})
     endif()
+    list(APPEND LINK_OPTIONS ${RISCV_APP_OPTIONS_${APP}})
 
     # -mtt-fix-whbhebreak emits the Wormhole/Blackhole ebreak hardware-bug workaround
     # (8 NOPs after every ebreak; the fetch pipeline has already prefetched the
@@ -194,7 +204,9 @@ foreach(ARCH ${RISCV_ARCHITECTURES})
             foreach(NEO_ID IN LISTS NEO_IDS)
                 foreach(APP ${RISCV_APPS})
                     foreach(BUILD_TYPE debug release coverage)
-                        create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE} ${ISA} ${NEO_ID})
+                        if(NOT DEFINED RISCV_APP_BUILD_TYPES_${APP} OR BUILD_TYPE IN_LIST RISCV_APP_BUILD_TYPES_${APP})
+                            create_riscv_target(${ARCH} ${APP} ${CORE} ${BUILD_TYPE} ${ISA} ${NEO_ID})
+                        endif()
                     endforeach()
                 endforeach()
             endforeach()

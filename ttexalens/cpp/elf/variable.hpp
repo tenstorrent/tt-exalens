@@ -80,7 +80,8 @@ class ElfVariable {
     // Variant returned by read_value / accepted by write_value.
     using Value = std::variant<bool, int64_t, uint64_t, float, double, std::string>;
 
-    ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access);
+    ElfVariable(DwarfDiePtr type_die, uint64_t address, std::shared_ptr<MemoryAccess> memory_access,
+                uint32_t bit_offset = 0, uint32_t bit_size = 0);
     ~ElfVariable();
     ElfVariable(const ElfVariable&);
     ElfVariable(ElfVariable&&) noexcept;
@@ -88,14 +89,18 @@ class ElfVariable {
     ElfVariable& operator=(ElfVariable&&) noexcept;
 
     const DwarfDiePtr& get_type_die() const { return type_die; }
+    // For a bit-field member, the first byte holding the field.
     uint64_t get_address() const { return address; }
     const std::shared_ptr<MemoryAccess>& get_memory_access() const { return memory_access; }
 
     // Size in bytes of this variable's resolved type. Throws if the type DIE
-    // doesn't expose a size.
+    // doesn't expose a size. For a bit-field member, the number of bytes
+    // holding the field.
     uint64_t get_size() const;
 
     // Walks struct/union/inheritance members to find `member_name`.
+    // Throws SymbolNotFoundException for a bit-field member whose position
+    // can't be decoded, so it is never accessed as its whole storage unit.
     ElfVariable get_member(std::string_view member_name) const;
 
     // Dereferences a pointer variable. Reads the pointer bytes from live
@@ -108,17 +113,22 @@ class ElfVariable {
     // Number of elements in the first array dimension.
     uint64_t get_length() const;
 
-    // Reads `get_size()` bytes from the live address.
+    // Reads `get_size()` bytes from the live address. For a bit-field member,
+    // these are the bytes holding the field.
     std::vector<std::byte> read_bytes() const;
     void read_bytes(std::span<std::byte> buffer) const;
 
     // Reads the variable's value as a scalar. Supported tags: base_type,
     // pointer_type, enumeration_type. Anything else throws
-    // TypeMismatchException.
+    // TypeMismatchException. For a bit-field member, returns only the field's
+    // bits: sign-extended for a signed type, a bool for bool.
     Value read_value() const;
 
     // Writes a scalar value. `check_data_loss` triggers DataLossException
     // when the round-trip changes the value (e.g. assigning 1.5 to int).
+    // A bit-field write is a non-atomic read-modify-write of the live bytes
+    // holding the field; a running core that writes a neighbouring field in
+    // those bytes at the same time can lose its update.
     void write_value(Value value, bool check_data_loss = true);
 
     // Snapshots the variable's bytes and returns a new ElfVariable
@@ -134,6 +144,9 @@ class ElfVariable {
     DwarfDiePtr type_die;
     uint64_t address;
     std::shared_ptr<MemoryAccess> memory_access;
+    // bit_size == 0: not a bit-field
+    uint32_t bit_offset;
+    uint32_t bit_size;
 };
 
 }  // namespace ttexalens::native_elf
